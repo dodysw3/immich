@@ -13,6 +13,7 @@
   import type { TimelineAsset } from '$lib/managers/timeline-manager/types';
   import { closeEditorCofirm } from '$lib/stores/asset-editor.store';
   import { assetViewingStore } from '$lib/stores/asset-viewing.store';
+  import { faceManager } from '$lib/stores/face-manager.svelte';
   import { ocrManager } from '$lib/stores/ocr.svelte';
   import { alwaysLoadOriginalVideo, isShowDetail } from '$lib/stores/preferences.store';
   import { SlideshowNavigation, SlideshowState, slideshowStore } from '$lib/stores/slideshow.store';
@@ -399,8 +400,12 @@
   $effect(() => {
     handlePromiseError(handleGetAllAlbums());
     ocrManager.clear();
+    faceManager.clear();
     if (!sharedLink) {
       handlePromiseError(ocrManager.getAssetOcr(asset.id));
+    }
+    if (!sharedLink || sharedLink.showMetadata) {
+      faceManager.loadFromAsset(asset);
     }
   });
 </script>

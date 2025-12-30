@@ -2,12 +2,14 @@
   import { shortcuts } from '$lib/actions/shortcut';
   import { zoomImageAction } from '$lib/actions/zoom-image';
   import FaceEditor from '$lib/components/asset-viewer/face-editor/face-editor.svelte';
+  import FaceBoundingBox from '$lib/components/asset-viewer/face-bounding-box.svelte';
   import OcrBoundingBox from '$lib/components/asset-viewer/ocr-bounding-box.svelte';
   import BrokenAsset from '$lib/components/assets/broken-asset.svelte';
   import { assetViewerFadeDuration } from '$lib/constants';
   import { castManager } from '$lib/managers/cast-manager.svelte';
   import type { TimelineAsset } from '$lib/managers/timeline-manager/types';
   import { photoViewerImgElement } from '$lib/stores/assets-store.svelte';
+  import { faceManager } from '$lib/stores/face-manager.svelte';
   import { isFaceEditMode } from '$lib/stores/face-edit.svelte';
   import { ocrManager } from '$lib/stores/ocr.svelte';
   import { boundingBoxesArray } from '$lib/stores/people.store';
@@ -18,7 +20,7 @@
   import { canCopyImageToClipboard, copyImageToClipboard, isWebCompatibleImage } from '$lib/utils/asset-utils';
   import { handleError } from '$lib/utils/handle-error';
   import { getOcrBoundingBoxes } from '$lib/utils/ocr-utils';
-  import { getBoundingBox } from '$lib/utils/people-utils';
+  import { getBoundingBox, getFaceBoundingBoxes } from '$lib/utils/people-utils';
   import { cancelImageUrl } from '$lib/utils/sw-messaging';
   import { getAltText } from '$lib/utils/thumbnail-util';
   import { toTimelineAsset } from '$lib/utils/timeline-util';
@@ -77,6 +79,12 @@
   let ocrBoxes = $derived(
     ocrManager.showOverlay && $photoViewerImgElement
       ? getOcrBoundingBoxes(ocrManager.data, $photoZoomState, $photoViewerImgElement)
+      : [],
+  );
+
+  let faceBoxes = $derived(
+    !isFaceEditMode.value && $photoViewerImgElement && faceManager.data.length > 0
+      ? getFaceBoundingBoxes(faceManager.data, $photoZoomState, $photoViewerImgElement)
       : [],
   );
 
@@ -283,6 +291,10 @@
 
       {#each ocrBoxes as ocrBox (ocrBox.id)}
         <OcrBoundingBox {ocrBox} />
+      {/each}
+
+      {#each faceBoxes as faceBox (faceBox.id)}
+        <FaceBoundingBox {faceBox} />
       {/each}
     </div>
 
