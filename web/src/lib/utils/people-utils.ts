@@ -1,4 +1,5 @@
 import type { Faces } from '$lib/stores/people.store';
+import type { FaceBox } from '$lib/stores/face-manager.svelte';
 import { getAssetThumbnailUrl } from '$lib/utils';
 import { AssetTypeEnum, type AssetFaceResponseDto } from '@immich/sdk';
 import type { ZoomImageWheelState } from '@zoom-image/core';
@@ -69,6 +70,71 @@ export const getBoundingBox = (
       height: Math.round(coordinates.y2 - coordinates.y1),
     });
   }
+  return boxes;
+};
+
+export interface FaceBoundingBox {
+  id: string;
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+  personName?: string;
+}
+
+/**
+ * Convert face coordinates to screen coordinates for rendering face boxes
+ * Face coordinates are in image-native dimensions (absolute pixels)
+ */
+export const getFaceBoundingBoxes = (
+  faceData: FaceBox[],
+  zoom: ZoomImageWheelState,
+  photoViewer: HTMLImageElement | null,
+): FaceBoundingBox[] => {
+  const boxes: FaceBoundingBox[] = [];
+
+  if (photoViewer === null) {
+    return boxes;
+  }
+
+  const clientHeight = photoViewer.clientHeight;
+  const clientWidth = photoViewer.clientWidth;
+  const { width, height } = getContainedSize(photoViewer);
+
+  for (const face of faceData) {
+    /*
+     * Create the coordinates of the box based on the displayed image.
+     * The coordinates must take into account margins due to the 'object-fit: contain;' css property of the photo-viewer.
+     */
+    const coordinates = {
+      x1:
+        (width / face.imageWidth) * zoom.currentZoom * face.boundingBoxX1 +
+        ((clientWidth - width) / 2) * zoom.currentZoom +
+        zoom.currentPositionX,
+      x2:
+        (width / face.imageWidth) * zoom.currentZoom * face.boundingBoxX2 +
+        ((clientWidth - width) / 2) * zoom.currentZoom +
+        zoom.currentPositionX,
+      y1:
+        (height / face.imageHeight) * zoom.currentZoom * face.boundingBoxY1 +
+        ((clientHeight - height) / 2) * zoom.currentZoom +
+        zoom.currentPositionY,
+      y2:
+        (height / face.imageHeight) * zoom.currentZoom * face.boundingBoxY2 +
+        ((clientHeight - height) / 2) * zoom.currentZoom +
+        zoom.currentPositionY,
+    };
+
+    boxes.push({
+      id: face.id,
+      top: Math.round(coordinates.y1),
+      left: Math.round(coordinates.x1),
+      width: Math.round(coordinates.x2 - coordinates.x1),
+      height: Math.round(coordinates.y2 - coordinates.y1),
+      personName: face.personName,
+    });
+  }
+
   return boxes;
 };
 
