@@ -45,6 +45,7 @@
   import DetailPanel from './detail-panel.svelte';
   import CropArea from './editor/crop-tool/crop-area.svelte';
   import EditorPanel from './editor/editor-panel.svelte';
+  import FaceButton from './face-button.svelte';
   import ImagePanoramaViewer from './image-panorama-viewer.svelte';
   import OcrButton from './ocr-button.svelte';
   import PhotoViewer from './photo-viewer.svelte';
@@ -560,8 +561,14 @@
           </div>
         {/if}
 
-        {#if $slideshowState === SlideshowState.None && asset.type === AssetTypeEnum.Image && !isShowEditor && ocrManager.hasOcrData}
+        {#if $slideshowState === SlideshowState.None && asset.type === AssetTypeEnum.Image && !isShowEditor && faceManager.hasFaceData}
           <div class="absolute bottom-0 end-0 mb-6 me-6">
+            <FaceButton />
+          </div>
+        {/if}
+
+        {#if $slideshowState === SlideshowState.None && asset.type === AssetTypeEnum.Image && !isShowEditor && ocrManager.hasOcrData}
+          <div class="absolute bottom-0 end-0 mb-20 me-6">
             <OcrButton />
           </div>
         {/if}

@@ -83,7 +83,7 @@
   );
 
   let faceBoxes = $derived(
-    !isFaceEditMode.value && $photoViewerImgElement && faceManager.data.length > 0
+    faceManager.showOverlay && !isFaceEditMode.value && $photoViewerImgElement
       ? getFaceBoundingBoxes(faceManager.data, $photoZoomState, $photoViewerImgElement)
       : [],
   );
