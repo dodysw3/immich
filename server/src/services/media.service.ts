@@ -235,6 +235,161 @@ export class MediaService extends BaseService {
     return JobStatus.Success;
   }
 
+  @OnJob({ name: JobName.AssetPdfConversion, queue: QueueName.ThumbnailGeneration })
+  async handlePdfConversion({ id }: JobOf<JobName.AssetPdfConversion>): Promise<JobStatus> {
+    const asset = await this.assetRepository.getById(id, { exifInfo: true, owner: true });
+    if (!asset) {
+      this.logger.warn(`PDF conversion failed for asset ${id}: not found in database`);
+      return JobStatus.Failed;
+    }
+
+    if (!mimeTypes.isPdf(asset.originalPath)) {
+      this.logger.warn(`PDF conversion skipped for asset ${id}: not a PDF file`);
+      return JobStatus.Skipped;
+    }
+
+    this.logger.verbose(`Converting PDF ${id} ${asset.originalPath} to PNG images`);
+
+    try {
+      const { basename, join } = await import('node:path');
+      const { tmpdir } = await import('node:os');
+      const { mkdtemp, readdir, readFile, rm } = await import('node:fs/promises');
+
+      // Create temporary directory for PDF conversion
+      const tempDir = await mkdtemp(join(tmpdir(), 'immich-pdf-'));
+      const pdfBasename = basename(asset.originalPath, '.pdf');
+      const outputPrefix = join(tempDir, 'page');
+
+      try {
+        // Get page count using pdfinfo
+        const pdfinfoResult = await this.processRepository.exec({
+          command: 'pdfinfo',
+          args: [asset.originalPath],
+        });
+
+        const pageCountMatch = pdfinfoResult.stdout.match(/Pages:\s+(\d+)/);
+        if (!pageCountMatch) {
+          this.logger.error(`Failed to get page count from PDF ${id}`);
+          return JobStatus.Failed;
+        }
+
+        const pageCount = Number.parseInt(pageCountMatch[1], 10);
+        this.logger.verbose(`PDF ${id} has ${pageCount} page(s)`);
+
+        // Convert PDF to PNG using pdftoppm
+        await this.processRepository.exec({
+          command: 'pdftoppm',
+          args: [
+            '-png',
+            '-r', '150', // 150 DPI resolution
+            asset.originalPath,
+            outputPrefix,
+          ],
+        });
+
+        // Read generated PNG files
+        const files = await readdir(tempDir);
+        const pngFiles = files
+          .filter((f) => f.endsWith('.png'))
+          .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+        if (pngFiles.length === 0) {
+          this.logger.error(`No PNG files generated from PDF ${id}`);
+          return JobStatus.Failed;
+        }
+
+        this.logger.verbose(`Generated ${pngFiles.length} PNG file(s) from PDF ${id}`);
+
+        // Create assets for each PNG page
+        const createdAssetIds: string[] = [];
+
+        for (let i = 0; i < pngFiles.length; i++) {
+          const pngPath = join(tempDir, pngFiles[i]);
+          const pngBuffer = await readFile(pngPath);
+          const pageNumber = i + 1;
+          const newFileName = `${pdfBasename}_page_${pageNumber.toString().padStart(3, '0')}.png`;
+
+          // Calculate checksum
+          const checksum = this.cryptoRepository.hashSha1(pngBuffer);
+
+          // Create storage path for PNG
+          const uploadDir = StorageCore.getBaseFolder(StorageFolder.Upload);
+          const { randomUUID } = await import('node:crypto');
+          const uuid = randomUUID();
+          const storagePath = join(uploadDir, asset.ownerId, uuid, newFileName);
+
+          // Ensure directory exists and write file
+          this.storageCore.ensureFolders(storagePath);
+          await this.storageRepository.writeFile(storagePath, pngBuffer);
+
+          // Create asset record
+          const pngAsset = await this.assetRepository.create({
+            ownerId: asset.ownerId,
+            libraryId: asset.libraryId,
+            checksum,
+            originalPath: storagePath,
+            deviceAssetId: `${asset.deviceAssetId}_page_${pageNumber}`,
+            deviceId: asset.deviceId,
+            fileCreatedAt: asset.fileCreatedAt,
+            fileModifiedAt: asset.fileModifiedAt,
+            localDateTime: asset.fileCreatedAt,
+            type: AssetType.Image,
+            isFavorite: asset.isFavorite,
+            duration: null,
+            visibility: asset.visibility,
+            originalFileName: newFileName,
+          });
+
+          // Set EXIF data with file size
+          await this.assetRepository.upsertExif(
+            { assetId: pngAsset.id, fileSizeInByte: BigInt(pngBuffer.length) },
+            { lockedPropertiesBehavior: 'override' },
+          );
+
+          createdAssetIds.push(pngAsset.id);
+
+          // Queue metadata extraction and thumbnail generation for each PNG
+          await this.jobRepository.queue({ name: JobName.AssetExtractMetadata, data: { id: pngAsset.id, source: 'upload' } });
+
+          this.logger.verbose(`Created asset ${pngAsset.id} for page ${pageNumber} of PDF ${id}`);
+        }
+
+        // Create stack with all PNG assets (first page is primary)
+        if (createdAssetIds.length >= 2) {
+          await this.stackRepository.create(
+            { ownerId: asset.ownerId },
+            createdAssetIds, // First asset becomes primary
+          );
+          this.logger.verbose(`Created stack for ${createdAssetIds.length} pages from PDF ${id}`);
+        }
+
+        // Set description on primary asset (first page)
+        const primaryAssetId = createdAssetIds[0];
+        await this.assetRepository.upsertExif(
+          { assetId: primaryAssetId, description: pdfBasename },
+          { lockedPropertiesBehavior: 'merge' },
+        );
+
+        this.logger.verbose(`Set description "${pdfBasename}" on primary asset ${primaryAssetId}`);
+
+        // Delete the original PDF asset and file
+        await this.assetRepository.remove([asset]);
+        await this.storageRepository.unlink(asset.originalPath);
+
+        this.logger.verbose(`Deleted original PDF asset ${id} and file ${asset.originalPath}`);
+
+      } finally {
+        // Clean up temporary directory
+        await rm(tempDir, { recursive: true, force: true });
+      }
+
+      return JobStatus.Success;
+    } catch (error) {
+      this.logger.error(`PDF conversion failed for asset ${id}: ${error}`);
+      return JobStatus.Failed;
+    }
+  }
+
   private async extractImage(originalPath: string, minSize: number) {
     let extracted = await this.mediaRepository.extract(originalPath);
     if (extracted && !(await this.shouldUseExtractedImage(extracted.buffer, minSize))) {

@@ -73,6 +73,11 @@ RUN --mount=type=cache,id=pnpm-plugins,target=/buildcache/pnpm-store \
 
 FROM ghcr.io/immich-app/base-server-prod:202511261514@sha256:c04c1c38dd90e53455b180aedf93c3c63474c8d20ffe2c6d7a3a61a2181e6d29
 
+# Install poppler-utils for PDF conversion support
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends poppler-utils && \
+  rm -rf /var/lib/apt/lists/*
+
 WORKDIR /usr/src/app
 ENV NODE_ENV=production \
   NVIDIA_DRIVER_CAPABILITIES=all \

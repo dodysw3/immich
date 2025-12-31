@@ -1,6 +1,11 @@
 # dev build
 FROM ghcr.io/immich-app/base-server-dev:202511261514@sha256:cbcca5851fd11042463f09797e6d6068d94adbb108749e62aa69159df59c0591 AS dev
 
+# Install poppler-utils for PDF conversion support
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends poppler-utils && \
+  rm -rf /var/lib/apt/lists/*
+
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
   CI=1 \
   COREPACK_HOME=/tmp
@@ -28,7 +33,7 @@ FROM dev AS dev-container-server
 
 RUN apt-get update --allow-releaseinfo-change && \
   apt-get install sudo inetutils-ping openjdk-21-jre-headless \
-  vim nano curl \
+  vim nano curl poppler-utils \
   -y --no-install-recommends --fix-missing
 
 RUN usermod -aG sudo node && \

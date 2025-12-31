@@ -453,7 +453,12 @@ export class AssetMediaService extends BaseService {
 
     await this.eventRepository.emit('AssetCreate', { asset });
 
-    await this.jobRepository.queue({ name: JobName.AssetExtractMetadata, data: { id: asset.id, source: 'upload' } });
+    // Queue PDF conversion for PDF files, metadata extraction for others
+    if (mimeTypes.isPdf(file.originalPath)) {
+      await this.jobRepository.queue({ name: JobName.AssetPdfConversion, data: { id: asset.id } });
+    } else {
+      await this.jobRepository.queue({ name: JobName.AssetExtractMetadata, data: { id: asset.id, source: 'upload' } });
+    }
 
     return asset;
   }

@@ -1,11 +1,13 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { focusTrap } from '$lib/actions/focus-trap';
+  import { shortcuts } from '$lib/actions/shortcut';
   import type { Action, OnAction, PreAction } from '$lib/components/asset-viewer/actions/action';
   import MotionPhotoAction from '$lib/components/asset-viewer/actions/motion-photo-action.svelte';
   import NextAssetAction from '$lib/components/asset-viewer/actions/next-asset-action.svelte';
   import PreviousAssetAction from '$lib/components/asset-viewer/actions/previous-asset-action.svelte';
   import AssetViewerNavBar from '$lib/components/asset-viewer/asset-viewer-nav-bar.svelte';
+  import DescriptionOverlay from '$lib/components/asset-viewer/description-overlay.svelte';
   import OnEvents from '$lib/components/OnEvents.svelte';
   import { AppRoute, AssetAction, ProjectionType } from '$lib/constants';
   import { activityManager } from '$lib/managers/activity-manager.svelte';
@@ -236,6 +238,28 @@
     });
   };
 
+  const navigateToNextInStack = () => {
+    if (!stack || !asset) {
+      return;
+    }
+    const currentIndex = stack.assets.findIndex((a) => a.id === asset.id);
+    if (currentIndex >= 0 && currentIndex < stack.assets.length - 1) {
+      asset = stack.assets[currentIndex + 1];
+      previewStackedAsset = undefined;
+    }
+  };
+
+  const navigateToPreviousInStack = () => {
+    if (!stack || !asset) {
+      return;
+    }
+    const currentIndex = stack.assets.findIndex((a) => a.id === asset.id);
+    if (currentIndex > 0) {
+      asset = stack.assets[currentIndex - 1];
+      previewStackedAsset = undefined;
+    }
+  };
+
   const navigateAsset = async (order?: 'previous' | 'next', e?: Event) => {
     if (!order) {
       if ($slideshowState === SlideshowState.PlaySlideshow) {
@@ -413,7 +437,13 @@
 
 <OnEvents onAssetReplace={handleAssetReplace} />
 
-<svelte:document bind:fullscreenElement />
+<svelte:document
+  bind:fullscreenElement
+  use:shortcuts={[
+    { shortcut: { key: 'ArrowRight', shift: true }, onShortcut: navigateToNextInStack, preventDefault: true },
+    { shortcut: { key: 'ArrowLeft', shift: true }, onShortcut: navigateToPreviousInStack, preventDefault: true },
+  ]}
+/>
 
 <section
   id="immich-asset-viewer"
@@ -451,6 +481,11 @@
         {/snippet}
       </AssetViewerNavBar>
     </div>
+  {/if}
+
+  <!-- Description overlay for stacked assets (e.g., PDF pages) -->
+  {#if $slideshowState === SlideshowState.None && !isShowEditor && stack && asset.exifInfo?.description}
+    <DescriptionOverlay description={asset.exifInfo.description} />
   {/if}
 
   {#if $slideshowState != SlideshowState.None}

@@ -59,6 +59,7 @@ const image: Record<string, string[]> = {
   '.jp2': ['image/jp2'],
   '.jpe': ['image/jpeg'],
   '.jxl': ['image/jxl'],
+  '.pdf': ['application/pdf'],
   '.svg': ['image/svg'],
   '.tif': ['image/tiff'],
   '.tiff': ['image/tiff'],
@@ -129,12 +130,13 @@ export const mimeTypes = {
   isSidecar: (filename: string) => isType(filename, sidecar),
   isVideo: (filename: string) => isType(filename, video),
   isRaw: (filename: string) => isType(filename, raw),
+  isPdf: (filename: string) => extname(filename).toLowerCase() === '.pdf',
   lookup,
   /** return an extension (including a leading `.`) for a mime-type */
   toExtension,
   assetType: (filename: string) => {
     const contentType = lookup(filename);
-    if (contentType.startsWith('image/')) {
+    if (contentType.startsWith('image/') || contentType === 'application/pdf') {
       return AssetType.Image;
     } else if (contentType.startsWith('video/')) {
       return AssetType.Video;
