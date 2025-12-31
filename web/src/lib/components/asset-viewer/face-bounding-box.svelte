@@ -14,13 +14,13 @@
 >
   <!-- Face bounding box -->
   <div
-    class="absolute inset-0 border-2 border-green-500 bg-green-500/10 rounded-lg transition-all group-hover:bg-green-500/30 group-hover:border-green-600 group-hover:border-[3px]"
+    class="absolute inset-0 border border-green-500 rounded-lg transition-all group-hover:border-green-600 group-hover:border-2"
   ></div>
 
   <!-- Person name label (if available) -->
   {#if faceBox.personName}
     <div
-      class="absolute left-0 right-0 text-center text-white text-sm bg-black/75 px-2 py-1 rounded-b truncate max-w-full pointer-events-none"
+      class="absolute left-0 right-0 text-center text-white text-[7px] bg-black/75 px-1 py-0.5 rounded-b break-all max-w-full pointer-events-none"
       style="top: {faceBox.height}px;"
     >
       {faceBox.personName}
