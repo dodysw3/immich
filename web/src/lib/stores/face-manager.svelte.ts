@@ -6,9 +6,15 @@ export type FaceBox = AssetFaceWithoutPersonResponseDto & {
 
 class FaceManager {
   #data = $state<FaceBox[]>([]);
+  showOverlay = $state(false);
+  #hasFaceData = $derived(this.#data.length > 0);
 
   get data() {
     return this.#data;
+  }
+
+  get hasFaceData() {
+    return this.#hasFaceData;
   }
 
   loadFromAsset(asset: AssetResponseDto) {
@@ -38,6 +44,11 @@ class FaceManager {
 
   clear() {
     this.#data = [];
+    // Don't reset showOverlay to keep state across navigation
+  }
+
+  toggleFaceBoundingBox() {
+    this.showOverlay = !this.showOverlay;
   }
 }
 

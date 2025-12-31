@@ -45,7 +45,7 @@ class OcrManager {
   clear() {
     this.#cleared = true;
     this.#data = [];
-    this.showOverlay = false;
+    // Don't reset showOverlay to keep state across navigation
   }
 
   toggleOcrBoundingBox() {
