@@ -15,8 +15,6 @@
   };
 </script>
 
-<svelte:window use:shortcut={{ shortcut: { key: 't', alt: true }, onShortcut: () => handleToggleTheme() }} />
-
 {#if !themeManager.theme.system}
   {#await langs
     .find((item) => item.code === get(lang))
