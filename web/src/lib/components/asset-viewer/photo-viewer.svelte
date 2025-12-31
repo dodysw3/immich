@@ -228,6 +228,14 @@
 
   let containerWidth = $state(0);
   let containerHeight = $state(0);
+
+  const toggleFaceBoxes = () => {
+    faceManager.toggleFaceBoundingBox();
+  };
+
+  const toggleOcrBoxes = () => {
+    ocrManager.toggleOcrBoundingBox();
+  };
 </script>
 
 <svelte:document
@@ -237,6 +245,8 @@
     { shortcut: { key: 'c', ctrl: true }, onShortcut: onCopyShortcut, preventDefault: false },
     { shortcut: { key: 'c', meta: true }, onShortcut: onCopyShortcut, preventDefault: false },
     { shortcut: { key: 'z' }, onShortcut: zoomToggle, preventDefault: false },
+    { shortcut: { key: 'f', shift: true }, onShortcut: toggleFaceBoxes, preventDefault: true },
+    { shortcut: { key: 't', shift: true }, onShortcut: toggleOcrBoxes, preventDefault: true },
   ]}
 />
 {#if imageError}
