@@ -99,7 +99,6 @@
       takenBefore: searchQuery.takenBefore ? toStartOfDayDate(searchQuery.takenBefore) : undefined,
     },
     display: {
-      isArchive: searchQuery.visibility === AssetVisibility.Archive,
       isFavorite: searchQuery.isFavorite ?? false,
       isNotInAlbum: 'isNotInAlbum' in searchQuery ? (searchQuery.isNotInAlbum ?? false) : false,
     },
@@ -123,7 +122,6 @@
       camera: {},
       date: {},
       display: {
-        isArchive: false,
         isFavorite: false,
         isNotInAlbum: false,
       },
@@ -155,7 +153,6 @@
       lensModel: filter.camera.lensModel,
       takenAfter: parseOptionalDate(filter.date.takenAfter)?.startOf('day').toISO() || undefined,
       takenBefore: parseOptionalDate(filter.date.takenBefore)?.endOf('day').toISO() || undefined,
-      visibility: filter.display.isArchive ? AssetVisibility.Archive : undefined,
       isFavorite: filter.display.isFavorite || undefined,
       isNotInAlbum: filter.display.isNotInAlbum || undefined,
       personIds: filter.personIds.size > 0 ? [...filter.personIds] : undefined,

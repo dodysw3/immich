@@ -1,7 +1,6 @@
 <script lang="ts" module>
   export interface SearchDisplayFilters {
     isNotInAlbum: boolean;
-    isArchive: boolean;
     isFavorite: boolean;
   }
 </script>
@@ -25,10 +24,6 @@
       <div class="flex items-center gap-2">
         <Checkbox id="not-in-album-checkbox" size="tiny" bind:checked={filters.isNotInAlbum} />
         <Label label={$t('not_in_any_album')} for="not-in-album-checkbox" />
-      </div>
-      <div class="flex items-center gap-2">
-        <Checkbox id="archive-checkbox" size="tiny" bind:checked={filters.isArchive} />
-        <Label label={$t('archive')} for="archive-checkbox" />
       </div>
       <div class="flex items-center gap-2">
         <Checkbox id="favorites-checkbox" size="tiny" bind:checked={filters.isFavorite} />
