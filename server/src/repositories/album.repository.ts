@@ -256,6 +256,26 @@ export class AlbumRepository {
       .then((results) => new Set(results.map(({ assetId }) => assetId)));
   }
 
+  /**
+   * Get all album IDs that contain any of the given asset IDs.
+   */
+  @GenerateSql({ params: [[DummyValue.UUID]] })
+  @ChunkedArray({ paramIndex: 0 })
+  async getAlbumIdsForAssets(assetIds: string[]): Promise<string[]> {
+    if (assetIds.length === 0) {
+      return [];
+    }
+
+    const results = await this.db
+      .selectFrom('album_asset')
+      .select('albumId')
+      .where('assetId', 'in', assetIds)
+      .groupBy('albumId')
+      .execute();
+
+    return results.map(({ albumId }) => albumId);
+  }
+
   async addAssetIds(albumId: string, assetIds: string[]): Promise<void> {
     await this.addAssets(this.db, albumId, assetIds);
   }

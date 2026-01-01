@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { OnEvent } from 'src/decorators';
 import {
   AddUsersDto,
   AlbumInfoDto,
@@ -19,6 +20,7 @@ import { BulkIdErrorReason, BulkIdResponseDto, BulkIdsDto } from 'src/dtos/asset
 import { AuthDto } from 'src/dtos/auth.dto';
 import { Permission } from 'src/enum';
 import { AlbumAssetCount, AlbumInfoOptions } from 'src/repositories/album.repository';
+import { ArgOf } from 'src/repositories/event.repository';
 import { BaseService } from 'src/services/base.service';
 import { addAssets, removeAssets } from 'src/utils/asset.util';
 import { getPreferences } from 'src/utils/preferences';
@@ -365,5 +367,46 @@ export class AlbumService extends BaseService {
     }
 
     return [...expandedIds];
+  }
+
+  /**
+   * When a stack is created or updated, ensure all stack members are added to any albums
+   * that contain at least one stack member.
+   */
+  @OnEvent({ name: 'StackCreate' })
+  async onStackCreate({ stackId }: ArgOf<'StackCreate'>) {
+    await this.syncStackWithAlbums(stackId);
+  }
+
+  @OnEvent({ name: 'StackUpdate' })
+  async onStackUpdate({ stackId }: ArgOf<'StackUpdate'>) {
+    await this.syncStackWithAlbums(stackId);
+  }
+
+  private async syncStackWithAlbums(stackId: string) {
+    // Get the stack with all its assets
+    const stack = await this.stackRepository.getById(stackId);
+    if (!stack?.assets || stack.assets.length === 0) {
+      return;
+    }
+
+    const stackAssetIds = stack.assets.map((asset) => asset.id);
+
+    // Find all albums that contain any of the stack assets
+    const albumIds = await this.albumRepository.getAlbumIdsForAssets(stackAssetIds);
+    if (albumIds.length === 0) {
+      return;
+    }
+
+    // For each album, add all stack assets that are not already in the album
+    for (const albumId of albumIds) {
+      const existingAssetIds = await this.albumRepository.getAssetIds(albumId, stackAssetIds);
+      const missingAssetIds = stackAssetIds.filter((id) => !existingAssetIds.has(id));
+
+      if (missingAssetIds.length > 0) {
+        await this.albumRepository.addAssetIds(albumId, missingAssetIds);
+        this.logger.verbose(`Added ${missingAssetIds.length} stack assets to album ${albumId}`);
+      }
+    }
   }
 }
