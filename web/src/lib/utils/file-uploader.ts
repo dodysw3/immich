@@ -146,6 +146,10 @@ async function fileUploader({
       formData.append('visibility', AssetVisibility.Locked);
     }
 
+    if (albumId) {
+      formData.append('albumId', albumId);
+    }
+
     let responseData: { id: string; status: AssetMediaStatus; isTrashed?: boolean } | undefined;
     if (crypto?.subtle?.digest && !authManager.isSharedLink) {
       uploadAssetsStore.updateItem(deviceAssetId, { message: $t('asset_hashing') });

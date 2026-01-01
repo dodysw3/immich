@@ -455,9 +455,16 @@ export class AssetMediaService extends BaseService {
 
     // Queue PDF conversion for PDF files, metadata extraction for others
     if (mimeTypes.isPdf(file.originalPath)) {
-      await this.jobRepository.queue({ name: JobName.AssetPdfConversion, data: { id: asset.id } });
+      await this.jobRepository.queue({
+        name: JobName.AssetPdfConversion,
+        data: { id: asset.id, albumId: dto.albumId },
+      });
     } else {
       await this.jobRepository.queue({ name: JobName.AssetExtractMetadata, data: { id: asset.id, source: 'upload' } });
+      // Add to album if specified (for non-PDF uploads)
+      if (dto.albumId) {
+        await this.albumRepository.addAssetIds(dto.albumId, [asset.id]);
+      }
     }
 
     return asset;

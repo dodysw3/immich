@@ -167,10 +167,13 @@ export class AlbumService extends BaseService {
     const album = await this.findOrFail(id, { withAssets: false });
     await this.requireAccess({ auth, permission: Permission.AlbumAssetCreate, ids: [id] });
 
+    // Expand asset IDs to include all stack members
+    const expandedAssetIds = await this.expandStackAssetIds(dto.ids);
+
     const results = await addAssets(
       auth,
       { access: this.accessRepository, bulk: this.albumRepository },
-      { parentId: id, assetIds: dto.ids },
+      { parentId: id, assetIds: expandedAssetIds },
     );
 
     const { id: firstNewAssetId } = results.find(({ success }) => success) || {};
@@ -209,7 +212,9 @@ export class AlbumService extends BaseService {
       return results;
     }
 
-    const allowedAssetIds = await this.checkAccess({ auth, permission: Permission.AssetShare, ids: dto.assetIds });
+    // Expand asset IDs to include all stack members
+    const expandedAssetIds = await this.expandStackAssetIds(dto.assetIds);
+    const allowedAssetIds = await this.checkAccess({ auth, permission: Permission.AssetShare, ids: expandedAssetIds });
     if (allowedAssetIds.size === 0) {
       results.error = BulkIdErrorReason.NO_PERMISSION;
       return results;
@@ -331,5 +336,34 @@ export class AlbumService extends BaseService {
       throw new BadRequestException('Album not found');
     }
     return album;
+  }
+
+  /**
+   * Expands a list of asset IDs to include all assets in the same stacks.
+   * When adding an asset to an album, all assets in its stack should also be added.
+   */
+  private async expandStackAssetIds(assetIds: string[]): Promise<string[]> {
+    if (assetIds.length === 0) {
+      return assetIds;
+    }
+
+    const expandedIds = new Set<string>(assetIds);
+
+    // Get each asset with its stack information
+    for (const assetId of assetIds) {
+      const asset = await this.assetRepository.getById(assetId, { stack: { assets: true } });
+      if (asset?.stack?.assets) {
+        // Add all assets in the stack
+        for (const stackedAsset of asset.stack.assets) {
+          expandedIds.add(stackedAsset.id);
+        }
+        // Also add the primary asset if not already included
+        if (asset.stack.primaryAssetId) {
+          expandedIds.add(asset.stack.primaryAssetId);
+        }
+      }
+    }
+
+    return [...expandedIds];
   }
 }

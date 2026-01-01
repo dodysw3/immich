@@ -197,6 +197,10 @@ export interface IAssetDeleteJob extends IEntityJob {
   deleteOnDisk: boolean;
 }
 
+export interface IPdfConversionJob extends IEntityJob {
+  albumId?: string;
+}
+
 export interface ILibraryFileJob {
   libraryId: string;
   paths: string[];
@@ -299,6 +303,9 @@ export type JobItem =
   // Thumbnails
   | { name: JobName.AssetGenerateThumbnailsQueueAll; data: IBaseJob }
   | { name: JobName.AssetGenerateThumbnails; data: IEntityJob }
+
+  // PDF Conversion
+  | { name: JobName.AssetPdfConversion; data: IPdfConversionJob }
 
   // User
   | { name: JobName.UserDeleteCheck; data?: IBaseJob }

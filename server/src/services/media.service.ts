@@ -236,7 +236,7 @@ export class MediaService extends BaseService {
   }
 
   @OnJob({ name: JobName.AssetPdfConversion, queue: QueueName.ThumbnailGeneration })
-  async handlePdfConversion({ id }: JobOf<JobName.AssetPdfConversion>): Promise<JobStatus> {
+  async handlePdfConversion({ id, albumId }: JobOf<JobName.AssetPdfConversion>): Promise<JobStatus> {
     const asset = await this.assetRepository.getById(id, { exifInfo: true, owner: true });
     if (!asset) {
       this.logger.warn(`PDF conversion failed for asset ${id}: not found in database`);
@@ -254,6 +254,9 @@ export class MediaService extends BaseService {
       const { basename, join } = await import('node:path');
       const { tmpdir } = await import('node:os');
       const { mkdtemp, readdir, readFile, rm } = await import('node:fs/promises');
+      const { exec } = await import('node:child_process');
+      const { promisify } = await import('node:util');
+      const execAsync = promisify(exec);
 
       // Create temporary directory for PDF conversion
       const tempDir = await mkdtemp(join(tmpdir(), 'immich-pdf-'));
@@ -262,10 +265,7 @@ export class MediaService extends BaseService {
 
       try {
         // Get page count using pdfinfo
-        const pdfinfoResult = await this.processRepository.exec({
-          command: 'pdfinfo',
-          args: [asset.originalPath],
-        });
+        const pdfinfoResult = await execAsync(`pdfinfo "${asset.originalPath}"`);
 
         const pageCountMatch = pdfinfoResult.stdout.match(/Pages:\s+(\d+)/);
         if (!pageCountMatch) {
@@ -277,15 +277,7 @@ export class MediaService extends BaseService {
         this.logger.verbose(`PDF ${id} has ${pageCount} page(s)`);
 
         // Convert PDF to PNG using pdftoppm
-        await this.processRepository.exec({
-          command: 'pdftoppm',
-          args: [
-            '-png',
-            '-r', '150', // 150 DPI resolution
-            asset.originalPath,
-            outputPrefix,
-          ],
-        });
+        await execAsync(`pdftoppm -png -r 150 "${asset.originalPath}" "${outputPrefix}"`);
 
         // Read generated PNG files
         const files = await readdir(tempDir);
@@ -301,7 +293,8 @@ export class MediaService extends BaseService {
         this.logger.verbose(`Generated ${pngFiles.length} PNG file(s) from PDF ${id}`);
 
         // Create assets for each PNG page
-        const createdAssetIds: string[] = [];
+        const assetIds: string[] = [];
+        let newAssetsCreated = 0;
 
         for (let i = 0; i < pngFiles.length; i++) {
           const pngPath = join(tempDir, pngFiles[i]);
@@ -312,6 +305,14 @@ export class MediaService extends BaseService {
           // Calculate checksum
           const checksum = this.cryptoRepository.hashSha1(pngBuffer);
 
+          // Check if an asset with this checksum already exists
+          const existingAssetId = await this.assetRepository.getUploadAssetIdByChecksum(asset.ownerId, checksum);
+          if (existingAssetId) {
+            this.logger.verbose(`Page ${pageNumber} of PDF ${id} already exists as asset ${existingAssetId}, skipping`);
+            assetIds.push(existingAssetId);
+            continue;
+          }
+
           // Create storage path for PNG
           const uploadDir = StorageCore.getBaseFolder(StorageFolder.Upload);
           const { randomUUID } = await import('node:crypto');
@@ -320,7 +321,7 @@ export class MediaService extends BaseService {
 
           // Ensure directory exists and write file
           this.storageCore.ensureFolders(storagePath);
-          await this.storageRepository.writeFile(storagePath, pngBuffer);
+          await this.storageRepository.createOrOverwriteFile(storagePath, pngBuffer);
 
           // Create asset record
           const pngAsset = await this.assetRepository.create({
@@ -342,11 +343,12 @@ export class MediaService extends BaseService {
 
           // Set EXIF data with file size
           await this.assetRepository.upsertExif(
-            { assetId: pngAsset.id, fileSizeInByte: BigInt(pngBuffer.length) },
+            { assetId: pngAsset.id, fileSizeInByte: pngBuffer.length },
             { lockedPropertiesBehavior: 'override' },
           );
 
-          createdAssetIds.push(pngAsset.id);
+          assetIds.push(pngAsset.id);
+          newAssetsCreated++;
 
           // Queue metadata extraction and thumbnail generation for each PNG
           await this.jobRepository.queue({ name: JobName.AssetExtractMetadata, data: { id: pngAsset.id, source: 'upload' } });
@@ -354,26 +356,42 @@ export class MediaService extends BaseService {
           this.logger.verbose(`Created asset ${pngAsset.id} for page ${pageNumber} of PDF ${id}`);
         }
 
-        // Create stack with all PNG assets (first page is primary)
-        if (createdAssetIds.length >= 2) {
-          await this.stackRepository.create(
-            { ownerId: asset.ownerId },
-            createdAssetIds, // First asset becomes primary
-          );
-          this.logger.verbose(`Created stack for ${createdAssetIds.length} pages from PDF ${id}`);
+        // If all pages already existed, treat as duplicate and clean up
+        if (newAssetsCreated === 0) {
+          this.logger.verbose(`All pages from PDF ${id} already exist, treating as duplicate`);
+          await this.assetRepository.remove({ id: asset.id });
+          await this.storageRepository.unlink(asset.originalPath);
+          return JobStatus.Success;
         }
 
-        // Set description on primary asset (first page)
-        const primaryAssetId = createdAssetIds[0];
+        // Create stack with all PNG assets (first page is primary)
+        if (assetIds.length >= 2) {
+          await this.stackRepository.create(
+            { ownerId: asset.ownerId },
+            assetIds, // First asset becomes primary
+          );
+          this.logger.verbose(`Created stack for ${assetIds.length} pages from PDF ${id}`);
+        }
+
+        // Add all generated assets to album if specified
+        if (albumId && assetIds.length > 0) {
+          await this.albumRepository.addAssetIds(albumId, assetIds);
+          this.logger.verbose(`Added ${assetIds.length} assets to album ${albumId}`);
+        }
+
+        // Set description on primary asset (first page) using proper update method
+        const primaryAssetId = assetIds[0];
         await this.assetRepository.upsertExif(
           { assetId: primaryAssetId, description: pdfBasename },
-          { lockedPropertiesBehavior: 'merge' },
+          { lockedPropertiesBehavior: 'append' },
         );
+        // Queue sidecar write to persist description to XMP
+        await this.jobRepository.queue({ name: JobName.SidecarWrite, data: { id: primaryAssetId } });
 
         this.logger.verbose(`Set description "${pdfBasename}" on primary asset ${primaryAssetId}`);
 
         // Delete the original PDF asset and file
-        await this.assetRepository.remove([asset]);
+        await this.assetRepository.remove({ id: asset.id });
         await this.storageRepository.unlink(asset.originalPath);
 
         this.logger.verbose(`Deleted original PDF asset ${id} and file ${asset.originalPath}`);

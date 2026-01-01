@@ -66,6 +66,9 @@ export class AssetMediaCreateDto extends AssetMediaBase {
   @ValidateUUID({ optional: true })
   livePhotoVideoId?: string;
 
+  @ValidateUUID({ optional: true })
+  albumId?: string;
+
   @Transform(({ value }) => {
     try {
       const json = JSON.parse(value);
