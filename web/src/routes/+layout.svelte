@@ -137,7 +137,6 @@
       type: $t('command'),
       icon: mdiThemeLightDark,
       onAction: () => themeManager.toggleTheme(),
-      shortcuts: { shift: true, key: 't' },
       isGlobal: true,
     },
   ];

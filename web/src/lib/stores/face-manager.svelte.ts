@@ -2,6 +2,7 @@ import type { AssetResponseDto, AssetFaceWithoutPersonResponseDto } from '@immic
 
 export type FaceBox = AssetFaceWithoutPersonResponseDto & {
   personName?: string;
+  personId?: string;
 };
 
 class FaceManager {
@@ -27,6 +28,7 @@ class FaceManager {
           faceBoxes.push({
             ...face,
             personName: person.name,
+            personId: person.id,
           });
         }
       }

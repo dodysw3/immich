@@ -80,6 +80,7 @@ export interface FaceBoundingBox {
   width: number;
   height: number;
   personName?: string;
+  personId?: string;
 }
 
 /**
@@ -132,6 +133,7 @@ export const getFaceBoundingBoxes = (
       width: Math.round(coordinates.x2 - coordinates.x1),
       height: Math.round(coordinates.y2 - coordinates.y1),
       personName: face.personName,
+      personId: face.personId,
     });
   }
 
