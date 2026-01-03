@@ -304,7 +304,7 @@
       {/each}
 
       {#each faceBoxes as faceBox (faceBox.id)}
-        <FaceBoundingBox {faceBox} />
+        <FaceBoundingBox {faceBox} assetId={asset.id} />
       {/each}
     </div>
 
