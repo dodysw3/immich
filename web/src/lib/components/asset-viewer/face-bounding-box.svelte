@@ -6,15 +6,16 @@
 
   type Props = {
     faceBox: FaceBoundingBox;
+    assetId: string;
   };
 
-  let { faceBox }: Props = $props();
+  let { faceBox, assetId }: Props = $props();
   let isHovered = $state(false);
 
   const handleClick = () => {
     if (faceBox.personId) {
       const previousRoute = $page.url.pathname;
-      goto(`${AppRoute.PEOPLE}/${faceBox.personId}?${QueryParameter.PREVIOUS_ROUTE}=${previousRoute}`);
+      goto(`${AppRoute.PEOPLE}/${faceBox.personId}?at=${assetId}&${QueryParameter.PREVIOUS_ROUTE}=${previousRoute}`);
     }
   };
 </script>
