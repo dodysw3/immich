@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
+  import { AppRoute } from '$lib/constants';
   import type { FaceBoundingBox } from '$lib/utils/people-utils';
 
   type Props = {
@@ -6,15 +8,35 @@
   };
 
   let { faceBox }: Props = $props();
+  let isHovered = $state(false);
+
+  const handleClick = () => {
+    if (faceBox.personId) {
+      goto(`${AppRoute.PEOPLE}/${faceBox.personId}`);
+    }
+  };
 </script>
 
 <div
-  class="absolute pointer-events-none group"
+  class="absolute group"
+  class:pointer-events-auto={faceBox.personId}
+  class:pointer-events-none={!faceBox.personId}
+  class:cursor-pointer={faceBox.personId}
   style="top: {faceBox.top}px; left: {faceBox.left}px; width: {faceBox.width}px; height: {faceBox.height}px;"
+  role={faceBox.personId ? 'button' : undefined}
+  tabindex={faceBox.personId ? 0 : undefined}
+  onclick={handleClick}
+  onkeydown={(e) => e.key === 'Enter' && handleClick()}
+  onmouseenter={() => (isHovered = true)}
+  onmouseleave={() => (isHovered = false)}
 >
   <!-- Face bounding box -->
   <div
-    class="absolute inset-0 border border-green-500 rounded-lg transition-all group-hover:border-green-600 group-hover:border-2"
+    class="absolute inset-0 rounded-lg transition-all"
+    class:border={!isHovered}
+    class:border-green-500={!isHovered}
+    class:border-3={isHovered}
+    class:border-white={isHovered}
   ></div>
 
   <!-- Person name label (if available) -->
