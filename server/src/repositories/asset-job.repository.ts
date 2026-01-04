@@ -111,6 +111,7 @@ export class AssetJobRepository {
         'asset.ownerId',
         'asset.thumbhash',
         'asset.type',
+        'asset.parentId',
       ])
       .select(withFiles)
       .$call(withExifInner)

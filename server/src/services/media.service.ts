@@ -234,7 +234,48 @@ export class MediaService extends BaseService {
 
     await this.assetRepository.upsertJobStatus({ assetId: asset.id, previewAt: new Date(), thumbnailAt: new Date() });
 
+    // If this is a PDF page, check if we should copy its thumbnail to the parent PDF
+    if (asset.type === AssetType.PdfPage && asset.parentId) {
+      await this.copyThumbnailToParentPdfIfMainPage(asset.id, asset.parentId, generated);
+    }
+
     return JobStatus.Success;
+  }
+
+  private async copyThumbnailToParentPdfIfMainPage(
+    pageId: string,
+    pdfId: string,
+    generated: { previewPath: string; thumbnailPath: string; thumbhash: Buffer },
+  ) {
+    // Get page metadata to find pageIndex
+    const pageMetadata = await this.assetRepository.getMetadataByKey(pageId, AssetMetadataKey.PdfInfo);
+    if (!pageMetadata) {
+      return;
+    }
+    const pageIndex = (pageMetadata.value as { pageIndex?: number })?.pageIndex ?? -1;
+
+    // Get PDF metadata to find mainPageIndex
+    const pdfMetadata = await this.assetRepository.getMetadataByKey(pdfId, AssetMetadataKey.PdfInfo);
+    if (!pdfMetadata) {
+      return;
+    }
+    const mainPageIndex = (pdfMetadata.value as { mainPageIndex?: number })?.mainPageIndex ?? 0;
+
+    // Only copy if this is the main page
+    if (pageIndex !== mainPageIndex) {
+      return;
+    }
+
+    // Copy thumbnail files from page to PDF
+    await this.assetRepository.upsertFiles([
+      { assetId: pdfId, path: generated.thumbnailPath, type: AssetFileType.Thumbnail },
+      { assetId: pdfId, path: generated.previewPath, type: AssetFileType.Preview },
+    ]);
+
+    // Copy thumbhash to PDF
+    await this.assetRepository.update({ id: pdfId, thumbhash: generated.thumbhash });
+
+    this.logger.verbose(`Copied thumbnail from page ${pageIndex + 1} to PDF ${pdfId}`);
   }
 
   @OnJob({ name: JobName.AssetPdfConversion, queue: QueueName.ThumbnailGeneration })
@@ -392,19 +433,10 @@ export class MediaService extends BaseService {
 
         this.logger.verbose(`Created PDF_PAGE asset ${pageAsset.id} for page ${pageIndex + 1} of PDF ${pdfId}`);
 
-        // Check if this is the main page and should be used as PDF thumbnail
-        const pdfMetadata = await this.assetRepository.getMetadataByKey(pdfId, AssetMetadataKey.PdfInfo);
-        if (pdfMetadata && (pdfMetadata.value as any).mainPageIndex === pageIndex) {
-          // Mark this page for thumbnail copy after its thumbnails are generated
-          this.logger.verbose(`Page ${pageIndex + 1} is main page, will use its thumbnail for PDF ${pdfId}`);
-        }
-
-        // Check if all pages are processed
+        // Check if all pages are processed and update status
         const existingPages = await this.assetRepository.getByParentId(pdfId);
         if (existingPages.length === totalPages) {
           await this.updatePdfStatus(pdfId, 'completed');
-          // Queue thumbnail generation for the PDF itself using the main page
-          await this.generatePdfThumbnailFromMainPage(pdfId);
           this.logger.verbose(`All ${totalPages} pages processed for PDF ${pdfId}, marked as completed`);
         }
 
@@ -428,57 +460,6 @@ export class MediaService extends BaseService {
         },
       ]);
     }
-  }
-
-  private async generatePdfThumbnailFromMainPage(pdfId: string) {
-    const pdfMetadata = await this.assetRepository.getMetadataByKey(pdfId, AssetMetadataKey.PdfInfo);
-    if (!pdfMetadata) {
-      return;
-    }
-
-    const mainPageIndex = (pdfMetadata.value as any).mainPageIndex ?? 0;
-    const pages = await this.assetRepository.getByParentId(pdfId);
-
-    // Find the main page asset
-    let mainPageAsset = null;
-    for (const page of pages) {
-      const pageMetadata = await this.assetRepository.getMetadataByKey(page.id, AssetMetadataKey.PdfInfo);
-      if (pageMetadata && (pageMetadata.value as any).pageIndex === mainPageIndex) {
-        mainPageAsset = await this.assetRepository.getById(page.id, { files: true });
-        break;
-      }
-    }
-
-    if (!mainPageAsset) {
-      this.logger.warn(`Main page asset not found for PDF ${pdfId}`);
-      return;
-    }
-
-    // Copy thumbnail files from main page to PDF
-    const { thumbnailFile, previewFile } = getAssetFiles(mainPageAsset.files ?? []);
-
-    if (thumbnailFile) {
-      await this.assetRepository.upsertFile({
-        assetId: pdfId,
-        path: thumbnailFile.path,
-        type: AssetFileType.Thumbnail,
-      });
-    }
-
-    if (previewFile) {
-      await this.assetRepository.upsertFile({
-        assetId: pdfId,
-        path: previewFile.path,
-        type: AssetFileType.Preview,
-      });
-    }
-
-    // Copy thumbhash from main page to PDF
-    if (mainPageAsset.thumbhash) {
-      await this.assetRepository.update({ id: pdfId, thumbhash: mainPageAsset.thumbhash });
-    }
-
-    this.logger.verbose(`Copied thumbnail from page ${mainPageIndex + 1} to PDF ${pdfId}`);
   }
 
   private async extractImage(originalPath: string, minSize: number) {
