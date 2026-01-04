@@ -42,6 +42,8 @@
     pageHeaderOffset?: number;
     slidingWindowOffset?: number;
     arrowNavigation?: boolean;
+    showDistance?: boolean;
+    assetDistanceMap?: Map<string, number>;
   }
 
   let {
@@ -61,6 +63,8 @@
     slidingWindowOffset = 0,
     pageHeaderOffset = 0,
     arrowNavigation = true,
+    showDistance = false,
+    assetDistanceMap = undefined,
   }: Props = $props();
 
   let { isViewing: isViewerOpen, asset: viewingAsset, setAssetId } = assetViewingStore;
@@ -475,6 +479,13 @@
               class="absolute text-center p-1 text-xs font-mono font-semibold w-full bottom-0 bg-linear-to-t bg-slate-50/75 dark:bg-slate-800/75 overflow-clip text-ellipsis whitespace-pre-wrap"
             >
               {asset.originalFileName}
+            </div>
+          {/if}
+          {#if showDistance && assetDistanceMap?.has(currentAsset.id)}
+            <div
+              class="absolute bottom-1 end-1 bg-black/75 text-white text-xs px-1.5 py-0.5 rounded font-mono pointer-events-none"
+            >
+              {assetDistanceMap.get(currentAsset.id)?.toFixed(4)}
             </div>
           {/if}
         </div>

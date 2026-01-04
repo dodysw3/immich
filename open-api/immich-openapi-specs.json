@@ -15445,6 +15445,10 @@
       },
       "AssetMediaCreateDto": {
         "properties": {
+          "albumId": {
+            "format": "uuid",
+            "type": "string"
+          },
           "assetData": {
             "format": "binary",
             "type": "string"
@@ -15744,6 +15748,10 @@
           },
           "deviceId": {
             "type": "string"
+          },
+          "distance": {
+            "description": "Distance from query embedding (only present in smart search results)",
+            "type": "number"
           },
           "duplicateId": {
             "nullable": true,
@@ -16684,6 +16692,7 @@
           "AssetFileMigration",
           "AssetGenerateThumbnailsQueueAll",
           "AssetGenerateThumbnails",
+          "AssetPdfConversion",
           "AuditLogCleanup",
           "AuditTableCleanup",
           "DatabaseBackup",

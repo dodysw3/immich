@@ -90,6 +90,8 @@ export class AssetResponseDto extends SanitizedAssetResponseDto {
   checksum!: string;
   stack?: AssetStackResponseDto | null;
   duplicateId?: string | null;
+  /** Distance from query embedding (only present in smart search results) */
+  distance?: number;
 
   @Property({ history: new HistoryBuilder().added('v1').deprecated('v1.113.0') })
   resized?: boolean;
@@ -129,6 +131,7 @@ export type MapAsset = {
   tags?: Tag[];
   thumbhash: Buffer<ArrayBufferLike> | null;
   type: AssetType;
+  distance?: number;
 };
 
 export class AssetStackResponseDto {
@@ -227,5 +230,6 @@ export function mapAsset(entity: MapAsset, options: AssetMapOptions = {}): Asset
     hasMetadata: true,
     duplicateId: entity.duplicateId,
     resized: true,
+    distance: entity.distance,
   };
 }

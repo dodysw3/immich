@@ -43,7 +43,7 @@
     type SmartSearchDto,
   } from '@immich/sdk';
   import { Icon, IconButton, LoadingSpinner } from '@immich/ui';
-  import { mdiArrowLeft, mdiDotsVertical, mdiImageOffOutline, mdiPlus, mdiSelectAll } from '@mdi/js';
+  import { mdiArrowLeft, mdiChartLine, mdiDotsVertical, mdiImageOffOutline, mdiPlus, mdiSelectAll } from '@mdi/js';
   import { tick, untrack } from 'svelte';
   import { t } from 'svelte-i18n';
 
@@ -59,6 +59,8 @@
   let nextPage = $state(1);
   let searchResultAlbums: AlbumResponseDto[] = $state([]);
   let searchResultAssets: TimelineAsset[] = $state([]);
+  let assetDistanceMap: Map<string, number> = $state(new Map());
+  let showDistance = $state(false);
   let isLoading = $state(true);
   let scrollY = $state(0);
   let scrollYHistory = 0;
@@ -137,6 +139,7 @@
     nextPage = 1;
     searchResultAssets = [];
     searchResultAlbums = [];
+    assetDistanceMap = new Map();
     await loadNextPage(true);
   }
 
@@ -156,13 +159,22 @@
     };
 
     try {
-      const { albums, assets } =
-        ('query' in searchDto || 'queryAssetId' in searchDto) && smartSearchEnabled
-          ? await searchSmart({ smartSearchDto: searchDto })
-          : await searchAssets({ metadataSearchDto: searchDto });
+      const isSmartSearch = ('query' in searchDto || 'queryAssetId' in searchDto) && smartSearchEnabled;
+      const { albums, assets } = isSmartSearch
+        ? await searchSmart({ smartSearchDto: searchDto })
+        : await searchAssets({ metadataSearchDto: searchDto });
 
       searchResultAlbums.push(...albums.items);
       searchResultAssets.push(...assets.items.map((asset) => toTimelineAsset(asset)));
+
+      // Store distance values for smart search results
+      if (isSmartSearch) {
+        for (const asset of assets.items) {
+          if (asset.distance !== undefined) {
+            assetDistanceMap.set(asset.id, asset.distance);
+          }
+        }
+      }
 
       nextPage = Number(assets.nextPage) || 0;
     } catch (error) {
@@ -351,6 +363,25 @@
         {/if}
       </div>
     {/each}
+
+    {#if terms.queryAssetId || terms.query}
+      <button
+        type="button"
+        class="flex place-content-center place-items-center items-stretch text-xs cursor-pointer"
+        onclick={() => (showDistance = !showDistance)}
+        title={$t('show_distance')}
+      >
+        <div
+          class="flex items-center justify-center py-2 px-4 rounded-full transition-colors
+          {showDistance
+            ? 'bg-immich-primary text-white dark:text-black dark:bg-immich-dark-primary'
+            : 'bg-gray-300 dark:bg-gray-800 dark:text-white'}"
+        >
+          <Icon icon={mdiChartLine} size="16" class="me-1" />
+          {$t('distance')}
+        </div>
+      </button>
+    {/if}
   </section>
 {/if}
 
@@ -380,6 +411,8 @@
         {viewport}
         onReload={onSearchQueryUpdate}
         slidingWindowOffset={searchResultsElement.offsetTop}
+        {showDistance}
+        {assetDistanceMap}
       />
     {:else if !isLoading}
       <div class="flex min-h-[calc(66vh-11rem)] w-full place-content-center items-center dark:text-white">

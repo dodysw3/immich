@@ -341,6 +341,8 @@ export type AssetResponseDto = {
     createdAt: string;
     deviceAssetId: string;
     deviceId: string;
+    /** Distance from query embedding (only present in smart search results) */
+    distance?: number;
     duplicateId?: string | null;
     duration: string;
     exifInfo?: ExifResponseDto;
@@ -475,6 +477,7 @@ export type AssetMetadataUpsertItemDto = {
     value: object;
 };
 export type AssetMediaCreateDto = {
+    albumId?: string;
     assetData: Blob;
     deviceAssetId: string;
     deviceId: string;
@@ -5468,6 +5471,7 @@ export enum JobName {
     AssetFileMigration = "AssetFileMigration",
     AssetGenerateThumbnailsQueueAll = "AssetGenerateThumbnailsQueueAll",
     AssetGenerateThumbnails = "AssetGenerateThumbnails",
+    AssetPdfConversion = "AssetPdfConversion",
     AuditLogCleanup = "AuditLogCleanup",
     AuditTableCleanup = "AuditTableCleanup",
     DatabaseBackup = "DatabaseBackup",

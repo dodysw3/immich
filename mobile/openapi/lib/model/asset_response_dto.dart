@@ -17,6 +17,7 @@ class AssetResponseDto {
     required this.createdAt,
     required this.deviceAssetId,
     required this.deviceId,
+    this.distance,
     this.duplicateId,
     required this.duration,
     this.exifInfo,
@@ -56,6 +57,15 @@ class AssetResponseDto {
   String deviceAssetId;
 
   String deviceId;
+
+  /// Distance from query embedding (only present in smart search results)
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  num? distance;
 
   String? duplicateId;
 
@@ -147,6 +157,7 @@ class AssetResponseDto {
     other.createdAt == createdAt &&
     other.deviceAssetId == deviceAssetId &&
     other.deviceId == deviceId &&
+    other.distance == distance &&
     other.duplicateId == duplicateId &&
     other.duration == duration &&
     other.exifInfo == exifInfo &&
@@ -183,6 +194,7 @@ class AssetResponseDto {
     (createdAt.hashCode) +
     (deviceAssetId.hashCode) +
     (deviceId.hashCode) +
+    (distance == null ? 0 : distance!.hashCode) +
     (duplicateId == null ? 0 : duplicateId!.hashCode) +
     (duration.hashCode) +
     (exifInfo == null ? 0 : exifInfo!.hashCode) +
@@ -213,7 +225,7 @@ class AssetResponseDto {
     (visibility.hashCode);
 
   @override
-  String toString() => 'AssetResponseDto[checksum=$checksum, createdAt=$createdAt, deviceAssetId=$deviceAssetId, deviceId=$deviceId, duplicateId=$duplicateId, duration=$duration, exifInfo=$exifInfo, fileCreatedAt=$fileCreatedAt, fileModifiedAt=$fileModifiedAt, hasMetadata=$hasMetadata, id=$id, isArchived=$isArchived, isFavorite=$isFavorite, isOffline=$isOffline, isTrashed=$isTrashed, libraryId=$libraryId, livePhotoVideoId=$livePhotoVideoId, localDateTime=$localDateTime, originalFileName=$originalFileName, originalMimeType=$originalMimeType, originalPath=$originalPath, owner=$owner, ownerId=$ownerId, people=$people, resized=$resized, stack=$stack, tags=$tags, thumbhash=$thumbhash, type=$type, unassignedFaces=$unassignedFaces, updatedAt=$updatedAt, visibility=$visibility]';
+  String toString() => 'AssetResponseDto[checksum=$checksum, createdAt=$createdAt, deviceAssetId=$deviceAssetId, deviceId=$deviceId, distance=$distance, duplicateId=$duplicateId, duration=$duration, exifInfo=$exifInfo, fileCreatedAt=$fileCreatedAt, fileModifiedAt=$fileModifiedAt, hasMetadata=$hasMetadata, id=$id, isArchived=$isArchived, isFavorite=$isFavorite, isOffline=$isOffline, isTrashed=$isTrashed, libraryId=$libraryId, livePhotoVideoId=$livePhotoVideoId, localDateTime=$localDateTime, originalFileName=$originalFileName, originalMimeType=$originalMimeType, originalPath=$originalPath, owner=$owner, ownerId=$ownerId, people=$people, resized=$resized, stack=$stack, tags=$tags, thumbhash=$thumbhash, type=$type, unassignedFaces=$unassignedFaces, updatedAt=$updatedAt, visibility=$visibility]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -221,6 +233,11 @@ class AssetResponseDto {
       json[r'createdAt'] = this.createdAt.toUtc().toIso8601String();
       json[r'deviceAssetId'] = this.deviceAssetId;
       json[r'deviceId'] = this.deviceId;
+    if (this.distance != null) {
+      json[r'distance'] = this.distance;
+    } else {
+    //  json[r'distance'] = null;
+    }
     if (this.duplicateId != null) {
       json[r'duplicateId'] = this.duplicateId;
     } else {
@@ -301,6 +318,7 @@ class AssetResponseDto {
         createdAt: mapDateTime(json, r'createdAt', r'')!,
         deviceAssetId: mapValueOfType<String>(json, r'deviceAssetId')!,
         deviceId: mapValueOfType<String>(json, r'deviceId')!,
+        distance: num.parse('${json[r'distance']}'),
         duplicateId: mapValueOfType<String>(json, r'duplicateId'),
         duration: mapValueOfType<String>(json, r'duration')!,
         exifInfo: ExifResponseDto.fromJson(json[r'exifInfo']),
