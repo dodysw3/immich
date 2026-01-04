@@ -358,7 +358,20 @@ export function searchAssetBuilder(kysely: Kysely<DB>, options: AssetSearchBuild
   return kysely
     .withPlugin(joinDeduplicationPlugin)
     .selectFrom('asset')
-    .where('asset.visibility', '=', visibility)
+    // When OCR search is specified, include Hidden PDF pages alongside normal visibility filter
+    .$if(!options.ocr, (qb) => qb.where('asset.visibility', '=', visibility))
+    .$if(!!options.ocr, (qb) =>
+      qb.where((eb) =>
+        eb.or([
+          eb('asset.visibility', '=', visibility),
+          // Include hidden PDF pages in OCR search since they contain searchable text
+          eb.and([
+            eb('asset.visibility', '=', AssetVisibility.Hidden),
+            eb('asset.type', '=', AssetType.PdfPage),
+          ]),
+        ]),
+      ),
+    )
     .$if(!!options.albumIds && options.albumIds.length > 0, (qb) => inAlbums(qb, options.albumIds!))
     .$if(!!options.tagIds && options.tagIds.length > 0, (qb) => hasTags(qb, options.tagIds!))
     .$if(options.tagIds === null, (qb) =>
