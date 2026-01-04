@@ -53,7 +53,7 @@
     return new URL(page.url.pathname + page.url.search, 'https://my.immich.app');
   };
 
-  toastManager.setOptions({ class: 'top-16' });
+  toastManager.setOptions({ class: 'top-auto bottom-0' });
 
   onMount(() => {
     const element = document.querySelector('#stencil');
