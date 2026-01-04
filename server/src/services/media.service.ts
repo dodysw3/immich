@@ -6,6 +6,7 @@ import { OnEvent, OnJob } from 'src/decorators';
 import { SystemConfigFFmpegDto } from 'src/dtos/system-config.dto';
 import {
   AssetFileType,
+  AssetMetadataKey,
   AssetPathType,
   AssetType,
   AssetVisibility,
@@ -248,164 +249,235 @@ export class MediaService extends BaseService {
       return JobStatus.Skipped;
     }
 
-    this.logger.verbose(`Converting PDF ${id} ${asset.originalPath} to PNG images`);
+    this.logger.verbose(`Processing PDF ${id} ${asset.originalPath}`);
 
     try {
-      const { basename, join } = await import('node:path');
-      const { tmpdir } = await import('node:os');
-      const { mkdtemp, readdir, readFile, rm } = await import('node:fs/promises');
       const { exec } = await import('node:child_process');
       const { promisify } = await import('node:util');
       const execAsync = promisify(exec);
 
-      // Create temporary directory for PDF conversion
-      const tempDir = await mkdtemp(join(tmpdir(), 'immich-pdf-'));
-      const pdfBasename = basename(asset.originalPath, '.pdf');
-      const outputPrefix = join(tempDir, 'page');
+      // Get page count using pdfinfo
+      const pdfinfoResult = await execAsync(`pdfinfo "${asset.originalPath}"`);
+      const pageCountMatch = pdfinfoResult.stdout.match(/Pages:\s+(\d+)/);
 
-      try {
-        // Get page count using pdfinfo
-        const pdfinfoResult = await execAsync(`pdfinfo "${asset.originalPath}"`);
-
-        const pageCountMatch = pdfinfoResult.stdout.match(/Pages:\s+(\d+)/);
-        if (!pageCountMatch) {
-          this.logger.error(`Failed to get page count from PDF ${id}`);
-          return JobStatus.Failed;
-        }
-
-        const pageCount = Number.parseInt(pageCountMatch[1], 10);
-        this.logger.verbose(`PDF ${id} has ${pageCount} page(s)`);
-
-        // Convert PDF to PNG using pdftoppm
-        await execAsync(`pdftoppm -png -r 150 "${asset.originalPath}" "${outputPrefix}"`);
-
-        // Read generated PNG files
-        const files = await readdir(tempDir);
-        const pngFiles = files
-          .filter((f) => f.endsWith('.png'))
-          .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-
-        if (pngFiles.length === 0) {
-          this.logger.error(`No PNG files generated from PDF ${id}`);
-          return JobStatus.Failed;
-        }
-
-        this.logger.verbose(`Generated ${pngFiles.length} PNG file(s) from PDF ${id}`);
-
-        // Create assets for each PNG page
-        const assetIds: string[] = [];
-        let newAssetsCreated = 0;
-
-        for (let i = 0; i < pngFiles.length; i++) {
-          const pngPath = join(tempDir, pngFiles[i]);
-          const pngBuffer = await readFile(pngPath);
-          const pageNumber = i + 1;
-          const newFileName = `${pdfBasename}_page_${pageNumber.toString().padStart(3, '0')}.png`;
-
-          // Calculate checksum
-          const checksum = this.cryptoRepository.hashSha1(pngBuffer);
-
-          // Check if an asset with this checksum already exists
-          const existingAssetId = await this.assetRepository.getUploadAssetIdByChecksum(asset.ownerId, checksum);
-          if (existingAssetId) {
-            this.logger.verbose(`Page ${pageNumber} of PDF ${id} already exists as asset ${existingAssetId}, skipping`);
-            assetIds.push(existingAssetId);
-            continue;
-          }
-
-          // Create storage path for PNG
-          const uploadDir = StorageCore.getBaseFolder(StorageFolder.Upload);
-          const { randomUUID } = await import('node:crypto');
-          const uuid = randomUUID();
-          const storagePath = join(uploadDir, asset.ownerId, uuid, newFileName);
-
-          // Ensure directory exists and write file
-          this.storageCore.ensureFolders(storagePath);
-          await this.storageRepository.createOrOverwriteFile(storagePath, pngBuffer);
-
-          // Create asset record
-          const pngAsset = await this.assetRepository.create({
-            ownerId: asset.ownerId,
-            libraryId: asset.libraryId,
-            checksum,
-            originalPath: storagePath,
-            deviceAssetId: `${asset.deviceAssetId}_page_${pageNumber}`,
-            deviceId: asset.deviceId,
-            fileCreatedAt: asset.fileCreatedAt,
-            fileModifiedAt: asset.fileModifiedAt,
-            localDateTime: asset.fileCreatedAt,
-            type: AssetType.Image,
-            isFavorite: asset.isFavorite,
-            duration: null,
-            visibility: asset.visibility,
-            originalFileName: newFileName,
-          });
-
-          // Set EXIF data with file size
-          await this.assetRepository.upsertExif(
-            { assetId: pngAsset.id, fileSizeInByte: pngBuffer.length },
-            { lockedPropertiesBehavior: 'override' },
-          );
-
-          assetIds.push(pngAsset.id);
-          newAssetsCreated++;
-
-          // Queue metadata extraction and thumbnail generation for each PNG
-          await this.jobRepository.queue({ name: JobName.AssetExtractMetadata, data: { id: pngAsset.id, source: 'upload' } });
-
-          this.logger.verbose(`Created asset ${pngAsset.id} for page ${pageNumber} of PDF ${id}`);
-        }
-
-        // If all pages already existed, treat as duplicate and clean up
-        if (newAssetsCreated === 0) {
-          this.logger.verbose(`All pages from PDF ${id} already exist, treating as duplicate`);
-          await this.assetRepository.remove({ id: asset.id });
-          await this.storageRepository.unlink(asset.originalPath);
-          return JobStatus.Success;
-        }
-
-        // Create stack with all PNG assets (first page is primary)
-        if (assetIds.length >= 2) {
-          await this.stackRepository.create(
-            { ownerId: asset.ownerId },
-            assetIds, // First asset becomes primary
-          );
-          this.logger.verbose(`Created stack for ${assetIds.length} pages from PDF ${id}`);
-        }
-
-        // Add all generated assets to album if specified
-        if (albumId && assetIds.length > 0) {
-          await this.albumRepository.addAssetIds(albumId, assetIds);
-          this.logger.verbose(`Added ${assetIds.length} assets to album ${albumId}`);
-        }
-
-        // Set description on primary asset (first page) using proper update method
-        const primaryAssetId = assetIds[0];
-        await this.assetRepository.upsertExif(
-          { assetId: primaryAssetId, description: pdfBasename },
-          { lockedPropertiesBehavior: 'append' },
-        );
-        // Queue sidecar write to persist description to XMP
-        await this.jobRepository.queue({ name: JobName.SidecarWrite, data: { id: primaryAssetId } });
-
-        this.logger.verbose(`Set description "${pdfBasename}" on primary asset ${primaryAssetId}`);
-
-        // Delete the original PDF asset and file
-        await this.assetRepository.remove({ id: asset.id });
-        await this.storageRepository.unlink(asset.originalPath);
-
-        this.logger.verbose(`Deleted original PDF asset ${id} and file ${asset.originalPath}`);
-
-      } finally {
-        // Clean up temporary directory
-        await rm(tempDir, { recursive: true, force: true });
+      if (!pageCountMatch) {
+        this.logger.error(`Failed to get page count from PDF ${id}`);
+        await this.updatePdfStatus(id, 'failed');
+        return JobStatus.Failed;
       }
 
+      const pageCount = Number.parseInt(pageCountMatch[1], 10);
+      this.logger.verbose(`PDF ${id} has ${pageCount} page(s)`);
+
+      // Update PDF metadata with page count and status
+      await this.assetRepository.upsertMetadata(asset.id, [
+        {
+          key: AssetMetadataKey.PdfInfo,
+          value: { pageCount, mainPageIndex: 0, status: 'processing' },
+        },
+      ]);
+
+      // Queue page generation jobs for each page
+      const pageJobs = Array.from({ length: pageCount }, (_, i) => ({
+        name: JobName.AssetPdfPageGeneration as const,
+        data: { id: asset.id, pdfId: asset.id, pageIndex: i, totalPages: pageCount },
+      }));
+      await this.jobRepository.queueAll(pageJobs);
+
+      // Add PDF to album if specified
+      if (albumId) {
+        await this.albumRepository.addAssetIds(albumId, [asset.id]);
+        this.logger.verbose(`Added PDF ${asset.id} to album ${albumId}`);
+      }
+
+      this.logger.verbose(`Queued ${pageCount} page generation job(s) for PDF ${id}`);
       return JobStatus.Success;
     } catch (error) {
       this.logger.error(`PDF conversion failed for asset ${id}: ${error}`);
+      await this.updatePdfStatus(id, 'failed');
       return JobStatus.Failed;
     }
+  }
+
+  @OnJob({ name: JobName.AssetPdfPageGeneration, queue: QueueName.ThumbnailGeneration })
+  async handlePdfPageGeneration(job: JobOf<JobName.AssetPdfPageGeneration>): Promise<JobStatus> {
+    const { pdfId, pageIndex, totalPages } = job;
+    const pdfAsset = await this.assetRepository.getById(pdfId, { exifInfo: true, owner: true });
+
+    if (!pdfAsset) {
+      this.logger.warn(`PDF page generation failed: PDF ${pdfId} not found`);
+      return JobStatus.Failed;
+    }
+
+    this.logger.verbose(`Generating page ${pageIndex + 1}/${totalPages} for PDF ${pdfId}`);
+
+    try {
+      const { basename, join } = await import('node:path');
+      const { tmpdir } = await import('node:os');
+      const { mkdtemp, readFile, rm, readdir } = await import('node:fs/promises');
+      const { exec } = await import('node:child_process');
+      const { promisify } = await import('node:util');
+      const { randomUUID } = await import('node:crypto');
+      const execAsync = promisify(exec);
+
+      const tempDir = await mkdtemp(join(tmpdir(), 'immich-pdf-page-'));
+      const pdfBasename = basename(pdfAsset.originalPath, '.pdf');
+
+      try {
+        // Extract single page using pdftoppm (1-indexed for pdftoppm)
+        const pageNum = pageIndex + 1;
+        await execAsync(
+          `pdftoppm -png -r 150 -f ${pageNum} -l ${pageNum} "${pdfAsset.originalPath}" "${tempDir}/page"`,
+        );
+
+        // Find the generated file
+        const files = await readdir(tempDir);
+        const pngFile = files.find((f) => f.endsWith('.png'));
+        if (!pngFile) {
+          this.logger.error(`No PNG file generated for page ${pageIndex} of PDF ${pdfId}`);
+          return JobStatus.Failed;
+        }
+
+        const pngBuffer = await readFile(join(tempDir, pngFile));
+        const checksum = this.cryptoRepository.hashSha1(pngBuffer);
+
+        // Create storage path for page image
+        const uploadDir = StorageCore.getBaseFolder(StorageFolder.Upload);
+        const uuid = randomUUID();
+        const fileName = `${pdfBasename}_page_${(pageIndex + 1).toString().padStart(3, '0')}.png`;
+        const storagePath = join(uploadDir, pdfAsset.ownerId, uuid, fileName);
+
+        this.storageCore.ensureFolders(storagePath);
+        await this.storageRepository.createOrOverwriteFile(storagePath, pngBuffer);
+
+        // Create PDF_PAGE asset with parentId pointing to PDF
+        const pageAsset = await this.assetRepository.create({
+          ownerId: pdfAsset.ownerId,
+          libraryId: pdfAsset.libraryId,
+          checksum,
+          originalPath: storagePath,
+          deviceAssetId: `${pdfAsset.deviceAssetId}_page_${pageIndex}`,
+          deviceId: pdfAsset.deviceId,
+          fileCreatedAt: pdfAsset.fileCreatedAt,
+          fileModifiedAt: pdfAsset.fileModifiedAt,
+          localDateTime: pdfAsset.fileCreatedAt,
+          type: AssetType.PdfPage,
+          isFavorite: false,
+          duration: null,
+          visibility: AssetVisibility.Hidden, // PDF pages are ALWAYS hidden
+          originalFileName: fileName,
+          parentId: pdfId, // Link to parent PDF
+        });
+
+        // Store page index metadata
+        await this.assetRepository.upsertMetadata(pageAsset.id, [
+          {
+            key: AssetMetadataKey.PdfInfo,
+            value: { pageIndex },
+          },
+        ]);
+
+        // Set file size in EXIF
+        await this.assetRepository.upsertExif(
+          { assetId: pageAsset.id, fileSizeInByte: pngBuffer.length },
+          { lockedPropertiesBehavior: 'override' },
+        );
+
+        // Queue thumbnail generation for this page
+        await this.jobRepository.queue({
+          name: JobName.AssetGenerateThumbnails,
+          data: { id: pageAsset.id },
+        });
+
+        this.logger.verbose(`Created PDF_PAGE asset ${pageAsset.id} for page ${pageIndex + 1} of PDF ${pdfId}`);
+
+        // Check if this is the main page and should be used as PDF thumbnail
+        const pdfMetadata = await this.assetRepository.getMetadataByKey(pdfId, AssetMetadataKey.PdfInfo);
+        if (pdfMetadata && (pdfMetadata.value as any).mainPageIndex === pageIndex) {
+          // Mark this page for thumbnail copy after its thumbnails are generated
+          this.logger.verbose(`Page ${pageIndex + 1} is main page, will use its thumbnail for PDF ${pdfId}`);
+        }
+
+        // Check if all pages are processed
+        const existingPages = await this.assetRepository.getByParentId(pdfId);
+        if (existingPages.length === totalPages) {
+          await this.updatePdfStatus(pdfId, 'completed');
+          // Queue thumbnail generation for the PDF itself using the main page
+          await this.generatePdfThumbnailFromMainPage(pdfId);
+          this.logger.verbose(`All ${totalPages} pages processed for PDF ${pdfId}, marked as completed`);
+        }
+
+        return JobStatus.Success;
+      } finally {
+        await rm(tempDir, { recursive: true, force: true });
+      }
+    } catch (error) {
+      this.logger.error(`PDF page generation failed for page ${pageIndex} of PDF ${pdfId}: ${error}`);
+      return JobStatus.Failed;
+    }
+  }
+
+  private async updatePdfStatus(pdfId: string, status: 'processing' | 'completed' | 'failed') {
+    const current = await this.assetRepository.getMetadataByKey(pdfId, AssetMetadataKey.PdfInfo);
+    if (current) {
+      await this.assetRepository.upsertMetadata(pdfId, [
+        {
+          key: AssetMetadataKey.PdfInfo,
+          value: { ...(current.value as object), status },
+        },
+      ]);
+    }
+  }
+
+  private async generatePdfThumbnailFromMainPage(pdfId: string) {
+    const pdfMetadata = await this.assetRepository.getMetadataByKey(pdfId, AssetMetadataKey.PdfInfo);
+    if (!pdfMetadata) {
+      return;
+    }
+
+    const mainPageIndex = (pdfMetadata.value as any).mainPageIndex ?? 0;
+    const pages = await this.assetRepository.getByParentId(pdfId);
+
+    // Find the main page asset
+    let mainPageAsset = null;
+    for (const page of pages) {
+      const pageMetadata = await this.assetRepository.getMetadataByKey(page.id, AssetMetadataKey.PdfInfo);
+      if (pageMetadata && (pageMetadata.value as any).pageIndex === mainPageIndex) {
+        mainPageAsset = await this.assetRepository.getById(page.id, { files: true });
+        break;
+      }
+    }
+
+    if (!mainPageAsset) {
+      this.logger.warn(`Main page asset not found for PDF ${pdfId}`);
+      return;
+    }
+
+    // Copy thumbnail files from main page to PDF
+    const { thumbnailFile, previewFile } = getAssetFiles(mainPageAsset.files ?? []);
+
+    if (thumbnailFile) {
+      await this.assetRepository.upsertFile({
+        assetId: pdfId,
+        path: thumbnailFile.path,
+        type: AssetFileType.Thumbnail,
+      });
+    }
+
+    if (previewFile) {
+      await this.assetRepository.upsertFile({
+        assetId: pdfId,
+        path: previewFile.path,
+        type: AssetFileType.Preview,
+      });
+    }
+
+    // Copy thumbhash from main page to PDF
+    if (mainPageAsset.thumbhash) {
+      await this.assetRepository.update({ id: pdfId, thumbhash: mainPageAsset.thumbhash });
+    }
+
+    this.logger.verbose(`Copied thumbnail from page ${mainPageIndex + 1} to PDF ${pdfId}`);
   }
 
   private async extractImage(originalPath: string, minSize: number) {

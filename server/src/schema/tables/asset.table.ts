@@ -96,6 +96,9 @@ export class AssetTable {
   @ForeignKeyColumn(() => AssetTable, { nullable: true, onUpdate: 'CASCADE', onDelete: 'SET NULL' })
   livePhotoVideoId!: string | null;
 
+  @ForeignKeyColumn(() => AssetTable, { nullable: true, onUpdate: 'CASCADE', onDelete: 'CASCADE' })
+  parentId!: string | null;
+
   @UpdateDateColumn()
   updatedAt!: Generated<Timestamp>;
 

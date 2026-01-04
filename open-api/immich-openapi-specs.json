@@ -3187,6 +3187,72 @@
         "x-immich-state": "Stable"
       }
     },
+    "/assets/{id}/main-page": {
+      "put": {
+        "description": "Set which page is used as the PDF thumbnail.",
+        "operationId": "setPdfMainPage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPdfMainPageDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Set PDF main page",
+        "tags": [
+          "Assets"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          }
+        ],
+        "x-immich-permission": "asset.update",
+        "x-immich-state": "Beta"
+      }
+    },
     "/assets/{id}/metadata": {
       "get": {
         "description": "Retrieve all metadata key-value pairs associated with the specified asset.",
@@ -3669,6 +3735,118 @@
         ],
         "x-immich-permission": "asset.replace",
         "x-immich-state": "Deprecated"
+      }
+    },
+    "/assets/{id}/pages": {
+      "get": {
+        "description": "Retrieve all pages of a PDF asset.",
+        "operationId": "getPdfPages",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PdfPagesResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Get PDF pages",
+        "tags": [
+          "Assets"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          }
+        ],
+        "x-immich-permission": "asset.read",
+        "x-immich-state": "Beta"
+      }
+    },
+    "/assets/{id}/pages/{pageId}": {
+      "delete": {
+        "description": "Delete a single page from a PDF.",
+        "operationId": "deletePdfPage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Delete PDF page",
+        "tags": [
+          "Assets"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          }
+        ],
+        "x-immich-permission": "asset.delete",
+        "x-immich-state": "Beta"
       }
     },
     "/assets/{id}/thumbnail": {
@@ -15581,7 +15759,8 @@
       },
       "AssetMetadataKey": {
         "enum": [
-          "mobile-app"
+          "mobile-app",
+          "pdf-info"
         ],
         "type": "string"
       },
@@ -15968,7 +16147,9 @@
           "IMAGE",
           "VIDEO",
           "AUDIO",
-          "OTHER"
+          "OTHER",
+          "PDF",
+          "PDF_PAGE"
         ],
         "type": "string"
       },
@@ -16693,6 +16874,7 @@
           "AssetGenerateThumbnailsQueueAll",
           "AssetGenerateThumbnails",
           "AssetPdfConversion",
+          "AssetPdfPageGeneration",
           "AuditLogCleanup",
           "AuditTableCleanup",
           "DatabaseBackup",
@@ -17779,6 +17961,68 @@
         },
         "required": [
           "inTimeline"
+        ],
+        "type": "object"
+      },
+      "PdfPageResponseDto": {
+        "properties": {
+          "id": {
+            "description": "Page asset ID",
+            "type": "string"
+          },
+          "pageIndex": {
+            "description": "0-based page index",
+            "type": "number"
+          },
+          "thumbhash": {
+            "description": "Base64 encoded thumbhash",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "pageIndex"
+        ],
+        "type": "object"
+      },
+      "PdfPagesResponseDto": {
+        "properties": {
+          "mainPageIndex": {
+            "description": "0-based index of the main (cover) page",
+            "type": "number"
+          },
+          "pageCount": {
+            "description": "Total number of pages",
+            "type": "number"
+          },
+          "pages": {
+            "description": "List of page assets",
+            "items": {
+              "$ref": "#/components/schemas/PdfPageResponseDto"
+            },
+            "type": "array"
+          },
+          "pdfId": {
+            "description": "PDF asset ID",
+            "type": "string"
+          },
+          "status": {
+            "description": "Processing status",
+            "enum": [
+              "processing",
+              "completed",
+              "failed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "mainPageIndex",
+          "pageCount",
+          "pages",
+          "pdfId",
+          "status"
         ],
         "type": "object"
       },
@@ -19708,6 +19952,19 @@
         },
         "required": [
           "action"
+        ],
+        "type": "object"
+      },
+      "SetPdfMainPageDto": {
+        "properties": {
+          "pageIndex": {
+            "description": "0-based page index to set as main page",
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "pageIndex"
         ],
         "type": "object"
       },

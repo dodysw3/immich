@@ -16,7 +16,7 @@ import { jsonArrayFrom, jsonObjectFrom } from 'kysely/helpers/postgres';
 import { parse } from 'pg-connection-string';
 import postgres, { Notice, PostgresError } from 'postgres';
 import { columns, Exif, lockableProperties, LockableProperty, Person } from 'src/database';
-import { AssetFileType, AssetVisibility, DatabaseExtension, DatabaseSslMode } from 'src/enum';
+import { AssetFileType, AssetType, AssetVisibility, DatabaseExtension, DatabaseSslMode } from 'src/enum';
 import { AssetSearchBuilderOptions } from 'src/repositories/search.repository';
 import { DB } from 'src/schema';
 import { DatabaseConnectionParams, VectorExtension } from 'src/types';
@@ -158,7 +158,9 @@ export const isAssetChecksumConstraint = (error: unknown) => {
 };
 
 export function withDefaultVisibility<O>(qb: SelectQueryBuilder<DB, 'asset', O>) {
-  return qb.where('asset.visibility', 'in', [sql.lit(AssetVisibility.Archive), sql.lit(AssetVisibility.Timeline)]);
+  return qb
+    .where('asset.visibility', 'in', [sql.lit(AssetVisibility.Archive), sql.lit(AssetVisibility.Timeline)])
+    .where('asset.type', '!=', sql.lit(AssetType.PdfPage));
 }
 
 // TODO come up with a better query that only selects the fields we need

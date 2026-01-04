@@ -201,6 +201,12 @@ export interface IPdfConversionJob extends IEntityJob {
   albumId?: string;
 }
 
+export interface IPdfPageGenerationJob extends IEntityJob {
+  pdfId: string;
+  pageIndex: number;
+  totalPages: number;
+}
+
 export interface ILibraryFileJob {
   libraryId: string;
   paths: string[];
@@ -306,6 +312,7 @@ export type JobItem =
 
   // PDF Conversion
   | { name: JobName.AssetPdfConversion; data: IPdfConversionJob }
+  | { name: JobName.AssetPdfPageGeneration; data: IPdfPageGenerationJob }
 
   // User
   | { name: JobName.UserDeleteCheck; data?: IBaseJob }

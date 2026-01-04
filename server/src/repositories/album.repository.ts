@@ -5,6 +5,7 @@ import { InjectKysely } from 'nestjs-kysely';
 import { columns, Exif } from 'src/database';
 import { Chunked, ChunkedArray, ChunkedSet, DummyValue, GenerateSql } from 'src/decorators';
 import { AlbumUserCreateDto } from 'src/dtos/album.dto';
+import { AssetType, AssetVisibility } from 'src/enum';
 import { DB } from 'src/schema';
 import { AlbumTable } from 'src/schema/tables/album.table';
 import { withDefaultVisibility } from 'src/utils/database';
@@ -60,7 +61,8 @@ const withAssets = (eb: ExpressionBuilder<DB, 'album'>) => {
         .innerJoin('album_asset', 'album_asset.assetId', 'asset.id')
         .whereRef('album_asset.albumId', '=', 'album.id')
         .where('asset.deletedAt', 'is', null)
-        .$call(withDefaultVisibility)
+        .where('asset.visibility', 'in', [sql.lit(AssetVisibility.Archive), sql.lit(AssetVisibility.Timeline)])
+        .where('asset.type', '!=', sql.lit(AssetType.PdfPage))
         .orderBy('asset.fileCreatedAt', 'desc')
         .as('asset'),
     )

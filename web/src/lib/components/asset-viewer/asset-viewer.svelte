@@ -50,6 +50,7 @@
   import FaceButton from './face-button.svelte';
   import ImagePanoramaViewer from './image-panorama-viewer.svelte';
   import OcrButton from './ocr-button.svelte';
+  import PdfViewer from './pdf-viewer.svelte';
   import PhotoViewer from './photo-viewer.svelte';
   import SlideshowBar from './slideshow-bar.svelte';
   import VideoViewer from './video-wrapper-viewer.svelte';
@@ -569,7 +570,7 @@
               haveFadeTransition={$slideshowState !== SlideshowState.None && $slideshowTransition}
             />
           {/if}
-        {:else}
+        {:else if asset.type === AssetTypeEnum.Video}
           <VideoViewer
             assetId={asset.id}
             cacheKey={asset.thumbhash}
@@ -581,6 +582,24 @@
             onVideoEnded={() => navigateAsset()}
             onVideoStarted={handleVideoStarted}
             {playOriginalVideo}
+          />
+        {:else if asset.type === ('PDF' as AssetTypeEnum)}
+          <PdfViewer
+            {asset}
+            onPreviousAsset={() => navigateAsset('previous')}
+            onNextAsset={() => navigateAsset('next')}
+          />
+        {:else}
+          <!-- Fallback for other types -->
+          <PhotoViewer
+            bind:zoomToggle
+            bind:copyImage
+            {asset}
+            {preloadAssets}
+            onPreviousAsset={() => navigateAsset('previous')}
+            onNextAsset={() => navigateAsset('next')}
+            {sharedLink}
+            haveFadeTransition={$slideshowState !== SlideshowState.None && $slideshowTransition}
           />
         {/if}
 

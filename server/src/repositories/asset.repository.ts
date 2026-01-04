@@ -284,6 +284,30 @@ export class AssetRepository {
     await this.db.deleteFrom('asset_metadata').where('assetId', '=', id).where('key', '=', key).execute();
   }
 
+  @GenerateSql({ params: [DummyValue.UUID] })
+  getByParentId(parentId: string) {
+    return this.db
+      .selectFrom('asset')
+      .selectAll()
+      .where('asset.parentId', '=', parentId)
+      .orderBy('asset.createdAt', 'asc')
+      .execute();
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID] })
+  getPdfPages(pdfId: string) {
+    return this.db
+      .selectFrom('asset')
+      .leftJoin('asset_metadata', (join) =>
+        join.onRef('asset_metadata.assetId', '=', 'asset.id').on('asset_metadata.key', '=', AssetMetadataKey.PdfInfo),
+      )
+      .selectAll('asset')
+      .select('asset_metadata.value as pageMetadata')
+      .where('asset.parentId', '=', pdfId)
+      .where('asset.type', '=', AssetType.PdfPage)
+      .execute();
+  }
+
   create(asset: Insertable<AssetTable>) {
     return this.db.insertInto('asset').values(asset).returningAll().executeTakeFirstOrThrow();
   }
@@ -572,6 +596,8 @@ export class AssetRepository {
       .select((eb) => eb.fn.countAll<number>().filterWhere('type', '=', AssetType.Image).as(AssetType.Image))
       .select((eb) => eb.fn.countAll<number>().filterWhere('type', '=', AssetType.Video).as(AssetType.Video))
       .select((eb) => eb.fn.countAll<number>().filterWhere('type', '=', AssetType.Other).as(AssetType.Other))
+      .select((eb) => eb.fn.countAll<number>().filterWhere('type', '=', AssetType.Pdf).as(AssetType.Pdf))
+      .select((eb) => eb.fn.countAll<number>().filterWhere('type', '=', AssetType.PdfPage).as(AssetType.PdfPage))
       .where('ownerId', '=', asUuid(ownerId))
       .$if(visibility === undefined, withDefaultVisibility)
       .$if(!!visibility, (qb) => qb.where('asset.visibility', '=', visibility!))
@@ -585,8 +611,8 @@ export class AssetRepository {
     return this.db
       .selectFrom('asset')
       .selectAll('asset')
-      .$call(withExif)
       .$call(withDefaultVisibility)
+      .$call(withExif)
       .where('ownerId', '=', anyUuid(userIds))
       .where('deletedAt', 'is', null)
       .orderBy((eb) => eb.fn('random'))

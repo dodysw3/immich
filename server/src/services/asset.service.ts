@@ -19,10 +19,12 @@ import {
 } from 'src/dtos/asset.dto';
 import { AuthDto } from 'src/dtos/auth.dto';
 import { AssetOcrResponseDto } from 'src/dtos/ocr.dto';
+import { PdfPageResponseDto, PdfPagesResponseDto, SetPdfMainPageDto } from 'src/dtos/pdf.dto';
 import {
   AssetFileType,
   AssetMetadataKey,
   AssetStatus,
+  AssetType,
   AssetVisibility,
   JobName,
   JobStatus,
@@ -399,6 +401,138 @@ export class AssetService extends BaseService {
   async deleteMetadataByKey(auth: AuthDto, id: string, key: AssetMetadataKey): Promise<void> {
     await this.requireAccess({ auth, permission: Permission.AssetUpdate, ids: [id] });
     return this.assetRepository.deleteMetadataByKey(id, key);
+  }
+
+  async getPdfPages(auth: AuthDto, id: string): Promise<PdfPagesResponseDto> {
+    await this.requireAccess({ auth, permission: Permission.AssetRead, ids: [id] });
+
+    const asset = await this.assetRepository.getById(id);
+    if (!asset || asset.type !== AssetType.Pdf) {
+      throw new BadRequestException('Asset is not a PDF');
+    }
+
+    const metadata = await this.assetRepository.getMetadataByKey(id, AssetMetadataKey.PdfInfo);
+    const pdfInfo = (metadata?.value as { pageCount?: number; mainPageIndex?: number; status?: string }) || {};
+    const pages = await this.assetRepository.getPdfPages(id);
+
+    // Sort pages by pageIndex from metadata
+    const sortedPages = pages
+      .map((page) => {
+        const pageInfo = (page.pageMetadata as { pageIndex?: number }) || {};
+        return {
+          id: page.id,
+          pageIndex: pageInfo.pageIndex ?? 0,
+          thumbhash: page.thumbhash ? page.thumbhash.toString('base64') : null,
+        } as PdfPageResponseDto;
+      })
+      .sort((a, b) => a.pageIndex - b.pageIndex);
+
+    return {
+      pdfId: id,
+      pageCount: pdfInfo.pageCount ?? 0,
+      mainPageIndex: pdfInfo.mainPageIndex ?? 0,
+      status: (pdfInfo.status as 'processing' | 'completed' | 'failed') ?? 'processing',
+      pages: sortedPages,
+    };
+  }
+
+  async setPdfMainPage(auth: AuthDto, id: string, dto: SetPdfMainPageDto): Promise<AssetResponseDto> {
+    await this.requireAccess({ auth, permission: Permission.AssetUpdate, ids: [id] });
+
+    const asset = await this.assetRepository.getById(id);
+    if (!asset || asset.type !== AssetType.Pdf) {
+      throw new BadRequestException('Asset is not a PDF');
+    }
+
+    const pages = await this.assetRepository.getPdfPages(id);
+    const targetPage = pages.find((p) => {
+      const pageInfo = (p.pageMetadata as { pageIndex?: number }) || {};
+      return pageInfo.pageIndex === dto.pageIndex;
+    });
+
+    if (!targetPage) {
+      throw new BadRequestException('Page index out of range');
+    }
+
+    // Update metadata with new main page index
+    const metadata = await this.assetRepository.getMetadataByKey(id, AssetMetadataKey.PdfInfo);
+    await this.assetRepository.upsertMetadata(id, [
+      {
+        key: AssetMetadataKey.PdfInfo,
+        value: { ...(metadata?.value as object), mainPageIndex: dto.pageIndex },
+      },
+    ]);
+
+    // Copy thumbnail from new main page to PDF
+    const mainPageAsset = await this.assetRepository.getById(targetPage.id, { files: true });
+    if (mainPageAsset) {
+      const { thumbnailFile, previewFile } = getAssetFiles(mainPageAsset.files ?? []);
+      if (thumbnailFile) {
+        await this.assetRepository.upsertFile({
+          assetId: id,
+          path: thumbnailFile.path,
+          type: AssetFileType.Thumbnail,
+        });
+      }
+      if (previewFile) {
+        await this.assetRepository.upsertFile({
+          assetId: id,
+          path: previewFile.path,
+          type: AssetFileType.Preview,
+        });
+      }
+      if (mainPageAsset.thumbhash) {
+        await this.assetRepository.update({ id, thumbhash: mainPageAsset.thumbhash });
+      }
+    }
+
+    const updated = await this.assetRepository.getById(id, { exifInfo: true, owner: true });
+    return mapAsset(updated!, { auth });
+  }
+
+  async deletePdfPage(auth: AuthDto, pdfId: string, pageId: string): Promise<void> {
+    await this.requireAccess({ auth, permission: Permission.AssetDelete, ids: [pdfId, pageId] });
+
+    const page = await this.assetRepository.getById(pageId);
+    if (!page || page.parentId !== pdfId) {
+      throw new BadRequestException('Page does not belong to this PDF');
+    }
+
+    const pages = await this.assetRepository.getPdfPages(pdfId);
+    if (pages.length <= 1) {
+      throw new BadRequestException('Cannot delete the last page of a PDF');
+    }
+
+    // Get page index of the page being deleted
+    const pageMetadata = await this.assetRepository.getMetadataByKey(pageId, AssetMetadataKey.PdfInfo);
+    const deletedPageIndex = (pageMetadata?.value as { pageIndex?: number })?.pageIndex ?? 0;
+
+    // Delete the page asset
+    await this.assetRepository.remove({ id: pageId });
+
+    // Update page count and main page index in metadata
+    const pdfMetadata = await this.assetRepository.getMetadataByKey(pdfId, AssetMetadataKey.PdfInfo);
+    const pdfInfo = (pdfMetadata?.value as { pageCount?: number; mainPageIndex?: number; status?: string }) || {};
+
+    let newMainPageIndex = pdfInfo.mainPageIndex ?? 0;
+    if (newMainPageIndex === deletedPageIndex) {
+      // If main page was deleted, select the first available page
+      newMainPageIndex = 0;
+    } else if (newMainPageIndex > deletedPageIndex) {
+      // If main page is after deleted page, adjust index
+      newMainPageIndex--;
+    }
+
+    await this.assetRepository.upsertMetadata(pdfId, [
+      {
+        key: AssetMetadataKey.PdfInfo,
+        value: {
+          ...pdfInfo,
+          pageCount: pages.length - 1,
+          mainPageIndex: newMainPageIndex,
+        },
+      },
+    ]);
   }
 
   async run(auth: AuthDto, dto: AssetJobsDto) {

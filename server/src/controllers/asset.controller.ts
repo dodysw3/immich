@@ -18,6 +18,7 @@ import {
 } from 'src/dtos/asset.dto';
 import { AuthDto } from 'src/dtos/auth.dto';
 import { AssetOcrResponseDto } from 'src/dtos/ocr.dto';
+import { PdfPagesResponseDto, SetPdfMainPageDto } from 'src/dtos/pdf.dto';
 import { ApiTag, Permission, RouteKey } from 'src/enum';
 import { Auth, Authenticated } from 'src/middleware/auth.guard';
 import { AssetService } from 'src/services/asset.service';
@@ -196,5 +197,47 @@ export class AssetController {
   })
   deleteAssetMetadata(@Auth() auth: AuthDto, @Param() { id, key }: AssetMetadataRouteParams): Promise<void> {
     return this.service.deleteMetadataByKey(auth, id, key);
+  }
+
+  @Get(':id/pages')
+  @Authenticated({ permission: Permission.AssetRead })
+  @Endpoint({
+    summary: 'Get PDF pages',
+    description: 'Retrieve all pages of a PDF asset.',
+    history: new HistoryBuilder().added('v1').beta('v1'),
+  })
+  getPdfPages(@Auth() auth: AuthDto, @Param() { id }: UUIDParamDto): Promise<PdfPagesResponseDto> {
+    return this.service.getPdfPages(auth, id);
+  }
+
+  @Put(':id/main-page')
+  @Authenticated({ permission: Permission.AssetUpdate })
+  @Endpoint({
+    summary: 'Set PDF main page',
+    description: 'Set which page is used as the PDF thumbnail.',
+    history: new HistoryBuilder().added('v1').beta('v1'),
+  })
+  setPdfMainPage(
+    @Auth() auth: AuthDto,
+    @Param() { id }: UUIDParamDto,
+    @Body() dto: SetPdfMainPageDto,
+  ): Promise<AssetResponseDto> {
+    return this.service.setPdfMainPage(auth, id, dto);
+  }
+
+  @Delete(':id/pages/:pageId')
+  @Authenticated({ permission: Permission.AssetDelete })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Endpoint({
+    summary: 'Delete PDF page',
+    description: 'Delete a single page from a PDF.',
+    history: new HistoryBuilder().added('v1').beta('v1'),
+  })
+  deletePdfPage(
+    @Auth() auth: AuthDto,
+    @Param('id') pdfId: string,
+    @Param('pageId') pageId: string,
+  ): Promise<void> {
+    return this.service.deletePdfPage(auth, pdfId, pageId);
   }
 }

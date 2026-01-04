@@ -558,6 +558,10 @@ export type UpdateAssetDto = {
     rating?: number;
     visibility?: AssetVisibility;
 };
+export type SetPdfMainPageDto = {
+    /** 0-based page index to set as main page */
+    pageIndex: number;
+};
 export type AssetMetadataResponseDto = {
     key: AssetMetadataKey;
     updatedAt: string;
@@ -600,6 +604,26 @@ export type AssetMediaReplaceDto = {
     fileCreatedAt: string;
     fileModifiedAt: string;
     filename?: string;
+};
+export type PdfPageResponseDto = {
+    /** Page asset ID */
+    id: string;
+    /** 0-based page index */
+    pageIndex: number;
+    /** Base64 encoded thumbhash */
+    thumbhash?: string | null;
+};
+export type PdfPagesResponseDto = {
+    /** 0-based index of the main (cover) page */
+    mainPageIndex: number;
+    /** Total number of pages */
+    pageCount: number;
+    /** List of page assets */
+    pages: PdfPageResponseDto[];
+    /** PDF asset ID */
+    pdfId: string;
+    /** Processing status */
+    status: Status;
 };
 export type SignUpDto = {
     email: string;
@@ -2538,6 +2562,22 @@ export function updateAsset({ id, updateAssetDto }: {
     })));
 }
 /**
+ * Set PDF main page
+ */
+export function setPdfMainPage({ id, setPdfMainPageDto }: {
+    id: string;
+    setPdfMainPageDto: SetPdfMainPageDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: AssetResponseDto;
+    }>(`/assets/${encodeURIComponent(id)}/main-page`, oazapfts.json({
+        ...opts,
+        method: "PUT",
+        body: setPdfMainPageDto
+    })));
+}
+/**
  * Get asset metadata
  */
 export function getAssetMetadata({ id }: {
@@ -2643,6 +2683,31 @@ export function replaceAsset({ id, key, slug, assetMediaReplaceDto }: {
         method: "PUT",
         body: assetMediaReplaceDto
     })));
+}
+/**
+ * Get PDF pages
+ */
+export function getPdfPages({ id }: {
+    id: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: PdfPagesResponseDto;
+    }>(`/assets/${encodeURIComponent(id)}/pages`, {
+        ...opts
+    }));
+}
+/**
+ * Delete PDF page
+ */
+export function deletePdfPage({ id, pageId }: {
+    id: string;
+    pageId: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/assets/${encodeURIComponent(id)}/pages/${encodeURIComponent(pageId)}`, {
+        ...opts,
+        method: "DELETE"
+    }));
 }
 /**
  * View asset thumbnail
@@ -5209,7 +5274,9 @@ export enum AssetTypeEnum {
     Image = "IMAGE",
     Video = "VIDEO",
     Audio = "AUDIO",
-    Other = "OTHER"
+    Other = "OTHER",
+    Pdf = "PDF",
+    PdfPage = "PDF_PAGE"
 }
 export enum BulkIdErrorReason {
     Duplicate = "duplicate",
@@ -5371,7 +5438,8 @@ export enum Permission {
     AdminAuthUnlinkAll = "adminAuth.unlinkAll"
 }
 export enum AssetMetadataKey {
-    MobileApp = "mobile-app"
+    MobileApp = "mobile-app",
+    PdfInfo = "pdf-info"
 }
 export enum AssetMediaStatus {
     Created = "created",
@@ -5391,6 +5459,11 @@ export enum AssetJobName {
     RefreshMetadata = "refresh-metadata",
     RegenerateThumbnail = "regenerate-thumbnail",
     TranscodeVideo = "transcode-video"
+}
+export enum Status {
+    Processing = "processing",
+    Completed = "completed",
+    Failed = "failed"
 }
 export enum AssetMediaSize {
     Fullsize = "fullsize",
@@ -5476,6 +5549,7 @@ export enum JobName {
     AssetGenerateThumbnailsQueueAll = "AssetGenerateThumbnailsQueueAll",
     AssetGenerateThumbnails = "AssetGenerateThumbnails",
     AssetPdfConversion = "AssetPdfConversion",
+    AssetPdfPageGeneration = "AssetPdfPageGeneration",
     AuditLogCleanup = "AuditLogCleanup",
     AuditTableCleanup = "AuditTableCleanup",
     DatabaseBackup = "DatabaseBackup",

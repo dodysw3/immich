@@ -118,6 +118,7 @@ export type Asset = {
   visibility: AssetVisibility;
   libraryId: string | null;
   livePhotoVideoId: string | null;
+  parentId: string | null;
   localDateTime: Date;
   originalFileName: string;
   originalPath: string;
@@ -335,6 +336,7 @@ export const columns = {
     'asset.visibility',
     'asset.libraryId',
     'asset.livePhotoVideoId',
+    'asset.parentId',
     'asset.localDateTime',
     'asset.originalFileName',
     'asset.originalPath',
@@ -388,6 +390,7 @@ export const columns = {
     'asset.visibility',
     'asset.duration',
     'asset.livePhotoVideoId',
+    'asset.parentId',
     'asset.stackId',
     'asset.libraryId',
   ],

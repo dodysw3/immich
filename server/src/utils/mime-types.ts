@@ -136,7 +136,9 @@ export const mimeTypes = {
   toExtension,
   assetType: (filename: string) => {
     const contentType = lookup(filename);
-    if (contentType.startsWith('image/') || contentType === 'application/pdf') {
+    if (contentType === 'application/pdf') {
+      return AssetType.Pdf;
+    } else if (contentType.startsWith('image/')) {
       return AssetType.Image;
     } else if (contentType.startsWith('video/')) {
       return AssetType.Video;

@@ -35,6 +35,8 @@ export enum AssetType {
   Video = 'VIDEO',
   Audio = 'AUDIO',
   Other = 'OTHER',
+  Pdf = 'PDF',
+  PdfPage = 'PDF_PAGE',
 }
 
 export enum AssetFileType {
@@ -312,6 +314,7 @@ export enum UserMetadataKey {
 
 export enum AssetMetadataKey {
   MobileApp = 'mobile-app',
+  PdfInfo = 'pdf-info',
 }
 
 export enum UserAvatarColor {
@@ -577,6 +580,7 @@ export enum JobName {
   AssetGenerateThumbnailsQueueAll = 'AssetGenerateThumbnailsQueueAll',
   AssetGenerateThumbnails = 'AssetGenerateThumbnails',
   AssetPdfConversion = 'AssetPdfConversion',
+  AssetPdfPageGeneration = 'AssetPdfPageGeneration',
 
   AuditLogCleanup = 'AuditLogCleanup',
   AuditTableCleanup = 'AuditTableCleanup',
