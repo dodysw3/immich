@@ -120,6 +120,8 @@
 
   let zoomToggle = $state(() => void 0);
   let playOriginalVideo = $state($alwaysLoadOriginalVideo);
+  /** When viewing a PDF_PAGE, store the page ID so we can navigate to it in the PDF viewer */
+  let initialPdfPageId = $state<string | null>(null);
 
   const setPlayOriginalVideo = (value: boolean) => {
     playOriginalVideo = value;
@@ -411,6 +413,25 @@
       handlePromiseError(refreshStack());
     }
   });
+
+  // Handle PDF_PAGE: redirect to parent PDF and pass the page ID for navigation
+  $effect(() => {
+    if (asset.type === AssetTypeEnum.PdfPage && asset.parentId) {
+      // Store the current page ID so the PDF viewer can navigate to it
+      const pageId = asset.id;
+      // Fetch the parent PDF asset and replace the current asset
+      handlePromiseError(
+        getAssetInfo({ id: asset.parentId }).then((parentAsset) => {
+          initialPdfPageId = pageId;
+          asset = parentAsset;
+        }),
+      );
+    } else if (asset.type !== AssetTypeEnum.Pdf) {
+      // Reset when viewing non-PDF assets
+      initialPdfPageId = null;
+    }
+  });
+
   $effect(() => {
     if (album && !album.isActivityEnabled && activityManager.commentCount === 0) {
       isShowActivity = false;
@@ -583,9 +604,10 @@
             onVideoStarted={handleVideoStarted}
             {playOriginalVideo}
           />
-        {:else if asset.type === ('PDF' as AssetTypeEnum)}
+        {:else if asset.type === AssetTypeEnum.Pdf}
           <PdfViewer
             {asset}
+            initialPageId={initialPdfPageId}
             onPreviousAsset={() => navigateAsset('previous')}
             onNextAsset={() => navigateAsset('next')}
           />

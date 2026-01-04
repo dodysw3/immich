@@ -16014,6 +16014,11 @@
           "ownerId": {
             "type": "string"
           },
+          "parentId": {
+            "description": "Parent asset ID (for PDF_PAGE assets, this is the parent PDF)",
+            "nullable": true,
+            "type": "string"
+          },
           "people": {
             "items": {
               "$ref": "#/components/schemas/PersonWithFacesResponseDto"

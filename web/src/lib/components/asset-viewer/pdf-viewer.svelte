@@ -19,11 +19,13 @@
 
   interface Props {
     asset: AssetResponseDto;
+    /** Optional page ID to navigate to initially (for opening from PDF_PAGE search results) */
+    initialPageId?: string | null;
     onPreviousAsset?: (() => void) | null;
     onNextAsset?: (() => void) | null;
   }
 
-  let { asset, onPreviousAsset = null, onNextAsset = null }: Props = $props();
+  let { asset, initialPageId = null, onPreviousAsset = null, onNextAsset = null }: Props = $props();
 
   let pdfData = $state<PdfPagesResponseDto | null>(null);
   let currentPageIndex = $state(0);
@@ -70,7 +72,13 @@
     error = false;
     try {
       pdfData = await getPdfPages({ id: asset.id });
-      currentPageIndex = pdfData.mainPageIndex;
+      // If an initialPageId is provided, find and navigate to that page
+      if (initialPageId) {
+        const pageIndex = pdfData.pages.findIndex((page) => page.id === initialPageId);
+        currentPageIndex = pageIndex >= 0 ? pageIndex : pdfData.mainPageIndex;
+      } else {
+        currentPageIndex = pdfData.mainPageIndex;
+      }
       updateCurrentPageImage();
     } catch (e) {
       console.error('Failed to load PDF pages:', e);

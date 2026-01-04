@@ -367,6 +367,8 @@ export type AssetResponseDto = {
     originalPath: string;
     owner?: UserResponseDto;
     ownerId: string;
+    /** Parent asset ID (for PDF_PAGE assets, this is the parent PDF) */
+    parentId?: string | null;
     people?: PersonWithFacesResponseDto[];
     resized?: boolean;
     stack?: (AssetStackResponseDto) | null;

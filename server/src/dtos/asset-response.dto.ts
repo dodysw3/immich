@@ -92,6 +92,8 @@ export class AssetResponseDto extends SanitizedAssetResponseDto {
   duplicateId?: string | null;
   /** Distance from query embedding (only present in smart search results) */
   distance?: number;
+  /** Parent asset ID (for PDF_PAGE assets, this is the parent PDF) */
+  parentId?: string | null;
 
   @Property({ history: new HistoryBuilder().added('v1').deprecated('v1.113.0') })
   resized?: boolean;
@@ -132,6 +134,7 @@ export type MapAsset = {
   thumbhash: Buffer<ArrayBufferLike> | null;
   type: AssetType;
   distance?: number;
+  parentId?: string | null;
 };
 
 export class AssetStackResponseDto {
@@ -231,5 +234,6 @@ export function mapAsset(entity: MapAsset, options: AssetMapOptions = {}): Asset
     duplicateId: entity.duplicateId,
     resized: true,
     distance: entity.distance,
+    parentId: entity.parentId,
   };
 }
