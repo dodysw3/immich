@@ -163,7 +163,8 @@ export class MediaService extends BaseService {
       return JobStatus.Failed;
     }
 
-    if (asset.visibility === AssetVisibility.Hidden) {
+    // Skip hidden assets UNLESS they are PDF pages (which need thumbnails for the PDF viewer)
+    if (asset.visibility === AssetVisibility.Hidden && asset.type !== AssetType.PdfPage) {
       this.logger.verbose(`Thumbnail generation skipped for asset ${id}: not visible`);
       return JobStatus.Skipped;
     }
@@ -177,7 +178,7 @@ export class MediaService extends BaseService {
     if (asset.type === AssetType.Video || asset.originalFileName.toLowerCase().endsWith('.gif')) {
       this.logger.verbose(`Thumbnail generation for video ${id} ${asset.originalPath}`);
       generated = await this.generateVideoThumbnails(asset);
-    } else if (asset.type === AssetType.Image) {
+    } else if (asset.type === AssetType.Image || asset.type === AssetType.PdfPage) {
       this.logger.verbose(`Thumbnail generation for image ${id} ${asset.originalPath}`);
       generated = await this.generateImageThumbnails(asset);
     } else {
