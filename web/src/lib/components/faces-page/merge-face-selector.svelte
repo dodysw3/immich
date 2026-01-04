@@ -30,12 +30,12 @@
   let hasSelection = $derived(selectedPeople.length > 0);
   let peopleToNotShow = $derived([...selectedPeople, person]);
 
-  const handleSearch = async (sortFaces: boolean = false) => {
+  const handleSearch = async (sortFaces: boolean = true) => {
     const data = await getAllPeople({ withHidden: false, closestPersonId: sortFaces ? person.id : undefined });
     people = data.people;
   };
 
-  onMount(handleSearch);
+  onMount(() => handleSearch(true));
 
   const handleSwapPeople = async () => {
     [person, selectedPeople[0]] = [selectedPeople[0], person];

@@ -1,10 +1,10 @@
 <script lang="ts">
   import SearchPeople from '$lib/components/faces-page/people-search.svelte';
   import { type PersonResponseDto } from '@immich/sdk';
+  import { Icon, IconButton } from '@immich/ui';
+  import { mdiChartLine, mdiSwapVertical } from '@mdi/js';
   import { t } from 'svelte-i18n';
   import FaceThumbnail from './face-thumbnail.svelte';
-  import { mdiSwapVertical } from '@mdi/js';
-  import { IconButton } from '@immich/ui';
 
   interface Props {
     screenHeight: number;
@@ -16,7 +16,8 @@
 
   let { screenHeight, people, peopleToNotShow, onSelect, handleSearch }: Props = $props();
   let searchedPeopleLocal: PersonResponseDto[] = $state([]);
-  let sortBySimilarirty = $state(false);
+  let sortBySimilarirty = $state(true);
+  let showDistance = $state(false);
   let name = $state('');
 
   const showPeople = $derived(
@@ -34,14 +35,22 @@
   {#if handleSearch}
     <IconButton
       shape="round"
-      color="secondary"
-      variant="ghost"
+      color={sortBySimilarirty ? 'primary' : 'secondary'}
+      variant={sortBySimilarirty ? 'filled' : 'ghost'}
       icon={mdiSwapVertical}
       onclick={() => {
         sortBySimilarirty = !sortBySimilarirty;
         handleSearch(sortBySimilarirty);
       }}
       aria-label={$t('sort_people_by_similarity')}
+    />
+    <IconButton
+      shape="round"
+      color={showDistance ? 'primary' : 'secondary'}
+      variant={showDistance ? 'filled' : 'ghost'}
+      icon={mdiChartLine}
+      onclick={() => (showDistance = !showDistance)}
+      aria-label={$t('show_distance')}
     />
   {/if}
 </div>
@@ -52,7 +61,7 @@
 >
   <div class="grid-col-2 grid gap-8 md:grid-cols-3 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10">
     {#each showPeople as person (person.id)}
-      <FaceThumbnail {person} onClick={() => onSelect(person)} circle border selectable />
+      <FaceThumbnail {person} onClick={() => onSelect(person)} circle border selectable {showDistance} />
     {/each}
   </div>
 </div>

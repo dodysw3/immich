@@ -117,6 +117,8 @@ export class PersonResponseDto {
   isFavorite?: boolean;
   @Property({ history: new HistoryBuilder().added('v1.126.0').stable('v2') })
   color?: string;
+  /** Distance from reference face (only present when sorting by similarity) */
+  distance?: number;
 }
 
 export class PersonWithFacesResponseDto extends PersonResponseDto {
@@ -220,7 +222,7 @@ export class PeopleResponseDto {
   hasNextPage?: boolean;
 }
 
-export function mapPerson(person: Person): PersonResponseDto {
+export function mapPerson(person: Person & { distance?: number }): PersonResponseDto {
   return {
     id: person.id,
     name: person.name,
@@ -230,6 +232,7 @@ export function mapPerson(person: Person): PersonResponseDto {
     isFavorite: person.isFavorite,
     color: person.color ?? undefined,
     updatedAt: person.updatedAt,
+    distance: person.distance,
   };
 }
 

@@ -10,6 +10,7 @@
     thumbnailSize?: number | null;
     circle?: boolean;
     border?: boolean;
+    showDistance?: boolean;
     onClick?: (person: PersonResponseDto) => void;
   }
 
@@ -20,6 +21,7 @@
     thumbnailSize = null,
     circle = false,
     border = false,
+    showDistance = false,
     onClick = () => {},
   }: Props = $props();
 </script>
@@ -64,5 +66,13 @@
     >
       {person.name}
     </span>
+  {/if}
+
+  {#if showDistance && person.distance !== undefined}
+    <div
+      class="absolute top-1 end-1 bg-black/75 text-white text-xs px-1.5 py-0.5 rounded font-mono pointer-events-none"
+    >
+      {person.distance.toFixed(4)}
+    </div>
   {/if}
 </button>

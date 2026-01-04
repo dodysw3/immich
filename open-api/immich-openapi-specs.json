@@ -18095,6 +18095,10 @@
             ],
             "x-immich-state": "Stable"
           },
+          "distance": {
+            "description": "Distance from reference face (only present when sorting by similarity)",
+            "type": "number"
+          },
           "id": {
             "type": "string"
           },
@@ -18208,6 +18212,10 @@
               }
             ],
             "x-immich-state": "Stable"
+          },
+          "distance": {
+            "description": "Distance from reference face (only present when sorting by similarity)",
+            "type": "number"
           },
           "faces": {
             "items": {

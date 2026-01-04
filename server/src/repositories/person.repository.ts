@@ -151,6 +151,16 @@ export class PersonRepository {
     const items = await this.db
       .selectFrom('person')
       .selectAll('person')
+      .$if(!!options?.closestFaceAssetId, (qb) =>
+        qb.select(
+          sql<number>`(
+            SELECT face_search.embedding <=> (
+              SELECT face_search.embedding FROM face_search WHERE face_search."faceId" = ${options!.closestFaceAssetId!}
+            )
+            FROM face_search WHERE face_search."faceId" = person."faceAssetId"
+          )`.as('distance'),
+        ),
+      )
       .innerJoin('asset_face', 'asset_face.personId', 'person.id')
       .innerJoin('asset', (join) =>
         join

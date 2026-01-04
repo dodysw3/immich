@@ -15,6 +15,7 @@ class PersonWithFacesResponseDto {
   PersonWithFacesResponseDto({
     required this.birthDate,
     this.color,
+    this.distance,
     this.faces = const [],
     required this.id,
     this.isFavorite,
@@ -33,6 +34,15 @@ class PersonWithFacesResponseDto {
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
   String? color;
+
+  /// Distance from reference face (only present when sorting by similarity)
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  num? distance;
 
   List<AssetFaceWithoutPersonResponseDto> faces;
 
@@ -64,6 +74,7 @@ class PersonWithFacesResponseDto {
   bool operator ==(Object other) => identical(this, other) || other is PersonWithFacesResponseDto &&
     other.birthDate == birthDate &&
     other.color == color &&
+    other.distance == distance &&
     _deepEquality.equals(other.faces, faces) &&
     other.id == id &&
     other.isFavorite == isFavorite &&
@@ -77,6 +88,7 @@ class PersonWithFacesResponseDto {
     // ignore: unnecessary_parenthesis
     (birthDate == null ? 0 : birthDate!.hashCode) +
     (color == null ? 0 : color!.hashCode) +
+    (distance == null ? 0 : distance!.hashCode) +
     (faces.hashCode) +
     (id.hashCode) +
     (isFavorite == null ? 0 : isFavorite!.hashCode) +
@@ -86,7 +98,7 @@ class PersonWithFacesResponseDto {
     (updatedAt == null ? 0 : updatedAt!.hashCode);
 
   @override
-  String toString() => 'PersonWithFacesResponseDto[birthDate=$birthDate, color=$color, faces=$faces, id=$id, isFavorite=$isFavorite, isHidden=$isHidden, name=$name, thumbnailPath=$thumbnailPath, updatedAt=$updatedAt]';
+  String toString() => 'PersonWithFacesResponseDto[birthDate=$birthDate, color=$color, distance=$distance, faces=$faces, id=$id, isFavorite=$isFavorite, isHidden=$isHidden, name=$name, thumbnailPath=$thumbnailPath, updatedAt=$updatedAt]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -99,6 +111,11 @@ class PersonWithFacesResponseDto {
       json[r'color'] = this.color;
     } else {
     //  json[r'color'] = null;
+    }
+    if (this.distance != null) {
+      json[r'distance'] = this.distance;
+    } else {
+    //  json[r'distance'] = null;
     }
       json[r'faces'] = this.faces;
       json[r'id'] = this.id;
@@ -129,6 +146,7 @@ class PersonWithFacesResponseDto {
       return PersonWithFacesResponseDto(
         birthDate: mapDateTime(json, r'birthDate', r''),
         color: mapValueOfType<String>(json, r'color'),
+        distance: num.parse('${json[r'distance']}'),
         faces: AssetFaceWithoutPersonResponseDto.listFromJson(json[r'faces']),
         id: mapValueOfType<String>(json, r'id')!,
         isFavorite: mapValueOfType<bool>(json, r'isFavorite'),

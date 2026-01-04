@@ -312,6 +312,8 @@ export type AssetFaceWithoutPersonResponseDto = {
 export type PersonWithFacesResponseDto = {
     birthDate: string | null;
     color?: string;
+    /** Distance from reference face (only present when sorting by similarity) */
+    distance?: number;
     faces: AssetFaceWithoutPersonResponseDto[];
     id: string;
     isFavorite?: boolean;
@@ -677,6 +679,8 @@ export type DuplicateResponseDto = {
 export type PersonResponseDto = {
     birthDate: string | null;
     color?: string;
+    /** Distance from reference face (only present when sorting by similarity) */
+    distance?: number;
     id: string;
     isFavorite?: boolean;
     isHidden: boolean;
