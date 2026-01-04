@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { JOBS_ASSET_PAGINATION_SIZE } from 'src/constants';
 import { OnJob } from 'src/decorators';
-import { AssetVisibility, JobName, JobStatus, QueueName } from 'src/enum';
+import { AssetType, AssetVisibility, JobName, JobStatus, QueueName } from 'src/enum';
 import { OCR } from 'src/repositories/machine-learning.repository';
 import { BaseService } from 'src/services/base.service';
 import { JobItem, JobOf } from 'src/types';
@@ -49,7 +49,8 @@ export class OcrService extends BaseService {
       return JobStatus.Failed;
     }
 
-    if (asset.visibility === AssetVisibility.Hidden) {
+    // Skip hidden assets UNLESS they are PDF pages (which need OCR for text search)
+    if (asset.visibility === AssetVisibility.Hidden && asset.type !== AssetType.PdfPage) {
       return JobStatus.Skipped;
     }
 

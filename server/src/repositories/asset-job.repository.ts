@@ -153,7 +153,10 @@ export class AssetJobRepository {
   private assetsWithPreviews() {
     return this.db
       .selectFrom('asset')
-      .where('asset.visibility', '!=', AssetVisibility.Hidden)
+      // Include non-hidden assets OR PDF pages (which are hidden but need ML processing)
+      .where((eb) =>
+        eb.or([eb('asset.visibility', '!=', AssetVisibility.Hidden), eb('asset.type', '=', AssetType.PdfPage)]),
+      )
       .where('asset.deletedAt', 'is', null)
       .innerJoin('asset_job_status as job_status', 'assetId', 'asset.id')
       .where('job_status.previewAt', 'is not', null);
@@ -189,7 +192,7 @@ export class AssetJobRepository {
   getForClipEncoding(id: string) {
     return this.db
       .selectFrom('asset')
-      .select(['asset.id', 'asset.visibility'])
+      .select(['asset.id', 'asset.visibility', 'asset.type'])
       .select((eb) => withFiles(eb, AssetFileType.Preview))
       .where('asset.id', '=', id)
       .executeTakeFirst();
@@ -199,7 +202,7 @@ export class AssetJobRepository {
   getForDetectFacesJob(id: string) {
     return this.db
       .selectFrom('asset')
-      .select(['asset.id', 'asset.visibility'])
+      .select(['asset.id', 'asset.visibility', 'asset.type'])
       .$call(withExifInner)
       .select((eb) => withFaces(eb, true))
       .select((eb) => withFiles(eb, AssetFileType.Preview))
@@ -211,7 +214,7 @@ export class AssetJobRepository {
   getForOcr(id: string) {
     return this.db
       .selectFrom('asset')
-      .select((eb) => ['asset.visibility', withFilePath(eb, AssetFileType.Preview).as('previewFile')])
+      .select((eb) => ['asset.visibility', 'asset.type', withFilePath(eb, AssetFileType.Preview).as('previewFile')])
       .where('asset.id', '=', id)
       .executeTakeFirst();
   }
@@ -393,7 +396,10 @@ export class AssetJobRepository {
           .where('asset_job_status.ocrAt', 'is', null),
       )
       .where('asset.deletedAt', 'is', null)
-      .where('asset.visibility', '!=', AssetVisibility.Hidden)
+      // Include non-hidden assets OR PDF pages (which are hidden but need OCR for text search)
+      .where((eb) =>
+        eb.or([eb('asset.visibility', '!=', AssetVisibility.Hidden), eb('asset.type', '=', AssetType.PdfPage)]),
+      )
       .stream();
   }
 

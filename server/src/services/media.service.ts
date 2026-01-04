@@ -294,6 +294,9 @@ export class MediaService extends BaseService {
     this.logger.verbose(`Processing PDF ${id} ${asset.originalPath}`);
 
     try {
+      // Delete existing PDF pages before regenerating
+      await this.deleteExistingPdfPages(id);
+
       const { exec } = await import('node:child_process');
       const { promisify } = await import('node:util');
       const execAsync = promisify(exec);
@@ -425,10 +428,10 @@ export class MediaService extends BaseService {
           { lockedPropertiesBehavior: 'override' },
         );
 
-        // Queue thumbnail generation for this page
+        // Queue thumbnail generation for this page with source: 'upload' to trigger ML jobs (OCR, face detection, smart search)
         await this.jobRepository.queue({
           name: JobName.AssetGenerateThumbnails,
-          data: { id: pageAsset.id },
+          data: { id: pageAsset.id, source: 'upload' },
         });
 
         this.logger.verbose(`Created PDF_PAGE asset ${pageAsset.id} for page ${pageIndex + 1} of PDF ${pdfId}`);
@@ -460,6 +463,49 @@ export class MediaService extends BaseService {
         },
       ]);
     }
+  }
+
+  private async deleteExistingPdfPages(pdfId: string) {
+    const existingPages = await this.assetRepository.getByParentId(pdfId);
+
+    if (existingPages.length === 0) {
+      return;
+    }
+
+    this.logger.verbose(`Deleting ${existingPages.length} existing PDF page(s) for PDF ${pdfId}`);
+
+    // Collect all files to delete
+    const filesToDelete: string[] = [];
+
+    for (const page of existingPages) {
+      // Add original file path
+      if (page.originalPath) {
+        filesToDelete.push(page.originalPath);
+      }
+
+      // Get associated files (thumbnails, previews)
+      const files = await this.assetRepository.getById(page.id, { files: true });
+      if (files?.files) {
+        for (const file of files.files) {
+          if (file.path) {
+            filesToDelete.push(file.path);
+          }
+        }
+      }
+
+      // Delete the asset from database
+      await this.assetRepository.remove({ id: page.id });
+    }
+
+    // Queue file deletion job
+    if (filesToDelete.length > 0) {
+      await this.jobRepository.queue({
+        name: JobName.FileDelete,
+        data: { files: filesToDelete },
+      });
+    }
+
+    this.logger.verbose(`Deleted ${existingPages.length} existing PDF page(s) and queued deletion for ${filesToDelete.length} file(s)`);
   }
 
   private async extractImage(originalPath: string, minSize: number) {

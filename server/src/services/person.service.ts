@@ -23,6 +23,7 @@ import {
   PersonUpdateDto,
 } from 'src/dtos/person.dto';
 import {
+  AssetType,
   AssetVisibility,
   CacheControl,
   JobName,
@@ -311,7 +312,8 @@ export class PersonService extends BaseService {
       return JobStatus.Failed;
     }
 
-    if (asset.visibility === AssetVisibility.Hidden) {
+    // Skip hidden assets UNLESS they are PDF pages (which need face detection for people search)
+    if (asset.visibility === AssetVisibility.Hidden && asset.type !== AssetType.PdfPage) {
       return JobStatus.Skipped;
     }
 
