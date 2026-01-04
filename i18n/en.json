@@ -1733,6 +1733,8 @@
   "refreshing_encoded_video": "Refreshing encoded video",
   "refreshing_faces": "Refreshing faces",
   "refreshing_metadata": "Refreshing metadata",
+  "regenerate_pdf": "Regenerate PDF pages",
+  "regenerating_pdf": "Regenerating PDF pages",
   "regenerating_thumbnails": "Regenerating thumbnails",
   "remote": "Remote",
   "remote_assets": "Remote Assets",

@@ -24,7 +24,13 @@ import {
   type UserResponseDto,
 } from '@immich/sdk';
 import { toastManager } from '@immich/ui';
-import { mdiCogRefreshOutline, mdiDatabaseRefreshOutline, mdiHeadSyncOutline, mdiImageRefreshOutline } from '@mdi/js';
+import {
+  mdiCogRefreshOutline,
+  mdiDatabaseRefreshOutline,
+  mdiFileRefreshOutline,
+  mdiHeadSyncOutline,
+  mdiImageRefreshOutline,
+} from '@mdi/js';
 import { init, register, t } from 'svelte-i18n';
 import { derived, get } from 'svelte/store';
 
@@ -228,6 +234,7 @@ export const getAssetJobName = derived(t, ($t) => {
       [AssetJobName.RefreshMetadata]: $t('refresh_metadata'),
       [AssetJobName.RegenerateThumbnail]: $t('refresh_thumbnails'),
       [AssetJobName.TranscodeVideo]: $t('refresh_encoded_videos'),
+      [AssetJobName.RegeneratePdf]: $t('regenerate_pdf'),
     };
 
     return names[job];
@@ -241,6 +248,7 @@ export const getAssetJobMessage = derived(t, ($t) => {
       [AssetJobName.RefreshMetadata]: $t('refreshing_metadata'),
       [AssetJobName.RegenerateThumbnail]: $t('regenerating_thumbnails'),
       [AssetJobName.TranscodeVideo]: $t('refreshing_encoded_video'),
+      [AssetJobName.RegeneratePdf]: $t('regenerating_pdf'),
     };
 
     return messages[job];
@@ -253,6 +261,7 @@ export const getAssetJobIcon = (job: AssetJobName) => {
     [AssetJobName.RefreshMetadata]: mdiDatabaseRefreshOutline,
     [AssetJobName.RegenerateThumbnail]: mdiImageRefreshOutline,
     [AssetJobName.TranscodeVideo]: mdiCogRefreshOutline,
+    [AssetJobName.RegeneratePdf]: mdiFileRefreshOutline,
   };
 
   return names[job];

@@ -561,6 +561,11 @@ export class AssetService extends BaseService {
           jobs.push({ name: JobName.AssetEncodeVideo, data: { id } });
           break;
         }
+
+        case AssetJobName.REGENERATE_PDF: {
+          jobs.push({ name: JobName.AssetPdfConversion, data: { id } });
+          break;
+        }
       }
     }
 

@@ -15594,7 +15594,8 @@
           "refresh-faces",
           "refresh-metadata",
           "regenerate-thumbnail",
-          "transcode-video"
+          "transcode-video",
+          "regenerate-pdf"
         ],
         "type": "string"
       },

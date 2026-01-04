@@ -49,6 +49,7 @@
     mdiContentCopy,
     mdiDatabaseRefreshOutline,
     mdiDotsVertical,
+    mdiFileRefreshOutline,
     mdiHeadSyncOutline,
     mdiImageRefreshOutline,
     mdiImageSearch,
@@ -280,6 +281,13 @@
               icon={mdiCogRefreshOutline}
               onClick={() => onRunJob(AssetJobName.TranscodeVideo)}
               text={$getAssetJobName(AssetJobName.TranscodeVideo)}
+            />
+          {/if}
+          {#if asset.type === ('PDF' as AssetTypeEnum)}
+            <MenuOption
+              icon={mdiFileRefreshOutline}
+              onClick={() => onRunJob(AssetJobName.RegeneratePdf)}
+              text={$getAssetJobName(AssetJobName.RegeneratePdf)}
             />
           {/if}
         {/if}

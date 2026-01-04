@@ -5458,7 +5458,8 @@ export enum AssetJobName {
     RefreshFaces = "refresh-faces",
     RefreshMetadata = "refresh-metadata",
     RegenerateThumbnail = "regenerate-thumbnail",
-    TranscodeVideo = "transcode-video"
+    TranscodeVideo = "transcode-video",
+    RegeneratePdf = "regenerate-pdf"
 }
 export enum Status {
     Processing = "processing",
