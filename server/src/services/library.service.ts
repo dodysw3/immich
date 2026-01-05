@@ -257,11 +257,20 @@ export class LibraryService extends BaseService {
     );
 
     const assetIds: string[] = [];
+    const pdfAssetIds: string[] = [];
 
     for (let i = 0; i < assetImports.length; i += 5000) {
       // Chunk the imports to avoid the postgres limit of max parameters at once
       const chunk = assetImports.slice(i, i + 5000);
-      await this.assetRepository.createAll(chunk).then((assets) => assetIds.push(...assets.map((asset) => asset.id)));
+      const createdAssets = await this.assetRepository.createAll(chunk);
+      assetIds.push(...createdAssets.map((asset) => asset.id));
+
+      // Track PDF assets for PDF conversion job
+      for (let j = 0; j < chunk.length && j < createdAssets.length; j++) {
+        if (chunk[j].type === AssetType.Pdf) {
+          pdfAssetIds.push(createdAssets[j].id);
+        }
+      }
     }
 
     const progressMessage =
@@ -272,6 +281,17 @@ export class LibraryService extends BaseService {
     this.logger.log(`Imported ${assetIds.length} ${progressMessage} file(s) into library ${job.libraryId}`);
 
     await this.queuePostSyncJobs(assetIds);
+
+    // Queue PDF conversion jobs for PDF files (same as upload path)
+    if (pdfAssetIds.length > 0) {
+      this.logger.log(`Queuing PDF conversion for ${pdfAssetIds.length} PDF file(s) in library ${job.libraryId}`);
+      await this.jobRepository.queueAll(
+        pdfAssetIds.map((id) => ({
+          name: JobName.AssetPdfConversion,
+          data: { id },
+        })),
+      );
+    }
 
     return JobStatus.Success;
   }
@@ -408,7 +428,7 @@ export class LibraryService extends BaseService {
       // TODO: device asset id is deprecated, remove it
       deviceAssetId: `${basename(assetPath)}`.replaceAll(/\s+/g, ''),
       deviceId: 'Library Import',
-      type: mimeTypes.isVideo(assetPath) ? AssetType.Video : AssetType.Image,
+      type: mimeTypes.assetType(assetPath),
       originalFileName: parse(assetPath).base,
       isExternal: true,
       livePhotoVideoId: null,

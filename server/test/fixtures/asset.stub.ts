@@ -267,6 +267,7 @@ export const assetStub = {
     height: 3840,
     width: 2160,
     visibility: AssetVisibility.Timeline,
+    parentId: null,
   }),
 
   trashed: Object.freeze({

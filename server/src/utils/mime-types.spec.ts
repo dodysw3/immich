@@ -142,7 +142,9 @@ describe('mimeTypes', () => {
 
     it('should contain only image mime types', () => {
       const values = Object.values(mimeTypes.image).flat();
-      expect(values).toEqual(values.filter((mimeType) => mimeType.startsWith('image/')));
+      expect(values).toEqual(
+        values.filter((mimeType) => mimeType.startsWith('image/') || mimeType === 'application/pdf'),
+      );
     });
 
     for (const [extension, v] of Object.entries(mimeTypes.image)) {
