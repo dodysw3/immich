@@ -174,15 +174,16 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div
-  class="pdf-viewer flex h-full w-full flex-col select-none"
-  transition:fade={{ duration: assetViewerFadeDuration }}
+<svelte:document
   use:shortcuts={[
-    { shortcut: { key: 'ArrowRight' }, onShortcut: nextPage },
-    { shortcut: { key: 'ArrowLeft' }, onShortcut: previousPage },
     { shortcut: { key: 'f', shift: true }, onShortcut: toggleFaceOverlay, preventDefault: true },
     { shortcut: { key: 't', shift: true }, onShortcut: toggleOcrOverlay, preventDefault: true },
   ]}
+/>
+
+<div
+  class="pdf-viewer flex h-full w-full flex-col select-none"
+  transition:fade={{ duration: assetViewerFadeDuration }}
 >
   {#if loading}
     <div class="flex h-full items-center justify-center">
