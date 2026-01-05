@@ -118,9 +118,16 @@ export class TimeBucketAssetResponseDto {
   @ApiProperty({
     type: 'array',
     items: { type: 'boolean' },
-    description: 'Array indicating whether each asset is an image (false for videos)',
+    description: 'Array indicating whether each asset is an image',
   })
   isImage!: boolean[];
+
+  @ApiProperty({
+    type: 'array',
+    items: { type: 'boolean' },
+    description: 'Array indicating whether each asset is a video',
+  })
+  isVideo!: boolean[];
 
   @ApiProperty({
     type: 'array',

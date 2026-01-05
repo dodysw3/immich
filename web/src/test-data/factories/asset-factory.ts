@@ -60,6 +60,7 @@ export const toResponseDto = (...timelineAsset: TimelineAsset[]) => {
     visibility: [],
     isFavorite: [],
     isImage: [],
+    isVideo: [],
     isTrashed: [],
     livePhotoVideoId: [],
     fileCreatedAt: [],
@@ -79,9 +80,11 @@ export const toResponseDto = (...timelineAsset: TimelineAsset[]) => {
     bucketAssets.visibility.push(asset.visibility);
     bucketAssets.isFavorite.push(asset.isFavorite);
     bucketAssets.isImage.push(asset.isImage);
+    bucketAssets.isVideo.push(asset.isVideo);
     bucketAssets.isTrashed.push(asset.isTrashed);
     bucketAssets.livePhotoVideoId.push(asset.livePhotoVideoId!);
     bucketAssets.fileCreatedAt.push(fileCreatedAt);
+    bucketAssets.localOffsetHours.push(0);
     bucketAssets.ownerId.push(asset.ownerId);
     bucketAssets.projectionType.push(asset.projectionType!);
     bucketAssets.ratio.push(asset.ratio);

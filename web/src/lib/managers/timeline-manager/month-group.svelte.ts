@@ -174,7 +174,7 @@ export class MonthGroup {
         isFavorite: bucketAssets.isFavorite[i],
         isImage: bucketAssets.isImage[i],
         isTrashed: bucketAssets.isTrashed[i],
-        isVideo: !bucketAssets.isImage[i],
+        isVideo: bucketAssets.isVideo[i],
         livePhotoVideoId: bucketAssets.livePhotoVideoId[i],
         localDateTime,
         fileCreatedAt,

@@ -22710,7 +22710,7 @@
             "type": "array"
           },
           "isImage": {
-            "description": "Array indicating whether each asset is an image (false for videos)",
+            "description": "Array indicating whether each asset is an image",
             "items": {
               "type": "boolean"
             },
@@ -22718,6 +22718,13 @@
           },
           "isTrashed": {
             "description": "Array indicating whether each asset is in the trash",
+            "items": {
+              "type": "boolean"
+            },
+            "type": "array"
+          },
+          "isVideo": {
+            "description": "Array indicating whether each asset is a video",
             "items": {
               "type": "boolean"
             },
@@ -22814,6 +22821,7 @@
           "isFavorite",
           "isImage",
           "isTrashed",
+          "isVideo",
           "livePhotoVideoId",
           "localOffsetHours",
           "ownerId",

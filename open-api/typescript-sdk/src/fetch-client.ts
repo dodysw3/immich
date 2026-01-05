@@ -1710,10 +1710,12 @@ export type TimeBucketAssetResponseDto = {
     id: string[];
     /** Array indicating whether each asset is favorited */
     isFavorite: boolean[];
-    /** Array indicating whether each asset is an image (false for videos) */
+    /** Array indicating whether each asset is an image */
     isImage: boolean[];
     /** Array indicating whether each asset is in the trash */
     isTrashed: boolean[];
+    /** Array indicating whether each asset is a video */
+    isVideo: boolean[];
     /** Array of latitude coordinates extracted from EXIF GPS data */
     latitude?: (number | null)[];
     /** Array of live photo video asset IDs (null for non-live photos) */
