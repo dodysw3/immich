@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { AppRoute, QueryParameter } from '$lib/constants';
+  import { Route } from '$lib/route';
   import type { FaceBoundingBox } from '$lib/utils/people-utils';
 
   type Props = {
@@ -15,7 +15,7 @@
   const handleClick = () => {
     if (faceBox.personId) {
       const previousRoute = $page.url.pathname;
-      goto(`${AppRoute.PEOPLE}/${faceBox.personId}?at=${assetId}&${QueryParameter.PREVIOUS_ROUTE}=${previousRoute}`);
+      goto(`${Route.viewPerson({ id: faceBox.personId }, { previousRoute })}?at=${assetId}`);
     }
   };
 </script>
