@@ -200,7 +200,7 @@ export function withFiles(eb: ExpressionBuilder<DB, 'asset'>, type?: AssetFileTy
       .select(columns.assetFiles)
       .whereRef('asset_file.assetId', '=', 'asset.id')
       .$if(!!type, (qb) => qb.where('asset_file.type', '=', type!))
-      .$if(!!preferEdited, (qb) => qb.orderBy('asset_file.isEdited', 'desc')),
+      .$if(!!preferEdited, (qb) => qb.orderBy('asset_file.isEdited', 'desc').limit(1)),
   ).as('files');
 }
 

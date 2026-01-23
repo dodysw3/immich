@@ -182,7 +182,7 @@ export class AssetJobRepository {
     return this.db
       .selectFrom('asset')
       .select(['asset.id', 'asset.visibility'])
-      .select((eb) => withFiles(eb, AssetFileType.Preview))
+      .select((eb) => withFiles(eb, AssetFileType.Preview, true))
       .where('asset.id', '=', id)
       .executeTakeFirst();
   }
