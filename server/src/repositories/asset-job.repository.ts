@@ -15,8 +15,6 @@ import {
   withExifInner,
   withFaces,
   withFacesAndPeople,
-  withEditedFilePath,
-  withEditedFiles,
   withFilePath,
   withFiles,
 } from 'src/utils/database';
@@ -184,7 +182,7 @@ export class AssetJobRepository {
     return this.db
       .selectFrom('asset')
       .select(['asset.id', 'asset.visibility'])
-      .select((eb) => withEditedFiles(eb, AssetFileType.Preview))
+      .select((eb) => withFiles(eb, AssetFileType.Preview, true))
       .where('asset.id', '=', id)
       .executeTakeFirst();
   }
@@ -196,7 +194,7 @@ export class AssetJobRepository {
       .select(['asset.id', 'asset.visibility'])
       .$call(withExifInner)
       .select((eb) => withFaces(eb, true, true))
-      .select((eb) => withEditedFiles(eb, AssetFileType.Preview))
+      .select((eb) => withFiles(eb, AssetFileType.Preview, true))
       .where('asset.id', '=', id)
       .executeTakeFirst();
   }
@@ -205,7 +203,7 @@ export class AssetJobRepository {
   getForOcr(id: string) {
     return this.db
       .selectFrom('asset')
-      .select((eb) => ['asset.visibility', withEditedFilePath(eb, AssetFileType.Preview).as('previewFile')])
+      .select((eb) => ['asset.visibility', withFilePath(eb, AssetFileType.Preview, true).as('previewFile')])
       .where('asset.id', '=', id)
       .executeTakeFirst();
   }
