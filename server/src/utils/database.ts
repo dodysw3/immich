@@ -203,12 +203,42 @@ export function withFiles(eb: ExpressionBuilder<DB, 'asset'>, type?: AssetFileTy
   ).as('files');
 }
 
+/**
+ * Returns asset files, preferring edited versions when available.
+ * If an edited file exists (isEdited = true), it is returned first in the array.
+ * Otherwise, the original file is returned.
+ */
+export function withEditedFiles(eb: ExpressionBuilder<DB, 'asset'>, type: AssetFileType) {
+  return jsonArrayFrom(
+    eb
+      .selectFrom('asset_file')
+      .select(columns.assetFiles)
+      .whereRef('asset_file.assetId', '=', 'asset.id')
+      .where('asset_file.type', '=', type)
+      .orderBy('asset_file.isEdited', 'desc')  // Edited files first (isEdited=true comes before isEdited=false)
+      .limit(1),  // Only need the single best file (edited if exists, otherwise original)
+  ).as('files');
+}
+
 export function withFilePath(eb: ExpressionBuilder<DB, 'asset'>, type: AssetFileType) {
   return eb
     .selectFrom('asset_file')
     .select('asset_file.path')
     .whereRef('asset_file.assetId', '=', 'asset.id')
     .where('asset_file.type', '=', type);
+}
+
+/**
+ * Returns the file path for an asset file, preferring edited versions when available.
+ */
+export function withEditedFilePath(eb: ExpressionBuilder<DB, 'asset'>, type: AssetFileType) {
+  return eb
+    .selectFrom('asset_file')
+    .select('asset_file.path')
+    .whereRef('asset_file.assetId', '=', 'asset.id')
+    .where('asset_file.type', '=', type)
+    .orderBy('asset_file.isEdited', 'desc')  // Edited files first
+    .limit(1);
 }
 
 export function withFacesAndPeople(
