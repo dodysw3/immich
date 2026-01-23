@@ -1,6 +1,6 @@
 import type { Faces } from '$lib/stores/people.store';
 import type { FaceBox } from '$lib/stores/face-manager.svelte';
-import { getAssetThumbnailUrl } from '$lib/utils';
+import { getAssetMediaUrl } from '$lib/utils';
 import { AssetTypeEnum, type AssetFaceResponseDto } from '@immich/sdk';
 import type { ZoomImageWheelState } from '@zoom-image/core';
 
@@ -150,7 +150,7 @@ export const zoomImageToBase64 = async (
   if (assetType === AssetTypeEnum.Image) {
     image = photoViewer;
   } else if (assetType === AssetTypeEnum.Video) {
-    const data = getAssetThumbnailUrl(assetId);
+    const data = getAssetMediaUrl({ id: assetId });
     const img: HTMLImageElement = new Image();
     img.src = data;
 
