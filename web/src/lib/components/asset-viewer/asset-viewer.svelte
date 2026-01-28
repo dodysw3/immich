@@ -438,7 +438,7 @@
   const showFaceButton = $derived(
     $slideshowState === SlideshowState.None &&
       asset.type === AssetTypeEnum.Image &&
-      !isShowEditor &&
+      !assetViewerManager.isShowEditor &&
       faceManager.hasFaceData,
   );
 </script>
