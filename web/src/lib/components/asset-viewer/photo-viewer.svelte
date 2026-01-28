@@ -1,21 +1,32 @@
 <script lang="ts">
+  // Actions
   import { shortcuts } from '$lib/actions/shortcut';
   import { zoomImageAction } from '$lib/actions/zoom-image';
+
+  // Components
   import FaceEditor from '$lib/components/asset-viewer/face-editor/face-editor.svelte';
   import FaceBoundingBox from '$lib/components/asset-viewer/face-bounding-box.svelte';
   import OcrBoundingBox from '$lib/components/asset-viewer/ocr-bounding-box.svelte';
   import BrokenAsset from '$lib/components/assets/broken-asset.svelte';
   import AssetViewerEvents from '$lib/components/AssetViewerEvents.svelte';
+
+  // Constants
   import { assetViewerFadeDuration } from '$lib/constants';
+
+  // Managers
   import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
   import { castManager } from '$lib/managers/cast-manager.svelte';
   import { imageManager } from '$lib/managers/ImageManager.svelte';
+
+  // Stores
   import { photoViewerImgElement } from '$lib/stores/assets-store.svelte';
   import { faceManager } from '$lib/stores/face-manager.svelte';
   import { isFaceEditMode } from '$lib/stores/face-edit.svelte';
   import { ocrManager } from '$lib/stores/ocr.svelte';
   import { boundingBoxesArray } from '$lib/stores/people.store';
   import { SlideshowLook, SlideshowState, slideshowLookCssMapping, slideshowStore } from '$lib/stores/slideshow.store';
+
+  // Utils
   import { getAssetUrl, targetImageSize as getTargetImageSize, handlePromiseError } from '$lib/utils';
   import { canCopyImageToClipboard, copyImageToClipboard } from '$lib/utils/asset-utils';
   import { handleError } from '$lib/utils/handle-error';
@@ -23,12 +34,19 @@
   import { getBoundingBox, getFaceBoundingBoxes } from '$lib/utils/people-utils';
   import { getAltText } from '$lib/utils/thumbnail-util';
   import { toTimelineAsset } from '$lib/utils/timeline-util';
+
+  // External packages
   import { AssetMediaSize, type SharedLinkResponseDto } from '@immich/sdk';
   import { LoadingSpinner, toastManager } from '@immich/ui';
-  import { onDestroy, untrack } from 'svelte';
   import { useSwipe, type SwipeCustomEvent } from 'svelte-gestures';
   import { t } from 'svelte-i18n';
+
+  // Svelte
+  import { onDestroy, untrack } from 'svelte';
   import { fade } from 'svelte/transition';
+
+  // Local
+  import { getCoreShortcuts, getFeatureShortcuts } from './photo-viewer-shortcuts';
   import type { AssetCursor } from './asset-viewer.svelte';
 
   interface Props {
@@ -177,13 +195,13 @@
   let containerWidth = $state(0);
   let containerHeight = $state(0);
 
-  const toggleFaceBoxes = () => {
-    faceManager.toggleFaceBoundingBox();
-  };
+  const toggleFaceBoxes = () => faceManager.toggleFaceBoundingBox();
+  const toggleOcrBoxes = () => ocrManager.toggleOcrBoundingBox();
 
-  const toggleOcrBoxes = () => {
-    ocrManager.toggleOcrBoundingBox();
-  };
+  const shortcutBindings = $derived([
+    ...getCoreShortcuts({ onZoom, onPlaySlideshow, onCopyShortcut }),
+    ...getFeatureShortcuts({ toggleFaceBoxes, toggleOcrBoxes }),
+  ]);
 
   let lastUrl: string | undefined;
 
@@ -201,16 +219,7 @@
 
 <AssetViewerEvents {onCopy} {onZoom} />
 
-<svelte:document
-  use:shortcuts={[
-    { shortcut: { key: 'z' }, onShortcut: onZoom, preventDefault: true },
-    { shortcut: { key: 's' }, onShortcut: onPlaySlideshow, preventDefault: true },
-    { shortcut: { key: 'c', ctrl: true }, onShortcut: onCopyShortcut, preventDefault: false },
-    { shortcut: { key: 'c', meta: true }, onShortcut: onCopyShortcut, preventDefault: false },
-    { shortcut: { key: 'f', shift: true }, onShortcut: toggleFaceBoxes, preventDefault: true },
-    { shortcut: { key: 't', shift: true }, onShortcut: toggleOcrBoxes, preventDefault: true },
-  ]}
-/>
+<svelte:document use:shortcuts={shortcutBindings} />
 {#if imageError}
   <div id="broken-asset" class="h-full w-full">
     <BrokenAsset class="text-xl h-full w-full" />
