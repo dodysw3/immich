@@ -19,7 +19,6 @@
   import { imageManager } from '$lib/managers/ImageManager.svelte';
 
   // Stores
-  import { photoViewerImgElement } from '$lib/stores/assets-store.svelte';
   import { faceManager } from '$lib/stores/face-manager.svelte';
   import { isFaceEditMode } from '$lib/stores/face-edit.svelte';
   import { ocrManager } from '$lib/stores/ocr.svelte';
@@ -95,8 +94,8 @@
   );
 
   let faceBoxes = $derived(
-    faceManager.showOverlay && !isFaceEditMode.value && $photoViewerImgElement
-      ? getFaceBoundingBoxes(faceManager.data, $photoZoomState, $photoViewerImgElement)
+    faceManager.showOverlay && !isFaceEditMode.value && assetViewerManager.imgRef
+      ? getFaceBoundingBoxes(faceManager.data, assetViewerManager.zoomState, assetViewerManager.imgRef)
       : [],
   );
 
