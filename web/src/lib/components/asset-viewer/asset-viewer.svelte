@@ -14,6 +14,7 @@
   import { eventManager } from '$lib/managers/event-manager.svelte';
   import { imageManager } from '$lib/managers/ImageManager.svelte';
   import { Route } from '$lib/route';
+  import { getAssetActions } from '$lib/services/asset.service';
   import { assetViewingStore } from '$lib/stores/asset-viewing.store';
   import { faceManager } from '$lib/stores/face-manager.svelte';
   import { ocrManager } from '$lib/stores/ocr.svelte';
@@ -37,6 +38,7 @@
     type PersonResponseDto,
     type StackResponseDto,
   } from '@immich/sdk';
+  import { CommandPaletteDefaultProvider } from '@immich/ui';
   import { onDestroy, onMount, untrack } from 'svelte';
   import { t } from 'svelte-i18n';
   import { fly } from 'svelte/transition';
@@ -176,6 +178,7 @@
     }
 
     activityManager.reset();
+    assetViewerManager.closeEditor();
   });
 
   const handleGetAllAlbums = async () => {
@@ -439,8 +442,9 @@
       !assetViewerManager.isShowEditor &&
       faceManager.hasFaceData,
   );
-</script>
+  const { Tag } = $derived(getAssetActions($t, asset));</script>
 
+<CommandPaletteDefaultProvider name={$t('assets')} actions={[Tag]} />
 <OnEvents {onAssetReplace} {onAssetUpdate} />
 
 <svelte:document bind:fullscreenElement />
