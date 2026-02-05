@@ -5,7 +5,9 @@
   import FaceBoundingBox from '$lib/components/asset-viewer/face-bounding-box.svelte';
   import OcrBoundingBox from '$lib/components/asset-viewer/ocr-bounding-box.svelte';
   import BrokenAsset from '$lib/components/assets/broken-asset.svelte';
+  import AssetViewerEvents from '$lib/components/AssetViewerEvents.svelte';
   import { assetViewerFadeDuration } from '$lib/constants';
+  import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
   import { castManager } from '$lib/managers/cast-manager.svelte';
   import { imageManager } from '$lib/managers/ImageManager.svelte';
   import { photoViewerImgElement } from '$lib/stores/assets-store.svelte';
@@ -14,7 +16,6 @@
   import { ocrManager } from '$lib/stores/ocr.svelte';
   import { boundingBoxesArray } from '$lib/stores/people.store';
   import { SlideshowLook, SlideshowState, slideshowLookCssMapping, slideshowStore } from '$lib/stores/slideshow.store';
-  import { photoZoomState } from '$lib/stores/zoom-image.store';
   import { getAssetUrl, targetImageSize as getTargetImageSize, handlePromiseError } from '$lib/utils';
   import { canCopyImageToClipboard, copyImageToClipboard } from '$lib/utils/asset-utils';
   import { handleError } from '$lib/utils/handle-error';
@@ -37,8 +38,6 @@
     sharedLink?: SharedLinkResponseDto | undefined;
     onPreviousAsset?: (() => void) | null;
     onNextAsset?: (() => void) | null;
-    copyImage?: () => Promise<void>;
-    zoomToggle?: (() => void) | null;
   }
 
   let {
@@ -48,8 +47,6 @@
     sharedLink = undefined,
     onPreviousAsset = null,
     onNextAsset = null,
-    copyImage = $bindable(),
-    zoomToggle = $bindable(),
   }: Props = $props();
 
   const { slideshowState, slideshowLook } = slideshowStore;
@@ -61,12 +58,9 @@
 
   let loader = $state<HTMLImageElement>();
 
-  photoZoomState.set({
-    currentRotation: 0,
-    currentZoom: 1,
-    enable: true,
-    currentPositionX: 0,
-    currentPositionY: 0,
+  $effect.pre(() => {
+    void asset.id;
+    untrack(() => assetViewerManager.resetZoomState());
   });
 
   onDestroy(() => {
@@ -74,8 +68,8 @@
   });
 
   let ocrBoxes = $derived(
-    ocrManager.showOverlay && $photoViewerImgElement
-      ? getOcrBoundingBoxes(ocrManager.data, $photoZoomState, $photoViewerImgElement)
+    ocrManager.showOverlay && assetViewerManager.imgRef
+      ? getOcrBoundingBoxes(ocrManager.data, assetViewerManager.zoomState, assetViewerManager.imgRef)
       : [],
   );
 
@@ -87,44 +81,43 @@
 
   let isOcrActive = $derived(ocrManager.showOverlay);
 
-  copyImage = async () => {
-    if (!canCopyImageToClipboard() || !$photoViewerImgElement) {
+  const onCopy = async () => {
+    if (!canCopyImageToClipboard() || !assetViewerManager.imgRef) {
       return;
     }
 
     try {
-      await copyImageToClipboard($photoViewerImgElement);
+      await copyImageToClipboard(assetViewerManager.imgRef);
       toastManager.info($t('copied_image_to_clipboard'));
     } catch (error) {
       handleError(error, $t('copy_error'));
     }
   };
 
-  zoomToggle = () => {
-    photoZoomState.set({
-      ...$photoZoomState,
-      currentZoom: $photoZoomState.currentZoom > 1 ? 1 : 2,
-    });
+  const onZoom = () => {
+    assetViewerManager.zoom = assetViewerManager.zoom > 1 ? 1 : 2;
   };
 
   const onPlaySlideshow = () => ($slideshowState = SlideshowState.PlaySlideshow);
 
   $effect(() => {
-    if (isFaceEditMode.value && $photoZoomState.currentZoom > 1) {
-      zoomToggle();
+    if (isFaceEditMode.value && assetViewerManager.zoom > 1) {
+      onZoom();
     }
   });
 
+  // TODO move to action + command palette
   const onCopyShortcut = (event: KeyboardEvent) => {
     if (globalThis.getSelection()?.type === 'Range') {
       return;
     }
     event.preventDefault();
-    handlePromiseError(copyImage());
+
+    handlePromiseError(onCopy());
   };
 
   const onSwipe = (event: SwipeCustomEvent) => {
-    if ($photoZoomState.currentZoom > 1) {
+    if (assetViewerManager.zoom > 1) {
       return;
     }
 
@@ -141,7 +134,7 @@
     }
   };
 
-  const targetImageSize = $derived(getTargetImageSize(asset, originalImageLoaded || $photoZoomState.currentZoom > 1));
+  const targetImageSize = $derived(getTargetImageSize(asset, originalImageLoaded || assetViewerManager.zoom > 1));
 
   $effect(() => {
     if (imageLoaderUrl) {
@@ -175,7 +168,7 @@
   onDestroy(() => imageManager.cancelPreloadUrl(imageLoaderUrl));
 
   let imageLoaderUrl = $derived(
-    getAssetUrl({ asset, sharedLink, forceOriginal: originalImageLoaded || $photoZoomState.currentZoom > 1 }),
+    getAssetUrl({ asset, sharedLink, forceOriginal: originalImageLoaded || assetViewerManager.zoom > 1 }),
   );
 
   let containerWidth = $state(0);
@@ -203,13 +196,14 @@
   });
 </script>
 
+<AssetViewerEvents {onCopy} {onZoom} />
+
 <svelte:document
   use:shortcuts={[
-    { shortcut: { key: 'z' }, onShortcut: zoomToggle, preventDefault: true },
+    { shortcut: { key: 'z' }, onShortcut: onZoom, preventDefault: true },
     { shortcut: { key: 's' }, onShortcut: onPlaySlideshow, preventDefault: true },
     { shortcut: { key: 'c', ctrl: true }, onShortcut: onCopyShortcut, preventDefault: false },
     { shortcut: { key: 'c', meta: true }, onShortcut: onCopyShortcut, preventDefault: false },
-    { shortcut: { key: 'z' }, onShortcut: zoomToggle, preventDefault: false },
     { shortcut: { key: 'f', shift: true }, onShortcut: toggleFaceBoxes, preventDefault: true },
     { shortcut: { key: 't', shift: true }, onShortcut: toggleOcrBoxes, preventDefault: true },
   ]}
@@ -246,7 +240,7 @@
         />
       {/if}
       <img
-        bind:this={$photoViewerImgElement}
+        bind:this={assetViewerManager.imgRef}
         src={imageLoaderUrl}
         alt={$getAltText(toTimelineAsset(asset))}
         class="h-full w-full {$slideshowState === SlideshowState.None
@@ -255,7 +249,7 @@
         draggable="false"
       />
       <!-- eslint-disable-next-line svelte/require-each-key -->
-      {#each getBoundingBox($boundingBoxesArray, $photoZoomState, $photoViewerImgElement) as boundingbox}
+      {#each getBoundingBox($boundingBoxesArray, assetViewerManager.zoomState, assetViewerManager.imgRef) as boundingbox}
         <div
           class="absolute border-solid border-white border-3 rounded-lg"
           style="top: {boundingbox.top}px; left: {boundingbox.left}px; height: {boundingbox.height}px; width: {boundingbox.width}px;"
@@ -272,7 +266,7 @@
     </div>
 
     {#if isFaceEditMode.value}
-      <FaceEditor htmlElement={$photoViewerImgElement} {containerWidth} {containerHeight} assetId={asset.id} />
+      <FaceEditor htmlElement={assetViewerManager.imgRef} {containerWidth} {containerHeight} assetId={asset.id} />
     {/if}
   {/if}
 </div>
