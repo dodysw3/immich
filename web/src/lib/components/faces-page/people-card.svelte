@@ -15,6 +15,7 @@
     mdiHeartMinusOutline,
     mdiHeartOutline,
   } from '@mdi/js';
+  import { tick } from 'svelte';
   import { t } from 'svelte-i18n';
   import ImageThumbnail from '../assets/thumbnail/image-thumbnail.svelte';
   import MenuOption from '../shared-components/context-menu/menu-option.svelte';
@@ -31,6 +32,12 @@
   let showVerticalDots = $state(false);
 
   const { SetDateOfBirth } = $derived(getPersonActions($t, person));
+
+  const handleFocusOut = () => {
+    void tick().then(() => {
+      showVerticalDots = false;
+    });
+  };
 </script>
 
 <div
@@ -39,7 +46,7 @@
   onmouseenter={() => (showVerticalDots = true)}
   onmouseleave={() => (showVerticalDots = false)}
   role="group"
-  use:focusOutside={{ onFocusOut: () => (showVerticalDots = false) }}
+  use:focusOutside={{ onFocusOut: handleFocusOut }}
 >
   <a
     href={Route.viewPerson(person, { previousRoute: Route.people() })}
