@@ -41,6 +41,7 @@ type PdfMetadata = {
 export class PdfService extends BaseService {
   private hasLoggedMissingPdftotext = false;
   private hasLoggedMissingPdftoppm = false;
+  private hasLoggedMissingPdfinfo = false;
 
   @OnEvent({ name: 'AssetMetadataExtracted' })
   async onAssetMetadataExtracted({ assetId }: ArgOf<'AssetMetadataExtracted'>) {
@@ -119,7 +120,14 @@ export class PdfService extends BaseService {
         lastError: null,
       });
 
-      let pages: Array<{ assetId: string; pageNumber: number; text: string; textSource: 'embedded' | 'none' }> = [];
+      let pages: Array<{
+        assetId: string;
+        pageNumber: number;
+        text: string;
+        textSource: 'embedded' | 'none';
+        width: number | null;
+        height: number | null;
+      }> = [];
       let ocrPages = 0;
       if (metadata.pageCount > 0 && metadata.pageCount <= this.getPdfMaxPagesPerDoc()) {
         pages = await this.extractTextByPage(asset.originalPath, id, metadata.pageCount);
@@ -196,16 +204,28 @@ export class PdfService extends BaseService {
   }
 
   async search(auth: AuthDto, dto: PdfDocumentSearchDto): Promise<PdfSearchResponseDto> {
+    const query = dto.query.trim();
+    if (!query) {
+      return { items: [], nextPage: null };
+    }
+
     const page = dto.page ?? 1;
     const size = dto.size ?? 50;
-    const { items, hasNextPage } = await this.pdfRepository.searchByText(auth.user.id, dto.query, { page, size });
+    const { items, hasNextPage } = await this.pdfRepository.searchByText(auth.user.id, query, { page, size });
+    const assetIds = items.map((item) => item.assetId);
+    const matchingEntries = await this.pdfRepository.getMatchingPagesByAssets(assetIds, query);
+    const matchingByAsset = new Map<string, number[]>();
+    for (const entry of matchingEntries) {
+      const pages = matchingByAsset.get(entry.assetId) ?? [];
+      pages.push(entry.pageNumber);
+      matchingByAsset.set(entry.assetId, pages);
+    }
 
     const results: PdfSearchResultDto[] = [];
     for (const item of items) {
-      const matchingPages = await this.pdfRepository.getMatchingPages(item.assetId, dto.query);
       results.push({
         ...this.mapDocument(item),
-        matchingPages: matchingPages.map((entry) => entry.pageNumber),
+        matchingPages: matchingByAsset.get(item.assetId) ?? [],
       });
     }
 
@@ -218,9 +238,13 @@ export class PdfService extends BaseService {
     dto: PdfInDocumentSearchDto,
   ): Promise<PdfInDocumentSearchResultDto[]> {
     await this.ensureDocumentAccess(auth.user.id, id);
+    const query = dto.query.trim();
+    if (!query) {
+      return [];
+    }
 
-    const rows = await this.pdfRepository.searchPagesByOwner(auth.user.id, id, dto.query);
-    return rows.map((row) => this.toInDocumentResult(row.pageNumber, row.text, dto.query));
+    const rows = await this.pdfRepository.searchPagesByOwner(auth.user.id, id, query);
+    return rows.map((row) => this.toInDocumentResult(row.pageNumber, row.text, query));
   }
 
   async reprocessDocument(auth: AuthDto, id: string): Promise<void> {
@@ -277,20 +301,77 @@ export class PdfService extends BaseService {
   }
 
   private async extractTextByPage(path: string, assetId: string, pageCount: number) {
-    const rows: Array<{ assetId: string; pageNumber: number; text: string; textSource: 'embedded' | 'none' }> = [];
+    const rows: Array<{
+      assetId: string;
+      pageNumber: number;
+      text: string;
+      textSource: 'embedded' | 'none';
+      width: number | null;
+      height: number | null;
+    }> = [];
+    const dimensions = await this.extractPageDimensions(path, pageCount);
 
     for (let pageNumber = 1; pageNumber <= pageCount; pageNumber++) {
       const text = await this.extractPageText(path, pageNumber);
       const normalized = text.trim();
+      const dimension = dimensions.get(pageNumber);
       rows.push({
         assetId,
         pageNumber,
         text: normalized,
         textSource: normalized.length >= MIN_EMBEDDED_TEXT_LENGTH ? 'embedded' : 'none',
+        width: dimension?.width ?? null,
+        height: dimension?.height ?? null,
       });
     }
 
     return rows;
+  }
+
+  private extractPageDimensions(path: string, pageCount: number): Promise<Map<number, { width: number; height: number }>> {
+    return new Promise((resolve) => {
+      const child = this.processRepository.spawn('pdfinfo', ['-f', '1', '-l', `${pageCount}`, path]);
+      const lines: string[] = [];
+      const rl = readline.createInterface({ input: child.stdout });
+
+      rl.on('line', (line) => lines.push(line));
+      child.on('error', (error) => {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          if (!this.hasLoggedMissingPdfinfo) {
+            this.logger.warn('pdfinfo is not available, skipping PDF page dimensions');
+            this.hasLoggedMissingPdfinfo = true;
+          }
+          resolve(new Map());
+          return;
+        }
+
+        this.logger.warn(`pdfinfo failed for PDF page dimensions: ${error}`);
+        resolve(new Map());
+      });
+      child.on('close', (code) => {
+        if (code !== 0) {
+          resolve(new Map());
+          return;
+        }
+
+        const dimensions = new Map<number, { width: number; height: number }>();
+        for (const line of lines) {
+          const match = /^\s*Page\s+(\d+)\s+size:\s+([0-9.]+)\s+x\s+([0-9.]+)\s+pts/i.exec(line);
+          if (!match) {
+            continue;
+          }
+
+          const pageNumber = Number.parseInt(match[1]!, 10);
+          const width = Number.parseFloat(match[2]!);
+          const height = Number.parseFloat(match[3]!);
+          if (Number.isFinite(pageNumber) && Number.isFinite(width) && Number.isFinite(height)) {
+            dimensions.set(pageNumber, { width, height });
+          }
+        }
+
+        resolve(dimensions);
+      });
+    });
   }
 
   private extractPageText(path: string, pageNumber: number): Promise<string> {
@@ -439,21 +520,21 @@ export class PdfService extends BaseService {
   }
 
   private isPdfEnabled() {
-    return process.env.PDF_ENABLE !== 'false';
+    return this.configRepository.getEnv().pdf.enabled;
   }
 
   private isPdfOcrEnabled() {
-    return process.env.PDF_OCR_ENABLE !== 'false';
+    return this.configRepository.getEnv().pdf.ocrEnabled;
   }
 
   private getPdfMaxPagesPerDoc() {
-    const value = Number(process.env.PDF_MAX_PAGES_PER_DOC);
+    const value = this.configRepository.getEnv().pdf.maxPagesPerDoc;
     return Number.isFinite(value) && value > 0 ? Math.floor(value) : DEFAULT_PDF_TEXT_EXTRACTION_PAGE_LIMIT;
   }
 
   private getPdfMaxFileSizeBytes() {
-    const value = Number(process.env.PDF_MAX_FILE_SIZE_MB);
-    return Number.isFinite(value) && value > 0 ? Math.floor(value * 1024 * 1024) : 0;
+    const value = this.configRepository.getEnv().pdf.maxFileSizeMb;
+    return value !== null && Number.isFinite(value) && value > 0 ? Math.floor(value * 1024 * 1024) : 0;
   }
 
   private toInDocumentResult(pageNumber: number, text: string, query: string): PdfInDocumentSearchResultDto {

@@ -116,6 +116,13 @@ export interface EnvData {
     };
   };
 
+  pdf: {
+    enabled: boolean;
+    ocrEnabled: boolean;
+    maxPagesPerDoc: number;
+    maxFileSizeMb: number | null;
+  };
+
   noColor: boolean;
   nodeVersion?: string;
 }
@@ -344,6 +351,13 @@ const getEnv = (): EnvData => {
         allow: dto.IMMICH_ALLOW_EXTERNAL_PLUGINS ?? false,
         installFolder: dto.IMMICH_PLUGINS_INSTALL_FOLDER,
       },
+    },
+
+    pdf: {
+      enabled: dto.PDF_ENABLE ?? true,
+      ocrEnabled: dto.PDF_OCR_ENABLE ?? true,
+      maxPagesPerDoc: dto.PDF_MAX_PAGES_PER_DOC || 250,
+      maxFileSizeMb: dto.PDF_MAX_FILE_SIZE_MB || null,
     },
 
     noColor: !!dto.NO_COLOR,

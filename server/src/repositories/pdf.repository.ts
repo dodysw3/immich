@@ -212,13 +212,18 @@ export class PdfRepository {
     return paginationHelper(items, pagination.size);
   }
 
-  @GenerateSql({ params: [DummyValue.UUID, DummyValue.STRING] })
-  getMatchingPages(assetId: string, query: string): Promise<Array<{ pageNumber: number }>> {
+  @GenerateSql({ params: [[DummyValue.UUID], DummyValue.STRING] })
+  getMatchingPagesByAssets(assetIds: string[], query: string): Promise<Array<{ assetId: string; pageNumber: number }>> {
+    if (assetIds.length === 0) {
+      return Promise.resolve([]);
+    }
+
     return this.db
       .selectFrom('pdf_page')
-      .select(['pageNumber'])
-      .where('assetId', '=', assetId)
+      .select(['assetId', 'pageNumber'])
+      .where('assetId', 'in', assetIds)
       .where(sql<boolean>`f_unaccent("pdf_page"."text") %>> f_unaccent(${query})`)
+      .orderBy('assetId', 'asc')
       .orderBy('pageNumber', 'asc')
       .execute();
   }

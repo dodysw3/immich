@@ -16,6 +16,7 @@
   }
 
   let { items }: Props = $props();
+  let failedThumbnails = $state(new Set<string>());
 </script>
 
 {#if items.length === 0}
@@ -28,12 +29,23 @@
         href={Route.viewDocument({ id: item.assetId })}
       >
         <div class="mb-3 overflow-hidden rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-900">
-          <img
-            class="h-36 w-full object-cover"
-            src={`/api/assets/${item.assetId}/thumbnail?size=preview`}
-            alt={item.title || item.originalFileName}
-            loading="lazy"
-          />
+          {#if failedThumbnails.has(item.assetId)}
+            <div class="flex h-36 w-full items-center justify-center bg-gray-100 text-sm font-semibold text-gray-500 dark:bg-gray-900 dark:text-gray-400">
+              PDF
+            </div>
+          {:else}
+            <img
+              class="h-36 w-full object-cover"
+              src={`/api/assets/${item.assetId}/thumbnail?size=preview`}
+              alt={item.title || item.originalFileName}
+              loading="lazy"
+              onerror={() => {
+                const next = new Set(failedThumbnails);
+                next.add(item.assetId);
+                failedThumbnails = next;
+              }}
+            />
+          {/if}
         </div>
         <p class="line-clamp-2 text-sm font-medium">{item.title || item.originalFileName}</p>
         <p class="mt-2 text-xs text-gray-600 dark:text-gray-300">{item.pageCount} page(s)</p>

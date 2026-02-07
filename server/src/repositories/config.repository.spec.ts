@@ -19,6 +19,10 @@ const resetEnv = () => {
     'IMMICH_MICROSERVICES_METRICS_PORT',
     'IMMICH_TELEMETRY_INCLUDE',
     'IMMICH_TELEMETRY_EXCLUDE',
+    'PDF_ENABLE',
+    'PDF_OCR_ENABLE',
+    'PDF_MAX_PAGES_PER_DOC',
+    'PDF_MAX_FILE_SIZE_MB',
 
     'DB_URL',
     'DB_HOSTNAME',
@@ -112,6 +116,37 @@ describe('getEnv', () => {
     it('should throw an error for invalid value', () => {
       process.env.IMMICH_ALLOW_SETUP = 'invalid';
       expect(() => getEnv()).toThrowError('IMMICH_ALLOW_SETUP must be a boolean value');
+    });
+  });
+
+  describe('pdf', () => {
+    it('should use default pdf config values', () => {
+      const { pdf } = getEnv();
+      expect(pdf).toEqual({
+        enabled: true,
+        ocrEnabled: true,
+        maxPagesPerDoc: 250,
+        maxFileSizeMb: null,
+      });
+    });
+
+    it('should parse PDF_ENABLE and PDF_OCR_ENABLE', () => {
+      process.env.PDF_ENABLE = 'false';
+      process.env.PDF_OCR_ENABLE = 'false';
+      const { pdf } = getEnv();
+      expect(pdf).toMatchObject({ enabled: false, ocrEnabled: false });
+    });
+
+    it('should parse PDF_MAX_PAGES_PER_DOC and PDF_MAX_FILE_SIZE_MB', () => {
+      process.env.PDF_MAX_PAGES_PER_DOC = '321';
+      process.env.PDF_MAX_FILE_SIZE_MB = '123';
+      const { pdf } = getEnv();
+      expect(pdf).toMatchObject({ maxPagesPerDoc: 321, maxFileSizeMb: 123 });
+    });
+
+    it('should reject invalid PDF_ENABLE', () => {
+      process.env.PDF_ENABLE = 'invalid';
+      expect(() => getEnv()).toThrowError('PDF_ENABLE must be a boolean value');
     });
   });
 
