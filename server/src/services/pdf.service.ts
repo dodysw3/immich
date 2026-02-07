@@ -24,7 +24,7 @@ import { JobItem, JobOf } from 'src/types';
 import { tokenizeForSearch } from 'src/utils/database';
 import { isOcrEnabled } from 'src/utils/misc';
 
-const PDF_TEXT_EXTRACTION_PAGE_LIMIT = 250;
+const DEFAULT_PDF_TEXT_EXTRACTION_PAGE_LIMIT = 250;
 const MIN_EMBEDDED_TEXT_LENGTH = 10;
 
 type PdfMetadata = {
@@ -44,6 +44,10 @@ export class PdfService extends BaseService {
 
   @OnEvent({ name: 'AssetMetadataExtracted' })
   async onAssetMetadataExtracted({ assetId }: ArgOf<'AssetMetadataExtracted'>) {
+    if (!this.isPdfEnabled()) {
+      return;
+    }
+
     const asset = await this.pdfRepository.getAssetForProcessing(assetId);
     if (!asset || !this.pdfRepository.isPdfAsset(asset)) {
       return;
@@ -54,6 +58,10 @@ export class PdfService extends BaseService {
 
   @OnJob({ name: JobName.PdfProcessQueueAll, queue: QueueName.PdfProcessing })
   async handleQueueAll({ force }: JobOf<JobName.PdfProcessQueueAll>): Promise<JobStatus> {
+    if (!this.isPdfEnabled()) {
+      return JobStatus.Skipped;
+    }
+
     const jobs: JobItem[] = [];
     const assets = this.pdfRepository.streamPdfAssetIds(force);
 
@@ -71,10 +79,23 @@ export class PdfService extends BaseService {
 
   @OnJob({ name: JobName.PdfProcess, queue: QueueName.PdfProcessing })
   async handlePdfProcess({ id }: JobOf<JobName.PdfProcess>): Promise<JobStatus> {
+    if (!this.isPdfEnabled()) {
+      return JobStatus.Skipped;
+    }
+
     const { machineLearning } = await this.getConfig({ withCache: true });
     const asset = await this.pdfRepository.getAssetForProcessing(id);
     if (!asset || asset.deletedAt || !this.pdfRepository.isPdfAsset(asset)) {
       return JobStatus.Skipped;
+    }
+
+    const maxFileSize = this.getPdfMaxFileSizeBytes();
+    if (maxFileSize > 0) {
+      const stat = await this.storageRepository.stat(asset.originalPath);
+      if (stat.size > maxFileSize) {
+        this.logger.warn(`Skipping PDF processing for ${id}: file exceeds PDF_MAX_FILE_SIZE_MB`);
+        return JobStatus.Skipped;
+      }
     }
 
     const metadata = await this.readPdfMetadata(asset.originalPath);
@@ -91,9 +112,9 @@ export class PdfService extends BaseService {
     });
 
     let pages: Array<{ assetId: string; pageNumber: number; text: string; textSource: 'embedded' | 'none' }> = [];
-    if (metadata.pageCount > 0 && metadata.pageCount <= PDF_TEXT_EXTRACTION_PAGE_LIMIT) {
+    if (metadata.pageCount > 0 && metadata.pageCount <= this.getPdfMaxPagesPerDoc()) {
       pages = await this.extractTextByPage(asset.originalPath, id, metadata.pageCount);
-      if (isOcrEnabled(machineLearning)) {
+      if (isOcrEnabled(machineLearning) && this.isPdfOcrEnabled()) {
         await this.ocrTextlessPages(asset.originalPath, pages, machineLearning.ocr);
       }
     }
@@ -381,6 +402,24 @@ export class PdfService extends BaseService {
       return parsed instanceof Date ? parsed : null;
     }
     return null;
+  }
+
+  private isPdfEnabled() {
+    return process.env.PDF_ENABLE !== 'false';
+  }
+
+  private isPdfOcrEnabled() {
+    return process.env.PDF_OCR_ENABLE !== 'false';
+  }
+
+  private getPdfMaxPagesPerDoc() {
+    const value = Number(process.env.PDF_MAX_PAGES_PER_DOC);
+    return Number.isFinite(value) && value > 0 ? Math.floor(value) : DEFAULT_PDF_TEXT_EXTRACTION_PAGE_LIMIT;
+  }
+
+  private getPdfMaxFileSizeBytes() {
+    const value = Number(process.env.PDF_MAX_FILE_SIZE_MB);
+    return Number.isFinite(value) && value > 0 ? Math.floor(value * 1024 * 1024) : 0;
   }
 
   private toInDocumentResult(pageNumber: number, text: string, query: string): PdfInDocumentSearchResultDto {

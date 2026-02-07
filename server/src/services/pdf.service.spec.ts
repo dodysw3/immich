@@ -23,11 +23,44 @@ const makeChildProcess = (output: string, code = 0) => {
 describe(PdfService.name, () => {
   let sut: PdfService;
   let mocks: ServiceMocks;
+  const env = {
+    PDF_ENABLE: process.env.PDF_ENABLE,
+    PDF_OCR_ENABLE: process.env.PDF_OCR_ENABLE,
+    PDF_MAX_PAGES_PER_DOC: process.env.PDF_MAX_PAGES_PER_DOC,
+    PDF_MAX_FILE_SIZE_MB: process.env.PDF_MAX_FILE_SIZE_MB,
+  };
 
   beforeEach(() => {
     ({ sut, mocks } = newTestService(PdfService));
     mocks.config.getWorker.mockReturnValue(ImmichWorker.Microservices);
     mocks.pdf.isPdfAsset.mockReturnValue(true);
+    delete process.env.PDF_ENABLE;
+    delete process.env.PDF_OCR_ENABLE;
+    delete process.env.PDF_MAX_PAGES_PER_DOC;
+    delete process.env.PDF_MAX_FILE_SIZE_MB;
+  });
+
+  afterAll(() => {
+    if (env.PDF_ENABLE === undefined) {
+      delete process.env.PDF_ENABLE;
+    } else {
+      process.env.PDF_ENABLE = env.PDF_ENABLE;
+    }
+    if (env.PDF_OCR_ENABLE === undefined) {
+      delete process.env.PDF_OCR_ENABLE;
+    } else {
+      process.env.PDF_OCR_ENABLE = env.PDF_OCR_ENABLE;
+    }
+    if (env.PDF_MAX_PAGES_PER_DOC === undefined) {
+      delete process.env.PDF_MAX_PAGES_PER_DOC;
+    } else {
+      process.env.PDF_MAX_PAGES_PER_DOC = env.PDF_MAX_PAGES_PER_DOC;
+    }
+    if (env.PDF_MAX_FILE_SIZE_MB === undefined) {
+      delete process.env.PDF_MAX_FILE_SIZE_MB;
+    } else {
+      process.env.PDF_MAX_FILE_SIZE_MB = env.PDF_MAX_FILE_SIZE_MB;
+    }
   });
 
   it('should queue PDF process on metadata extraction for PDFs', async () => {
@@ -43,6 +76,22 @@ describe(PdfService.name, () => {
     await sut.onAssetMetadataExtracted({ assetId: 'asset-1', userId: 'user-1' });
 
     expect(mocks.job.queue).toHaveBeenCalledWith({ name: JobName.PdfProcess, data: { id: 'asset-1' } });
+  });
+
+  it('should skip queueing when PDF_ENABLE is false', async () => {
+    process.env.PDF_ENABLE = 'false';
+    mocks.pdf.getAssetForProcessing.mockResolvedValue({
+      id: 'asset-disabled',
+      ownerId: 'user-1',
+      originalPath: '/uploads/doc.pdf',
+      originalFileName: 'doc.pdf',
+      type: AssetType.Other,
+      deletedAt: null,
+    });
+
+    await sut.onAssetMetadataExtracted({ assetId: 'asset-disabled', userId: 'user-1' });
+
+    expect(mocks.job.queue).not.toHaveBeenCalled();
   });
 
   it('should ignore non-PDF assets on metadata extraction', async () => {
@@ -144,6 +193,56 @@ describe(PdfService.name, () => {
         }),
       ]),
     );
+  });
+
+  it('should skip OCR fallback when PDF_OCR_ENABLE is false', async () => {
+    process.env.PDF_OCR_ENABLE = 'false';
+    mocks.pdf.getAssetForProcessing.mockResolvedValue({
+      id: 'asset-4c',
+      ownerId: 'user-1',
+      originalPath: '/uploads/scan-no-ocr.pdf',
+      originalFileName: 'scan-no-ocr.pdf',
+      type: AssetType.Other,
+      deletedAt: null,
+    });
+    mocks.metadata.readTags.mockResolvedValue({ PageCount: 1, Title: 'Scan' } as any);
+    mocks.process.spawn.mockImplementation((command: string) => {
+      if (command === 'pdftotext') {
+        return makeChildProcess('');
+      }
+      if (command === 'pdftoppm') {
+        return makeChildProcess('');
+      }
+      throw new Error(`Unexpected command: ${command}`);
+    });
+
+    const result = await sut.handlePdfProcess({ id: 'asset-4c' });
+
+    expect(result).toBe(JobStatus.Success);
+    expect(mocks.machineLearning.ocr).not.toHaveBeenCalled();
+    expect(mocks.pdf.replacePages).toHaveBeenCalledWith(
+      'asset-4c',
+      expect.arrayContaining([expect.objectContaining({ textSource: 'none' })]),
+    );
+  });
+
+  it('should skip text extraction when page count exceeds PDF_MAX_PAGES_PER_DOC', async () => {
+    process.env.PDF_MAX_PAGES_PER_DOC = '1';
+    mocks.pdf.getAssetForProcessing.mockResolvedValue({
+      id: 'asset-4d',
+      ownerId: 'user-1',
+      originalPath: '/uploads/large.pdf',
+      originalFileName: 'large.pdf',
+      type: AssetType.Other,
+      deletedAt: null,
+    });
+    mocks.metadata.readTags.mockResolvedValue({ PageCount: 5, Title: 'Large' } as any);
+
+    const result = await sut.handlePdfProcess({ id: 'asset-4d' });
+
+    expect(result).toBe(JobStatus.Success);
+    expect(mocks.process.spawn).not.toHaveBeenCalled();
+    expect(mocks.pdf.replacePages).toHaveBeenCalledWith('asset-4d', []);
   });
 
   it('should run OCR fallback for low-text pages', async () => {
