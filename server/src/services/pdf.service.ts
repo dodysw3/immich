@@ -160,7 +160,7 @@ export class PdfService extends BaseService {
     const page = dto.page ?? 1;
     const size = dto.size ?? 50;
     const [documentPage, summary] = await Promise.all([
-      this.pdfRepository.getDocumentsByOwner(auth.user.id, { page, size }),
+      this.pdfRepository.getDocumentsByOwner(auth.user.id, { page, size, status: dto.status }),
       this.pdfRepository.getDocumentStatusSummaryByOwner(auth.user.id),
     ]);
     const fallbackSummary = { total: 0, pending: 0, processing: 0, ready: 0, failed: 0 };
@@ -252,8 +252,9 @@ export class PdfService extends BaseService {
     if (!query) {
       return [];
     }
+    const size = dto.size ?? 100;
 
-    const rows = await this.pdfRepository.searchPagesByOwner(auth.user.id, id, query);
+    const rows = await this.pdfRepository.searchPagesByOwner(auth.user.id, id, query, size);
     return rows.map((row) => this.toInDocumentResult(row.pageNumber, row.text, query));
   }
 
@@ -264,6 +265,7 @@ export class PdfService extends BaseService {
     }
 
     if (item.status === 'pending' || item.status === 'processing') {
+      this.logger.debug(`Skipping reprocess for ${id}: already ${item.status}`);
       return;
     }
 

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Insertable, Kysely, Selectable, sql } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { DummyValue, GenerateSql } from 'src/decorators';
+import { PdfDocumentStatus as PdfDocumentFilterStatus } from 'src/dtos/pdf.dto';
 import { AssetType } from 'src/enum';
 import { DB } from 'src/schema';
 import { PdfDocumentStatus } from 'src/schema/tables/pdf-document.table';
@@ -76,15 +77,21 @@ export class PdfRepository {
       .executeTakeFirst();
   }
 
-  @GenerateSql({ params: [DummyValue.UUID, 'processing', DummyValue.STRING] })
-  updateDocumentStatus(assetId: string, status: PdfDocumentStatus, lastError: string | null = null) {
+  @GenerateSql({ params: [DummyValue.UUID, 'processing', DummyValue.STRING, DummyValue.DATE] })
+  updateDocumentStatus(
+    assetId: string,
+    status: PdfDocumentStatus,
+    lastError: string | null = null,
+    processedAt: Date | null = null,
+  ) {
     return this.db
       .insertInto('pdf_document')
-      .values({ assetId, status, lastError, pageCount: 0 })
+      .values({ assetId, status, lastError, processedAt, pageCount: 0 })
       .onConflict((oc) =>
         oc.column('assetId').doUpdateSet((eb) => ({
           status: eb.ref('excluded.status'),
           lastError: eb.ref('excluded.lastError'),
+          processedAt: eb.ref('excluded.processedAt'),
         })),
       )
       .executeTakeFirst();
@@ -124,8 +131,11 @@ export class PdfRepository {
       .executeTakeFirst();
   }
 
-  @GenerateSql({ params: [DummyValue.UUID, { page: 1, size: 50 }] })
-  async getDocumentsByOwner(ownerId: string, pagination: { page: number; size: number }) {
+  @GenerateSql({ params: [DummyValue.UUID, { page: 1, size: 50, status: 'ready' }] })
+  async getDocumentsByOwner(
+    ownerId: string,
+    pagination: { page: number; size: number; status?: PdfDocumentFilterStatus },
+  ) {
     const items = await this.db
       .selectFrom('asset')
       .leftJoin('pdf_document', 'pdf_document.assetId', 'asset.id')
@@ -144,6 +154,9 @@ export class PdfRepository {
       .where('asset.type', '=', AssetType.Other)
       .where('asset.deletedAt', 'is', null)
       .where(sql<boolean>`lower("asset"."originalFileName") like '%.pdf'`)
+      .$if(!!pagination.status, (qb) =>
+        qb.where(sql<PdfDocumentFilterStatus>`coalesce("pdf_document"."status", 'pending')`, '=', pagination.status!),
+      )
       .orderBy('asset.fileCreatedAt', 'desc')
       .limit(pagination.size + 1)
       .offset((pagination.page - 1) * pagination.size)
@@ -273,8 +286,13 @@ export class PdfRepository {
       .execute();
   }
 
-  @GenerateSql({ params: [DummyValue.UUID, DummyValue.UUID, DummyValue.STRING] })
-  searchPagesByOwner(ownerId: string, assetId: string, query: string): Promise<Array<{ pageNumber: number; text: string }>> {
+  @GenerateSql({ params: [DummyValue.UUID, DummyValue.UUID, DummyValue.STRING, 100] })
+  searchPagesByOwner(
+    ownerId: string,
+    assetId: string,
+    query: string,
+    limit: number,
+  ): Promise<Array<{ pageNumber: number; text: string }>> {
     return this.db
       .selectFrom('pdf_page')
       .innerJoin('asset', 'asset.id', 'pdf_page.assetId')
@@ -283,6 +301,7 @@ export class PdfRepository {
       .where('asset.id', '=', assetId)
       .where(sql<boolean>`f_unaccent("pdf_page"."text") %>> f_unaccent(${query})`)
       .orderBy('pdf_page.pageNumber', 'asc')
+      .limit(limit)
       .execute();
   }
 

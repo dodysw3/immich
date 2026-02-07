@@ -15,31 +15,49 @@
   let nextPage = $state(data.nextPage);
   let summary = $state(data.summary);
   let query = $state(data.query ?? '');
+  let status = $state(data.status ?? '');
   let refreshing = false;
 
-  const handleSearch = (value: string, page = 1) => {
+  const navigateDocuments = (next: { query?: string; page?: number; status?: string }) => {
+    const nextQuery = next.query ?? query;
+    const nextPage = next.page ?? 1;
+    const nextStatus = next.status ?? status;
     const params = new URLSearchParams();
-    if (value) {
-      params.set('query', value);
+    if (nextQuery) {
+      params.set('query', nextQuery);
     }
-    if (page > 1) {
-      params.set('page', `${page}`);
+    if (nextPage > 1) {
+      params.set('page', `${nextPage}`);
+    }
+    if (!nextQuery && nextStatus) {
+      params.set('status', nextStatus);
     }
     const queryString = params.toString();
     const suffix = queryString ? `?${queryString}` : '';
     void goto(`${Route.documents()}${suffix}`);
   };
 
+  const handleSearch = (value: string, page = 1) => {
+    query = value;
+    navigateDocuments({ query: value, page, status });
+  };
+
   const gotoPage = (page: number) => {
     if (page < 1) {
       return;
     }
-    handleSearch(query, page);
+    navigateDocuments({ query, page, status });
   };
 
   const resetSearch = () => {
     query = '';
-    void goto(Route.documents());
+    navigateDocuments({ query: '', page: 1, status });
+  };
+
+  const setStatus = (value: string) => {
+    status = value;
+    query = '';
+    navigateDocuments({ query: '', page: 1, status: value });
   };
 
   const shouldPollDocuments = () =>
@@ -52,7 +70,9 @@
 
     refreshing = true;
     try {
-      const response = await fetch(`/api/documents?page=${data.page}`);
+      const response = await fetch(
+        `/api/documents?page=${data.page}${status ? `&status=${encodeURIComponent(status)}` : ''}`,
+      );
       if (!response.ok) {
         return;
       }
@@ -80,19 +100,44 @@
   <div class="mb-4">
     {#if !query}
       <div class="mb-3 flex flex-wrap gap-2 text-xs">
-        <span class="rounded-full bg-gray-100 px-2 py-1 dark:bg-gray-800">Total: {summary.total}</span>
-        <span class="rounded-full bg-amber-100 px-2 py-1 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+        <button
+          class={`rounded-full px-2 py-1 ${!status ? 'bg-gray-200 dark:bg-gray-700' : 'bg-gray-100 dark:bg-gray-800'}`}
+          onclick={() => setStatus('')}
+        >
+          Total: {summary.total}
+        </button>
+        <button
+          class={`rounded-full px-2 py-1 text-amber-800 dark:text-amber-300 ${
+            status === 'pending' ? 'bg-amber-200 dark:bg-amber-900/50' : 'bg-amber-100 dark:bg-amber-900/30'
+          }`}
+          onclick={() => setStatus('pending')}
+        >
           Pending: {summary.pending}
-        </span>
-        <span class="rounded-full bg-blue-100 px-2 py-1 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+        </button>
+        <button
+          class={`rounded-full px-2 py-1 text-blue-800 dark:text-blue-300 ${
+            status === 'processing' ? 'bg-blue-200 dark:bg-blue-900/50' : 'bg-blue-100 dark:bg-blue-900/30'
+          }`}
+          onclick={() => setStatus('processing')}
+        >
           Processing: {summary.processing}
-        </span>
-        <span class="rounded-full bg-green-100 px-2 py-1 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+        </button>
+        <button
+          class={`rounded-full px-2 py-1 text-green-800 dark:text-green-300 ${
+            status === 'ready' ? 'bg-green-200 dark:bg-green-900/50' : 'bg-green-100 dark:bg-green-900/30'
+          }`}
+          onclick={() => setStatus('ready')}
+        >
           Ready: {summary.ready}
-        </span>
-        <span class="rounded-full bg-red-100 px-2 py-1 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+        </button>
+        <button
+          class={`rounded-full px-2 py-1 text-red-800 dark:text-red-300 ${
+            status === 'failed' ? 'bg-red-200 dark:bg-red-900/50' : 'bg-red-100 dark:bg-red-900/30'
+          }`}
+          onclick={() => setStatus('failed')}
+        >
           Failed: {summary.failed}
-        </span>
+        </button>
       </div>
     {/if}
     <PdfSearchBar {query} onSearch={handleSearch} />

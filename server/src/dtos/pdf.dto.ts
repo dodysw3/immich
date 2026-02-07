@@ -1,6 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+
+export const PDF_DOCUMENT_STATUSES = ['pending', 'processing', 'ready', 'failed'] as const;
+export type PdfDocumentStatus = (typeof PDF_DOCUMENT_STATUSES)[number];
 
 export class PdfDocumentQueryDto {
   @ApiPropertyOptional({ type: 'integer', default: 1, minimum: 1 })
@@ -16,6 +19,12 @@ export class PdfDocumentQueryDto {
   @IsInt()
   @Min(1)
   size?: number = 50;
+
+  @ApiPropertyOptional({ enum: PDF_DOCUMENT_STATUSES })
+  @IsOptional()
+  @IsString()
+  @IsIn(PDF_DOCUMENT_STATUSES)
+  status?: PdfDocumentStatus;
 }
 
 export class PdfDocumentSearchDto extends PdfDocumentQueryDto {
@@ -30,6 +39,14 @@ export class PdfInDocumentSearchDto {
   @IsString()
   @IsNotEmpty()
   query!: string;
+
+  @ApiPropertyOptional({ type: 'integer', default: 100, minimum: 1, maximum: 500 })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  @Max(500)
+  size?: number = 100;
 }
 
 export class PdfDocumentParamsDto {
@@ -65,8 +82,8 @@ export class PdfDocumentResponseDto {
   @ApiPropertyOptional()
   processedAt!: Date | null;
 
-  @ApiProperty({ enum: ['pending', 'processing', 'ready', 'failed'] })
-  status!: 'pending' | 'processing' | 'ready' | 'failed';
+  @ApiProperty({ enum: PDF_DOCUMENT_STATUSES })
+  status!: PdfDocumentStatus;
 
   @ApiPropertyOptional()
   lastError!: string | null;

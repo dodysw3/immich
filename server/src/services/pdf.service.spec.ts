@@ -134,6 +134,7 @@ describe(PdfService.name, () => {
 
     const result = await sut.getDocuments({ user: { id: 'user-1' } } as any, { page: 1, size: 50 });
 
+    expect(mocks.pdf.getDocumentsByOwner).toHaveBeenCalledWith('user-1', { page: 1, size: 50, status: undefined });
     expect(mocks.pdf.getDocumentStatusSummaryByOwner).toHaveBeenCalledWith('user-1');
     expect(result.summary).toEqual({
       total: 4,
@@ -157,6 +158,21 @@ describe(PdfService.name, () => {
       ready: 0,
       failed: 0,
     });
+  });
+
+  it('should pass status filter to documents repository query', async () => {
+    mocks.pdf.getDocumentsByOwner.mockResolvedValue({ items: [], hasNextPage: false });
+    mocks.pdf.getDocumentStatusSummaryByOwner.mockResolvedValue({
+      total: 0,
+      pending: 0,
+      processing: 0,
+      ready: 0,
+      failed: 0,
+    });
+
+    await sut.getDocuments({ user: { id: 'user-1' } } as any, { page: 2, size: 10, status: 'failed' });
+
+    expect(mocks.pdf.getDocumentsByOwner).toHaveBeenCalledWith('user-1', { page: 2, size: 10, status: 'failed' });
   });
 
   it('should skip processing when asset is missing', async () => {
@@ -550,7 +566,7 @@ describe(PdfService.name, () => {
 
     const result = await sut.searchInDocument({ user: { id: 'user-1' } } as any, 'asset-6', { query: 'revenue' });
 
-    expect(mocks.pdf.searchPagesByOwner).toHaveBeenCalledWith('user-1', 'asset-6', 'revenue');
+    expect(mocks.pdf.searchPagesByOwner).toHaveBeenCalledWith('user-1', 'asset-6', 'revenue', 100);
     expect(result).toEqual([
       expect.objectContaining({
         pageNumber: 2,
@@ -577,6 +593,28 @@ describe(PdfService.name, () => {
 
     expect(result).toEqual([]);
     expect(mocks.pdf.searchPagesByOwner).not.toHaveBeenCalled();
+  });
+
+  it('should pass custom size for in-document search', async () => {
+    mocks.pdf.getDocumentByOwner.mockResolvedValue({
+      assetId: 'asset-6',
+      originalFileName: 'memo.pdf',
+      pageCount: 3,
+      title: 'Memo',
+      author: null,
+      processedAt: null,
+      status: 'ready',
+      lastError: null,
+      createdAt: new Date('2026-02-06T00:00:00.000Z'),
+    });
+    mocks.pdf.searchPagesByOwner.mockResolvedValue([
+      { pageNumber: 1, text: 'first result' },
+      { pageNumber: 2, text: 'second result' },
+    ]);
+
+    await sut.searchInDocument({ user: { id: 'user-1' } } as any, 'asset-6', { query: 'result', size: 2 });
+
+    expect(mocks.pdf.searchPagesByOwner).toHaveBeenCalledWith('user-1', 'asset-6', 'result', 2);
   });
 
   it('should mark document as failed without setting ready when indexing fails', async () => {
