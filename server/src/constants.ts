@@ -143,6 +143,7 @@ export const endpointTags: Record<ApiTag, string> = {
   [ApiTag.AuthenticationAdmin]: 'Administrative endpoints related to authentication.',
   [ApiTag.DatabaseBackups]: 'Manage backups of the Immich database.',
   [ApiTag.Deprecated]: 'Deprecated endpoints that are planned for removal in the next major release.',
+  [ApiTag.Documents]: 'PDF document management endpoints for viewing, searching, and browsing uploaded PDF files.',
   [ApiTag.Download]: 'Endpoints for downloading assets or collections of assets.',
   [ApiTag.Duplicates]: 'Endpoints for managing and identifying duplicate assets.',
   [ApiTag.Faces]:

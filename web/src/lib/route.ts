@@ -131,6 +131,10 @@ export const Route = {
   viewUser: ({ id }: { id: string }) => `/admin/users/${id}`,
   editUser: ({ id }: { id: string }) => `/admin/users/${id}/edit`,
 
+  // documents
+  documents: () => '/documents',
+  viewDocument: ({ id }: { id: string }) => `/documents/${id}`,
+
   // utilities
   utilities: () => '/utilities',
   duplicatesUtility: (params?: { index?: number }) => '/utilities/duplicates' + asQueryString(params),

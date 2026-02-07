@@ -13,6 +13,7 @@
     mdiAccountMultipleOutline,
     mdiAccountOutline,
     mdiArchiveArrowDown,
+    mdiFileDocumentOutline,
     mdiArchiveArrowDownOutline,
     mdiFolderOutline,
     mdiHeart,
@@ -86,6 +87,8 @@
   {#if $preferences.folders.enabled && $preferences.folders.sidebarWeb}
     <NavbarItem title={$t('folders')} href={Route.folders()} icon={{ icon: mdiFolderOutline, flipped: true }} />
   {/if}
+
+  <NavbarItem title="Documents" href={Route.documents()} icon={mdiFileDocumentOutline} />
 
   <NavbarItem title={$t('utilities')} href={Route.utilities()} icon={mdiToolboxOutline} activeIcon={mdiToolbox} />
 

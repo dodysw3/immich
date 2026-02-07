@@ -567,6 +567,7 @@ export enum QueueName {
   Ocr = 'ocr',
   Workflow = 'workflow',
   Editor = 'editor',
+  Pdf = 'pdf',
 }
 
 export enum QueueJobStatus {
@@ -656,6 +657,10 @@ export enum JobName {
 
   // Workflow
   WorkflowRun = 'WorkflowRun',
+
+  // PDF
+  PdfQueueAll = 'PdfQueueAll',
+  PdfProcess = 'PdfProcess',
 }
 
 export enum QueueCommand {
@@ -883,6 +888,7 @@ export enum ApiTag {
   Users = 'Users',
   Views = 'Views',
   Workflows = 'Workflows',
+  Documents = 'Documents',
 }
 
 export enum PluginContext {

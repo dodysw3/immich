@@ -44,6 +44,7 @@ import { MoveRepository } from 'src/repositories/move.repository';
 import { NotificationRepository } from 'src/repositories/notification.repository';
 import { OAuthRepository } from 'src/repositories/oauth.repository';
 import { OcrRepository } from 'src/repositories/ocr.repository';
+import { PdfRepository } from 'src/repositories/pdf.repository';
 import { PartnerRepository } from 'src/repositories/partner.repository';
 import { PersonRepository } from 'src/repositories/person.repository';
 import { PluginRepository } from 'src/repositories/plugin.repository';
@@ -238,6 +239,7 @@ export type ServiceOverrides = {
   move: MoveRepository;
   notification: NotificationRepository;
   ocr: OcrRepository;
+  pdf: PdfRepository;
   oauth: OAuthRepository;
   partner: PartnerRepository;
   person: PersonRepository;
@@ -312,6 +314,7 @@ export const getMocks = () => {
     move: automock(MoveRepository, { strict: false }),
     notification: automock(NotificationRepository),
     ocr: automock(OcrRepository, { strict: false }),
+    pdf: automock(PdfRepository, { strict: false }),
     oauth: automock(OAuthRepository, { args: [loggerMock] }),
     partner: automock(PartnerRepository, { strict: false }),
     person: automock(PersonRepository, { strict: false }),
@@ -381,6 +384,7 @@ export const newTestService = <T extends BaseService>(
     overrides.notification || (mocks.notification as As<NotificationRepository>),
     overrides.oauth || (mocks.oauth as As<OAuthRepository>),
     overrides.ocr || (mocks.ocr as As<OcrRepository>),
+    overrides.pdf || (mocks.pdf as As<PdfRepository>),
     overrides.partner || (mocks.partner as As<PartnerRepository>),
     overrides.person || (mocks.person as As<PersonRepository>),
     overrides.plugin || (mocks.plugin as As<PluginRepository>),
