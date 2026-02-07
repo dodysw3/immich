@@ -6,6 +6,7 @@
     originalFileName: string;
     title: string | null;
     pageCount: number;
+    matchingPages?: number[];
   }
 
   interface Props {
@@ -26,6 +27,11 @@
       >
         <p class="line-clamp-2 text-sm font-medium">{item.title || item.originalFileName}</p>
         <p class="mt-2 text-xs text-gray-600 dark:text-gray-300">{item.pageCount} page(s)</p>
+        {#if item.matchingPages && item.matchingPages.length > 0}
+          <p class="mt-1 text-xs text-primary-700 dark:text-primary-300">
+            {item.matchingPages.length} matching page(s)
+          </p>
+        {/if}
       </a>
     {/each}
   </div>
