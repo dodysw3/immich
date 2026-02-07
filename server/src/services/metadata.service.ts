@@ -340,6 +340,12 @@ export class MetadataService extends BaseService {
 
     await this.assetRepository.upsertJobStatus({ assetId: asset.id, metadataExtractedAt: new Date() });
 
+    // Queue PDF processing for PDF files
+    if (asset.type === AssetType.Other && asset.originalPath.toLowerCase().endsWith('.pdf')) {
+      this.logger.debug(`Queueing PDF processing for asset ${asset.id}`);
+      await this.jobRepository.queue({ name: JobName.PdfProcessing, data: { id: asset.id } });
+    }
+
     await this.eventRepository.emit('AssetMetadataExtracted', {
       assetId: asset.id,
       userId: asset.ownerId,

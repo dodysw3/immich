@@ -36,6 +36,8 @@ import { NotificationRepository } from 'src/repositories/notification.repository
 import { OAuthRepository } from 'src/repositories/oauth.repository';
 import { OcrRepository } from 'src/repositories/ocr.repository';
 import { PartnerRepository } from 'src/repositories/partner.repository';
+import { PdfPageRepository } from 'src/pdf/repositories/pdf-page.repository';
+import { PdfRepository } from 'src/pdf/repositories/pdf.repository';
 import { PersonRepository } from 'src/repositories/person.repository';
 import { PluginRepository } from 'src/repositories/plugin.repository';
 import { ProcessRepository } from 'src/repositories/process.repository';
@@ -93,6 +95,8 @@ export const BASE_SERVICE_DEPENDENCIES = [
   OAuthRepository,
   OcrRepository,
   PartnerRepository,
+  PdfPageRepository,
+  PdfRepository,
   PersonRepository,
   PluginRepository,
   ProcessRepository,
@@ -152,6 +156,8 @@ export class BaseService {
     protected oauthRepository: OAuthRepository,
     protected ocrRepository: OcrRepository,
     protected partnerRepository: PartnerRepository,
+    protected pdfPageRepository: PdfPageRepository,
+    protected pdfRepository: PdfRepository,
     protected personRepository: PersonRepository,
     protected pluginRepository: PluginRepository,
     protected processRepository: ProcessRepository,

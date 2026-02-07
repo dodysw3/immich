@@ -115,6 +115,12 @@ class BaseSearchDto {
   @IsNotEmpty()
   @Optional()
   ocr?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by PDF text content' })
+  @IsString()
+  @IsNotEmpty()
+  @Optional()
+  pdfText?: string;
 }
 
 class BaseSearchWithResultsDto extends BaseSearchDto {

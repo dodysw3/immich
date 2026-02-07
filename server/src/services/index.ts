@@ -25,6 +25,8 @@ import { NotificationService } from 'src/services/notification.service';
 import { OcrService } from 'src/services/ocr.service';
 import { PartnerService } from 'src/services/partner.service';
 import { PersonService } from 'src/services/person.service';
+import { PdfProcessingService } from 'src/pdf/services/pdf-processing.service';
+import { PdfService } from 'src/pdf/services/pdf.service';
 import { PluginService } from 'src/services/plugin.service';
 import { QueueService } from 'src/services/queue.service';
 import { SearchService } from 'src/services/search.service';
@@ -75,6 +77,8 @@ export const services = [
   NotificationAdminService,
   OcrService,
   PartnerService,
+  PdfProcessingService,
+  PdfService,
   PersonService,
   PluginService,
   QueueService,

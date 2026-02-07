@@ -42,6 +42,10 @@ import { AuditTable } from 'src/schema/tables/audit.table';
 import { FaceSearchTable } from 'src/schema/tables/face-search.table';
 import { GeodataPlacesTable } from 'src/schema/tables/geodata-places.table';
 import { LibraryTable } from 'src/schema/tables/library.table';
+import { PdfAssetTable } from 'src/schema/tables/pdf-asset.table';
+import { PdfPageOcrTable } from 'src/schema/tables/pdf-page-ocr.table';
+import { PdfPageTable } from 'src/schema/tables/pdf-page.table';
+import { PdfSearchTable } from 'src/schema/tables/pdf-search.table';
 import { MemoryAssetAuditTable } from 'src/schema/tables/memory-asset-audit.table';
 import { MemoryAssetTable } from 'src/schema/tables/memory-asset.table';
 import { MemoryAuditTable } from 'src/schema/tables/memory-audit.table';
@@ -111,6 +115,10 @@ export class ImmichDatabase {
     OcrSearchTable,
     PartnerAuditTable,
     PartnerTable,
+    PdfAssetTable,
+    PdfPageOcrTable,
+    PdfPageTable,
+    PdfSearchTable,
     PersonTable,
     PersonAuditTable,
     SessionTable,
@@ -215,6 +223,11 @@ export interface DB {
 
   partner: PartnerTable;
   partner_audit: PartnerAuditTable;
+
+  pdf_asset: PdfAssetTable;
+  pdf_page: PdfPageTable;
+  pdf_page_ocr: PdfPageOcrTable;
+  pdf_search: PdfSearchTable;
 
   person: PersonTable;
   person_audit: PersonAuditTable;

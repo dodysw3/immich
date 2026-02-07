@@ -455,6 +455,11 @@ export function searchAssetBuilder(kysely: Kysely<DB>, options: AssetSearchBuild
         .innerJoin('ocr_search', 'asset.id', 'ocr_search.assetId')
         .where(() => sql`f_unaccent(ocr_search.text) %>> f_unaccent(${tokenizeForSearch(options.ocr!).join(' ')})`),
     )
+    .$if(!!options.pdfText, (qb) =>
+      qb
+        .innerJoin('pdf_search', 'asset.id', 'pdf_search.assetId')
+        .where(() => sql`f_unaccent(pdf_search.text) %>> f_unaccent(${tokenizeForSearch(options.pdfText!).join(' ')})`),
+    )
     .$if(!!options.type, (qb) => qb.where('asset.type', '=', options.type!))
     .$if(options.isFavorite !== undefined, (qb) => qb.where('asset.isFavorite', '=', options.isFavorite!))
     .$if(options.isOffline !== undefined, (qb) => qb.where('asset.isOffline', '=', options.isOffline!))

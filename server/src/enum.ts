@@ -565,6 +565,7 @@ export enum QueueName {
   Notification = 'notifications',
   BackupDatabase = 'backupDatabase',
   Ocr = 'ocr',
+  Pdf = 'pdf',
   Workflow = 'workflow',
   Editor = 'editor',
 }
@@ -653,6 +654,10 @@ export enum JobName {
   // OCR
   OcrQueueAll = 'OcrQueueAll',
   Ocr = 'Ocr',
+
+  // PDF
+  PdfQueueAll = 'PdfQueueAll',
+  PdfProcessing = 'PdfProcessing',
 
   // Workflow
   WorkflowRun = 'WorkflowRun',
@@ -865,6 +870,7 @@ export enum ApiTag {
   Notifications = 'Notifications',
   NotificationsAdmin = 'Notifications (admin)',
   Partners = 'Partners',
+  Pdf = 'PDF',
   People = 'People',
   Plugins = 'Plugins',
   Queues = 'Queues',
