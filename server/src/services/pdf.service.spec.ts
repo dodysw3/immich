@@ -167,12 +167,15 @@ describe(PdfService.name, () => {
 
     expect(mocks.pdf.searchByText).toHaveBeenCalledWith('user-1', 'revenue', { page: 1, size: 50 });
     expect(mocks.pdf.getMatchingPages).toHaveBeenCalledWith('asset-5', 'revenue');
-    expect(result).toEqual([
-      expect.objectContaining({
-        assetId: 'asset-5',
-        originalFileName: 'report.pdf',
-        matchingPages: [2, 9],
-      }),
-    ]);
+    expect(result).toEqual({
+      items: [
+        expect.objectContaining({
+          assetId: 'asset-5',
+          originalFileName: 'report.pdf',
+          matchingPages: [2, 9],
+        }),
+      ],
+      nextPage: null,
+    });
   });
 });

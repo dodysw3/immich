@@ -3,13 +3,14 @@ import { ApiTags } from '@nestjs/swagger';
 import { Endpoint, HistoryBuilder } from 'src/decorators';
 import { AuthDto } from 'src/dtos/auth.dto';
 import {
+  PdfDocumentListResponseDto,
   PdfDocumentPageParamsDto,
   PdfDocumentParamsDto,
   PdfDocumentQueryDto,
   PdfDocumentResponseDto,
+  PdfSearchResponseDto,
   PdfDocumentSearchDto,
   PdfPageResponseDto,
-  PdfSearchResultDto,
 } from 'src/dtos/pdf.dto';
 import { ApiTag, Permission } from 'src/enum';
 import { Auth, Authenticated } from 'src/middleware/auth.guard';
@@ -27,7 +28,7 @@ export class PdfController {
     description: 'List PDF documents owned by the authenticated user.',
     history: new HistoryBuilder().added('v2.5.6').alpha('v2.5.6'),
   })
-  getDocuments(@Auth() auth: AuthDto, @Query() dto: PdfDocumentQueryDto): Promise<PdfDocumentResponseDto[]> {
+  getDocuments(@Auth() auth: AuthDto, @Query() dto: PdfDocumentQueryDto): Promise<PdfDocumentListResponseDto> {
     return this.service.getDocuments(auth, dto);
   }
 
@@ -38,7 +39,7 @@ export class PdfController {
     description: 'Search PDF text and return matching documents with matching page numbers.',
     history: new HistoryBuilder().added('v2.5.6').alpha('v2.5.6'),
   })
-  searchDocuments(@Auth() auth: AuthDto, @Query() dto: PdfDocumentSearchDto): Promise<PdfSearchResultDto[]> {
+  searchDocuments(@Auth() auth: AuthDto, @Query() dto: PdfDocumentSearchDto): Promise<PdfSearchResponseDto> {
     return this.service.search(auth, dto);
   }
 

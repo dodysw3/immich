@@ -28,6 +28,16 @@
   title={data.document.title || data.document.originalFileName}
   description={`${data.document.pageCount} page(s)`}
 >
+  {#snippet buttons()}
+    <a
+      class="rounded-xl border border-gray-300 px-3 py-2 text-xs font-medium hover:border-primary-400 dark:border-gray-700"
+      href={`/api/assets/${data.document.assetId}/original`}
+      download={data.document.originalFileName}
+    >
+      Download PDF
+    </a>
+  {/snippet}
+
   <div class="grid gap-4 xl:grid-cols-[2fr_1fr]">
     <div class="space-y-4">
       <PdfViewer assetId={data.document.assetId} requestedPage={viewerPage} onPageChange={(page) => (viewerPage = page)} />

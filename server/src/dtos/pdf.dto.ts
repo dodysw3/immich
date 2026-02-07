@@ -89,3 +89,19 @@ export class PdfSearchResultDto extends PdfDocumentResponseDto {
   @ApiProperty({ type: 'integer', isArray: true })
   matchingPages!: number[];
 }
+
+export class PdfDocumentListResponseDto {
+  @ApiProperty({ type: PdfDocumentResponseDto, isArray: true })
+  items!: PdfDocumentResponseDto[];
+
+  @ApiPropertyOptional({ description: 'Next page number as string', nullable: true })
+  nextPage!: string | null;
+}
+
+export class PdfSearchResponseDto {
+  @ApiProperty({ type: PdfSearchResultDto, isArray: true })
+  items!: PdfSearchResultDto[];
+
+  @ApiPropertyOptional({ description: 'Next page number as string', nullable: true })
+  nextPage!: string | null;
+}

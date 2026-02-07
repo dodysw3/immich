@@ -7,8 +7,10 @@ import { JOBS_ASSET_PAGINATION_SIZE } from 'src/constants';
 import { OnEvent, OnJob } from 'src/decorators';
 import { AuthDto } from 'src/dtos/auth.dto';
 import {
+  PdfDocumentListResponseDto,
   PdfDocumentQueryDto,
   PdfDocumentResponseDto,
+  PdfSearchResponseDto,
   PdfDocumentSearchDto,
   PdfPageResponseDto,
   PdfSearchResultDto,
@@ -101,11 +103,11 @@ export class PdfService extends BaseService {
     return JobStatus.Success;
   }
 
-  async getDocuments(auth: AuthDto, dto: PdfDocumentQueryDto) {
+  async getDocuments(auth: AuthDto, dto: PdfDocumentQueryDto): Promise<PdfDocumentListResponseDto> {
     const page = dto.page ?? 1;
     const size = dto.size ?? 50;
-    const { items } = await this.pdfRepository.getDocumentsByOwner(auth.user.id, { page, size });
-    return items.map((item) => this.mapDocument(item));
+    const { items, hasNextPage } = await this.pdfRepository.getDocumentsByOwner(auth.user.id, { page, size });
+    return { items: items.map((item) => this.mapDocument(item)), nextPage: hasNextPage ? `${page + 1}` : null };
   }
 
   async getDocument(auth: AuthDto, id: string): Promise<PdfDocumentResponseDto> {
@@ -149,10 +151,10 @@ export class PdfService extends BaseService {
     };
   }
 
-  async search(auth: AuthDto, dto: PdfDocumentSearchDto): Promise<PdfSearchResultDto[]> {
+  async search(auth: AuthDto, dto: PdfDocumentSearchDto): Promise<PdfSearchResponseDto> {
     const page = dto.page ?? 1;
     const size = dto.size ?? 50;
-    const { items } = await this.pdfRepository.searchByText(auth.user.id, dto.query, { page, size });
+    const { items, hasNextPage } = await this.pdfRepository.searchByText(auth.user.id, dto.query, { page, size });
 
     const results: PdfSearchResultDto[] = [];
     for (const item of items) {
@@ -163,7 +165,7 @@ export class PdfService extends BaseService {
       });
     }
 
-    return results;
+    return { items: results, nextPage: hasNextPage ? `${page + 1}` : null };
   }
 
   private async ensureDocumentAccess(ownerId: string, id: string): Promise<void> {
