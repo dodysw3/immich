@@ -25,6 +25,7 @@ import { tokenizeForSearch } from 'src/utils/database';
 import { isOcrEnabled } from 'src/utils/misc';
 
 const PDF_TEXT_EXTRACTION_PAGE_LIMIT = 250;
+const MIN_EMBEDDED_TEXT_LENGTH = 10;
 
 type PdfMetadata = {
   pageCount: number;
@@ -229,11 +230,12 @@ export class PdfService extends BaseService {
 
     for (let pageNumber = 1; pageNumber <= pageCount; pageNumber++) {
       const text = await this.extractPageText(path, pageNumber);
+      const normalized = text.trim();
       rows.push({
         assetId,
         pageNumber,
-        text,
-        textSource: text.trim().length > 0 ? 'embedded' : 'none',
+        text: normalized,
+        textSource: normalized.length >= MIN_EMBEDDED_TEXT_LENGTH ? 'embedded' : 'none',
       });
     }
 

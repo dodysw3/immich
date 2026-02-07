@@ -146,6 +146,48 @@ describe(PdfService.name, () => {
     );
   });
 
+  it('should run OCR fallback for low-text pages', async () => {
+    mocks.pdf.getAssetForProcessing.mockResolvedValue({
+      id: 'asset-4b',
+      ownerId: 'user-1',
+      originalPath: '/uploads/scan-low-text.pdf',
+      originalFileName: 'scan-low-text.pdf',
+      type: AssetType.Other,
+      deletedAt: null,
+    });
+    mocks.metadata.readTags.mockResolvedValue({ PageCount: 1, Title: 'Scan' } as any);
+    mocks.process.spawn.mockImplementation((command: string) => {
+      if (command === 'pdftotext') {
+        return makeChildProcess('tiny');
+      }
+      if (command === 'pdftoppm') {
+        return makeChildProcess('');
+      }
+      throw new Error(`Unexpected command: ${command}`);
+    });
+    mocks.machineLearning.ocr.mockResolvedValue({
+      box: [],
+      boxScore: [],
+      text: ['ocr replacement text'],
+      textScore: [],
+    });
+
+    const result = await sut.handlePdfProcess({ id: 'asset-4b' });
+
+    expect(result).toBe(JobStatus.Success);
+    expect(mocks.machineLearning.ocr).toHaveBeenCalledTimes(1);
+    expect(mocks.pdf.replacePages).toHaveBeenCalledWith(
+      'asset-4b',
+      expect.arrayContaining([
+        expect.objectContaining({
+          pageNumber: 1,
+          text: 'ocr replacement text',
+          textSource: 'ocr',
+        }),
+      ]),
+    );
+  });
+
   it('should include matching pages in search response', async () => {
     mocks.pdf.searchByText.mockResolvedValue({
       items: [
