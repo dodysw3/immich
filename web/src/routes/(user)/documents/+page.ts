@@ -3,11 +3,14 @@ import type { PageLoad } from './$types';
 
 export const load = (async ({ url, fetch }) => {
   await authenticate(url);
-  const response = await fetch('/api/documents');
+  const query = url.searchParams.get('query')?.trim() || '';
+  const endpoint = query ? `/api/documents/search?query=${encodeURIComponent(query)}` : '/api/documents';
+  const response = await fetch(endpoint);
   const items = response.ok ? await response.json() : [];
 
   return {
     items,
+    query,
     meta: {
       title: 'Documents',
     },

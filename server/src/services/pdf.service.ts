@@ -1,5 +1,4 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { spawn } from 'node:child_process';
 import { mkdtemp } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import readline from 'node:readline';
@@ -228,7 +227,17 @@ export class PdfService extends BaseService {
 
   private extractPageText(path: string, pageNumber: number): Promise<string> {
     return new Promise((resolve) => {
-      const child = spawn('pdftotext', ['-q', '-enc', 'UTF-8', '-f', `${pageNumber}`, '-l', `${pageNumber}`, path, '-']);
+      const child = this.processRepository.spawn('pdftotext', [
+        '-q',
+        '-enc',
+        'UTF-8',
+        '-f',
+        `${pageNumber}`,
+        '-l',
+        `${pageNumber}`,
+        path,
+        '-',
+      ]);
       const lines: string[] = [];
       const rl = readline.createInterface({ input: child.stdout });
 
@@ -295,7 +304,16 @@ export class PdfService extends BaseService {
     const outputPath = `${prefix}.png`;
 
     const success = await new Promise<boolean>((resolve) => {
-      const child = spawn('pdftoppm', ['-f', `${pageNumber}`, '-l', `${pageNumber}`, '-singlefile', '-png', inputPath, prefix]);
+      const child = this.processRepository.spawn('pdftoppm', [
+        '-f',
+        `${pageNumber}`,
+        '-l',
+        `${pageNumber}`,
+        '-singlefile',
+        '-png',
+        inputPath,
+        prefix,
+      ]);
       child.on('error', (error) => {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
           if (!this.hasLoggedMissingPdftoppm) {
