@@ -349,4 +349,23 @@ describe(PdfService.name, () => {
     ]);
     expect(result[0]!.snippet.toLowerCase()).toContain('revenue');
   });
+
+  it('should queue reprocess for an owned document', async () => {
+    mocks.pdf.getDocumentByOwner.mockResolvedValue({
+      assetId: 'asset-7',
+      originalFileName: 'retry.pdf',
+      pageCount: 2,
+      title: 'Retry',
+      author: null,
+      processedAt: null,
+      status: 'failed',
+      lastError: 'test error',
+      createdAt: new Date('2026-02-06T00:00:00.000Z'),
+    });
+
+    await sut.reprocessDocument({ user: { id: 'user-1' } } as any, 'asset-7');
+
+    expect(mocks.pdf.updateDocumentStatus).toHaveBeenCalledWith('asset-7', 'pending', null);
+    expect(mocks.job.queue).toHaveBeenCalledWith({ name: JobName.PdfProcess, data: { id: 'asset-7' } });
+  });
 });

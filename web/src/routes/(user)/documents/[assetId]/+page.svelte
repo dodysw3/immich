@@ -14,6 +14,7 @@
   let viewerPage = $state(1);
   let searching = $state(false);
   let searchResults = $state<Array<{ pageNumber: number; snippet: string; matchIndex: number }> | null>(null);
+  let reprocessing = $state(false);
 
   const normalized = (value: string) => value.trim().toLowerCase();
   const highlightedPages = $derived.by(() => {
@@ -47,6 +48,16 @@
       searching = false;
     }
   };
+
+  const triggerReprocess = async () => {
+    reprocessing = true;
+    try {
+      await fetch(`/api/documents/${data.document.assetId}/reprocess`, { method: 'POST' });
+      location.reload();
+    } finally {
+      reprocessing = false;
+    }
+  };
 </script>
 
 <UserPageLayout
@@ -54,13 +65,22 @@
   description={`${data.document.pageCount} page(s)`}
 >
   {#snippet buttons()}
-    <a
-      class="rounded-xl border border-gray-300 px-3 py-2 text-xs font-medium hover:border-primary-400 dark:border-gray-700"
-      href={`/api/assets/${data.document.assetId}/original`}
-      download={data.document.originalFileName}
-    >
-      Download PDF
-    </a>
+    <div class="flex gap-2">
+      <button
+        class="rounded-xl border border-gray-300 px-3 py-2 text-xs font-medium hover:border-primary-400 disabled:opacity-50 dark:border-gray-700"
+        onclick={triggerReprocess}
+        disabled={reprocessing}
+      >
+        {reprocessing ? 'Reprocessing...' : 'Reprocess'}
+      </button>
+      <a
+        class="rounded-xl border border-gray-300 px-3 py-2 text-xs font-medium hover:border-primary-400 dark:border-gray-700"
+        href={`/api/assets/${data.document.assetId}/original`}
+        download={data.document.originalFileName}
+      >
+        Download PDF
+      </a>
+    </div>
   {/snippet}
 
   <div class="grid gap-4 xl:grid-cols-[2fr_1fr]">

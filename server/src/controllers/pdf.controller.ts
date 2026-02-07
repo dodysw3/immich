@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Endpoint, HistoryBuilder } from 'src/decorators';
 import { AuthDto } from 'src/dtos/auth.dto';
@@ -69,6 +69,18 @@ export class PdfController {
   })
   getDocument(@Auth() auth: AuthDto, @Param() { id }: PdfDocumentParamsDto): Promise<PdfDocumentResponseDto> {
     return this.service.getDocument(auth, id);
+  }
+
+  @Post(':id/reprocess')
+  @Authenticated({ permission: Permission.AssetUpdate })
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Endpoint({
+    summary: 'Reprocess a PDF document',
+    description: 'Queue PDF text extraction and OCR processing for a specific document again.',
+    history: new HistoryBuilder().added('v2.5.6').alpha('v2.5.6'),
+  })
+  reprocessDocument(@Auth() auth: AuthDto, @Param() { id }: PdfDocumentParamsDto): Promise<void> {
+    return this.service.reprocessDocument(auth, id);
   }
 
   @Get(':id/pages')

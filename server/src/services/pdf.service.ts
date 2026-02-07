@@ -216,6 +216,12 @@ export class PdfService extends BaseService {
     return rows.map((row) => this.toInDocumentResult(row.pageNumber, row.text, dto.query));
   }
 
+  async reprocessDocument(auth: AuthDto, id: string): Promise<void> {
+    await this.ensureDocumentAccess(auth.user.id, id);
+    await this.pdfRepository.updateDocumentStatus(id, 'pending', null);
+    await this.jobRepository.queue({ name: JobName.PdfProcess, data: { id } });
+  }
+
   private async ensureDocumentAccess(ownerId: string, id: string): Promise<void> {
     const item = await this.pdfRepository.getDocumentByOwner(ownerId, id);
     if (!item) {
