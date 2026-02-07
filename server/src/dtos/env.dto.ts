@@ -1,5 +1,5 @@
 import { Transform, Type } from 'class-transformer';
-import { IsEnum, IsInt, IsString, Matches } from 'class-validator';
+import { IsEnum, IsInt, IsString, Matches, Min } from 'class-validator';
 import { DatabaseSslMode, ImmichEnvironment, LogFormat, LogLevel } from 'src/enum';
 import { IsIPRange, Optional, ValidateBoolean } from 'src/validation';
 
@@ -139,6 +139,24 @@ export class EnvDto {
   @IsString()
   @Optional()
   IMMICH_WORKERS_EXCLUDE?: string;
+
+  @ValidateBoolean({ optional: true })
+  PDF_ENABLE?: boolean;
+
+  @ValidateBoolean({ optional: true })
+  PDF_OCR_ENABLE?: boolean;
+
+  @IsInt()
+  @Optional()
+  @Type(() => Number)
+  @Min(1)
+  PDF_MAX_PAGES_PER_DOC?: number;
+
+  @IsInt()
+  @Optional()
+  @Type(() => Number)
+  @Min(1)
+  PDF_MAX_FILE_SIZE_MB?: number;
 
   @IsString()
   @Optional()

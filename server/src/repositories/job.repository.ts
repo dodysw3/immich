@@ -233,6 +233,16 @@ export class JobRepository {
       case JobName.FacialRecognitionQueueAll: {
         return { jobId: JobName.FacialRecognitionQueueAll };
       }
+      case JobName.PdfProcess: {
+        return {
+          jobId: item.data.id,
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 5_000 },
+        };
+      }
+      case JobName.PdfProcessQueueAll: {
+        return { jobId: JobName.PdfProcessQueueAll };
+      }
       default: {
         return null;
       }

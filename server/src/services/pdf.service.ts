@@ -91,6 +91,7 @@ export class PdfService extends BaseService {
     }
 
     await this.pdfRepository.updateDocumentStatus(id, 'processing', null);
+    const startedAt = Date.now();
 
     const maxFileSize = this.getPdfMaxFileSizeBytes();
     if (maxFileSize > 0) {
@@ -119,11 +120,14 @@ export class PdfService extends BaseService {
       });
 
       let pages: Array<{ assetId: string; pageNumber: number; text: string; textSource: 'embedded' | 'none' }> = [];
+      let ocrPages = 0;
       if (metadata.pageCount > 0 && metadata.pageCount <= this.getPdfMaxPagesPerDoc()) {
         pages = await this.extractTextByPage(asset.originalPath, id, metadata.pageCount);
         if (isOcrEnabled(machineLearning) && this.isPdfOcrEnabled()) {
-          await this.ocrTextlessPages(asset.originalPath, pages, machineLearning.ocr);
+          ocrPages = await this.ocrTextlessPages(asset.originalPath, pages, machineLearning.ocr);
         }
+      } else if (metadata.pageCount > this.getPdfMaxPagesPerDoc()) {
+        this.logger.warn(`Skipping PDF page indexing for ${id}: page count ${metadata.pageCount} exceeds limit`);
       }
 
       await this.pdfRepository.replacePages(id, pages);
@@ -131,11 +135,14 @@ export class PdfService extends BaseService {
       await this.pdfRepository.upsertSearch(id, searchText);
 
       await this.assetRepository.upsertJobStatus({ assetId: id });
+      this.logger.log(
+        `Processed PDF ${id} in ${Date.now() - startedAt}ms (pages=${metadata.pageCount}, indexed=${pages.length}, ocr=${ocrPages})`,
+      );
       return JobStatus.Success;
     } catch (error) {
       const reason = error instanceof Error ? error.message : 'Unknown PDF processing error';
       await this.pdfRepository.updateDocumentStatus(id, 'failed', reason.slice(0, 500));
-      this.logger.warn(`PDF processing failed for ${id}: ${reason}`);
+      this.logger.warn(`PDF processing failed for ${id} after ${Date.now() - startedAt}ms: ${reason}`);
       return JobStatus.Failed;
     }
   }
@@ -331,12 +338,13 @@ export class PdfService extends BaseService {
     inputPath: string,
     pages: Array<{ pageNumber: number; text: string; textSource: 'embedded' | 'none' | 'ocr' }>,
     ocrConfig: Parameters<typeof this.machineLearningRepository.ocr>[1],
-  ) {
+  ): Promise<number> {
     const candidates = pages.filter((page) => page.textSource === 'none');
     if (candidates.length === 0) {
-      return;
+      return 0;
     }
 
+    let updatedPages = 0;
     for (const page of candidates) {
       const renderedPath = await this.renderPdfPage(inputPath, page.pageNumber);
       if (!renderedPath) {
@@ -349,6 +357,7 @@ export class PdfService extends BaseService {
         if (text.length > 0) {
           page.text = text;
           page.textSource = 'ocr';
+          updatedPages++;
         }
       } catch (error) {
         this.logger.warn(`OCR failed for PDF page ${page.pageNumber}: ${error}`);
@@ -357,6 +366,8 @@ export class PdfService extends BaseService {
         await this.storageRepository.unlinkDir(dirname(renderedPath), { recursive: true, force: true });
       }
     }
+
+    return updatedPages;
   }
 
   private async renderPdfPage(inputPath: string, pageNumber: number): Promise<string | null> {

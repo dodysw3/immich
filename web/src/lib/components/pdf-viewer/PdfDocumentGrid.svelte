@@ -27,6 +27,14 @@
         class="rounded-2xl border border-gray-200 p-4 transition hover:border-primary-400 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-900"
         href={Route.viewDocument({ id: item.assetId })}
       >
+        <div class="mb-3 overflow-hidden rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-900">
+          <img
+            class="h-36 w-full object-cover"
+            src={`/api/assets/${item.assetId}/thumbnail?size=preview`}
+            alt={item.title || item.originalFileName}
+            loading="lazy"
+          />
+        </div>
         <p class="line-clamp-2 text-sm font-medium">{item.title || item.originalFileName}</p>
         <p class="mt-2 text-xs text-gray-600 dark:text-gray-300">{item.pageCount} page(s)</p>
         {#if item.status}
