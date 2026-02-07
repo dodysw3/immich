@@ -1,232 +1,144 @@
-# PDF Document Plugin Design Plan (Immich Fork)
+# PDF Plugin Design Plan (Merged Best-of)
 
-## Goals
+## 1. Goals
+- Add PDF support without breaking existing upload and search contracts.
+- Keep changes additive to reduce upstream merge conflicts.
+- Provide document browsing in a dedicated `/documents` section.
+- Enable searchable PDF text (embedded + OCR fallback for scanned pages).
 
-- Accept PDF uploads without breaking existing upload APIs.
-- Store each PDF as a single unit linked to the existing asset model.
-- Provide page browsing for PDFs (viewer-style pagination).
-- Index PDF text for phrase search.
-- Run OCR for pages with no extractable text.
-- Minimize upstream merge conflicts.
-- Avoid breaking existing OpenAPI contracts and mobile app behavior.
+## 2. Constraints
+- No destructive schema changes to existing tables.
+- No breaking changes to existing OpenAPI/mobile behavior.
+- Keep core flow stable; run PDF work in async jobs.
 
-## Constraints
+## 3. Key Decisions
+- Store PDFs as normal assets (`AssetType.OTHER`) for compatibility.
+- Trigger processing from existing metadata event (`AssetMetadataExtracted`) to avoid deep pipeline rewrites.
+- Add new `pdf_*` tables only.
+- Use server-side extraction + OCR indexing; use `pdf.js` for web rendering.
+- Keep PDF UI separate from photo timeline (`/documents` route).
 
-- Do not modify existing table schemas.
-- Do not remove or change existing OpenAPI endpoints/contracts.
-- Keep changes additive and isolated where possible.
-
-## High-Level Strategy
-
-1. Keep PDFs as normal Immich assets (`AssetType.OTHER`) to preserve compatibility.
-2. Add an isolated PDF module for ingestion, page extraction, OCR fallback, and page-level indexing.
-3. Reuse existing OCR search integration (`ocr_search`) for document-level search compatibility.
-4. Add additive internal endpoints for PDF page browsing and page-hit search.
-
-## Why Not Use Existing WASM Workflow Plugins
-
-The current plugin system is workflow-triggered and constrained to limited host functions (e.g. update asset/add to album). It does not provide file ingestion, page rendering, OCR persistence, or indexing primitives required for full PDF support. Implementing this as a server module is lower risk and more maintainable.
-
-## Architecture
-
-### 1) Upload and Asset Lifecycle
-
-- Extend MIME support to include `.pdf` and `application/pdf`.
-- Continue using existing asset upload pipeline (`POST /assets`) unchanged.
-- Uploaded PDF is persisted as a regular asset row with original file path.
-- On `AssetCreate`, detect PDF and enqueue PDF ingest job.
-
-### 2) PDF Module (Additive)
-
-Create a new server module namespace:
-
-- `server/src/plugins/pdf-docs/`
-
-Suggested components:
-
-- `pdf-doc.controller.ts` (optional/additive endpoints)
-- `pdf-doc.service.ts`
-- `pdf-doc.repository.ts`
-- `pdf-doc.jobs.ts` (job handlers)
-- `pdf-doc.types.ts`
-
-### 3) Queue and Jobs
-
-Add additive job names (and reuse existing Bull infrastructure):
-
-- `PdfIngest`: open PDF, get page count/size, extract embedded text layer per page.
-- `PdfRenderPages`: render page images (for viewer previews and OCR input).
-- `PdfOcrPages`: OCR only pages that lack sufficient text.
-- `PdfFinalizeIndex`: normalize/merge text and update search stores.
-
-Execution flow:
-
-1. `AssetCreate` (PDF) -> queue `PdfIngest`.
-2. `PdfIngest` creates/updates PDF doc + page records, stores text when available.
-3. `PdfRenderPages` generates page raster files (lazy or eager based on config).
-4. `PdfOcrPages` runs OCR for textless pages.
-5. `PdfFinalizeIndex` updates:
-   - page-level search table
-   - existing `ocr_search` row for the asset (document-level compatibility)
-
-### 4) Data Model (Additive Tables Only)
-
-Add new tables via new migrations only:
-
-- `pdf_document`
-  - `assetId` (PK/FK to `asset.id`)
-  - `pageCount`
-  - `status` (`pending`, `processing`, `ready`, `failed`)
-  - `indexedAt`
-  - `versionHash` (detect reprocessing needs)
-  - timestamps
-
+## 4. Data Model (Additive)
+- `pdf_document` (1:1 with `asset`)
+  - `assetId` PK/FK, `pageCount`, metadata fields (`title`, `author`, `subject`, `creator`, `producer`), `processedAt`, timestamps.
 - `pdf_page`
-  - `id` (PK)
-  - `assetId` (FK)
-  - `pageNumber` (1-based)
-  - `width`, `height`
-  - `imagePath` (rendered page image path)
-  - `hasExtractedText`
-  - timestamps
-  - unique `(assetId, pageNumber)`
+  - `id` PK, `assetId` FK, `pageNumber`, `text`, `textSource` (`embedded|ocr|none`), `width`, `height`, unique `(assetId, pageNumber)`.
+- `pdf_search`
+  - `assetId` PK/FK, `text` (concatenated document text), GIN trigram index on normalized text.
 
-- `pdf_page_text`
-  - `pageId` (PK/FK)
-  - `text` (full text for page)
-  - `searchText` (normalized/tokenized text)
-  - index: trigram/GIN expression for phrase matching
+Migration:
+- `server/src/schema/migrations/<timestamp>-CreatePdfTables.ts`
 
-- `pdf_page_ocr_block`
-  - `id` (PK)
-  - `pageId` (FK)
-  - bounding polygon coords (normalized)
-  - `text`, `score`
-  - `isVisible`
+## 5. Processing Pipeline
+1. Upload PDF through existing asset upload (accepted via MIME update).
+2. `AssetMetadataExtracted` event handler detects PDF and queues `PdfProcess`.
+3. `PdfProcess` job:
+   - Read PDF metadata and page count -> upsert `pdf_document`.
+   - Extract embedded text per page -> upsert `pdf_page`.
+   - Mark short/empty pages for OCR.
+   - OCR marked pages via existing ML OCR integration -> update `pdf_page.text`, `textSource='ocr'`.
+   - Aggregate all page text -> upsert `pdf_search`.
+4. Optional: set/refresh preview thumbnail from first page using existing preview mechanism.
+
+Operational rules:
+- Upload response must not block on extraction/OCR.
+- Retry/backoff for OCR/processing jobs.
+- Config flags: `PDF_ENABLE`, `PDF_OCR_ENABLE`, `PDF_MAX_PAGES_PER_DOC`, `PDF_MAX_FILE_SIZE_MB`.
+
+## 6. API Surface (Additive)
+New controller: `server/src/controllers/pdf.controller.ts`
+
+- `GET /documents` - list PDF assets (paginated).
+- `GET /documents/:id` - document metadata.
+- `GET /documents/:id/pages` - page list with text/page info.
+- `GET /documents/:id/pages/:pageNumber` - single page detail.
+- `GET /documents/search?query=...` - PDF full-text search with matched page numbers.
+
+Reuse existing endpoint for original file:
+- `GET /assets/:id/original` for pdf.js loading.
+
+## 7. Frontend
+Routes:
+- `web/src/routes/(user)/documents/+page.svelte`
+- `web/src/routes/(user)/documents/[assetId]/+page.svelte`
+
+Components:
+- `web/src/lib/components/pdf-viewer/PdfDocumentGrid.svelte`
+- `web/src/lib/components/pdf-viewer/PdfViewer.svelte`
+- `web/src/lib/components/pdf-viewer/PdfSearchBar.svelte`
+- `web/src/lib/components/pdf-viewer/PdfDocumentInfo.svelte`
 
 Notes:
+- Add `pdfjs-dist` dependency.
+- Add Documents entry to sidebar and route map.
+- Keep timeline behavior unchanged.
 
-- Keep existing `asset_ocr` unchanged to avoid schema changes and semantic mismatch for multipage docs.
-- Keep existing `ocr_search` table unchanged; populate document-level aggregated text there for compatibility.
+## 8. Files to Create/Modify
+Create (new modules/tables/DTOs/repository/service/controller/routes/components):
+- `server/src/schema/tables/pdf-document.table.ts`
+- `server/src/schema/tables/pdf-page.table.ts`
+- `server/src/schema/tables/pdf-search.table.ts`
+- `server/src/schema/migrations/<timestamp>-CreatePdfTables.ts`
+- `server/src/repositories/pdf.repository.ts`
+- `server/src/services/pdf.service.ts`
+- `server/src/controllers/pdf.controller.ts`
+- `server/src/dtos/pdf.dto.ts`
+- `web/src/routes/(user)/documents/+page.svelte`
+- `web/src/routes/(user)/documents/[assetId]/+page.svelte`
+- `web/src/lib/components/pdf-viewer/*`
 
-### 5) Search Design
+Modify (append-only where possible):
+- `server/src/utils/mime-types.ts` (accept `.pdf` / `application/pdf`)
+- `server/src/enum.ts` (job/queue/tag additions)
+- `server/src/types.ts` (job union additions)
+- `server/src/schema/index.ts` (register tables)
+- `server/src/repositories/index.ts` (register repository)
+- `server/src/services/index.ts` (register service)
+- `server/src/controllers/index.ts` (register controller)
+- `server/src/services/queue.service.ts` (queue case)
+- `web/src/lib/route.ts` (documents route)
+- `web/src/lib/components/shared-components/side-bar/user-sidebar.svelte` (nav item)
+- `server/package.json` (`mupdf` or chosen extractor lib)
+- `web/package.json` (`pdfjs-dist`)
 
-#### Document-Level (no contract break)
+## 9. Implementation Sequence
+Phase 1: Database + registration
+1. Add 3 table files and migration.
+2. Register tables in schema index.
+3. Add queue/job enums and type entries.
+4. Update MIME handling for PDF acceptance.
 
-- Reuse existing OCR search path by upserting aggregate PDF text into `ocr_search.text` for the asset.
-- Existing search endpoints that use OCR query will find PDFs with no API changes.
+Phase 2: Backend processing
+5. Implement `PdfRepository`.
+6. Implement `PdfService` with event trigger + job handlers.
+7. Register repository/service + queue wiring.
+8. Add processing dependencies and adapter utilities.
 
-#### Page-Level (additive)
+Phase 3: API + permissions
+9. Add `pdf.dto.ts`.
+10. Add `PdfController` endpoints under `/documents`.
+11. Register controller and permission checks.
 
-Add optional new endpoint(s):
+Phase 4: Web UI
+12. Add `/documents` routes.
+13. Build grid + viewer components with pdf.js.
+14. Add sidebar/nav integration.
 
-- `GET /api/pdf-docs/:assetId/search?q=...`
-  - returns matching pages with snippet/highlight offsets and confidence metadata.
+Phase 5: Hardening
+15. Add retries, limits, and status metrics.
+16. Finalize error mapping and observability.
 
-This is additive and does not break existing OpenAPI contracts.
+## 10. Verification Plan
+1. Upload text PDF -> `pdf_document`, `pdf_page`, `pdf_search` populated.
+2. Upload scanned PDF -> OCR path runs and text becomes searchable.
+3. `/documents` list loads with thumbnail/metadata.
+4. Viewer loads original PDF via `/assets/:id/original`.
+5. `/documents/search` returns document + matching page numbers.
+6. Deleting asset cascades `pdf_*` rows cleanly.
+7. Regression: non-PDF uploads/search remain unchanged.
+8. Upstream merge check: only expected append conflicts in shared index/enum files.
 
-### 6) Viewer Design
-
-#### Web
-
-- Detect PDF assets by extension/mime and render `PdfViewer` component.
-- Use `pdf.js` (or equivalent) for page navigation, zoom, and text layer.
-- Overlay OCR blocks when available.
-- Add “search in document” that jumps to matching page.
-
-#### Mobile
-
-- Preserve existing behavior for `AssetType.OTHER` (download/open externally).
-- Optionally add dedicated PDF viewer later in a separate phase.
-
-## Conflict-Minimizing Design
-
-Primary approach: isolate changes into new files/folders and keep touchpoints minimal.
-
-### New/Isolated Areas
-
-- `server/src/plugins/pdf-docs/**`
-- `server/src/schema/tables/pdf-*.table.ts`
-- `server/src/schema/migrations/*Pdf*.ts`
-- `web/src/lib/components/pdf-docs/**`
-
-### Minimal Existing File Touches
-
-- `server/src/utils/mime-types.ts` (add pdf type)
-- `server/src/services/index.ts` (register new service)
-- `server/src/controllers/index.ts` (register new controller, if enabled)
-- queue enums/config (additive entries only)
-- viewer dispatch logic in web asset viewer
-
-## Backward Compatibility
-
-- Existing upload endpoint unchanged.
-- Existing asset schemas and response DTOs unchanged.
-- Existing mobile clients continue functioning.
-- Existing OCR search behavior preserved and extended for PDFs.
-
-## Performance and Operational Notes
-
-- OCR and rendering should be async jobs; never block upload response.
-- Add config flags:
-  - `PDF_ENABLE`
-  - `PDF_RENDER_DPI`
-  - `PDF_OCR_ENABLE`
-  - `PDF_MAX_PAGES_PER_DOC`
-  - `PDF_MAX_FILE_SIZE_MB`
-- Add retry/backoff on OCR/render jobs.
-- Add status fields and metrics for observability.
-
-## Security and Validation
-
-- Validate MIME + magic bytes for PDF.
-- Enforce max upload size/page count limits.
-- Sanitize extracted text before indexing.
-- Respect existing asset permissions for all PDF endpoints.
-
-## Testing Plan
-
-### Unit
-
-- PDF MIME acceptance.
-- Text extraction parser behavior.
-- OCR fallback triggers only for textless pages.
-- Search tokenization + phrase matching.
-
-### Integration
-
-- Upload PDF -> ingest jobs run -> pages indexed -> searchable.
-- Mixed PDFs (some pages text, some image-only).
-- Permission checks for PDF endpoints.
-
-### Regression
-
-- Existing image/video upload flows unaffected.
-- Existing search and OCR behavior unchanged for non-PDF assets.
-
-## Rollout Plan
-
-### Phase 1
-
-- Accept/store PDF uploads.
-- Create PDF metadata/page records.
-- Web page browsing viewer (basic).
-
-### Phase 2
-
-- Embedded text extraction + document-level search via `ocr_search`.
-
-### Phase 3
-
-- OCR fallback for image-only pages.
-- Page-level search endpoint and highlights.
-
-### Phase 4
-
-- Performance tuning, retries, observability, and hardening.
-
-## Open Decisions
-
-- Eager vs lazy page rendering strategy.
-- OCR model choice and concurrency limits.
-- Whether to include additive OpenAPI docs for new PDF endpoints now or keep internal first.
+## 11. Open Decisions
+- Final extractor library (`mupdf` vs alternative) based on runtime stability and packaging.
+- OCR threshold for deciding `embedded` vs `ocr` text adequacy.
+- Thumbnail generation timing (always vs lazy).
