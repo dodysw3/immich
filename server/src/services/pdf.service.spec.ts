@@ -480,6 +480,13 @@ describe(PdfService.name, () => {
       { assetId: 'asset-5', pageNumber: 2 },
       { assetId: 'asset-5', pageNumber: 9 },
     ]);
+    mocks.pdf.getDocumentStatusSummaryByOwner.mockResolvedValue({
+      total: 1,
+      pending: 0,
+      processing: 0,
+      ready: 1,
+      failed: 0,
+    });
 
     const result = await sut.search({ user: { id: 'user-1' } } as any, { query: 'revenue', page: 1, size: 50 });
 
@@ -498,13 +505,26 @@ describe(PdfService.name, () => {
         }),
       ],
       nextPage: null,
+      summary: { total: 1, pending: 0, processing: 0, ready: 1, failed: 0 },
     });
   });
 
   it('should return empty search results for whitespace-only query', async () => {
+    mocks.pdf.getDocumentStatusSummaryByOwner.mockResolvedValue({
+      total: 0,
+      pending: 0,
+      processing: 0,
+      ready: 0,
+      failed: 0,
+    });
+
     const result = await sut.search({ user: { id: 'user-1' } } as any, { query: '   ', page: 1, size: 50 });
 
-    expect(result).toEqual({ items: [], nextPage: null });
+    expect(result).toEqual({
+      items: [],
+      nextPage: null,
+      summary: { total: 0, pending: 0, processing: 0, ready: 0, failed: 0 },
+    });
     expect(mocks.pdf.searchByText).not.toHaveBeenCalled();
     expect(mocks.pdf.getMatchingPagesByAssets).not.toHaveBeenCalled();
   });
@@ -512,6 +532,13 @@ describe(PdfService.name, () => {
   it('should pass status filter to search repository query', async () => {
     mocks.pdf.searchByText.mockResolvedValue({ items: [], hasNextPage: false });
     mocks.pdf.getMatchingPagesByAssets.mockResolvedValue([]);
+    mocks.pdf.getDocumentStatusSummaryByOwner.mockResolvedValue({
+      total: 0,
+      pending: 0,
+      processing: 0,
+      ready: 0,
+      failed: 0,
+    });
 
     await sut.search({ user: { id: 'user-1' } } as any, {
       query: 'budget',

@@ -102,48 +102,46 @@
 
 <UserPageLayout title="Documents" description={`(${query ? items.length : summary.total})`}>
   <div class="mb-4">
-    {#if !query}
-      <div class="mb-3 flex flex-wrap gap-2 text-xs">
-        <button
-          class={`rounded-full px-2 py-1 ${!status ? 'bg-gray-200 dark:bg-gray-700' : 'bg-gray-100 dark:bg-gray-800'}`}
-          onclick={() => setStatus('')}
-        >
-          Total: {summary.total}
-        </button>
-        <button
-          class={`rounded-full px-2 py-1 text-amber-800 dark:text-amber-300 ${
-            status === 'pending' ? 'bg-amber-200 dark:bg-amber-900/50' : 'bg-amber-100 dark:bg-amber-900/30'
-          }`}
-          onclick={() => setStatus('pending')}
-        >
-          Pending: {summary.pending}
-        </button>
-        <button
-          class={`rounded-full px-2 py-1 text-blue-800 dark:text-blue-300 ${
-            status === 'processing' ? 'bg-blue-200 dark:bg-blue-900/50' : 'bg-blue-100 dark:bg-blue-900/30'
-          }`}
-          onclick={() => setStatus('processing')}
-        >
-          Processing: {summary.processing}
-        </button>
-        <button
-          class={`rounded-full px-2 py-1 text-green-800 dark:text-green-300 ${
-            status === 'ready' ? 'bg-green-200 dark:bg-green-900/50' : 'bg-green-100 dark:bg-green-900/30'
-          }`}
-          onclick={() => setStatus('ready')}
-        >
-          Ready: {summary.ready}
-        </button>
-        <button
-          class={`rounded-full px-2 py-1 text-red-800 dark:text-red-300 ${
-            status === 'failed' ? 'bg-red-200 dark:bg-red-900/50' : 'bg-red-100 dark:bg-red-900/30'
-          }`}
-          onclick={() => setStatus('failed')}
-        >
-          Failed: {summary.failed}
-        </button>
-      </div>
-    {/if}
+    <div class="mb-3 flex flex-wrap gap-2 text-xs">
+      <button
+        class={`rounded-full px-2 py-1 ${!status ? 'bg-gray-200 dark:bg-gray-700' : 'bg-gray-100 dark:bg-gray-800'}`}
+        onclick={() => setStatus('')}
+      >
+        Total: {summary.total}
+      </button>
+      <button
+        class={`rounded-full px-2 py-1 text-amber-800 dark:text-amber-300 ${
+          status === 'pending' ? 'bg-amber-200 dark:bg-amber-900/50' : 'bg-amber-100 dark:bg-amber-900/30'
+        }`}
+        onclick={() => setStatus('pending')}
+      >
+        Pending: {summary.pending}
+      </button>
+      <button
+        class={`rounded-full px-2 py-1 text-blue-800 dark:text-blue-300 ${
+          status === 'processing' ? 'bg-blue-200 dark:bg-blue-900/50' : 'bg-blue-100 dark:bg-blue-900/30'
+        }`}
+        onclick={() => setStatus('processing')}
+      >
+        Processing: {summary.processing}
+      </button>
+      <button
+        class={`rounded-full px-2 py-1 text-green-800 dark:text-green-300 ${
+          status === 'ready' ? 'bg-green-200 dark:bg-green-900/50' : 'bg-green-100 dark:bg-green-900/30'
+        }`}
+        onclick={() => setStatus('ready')}
+      >
+        Ready: {summary.ready}
+      </button>
+      <button
+        class={`rounded-full px-2 py-1 text-red-800 dark:text-red-300 ${
+          status === 'failed' ? 'bg-red-200 dark:bg-red-900/50' : 'bg-red-100 dark:bg-red-900/30'
+        }`}
+        onclick={() => setStatus('failed')}
+      >
+        Failed: {summary.failed}
+      </button>
+    </div>
     <PdfSearchBar {query} onSearch={handleSearch} />
     {#if shouldPollDocuments()}
       <p class="mt-2 text-xs text-gray-500 dark:text-gray-300">Refreshing processing status every 5 seconds.</p>

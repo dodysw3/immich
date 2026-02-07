@@ -154,6 +154,9 @@ export class PdfSearchResponseDto {
 
   @ApiPropertyOptional({ description: 'Next page number as string', nullable: true })
   nextPage!: string | null;
+
+  @ApiPropertyOptional({ type: PdfDocumentStatusSummaryDto })
+  summary?: PdfDocumentStatusSummaryDto;
 }
 
 export class PdfInDocumentSearchResultDto {

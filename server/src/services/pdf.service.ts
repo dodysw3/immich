@@ -215,17 +215,23 @@ export class PdfService extends BaseService {
 
   async search(auth: AuthDto, dto: PdfDocumentSearchDto): Promise<PdfSearchResponseDto> {
     const query = dto.query.trim();
+    const fallbackSummary = { total: 0, pending: 0, processing: 0, ready: 0, failed: 0 };
     if (!query) {
-      return { items: [], nextPage: null };
+      const summary = await this.pdfRepository.getDocumentStatusSummaryByOwner(auth.user.id);
+      return { items: [], nextPage: null, summary: summary ?? fallbackSummary };
     }
 
     const page = dto.page ?? 1;
     const size = dto.size ?? 50;
-    const { items, hasNextPage } = await this.pdfRepository.searchByText(auth.user.id, query, {
-      page,
-      size,
-      status: dto.status,
-    });
+    const [searchPage, summary] = await Promise.all([
+      this.pdfRepository.searchByText(auth.user.id, query, {
+        page,
+        size,
+        status: dto.status,
+      }),
+      this.pdfRepository.getDocumentStatusSummaryByOwner(auth.user.id),
+    ]);
+    const { items, hasNextPage } = searchPage;
     const assetIds = items.map((item) => item.assetId);
     const matchingEntries = await this.pdfRepository.getMatchingPagesByAssets(assetIds, query);
     const matchingByAsset = new Map<string, number[]>();
@@ -243,7 +249,7 @@ export class PdfService extends BaseService {
       });
     }
 
-    return { items: results, nextPage: hasNextPage ? `${page + 1}` : null };
+    return { items: results, nextPage: hasNextPage ? `${page + 1}` : null, summary: summary ?? fallbackSummary };
   }
 
   async searchInDocument(
