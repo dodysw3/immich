@@ -297,6 +297,8 @@ describe(PdfService.name, () => {
           title: 'Report',
           author: 'Alice',
           processedAt: new Date('2026-02-07T00:00:00.000Z'),
+          status: 'ready',
+          lastError: null,
           createdAt: new Date('2026-02-06T00:00:00.000Z'),
         },
       ],
@@ -328,6 +330,8 @@ describe(PdfService.name, () => {
       title: 'Memo',
       author: null,
       processedAt: null,
+      status: 'ready',
+      lastError: null,
       createdAt: new Date('2026-02-06T00:00:00.000Z'),
     });
     mocks.pdf.searchPagesByOwner.mockResolvedValue([

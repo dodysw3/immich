@@ -65,6 +65,12 @@ export class PdfDocumentResponseDto {
   @ApiPropertyOptional()
   processedAt!: Date | null;
 
+  @ApiProperty({ enum: ['pending', 'processing', 'ready', 'failed'] })
+  status!: 'pending' | 'processing' | 'ready' | 'failed';
+
+  @ApiPropertyOptional()
+  lastError!: string | null;
+
   @ApiProperty()
   createdAt!: Date;
 }

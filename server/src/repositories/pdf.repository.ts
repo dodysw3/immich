@@ -4,6 +4,7 @@ import { InjectKysely } from 'nestjs-kysely';
 import { DummyValue, GenerateSql } from 'src/decorators';
 import { AssetType } from 'src/enum';
 import { DB } from 'src/schema';
+import { PdfDocumentStatus } from 'src/schema/tables/pdf-document.table';
 import { PdfDocumentTable } from 'src/schema/tables/pdf-document.table';
 import { PdfPageTable } from 'src/schema/tables/pdf-page.table';
 import { paginationHelper } from 'src/utils/pagination';
@@ -49,6 +50,8 @@ export class PdfRepository {
         producer: DummyValue.STRING,
         creationDate: DummyValue.DATE,
         processedAt: DummyValue.DATE,
+        status: 'pending',
+        lastError: DummyValue.STRING,
       },
     ],
   })
@@ -66,6 +69,22 @@ export class PdfRepository {
           producer: eb.ref('excluded.producer'),
           creationDate: eb.ref('excluded.creationDate'),
           processedAt: eb.ref('excluded.processedAt'),
+          status: eb.ref('excluded.status'),
+          lastError: eb.ref('excluded.lastError'),
+        })),
+      )
+      .executeTakeFirst();
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID, 'processing', DummyValue.STRING] })
+  updateDocumentStatus(assetId: string, status: PdfDocumentStatus, lastError: string | null = null) {
+    return this.db
+      .insertInto('pdf_document')
+      .values({ assetId, status, lastError, pageCount: 0 })
+      .onConflict((oc) =>
+        oc.column('assetId').doUpdateSet((eb) => ({
+          status: eb.ref('excluded.status'),
+          lastError: eb.ref('excluded.lastError'),
         })),
       )
       .executeTakeFirst();
@@ -103,6 +122,8 @@ export class PdfRepository {
         'pdf_document.title',
         'pdf_document.author',
         'pdf_document.processedAt',
+        'pdf_document.status',
+        'pdf_document.lastError',
       ])
       .where('asset.ownerId', '=', ownerId)
       .where('asset.type', '=', AssetType.Other)
@@ -129,6 +150,8 @@ export class PdfRepository {
         'pdf_document.title',
         'pdf_document.author',
         'pdf_document.processedAt',
+        'pdf_document.status',
+        'pdf_document.lastError',
       ])
       .where('asset.ownerId', '=', ownerId)
       .where('asset.id', '=', assetId)
@@ -175,6 +198,8 @@ export class PdfRepository {
         'pdf_document.title',
         'pdf_document.author',
         'pdf_document.processedAt',
+        'pdf_document.status',
+        'pdf_document.lastError',
       ])
       .where('asset.ownerId', '=', ownerId)
       .where('asset.deletedAt', 'is', null)
@@ -226,6 +251,8 @@ export class PdfRepository {
       producer: null,
       creationDate: null,
       processedAt: null,
+      status: 'pending',
+      lastError: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

@@ -53,6 +53,7 @@ export class PdfService extends BaseService {
       return;
     }
 
+    await this.pdfRepository.updateDocumentStatus(asset.id, 'pending');
     await this.jobRepository.queue({ name: JobName.PdfProcess, data: { id: asset.id } });
   }
 
@@ -89,42 +90,54 @@ export class PdfService extends BaseService {
       return JobStatus.Skipped;
     }
 
+    await this.pdfRepository.updateDocumentStatus(id, 'processing', null);
+
     const maxFileSize = this.getPdfMaxFileSizeBytes();
     if (maxFileSize > 0) {
       const stat = await this.storageRepository.stat(asset.originalPath);
       if (stat.size > maxFileSize) {
         this.logger.warn(`Skipping PDF processing for ${id}: file exceeds PDF_MAX_FILE_SIZE_MB`);
-        return JobStatus.Skipped;
+        await this.pdfRepository.updateDocumentStatus(id, 'failed', 'File exceeds configured size limit');
+        return JobStatus.Failed;
       }
     }
 
-    const metadata = await this.readPdfMetadata(asset.originalPath);
-    await this.pdfRepository.upsertDocument({
-      assetId: id,
-      pageCount: metadata.pageCount,
-      title: metadata.title,
-      author: metadata.author,
-      subject: metadata.subject,
-      creator: metadata.creator,
-      producer: metadata.producer,
-      creationDate: metadata.creationDate,
-      processedAt: new Date(),
-    });
+    try {
+      const metadata = await this.readPdfMetadata(asset.originalPath);
+      await this.pdfRepository.upsertDocument({
+        assetId: id,
+        pageCount: metadata.pageCount,
+        title: metadata.title,
+        author: metadata.author,
+        subject: metadata.subject,
+        creator: metadata.creator,
+        producer: metadata.producer,
+        creationDate: metadata.creationDate,
+        processedAt: new Date(),
+        status: 'ready',
+        lastError: null,
+      });
 
-    let pages: Array<{ assetId: string; pageNumber: number; text: string; textSource: 'embedded' | 'none' }> = [];
-    if (metadata.pageCount > 0 && metadata.pageCount <= this.getPdfMaxPagesPerDoc()) {
-      pages = await this.extractTextByPage(asset.originalPath, id, metadata.pageCount);
-      if (isOcrEnabled(machineLearning) && this.isPdfOcrEnabled()) {
-        await this.ocrTextlessPages(asset.originalPath, pages, machineLearning.ocr);
+      let pages: Array<{ assetId: string; pageNumber: number; text: string; textSource: 'embedded' | 'none' }> = [];
+      if (metadata.pageCount > 0 && metadata.pageCount <= this.getPdfMaxPagesPerDoc()) {
+        pages = await this.extractTextByPage(asset.originalPath, id, metadata.pageCount);
+        if (isOcrEnabled(machineLearning) && this.isPdfOcrEnabled()) {
+          await this.ocrTextlessPages(asset.originalPath, pages, machineLearning.ocr);
+        }
       }
+
+      await this.pdfRepository.replacePages(id, pages);
+      const searchText = tokenizeForSearch(pages.map((item) => item.text).join(' ')).join(' ');
+      await this.pdfRepository.upsertSearch(id, searchText);
+
+      await this.assetRepository.upsertJobStatus({ assetId: id });
+      return JobStatus.Success;
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'Unknown PDF processing error';
+      await this.pdfRepository.updateDocumentStatus(id, 'failed', reason.slice(0, 500));
+      this.logger.warn(`PDF processing failed for ${id}: ${reason}`);
+      return JobStatus.Failed;
     }
-
-    await this.pdfRepository.replacePages(id, pages);
-    const searchText = tokenizeForSearch(pages.map((item) => item.text).join(' ')).join(' ');
-    await this.pdfRepository.upsertSearch(id, searchText);
-
-    await this.assetRepository.upsertJobStatus({ assetId: id });
-    return JobStatus.Success;
   }
 
   async getDocuments(auth: AuthDto, dto: PdfDocumentQueryDto): Promise<PdfDocumentListResponseDto> {
@@ -217,6 +230,8 @@ export class PdfService extends BaseService {
     title: string | null;
     author: string | null;
     processedAt: Date | null;
+    status: 'pending' | 'processing' | 'ready' | 'failed' | null;
+    lastError: string | null;
     createdAt: Date;
   }): PdfDocumentResponseDto {
     return {
@@ -226,6 +241,8 @@ export class PdfService extends BaseService {
       title: item.title,
       author: item.author,
       processedAt: item.processedAt,
+      status: item.status ?? 'pending',
+      lastError: item.lastError,
       createdAt: item.createdAt,
     };
   }
