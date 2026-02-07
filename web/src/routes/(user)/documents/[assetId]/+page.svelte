@@ -20,6 +20,8 @@
   let searchResults = $state<Array<{ pageNumber: number; snippet: string; matchIndex: number }> | null>(null);
   let reprocessing = $state(false);
   let refreshingDocument = false;
+  let refreshFailures = $state(0);
+  const MAX_REFRESH_FAILURES = 3;
 
   const normalized = (value: string) => value.trim().toLowerCase();
   const highlightedPages = $derived.by(() => {
@@ -64,22 +66,29 @@
       const previousStatus = document.status;
       const response = await fetch(`/api/documents/${document.assetId}`);
       if (!response.ok) {
+        refreshFailures += 1;
         return;
       }
 
       const nextDocument = await response.json();
       document = nextDocument;
+      refreshFailures = 0;
 
       if (previousStatus !== 'ready' && nextDocument.status === 'ready') {
         const pagesResponse = await fetch(`/api/documents/${document.assetId}/pages`);
-        pages = pagesResponse.ok ? await pagesResponse.json() : [];
+        if (pagesResponse.ok) {
+          pages = await pagesResponse.json();
+        } else {
+          refreshFailures += 1;
+        }
       }
     } finally {
       refreshingDocument = false;
     }
   };
 
-  const shouldPollDocument = () => document.status === 'pending' || document.status === 'processing';
+  const shouldPollDocument = () =>
+    (document.status === 'pending' || document.status === 'processing') && refreshFailures < MAX_REFRESH_FAILURES;
 
   $effect(() => {
     if (!shouldPollDocument()) {
@@ -106,6 +115,7 @@
       document = { ...document, status: 'pending', lastError: null };
       pages = [];
       searchResults = null;
+      refreshFailures = 0;
       toastManager.success('Reprocessing has been queued.');
     } finally {
       reprocessing = false;
@@ -148,6 +158,10 @@
       <h2 class="text-sm font-semibold">Indexed pages</h2>
       {#if shouldPollDocument()}
         <p class="mt-2 text-xs text-gray-500 dark:text-gray-300">Indexing status refreshes every 5 seconds.</p>
+      {:else if (document.status === 'pending' || document.status === 'processing') && refreshFailures >= MAX_REFRESH_FAILURES}
+        <p class="mt-2 text-xs text-amber-700 dark:text-amber-300">
+          Auto-refresh paused after repeated request failures. Use browser refresh to retry.
+        </p>
       {/if}
       {#if searching}
         <p class="mt-3 text-xs text-gray-500 dark:text-gray-300">Searching...</p>

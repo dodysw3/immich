@@ -17,6 +17,8 @@
   let query = $state(data.query ?? '');
   let status = $state(data.status ?? '');
   let refreshing = false;
+  let refreshFailures = $state(0);
+  const MAX_REFRESH_FAILURES = 3;
 
   const navigateDocuments = (next: { query?: string; page?: number; status?: string }) => {
     const nextQuery = next.query ?? query;
@@ -61,7 +63,7 @@
   };
 
   const shouldPollDocuments = () =>
-    items.some((item) => item.status === 'pending' || item.status === 'processing') && !query;
+    items.some((item) => item.status === 'pending' || item.status === 'processing') && !query && refreshFailures < MAX_REFRESH_FAILURES;
 
   const refreshDocuments = async () => {
     if (refreshing) {
@@ -74,6 +76,7 @@
         `/api/documents?page=${data.page}${status ? `&status=${encodeURIComponent(status)}` : ''}`,
       );
       if (!response.ok) {
+        refreshFailures += 1;
         return;
       }
 
@@ -81,6 +84,7 @@
       items = payload.items || [];
       nextPage = payload.nextPage || null;
       summary = payload.summary || { total: 0, pending: 0, processing: 0, ready: 0, failed: 0 };
+      refreshFailures = 0;
     } finally {
       refreshing = false;
     }
@@ -143,6 +147,10 @@
     <PdfSearchBar {query} onSearch={handleSearch} />
     {#if shouldPollDocuments()}
       <p class="mt-2 text-xs text-gray-500 dark:text-gray-300">Refreshing processing status every 5 seconds.</p>
+    {:else if !query && refreshFailures >= MAX_REFRESH_FAILURES}
+      <p class="mt-2 text-xs text-amber-700 dark:text-amber-300">
+        Auto-refresh paused after repeated request failures. Use browser refresh to retry.
+      </p>
     {/if}
     {#if query}
       <button class="mt-2 text-xs text-primary-700 dark:text-primary-300" onclick={resetSearch}>Clear search</button>
