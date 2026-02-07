@@ -25,7 +25,6 @@ import { tokenizeForSearch } from 'src/utils/database';
 import { isOcrEnabled } from 'src/utils/misc';
 
 const DEFAULT_PDF_TEXT_EXTRACTION_PAGE_LIMIT = 250;
-const MIN_EMBEDDED_TEXT_LENGTH = 10;
 
 type PdfMetadata = {
   pageCount: number;
@@ -339,6 +338,7 @@ export class PdfService extends BaseService {
       width: number | null;
       height: number | null;
     }> = [];
+    const minEmbeddedTextLength = this.getPdfMinEmbeddedTextLength();
     const dimensions = await this.extractPageDimensions(path, pageCount);
 
     for (let pageNumber = 1; pageNumber <= pageCount; pageNumber++) {
@@ -349,7 +349,7 @@ export class PdfService extends BaseService {
         assetId,
         pageNumber,
         text: normalized,
-        textSource: normalized.length >= MIN_EMBEDDED_TEXT_LENGTH ? 'embedded' : 'none',
+        textSource: normalized.length >= minEmbeddedTextLength ? 'embedded' : 'none',
         width: dimension?.width ?? null,
         height: dimension?.height ?? null,
       });
@@ -565,6 +565,11 @@ export class PdfService extends BaseService {
   private getPdfMaxFileSizeBytes() {
     const value = this.configRepository.getEnv().pdf.maxFileSizeMb;
     return value !== null && Number.isFinite(value) && value > 0 ? Math.floor(value * 1024 * 1024) : 0;
+  }
+
+  private getPdfMinEmbeddedTextLength() {
+    const value = this.configRepository.getEnv().pdf.minEmbeddedTextLength;
+    return Number.isFinite(value) && value > 0 ? Math.floor(value) : 10;
   }
 
   private toInDocumentResult(pageNumber: number, text: string, query: string): PdfInDocumentSearchResultDto {

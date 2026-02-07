@@ -62,7 +62,9 @@ describe(PdfService.name, () => {
 
   it('should skip queueing when PDF_ENABLE is false', async () => {
     mocks.config.getEnv.mockReturnValue(
-      mockEnvData({ pdf: { enabled: false, ocrEnabled: true, maxPagesPerDoc: 250, maxFileSizeMb: null } }),
+      mockEnvData({
+        pdf: { enabled: false, ocrEnabled: true, maxPagesPerDoc: 250, maxFileSizeMb: null, minEmbeddedTextLength: 10 },
+      }),
     );
     mocks.pdf.getAssetForProcessing.mockResolvedValue({
       id: 'asset-disabled',
@@ -253,7 +255,9 @@ describe(PdfService.name, () => {
 
   it('should skip OCR fallback when PDF_OCR_ENABLE is false', async () => {
     mocks.config.getEnv.mockReturnValue(
-      mockEnvData({ pdf: { enabled: true, ocrEnabled: false, maxPagesPerDoc: 250, maxFileSizeMb: null } }),
+      mockEnvData({
+        pdf: { enabled: true, ocrEnabled: false, maxPagesPerDoc: 250, maxFileSizeMb: null, minEmbeddedTextLength: 10 },
+      }),
     );
     mocks.pdf.getAssetForProcessing.mockResolvedValue({
       id: 'asset-4c',
@@ -289,7 +293,9 @@ describe(PdfService.name, () => {
 
   it('should skip text extraction when page count exceeds PDF_MAX_PAGES_PER_DOC', async () => {
     mocks.config.getEnv.mockReturnValue(
-      mockEnvData({ pdf: { enabled: true, ocrEnabled: true, maxPagesPerDoc: 1, maxFileSizeMb: null } }),
+      mockEnvData({
+        pdf: { enabled: true, ocrEnabled: true, maxPagesPerDoc: 1, maxFileSizeMb: null, minEmbeddedTextLength: 10 },
+      }),
     );
     mocks.pdf.getAssetForProcessing.mockResolvedValue({
       id: 'asset-4d',
@@ -350,6 +356,44 @@ describe(PdfService.name, () => {
           textSource: 'ocr',
         }),
       ]),
+    );
+  });
+
+  it('should use configured embedded text threshold to decide OCR fallback', async () => {
+    mocks.config.getEnv.mockReturnValue(
+      mockEnvData({
+        pdf: { enabled: true, ocrEnabled: true, maxPagesPerDoc: 250, maxFileSizeMb: null, minEmbeddedTextLength: 4 },
+      }),
+    );
+    mocks.pdf.getAssetForProcessing.mockResolvedValue({
+      id: 'asset-threshold',
+      ownerId: 'user-1',
+      originalPath: '/uploads/threshold.pdf',
+      originalFileName: 'threshold.pdf',
+      type: AssetType.Other,
+      deletedAt: null,
+    });
+    mocks.metadata.readTags.mockResolvedValue({ PageCount: 1, Title: 'Threshold' } as any);
+    mocks.process.spawn.mockImplementation((command: string) => {
+      if (command === 'pdfinfo') {
+        return makeChildProcess('Page    1 size:      612 x 792 pts (letter)\n');
+      }
+      if (command === 'pdftotext') {
+        return makeChildProcess('tiny\n');
+      }
+      if (command === 'pdftoppm') {
+        return makeChildProcess('');
+      }
+      throw new Error(`Unexpected command: ${command}`);
+    });
+
+    const result = await sut.handlePdfProcess({ id: 'asset-threshold' });
+
+    expect(result).toBe(JobStatus.Success);
+    expect(mocks.machineLearning.ocr).not.toHaveBeenCalled();
+    expect(mocks.pdf.replacePages).toHaveBeenCalledWith(
+      'asset-threshold',
+      expect.arrayContaining([expect.objectContaining({ pageNumber: 1, textSource: 'embedded' })]),
     );
   });
 

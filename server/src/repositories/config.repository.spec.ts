@@ -23,6 +23,7 @@ const resetEnv = () => {
     'PDF_OCR_ENABLE',
     'PDF_MAX_PAGES_PER_DOC',
     'PDF_MAX_FILE_SIZE_MB',
+    'PDF_MIN_EMBEDDED_TEXT_LENGTH',
 
     'DB_URL',
     'DB_HOSTNAME',
@@ -127,6 +128,7 @@ describe('getEnv', () => {
         ocrEnabled: true,
         maxPagesPerDoc: 250,
         maxFileSizeMb: null,
+        minEmbeddedTextLength: 10,
       });
     });
 
@@ -140,8 +142,9 @@ describe('getEnv', () => {
     it('should parse PDF_MAX_PAGES_PER_DOC and PDF_MAX_FILE_SIZE_MB', () => {
       process.env.PDF_MAX_PAGES_PER_DOC = '321';
       process.env.PDF_MAX_FILE_SIZE_MB = '123';
+      process.env.PDF_MIN_EMBEDDED_TEXT_LENGTH = '15';
       const { pdf } = getEnv();
-      expect(pdf).toMatchObject({ maxPagesPerDoc: 321, maxFileSizeMb: 123 });
+      expect(pdf).toMatchObject({ maxPagesPerDoc: 321, maxFileSizeMb: 123, minEmbeddedTextLength: 15 });
     });
 
     it('should reject invalid PDF_ENABLE', () => {

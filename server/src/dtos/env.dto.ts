@@ -158,6 +158,12 @@ export class EnvDto {
   @Min(1)
   PDF_MAX_FILE_SIZE_MB?: number;
 
+  @IsInt()
+  @Optional()
+  @Type(() => Number)
+  @Min(1)
+  PDF_MIN_EMBEDDED_TEXT_LENGTH?: number;
+
   @IsString()
   @Optional()
   DB_DATABASE_NAME?: string;

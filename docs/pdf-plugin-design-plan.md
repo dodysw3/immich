@@ -138,7 +138,7 @@ Phase 5: Hardening
 7. Regression: non-PDF uploads/search remain unchanged.
 8. Upstream merge check: only expected append conflicts in shared index/enum files.
 
-## 11. Open Decisions
-- Final extractor library (`mupdf` vs alternative) based on runtime stability and packaging.
-- OCR threshold for deciding `embedded` vs `ocr` text adequacy.
-- Thumbnail generation timing (always vs lazy).
+## 11. Resolved Decisions
+- Extractor strategy: use Poppler CLI tools already available in runtime (`pdftotext`, `pdfinfo`, `pdftoppm`) with graceful fallback when missing.
+- OCR adequacy threshold: configurable via `PDF_MIN_EMBEDDED_TEXT_LENGTH` (default `10`), used to decide `embedded` vs OCR fallback.
+- Thumbnail generation timing: lazy (use existing asset thumbnail endpoint and client-side page thumbnails in viewer).
