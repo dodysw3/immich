@@ -198,6 +198,19 @@ export class PdfRepository {
       .execute();
   }
 
+  @GenerateSql({ params: [DummyValue.UUID, DummyValue.UUID, DummyValue.STRING] })
+  searchPagesByOwner(ownerId: string, assetId: string, query: string): Promise<Array<{ pageNumber: number; text: string }>> {
+    return this.db
+      .selectFrom('pdf_page')
+      .innerJoin('asset', 'asset.id', 'pdf_page.assetId')
+      .select(['pdf_page.pageNumber', 'pdf_page.text'])
+      .where('asset.ownerId', '=', ownerId)
+      .where('asset.id', '=', assetId)
+      .where(sql<boolean>`f_unaccent("pdf_page"."text") %>> f_unaccent(${query})`)
+      .orderBy('pdf_page.pageNumber', 'asc')
+      .execute();
+  }
+
   isPdfAsset(row: { originalPath: string; originalFileName: string; type: AssetType }) {
     return row.type === AssetType.Other && row.originalFileName.toLowerCase().endsWith('.pdf');
   }

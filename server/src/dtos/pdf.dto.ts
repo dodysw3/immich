@@ -25,6 +25,13 @@ export class PdfDocumentSearchDto extends PdfDocumentQueryDto {
   query!: string;
 }
 
+export class PdfInDocumentSearchDto {
+  @ApiProperty({ description: 'Search phrase' })
+  @IsString()
+  @IsNotEmpty()
+  query!: string;
+}
+
 export class PdfDocumentParamsDto {
   @ApiProperty({ format: 'uuid' })
   @IsUUID('4')
@@ -104,4 +111,15 @@ export class PdfSearchResponseDto {
 
   @ApiPropertyOptional({ description: 'Next page number as string', nullable: true })
   nextPage!: string | null;
+}
+
+export class PdfInDocumentSearchResultDto {
+  @ApiProperty({ type: 'integer' })
+  pageNumber!: number;
+
+  @ApiProperty()
+  snippet!: string;
+
+  @ApiProperty({ type: 'integer' })
+  matchIndex!: number;
 }

@@ -10,6 +10,8 @@ import {
   PdfDocumentListResponseDto,
   PdfDocumentQueryDto,
   PdfDocumentResponseDto,
+  PdfInDocumentSearchDto,
+  PdfInDocumentSearchResultDto,
   PdfSearchResponseDto,
   PdfDocumentSearchDto,
   PdfPageResponseDto,
@@ -166,6 +168,17 @@ export class PdfService extends BaseService {
     }
 
     return { items: results, nextPage: hasNextPage ? `${page + 1}` : null };
+  }
+
+  async searchInDocument(
+    auth: AuthDto,
+    id: string,
+    dto: PdfInDocumentSearchDto,
+  ): Promise<PdfInDocumentSearchResultDto[]> {
+    await this.ensureDocumentAccess(auth.user.id, id);
+
+    const rows = await this.pdfRepository.searchPagesByOwner(auth.user.id, id, dto.query);
+    return rows.map((row) => this.toInDocumentResult(row.pageNumber, row.text, dto.query));
   }
 
   private async ensureDocumentAccess(ownerId: string, id: string): Promise<void> {
@@ -366,5 +379,21 @@ export class PdfService extends BaseService {
       return parsed instanceof Date ? parsed : null;
     }
     return null;
+  }
+
+  private toInDocumentResult(pageNumber: number, text: string, query: string): PdfInDocumentSearchResultDto {
+    const source = text || '';
+    const haystack = source.toLowerCase();
+    const needle = query.trim().toLowerCase();
+    const matchIndex = Math.max(0, haystack.indexOf(needle));
+    const snippetStart = Math.max(0, matchIndex - 40);
+    const snippetEnd = Math.min(source.length, matchIndex + needle.length + 80);
+    const snippet = source.slice(snippetStart, snippetEnd).trim();
+
+    return {
+      pageNumber,
+      snippet: snippet.length > 0 ? snippet : source.slice(0, 120).trim(),
+      matchIndex,
+    };
   }
 }

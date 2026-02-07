@@ -12,9 +12,18 @@
   let { data }: Props = $props();
   let searchQuery = $state('');
   let viewerPage = $state(1);
+  let searching = $state(false);
+  let searchResults = $state<Array<{ pageNumber: number; snippet: string; matchIndex: number }> | null>(null);
 
   const normalized = (value: string) => value.trim().toLowerCase();
   const highlightedPages = $derived.by(() => {
+    if (searchResults) {
+      return searchResults.map((item) => ({
+        pageNumber: item.pageNumber,
+        text: item.snippet,
+      }));
+    }
+
     const needle = normalized(searchQuery);
     if (!needle) {
       return data.pages;
@@ -22,6 +31,22 @@
 
     return data.pages.filter((page) => normalized(page.text).includes(needle));
   });
+
+  const handleSearch = async (query: string) => {
+    searchQuery = query;
+    if (!query.trim()) {
+      searchResults = null;
+      return;
+    }
+
+    searching = true;
+    try {
+      const response = await fetch(`/api/documents/${data.document.assetId}/search?query=${encodeURIComponent(query)}`);
+      searchResults = response.ok ? await response.json() : [];
+    } finally {
+      searching = false;
+    }
+  };
 </script>
 
 <UserPageLayout
@@ -41,14 +66,16 @@
   <div class="grid gap-4 xl:grid-cols-[2fr_1fr]">
     <div class="space-y-4">
       <PdfViewer assetId={data.document.assetId} requestedPage={viewerPage} onPageChange={(page) => (viewerPage = page)} />
-      <PdfSearchBar query={searchQuery} onSearch={(query) => (searchQuery = query)} />
+      <PdfSearchBar query={searchQuery} onSearch={handleSearch} />
     </div>
 
     <div class="space-y-4">
       <PdfDocumentInfo document={data.document} />
       <div class="rounded-2xl border border-gray-200 p-4 dark:border-gray-700">
       <h2 class="text-sm font-semibold">Indexed pages</h2>
-      {#if highlightedPages.length === 0}
+      {#if searching}
+        <p class="mt-3 text-xs text-gray-500 dark:text-gray-300">Searching...</p>
+      {:else if highlightedPages.length === 0}
         <p class="mt-3 text-xs text-gray-500 dark:text-gray-300">
           No matching indexed text. Processing may still be running.
         </p>

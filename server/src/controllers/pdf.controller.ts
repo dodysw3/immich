@@ -4,6 +4,8 @@ import { Endpoint, HistoryBuilder } from 'src/decorators';
 import { AuthDto } from 'src/dtos/auth.dto';
 import {
   PdfDocumentListResponseDto,
+  PdfInDocumentSearchDto,
+  PdfInDocumentSearchResultDto,
   PdfDocumentPageParamsDto,
   PdfDocumentParamsDto,
   PdfDocumentQueryDto,
@@ -41,6 +43,21 @@ export class PdfController {
   })
   searchDocuments(@Auth() auth: AuthDto, @Query() dto: PdfDocumentSearchDto): Promise<PdfSearchResponseDto> {
     return this.service.search(auth, dto);
+  }
+
+  @Get(':id/search')
+  @Authenticated({ permission: Permission.AssetRead })
+  @Endpoint({
+    summary: 'Search inside a PDF document',
+    description: 'Search indexed page text for a specific PDF and return snippets per matching page.',
+    history: new HistoryBuilder().added('v2.5.6').alpha('v2.5.6'),
+  })
+  searchInDocument(
+    @Auth() auth: AuthDto,
+    @Param() { id }: PdfDocumentParamsDto,
+    @Query() dto: PdfInDocumentSearchDto,
+  ): Promise<PdfInDocumentSearchResultDto[]> {
+    return this.service.searchInDocument(auth, id, dto);
   }
 
   @Get(':id')

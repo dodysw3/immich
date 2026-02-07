@@ -178,4 +178,30 @@ describe(PdfService.name, () => {
       nextPage: null,
     });
   });
+
+  it('should return snippets for in-document search', async () => {
+    mocks.pdf.getDocumentByOwner.mockResolvedValue({
+      assetId: 'asset-6',
+      originalFileName: 'memo.pdf',
+      pageCount: 3,
+      title: 'Memo',
+      author: null,
+      processedAt: null,
+      createdAt: new Date('2026-02-06T00:00:00.000Z'),
+    });
+    mocks.pdf.searchPagesByOwner.mockResolvedValue([
+      { pageNumber: 2, text: 'This is a longer paragraph about quarterly revenue growth and forecasts.' },
+    ]);
+
+    const result = await sut.searchInDocument({ user: { id: 'user-1' } } as any, 'asset-6', { query: 'revenue' });
+
+    expect(mocks.pdf.searchPagesByOwner).toHaveBeenCalledWith('user-1', 'asset-6', 'revenue');
+    expect(result).toEqual([
+      expect.objectContaining({
+        pageNumber: 2,
+        matchIndex: expect.any(Number),
+      }),
+    ]);
+    expect(result[0]!.snippet.toLowerCase()).toContain('revenue');
+  });
 });
