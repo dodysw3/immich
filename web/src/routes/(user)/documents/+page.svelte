@@ -31,7 +31,7 @@
     if (nextPage > 1) {
       params.set('page', `${nextPage}`);
     }
-    if (!nextQuery && nextStatus) {
+    if (nextStatus) {
       params.set('status', nextStatus);
     }
     const queryString = params.toString();

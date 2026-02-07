@@ -20,7 +20,7 @@ export class PdfDocumentQueryDto {
   @Min(1)
   size?: number = 50;
 
-  @ApiPropertyOptional({ enum: PDF_DOCUMENT_STATUSES })
+  @ApiPropertyOptional({ enum: PDF_DOCUMENT_STATUSES, description: 'Filter documents by processing status' })
   @IsOptional()
   @IsString()
   @IsIn(PDF_DOCUMENT_STATUSES)
@@ -40,7 +40,7 @@ export class PdfInDocumentSearchDto {
   @IsNotEmpty()
   query!: string;
 
-  @ApiPropertyOptional({ type: 'integer', default: 100, minimum: 1, maximum: 500 })
+  @ApiPropertyOptional({ type: 'integer', default: 100, minimum: 1, maximum: 500, description: 'Max matched pages to return' })
   @IsOptional()
   @Transform(({ value }) => Number(value))
   @IsInt()

@@ -12,7 +12,9 @@ export const load = (async ({ url, fetch }) => {
   const page = Number(url.searchParams.get('page') || '1');
   const normalizedPage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
   const endpoint = query
-    ? `/api/documents/search?query=${encodeURIComponent(query)}&page=${normalizedPage}`
+    ? `/api/documents/search?query=${encodeURIComponent(query)}&page=${normalizedPage}${
+        status ? `&status=${encodeURIComponent(status)}` : ''
+      }`
     : `/api/documents?page=${normalizedPage}${status ? `&status=${encodeURIComponent(status)}` : ''}`;
   const response = await fetch(endpoint);
   const payload = response.ok

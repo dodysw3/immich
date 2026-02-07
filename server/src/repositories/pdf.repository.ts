@@ -242,8 +242,12 @@ export class PdfRepository {
       .executeTakeFirst();
   }
 
-  @GenerateSql({ params: [DummyValue.UUID, DummyValue.STRING, { page: 1, size: 50 }] })
-  async searchByText(ownerId: string, query: string, pagination: { page: number; size: number }) {
+  @GenerateSql({ params: [DummyValue.UUID, DummyValue.STRING, { page: 1, size: 50, status: 'ready' }] })
+  async searchByText(
+    ownerId: string,
+    query: string,
+    pagination: { page: number; size: number; status?: PdfDocumentFilterStatus },
+  ) {
     const items = await this.db
       .selectFrom('pdf_search')
       .innerJoin('asset', 'asset.id', 'pdf_search.assetId')
@@ -261,6 +265,9 @@ export class PdfRepository {
       ])
       .where('asset.ownerId', '=', ownerId)
       .where('asset.deletedAt', 'is', null)
+      .$if(!!pagination.status, (qb) =>
+        qb.where(sql<PdfDocumentFilterStatus>`coalesce("pdf_document"."status", 'pending')`, '=', pagination.status!),
+      )
       .where(sql<boolean>`f_unaccent("pdf_search"."text") %>> f_unaccent(${query})`)
       .orderBy('asset.fileCreatedAt', 'desc')
       .limit(pagination.size + 1)

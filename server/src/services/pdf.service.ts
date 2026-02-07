@@ -221,7 +221,11 @@ export class PdfService extends BaseService {
 
     const page = dto.page ?? 1;
     const size = dto.size ?? 50;
-    const { items, hasNextPage } = await this.pdfRepository.searchByText(auth.user.id, query, { page, size });
+    const { items, hasNextPage } = await this.pdfRepository.searchByText(auth.user.id, query, {
+      page,
+      size,
+      status: dto.status,
+    });
     const assetIds = items.map((item) => item.assetId);
     const matchingEntries = await this.pdfRepository.getMatchingPagesByAssets(assetIds, query);
     const matchingByAsset = new Map<string, number[]>();

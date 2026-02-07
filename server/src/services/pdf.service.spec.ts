@@ -483,7 +483,11 @@ describe(PdfService.name, () => {
 
     const result = await sut.search({ user: { id: 'user-1' } } as any, { query: 'revenue', page: 1, size: 50 });
 
-    expect(mocks.pdf.searchByText).toHaveBeenCalledWith('user-1', 'revenue', { page: 1, size: 50 });
+    expect(mocks.pdf.searchByText).toHaveBeenCalledWith('user-1', 'revenue', {
+      page: 1,
+      size: 50,
+      status: undefined,
+    });
     expect(mocks.pdf.getMatchingPagesByAssets).toHaveBeenCalledWith(['asset-5'], 'revenue');
     expect(result).toEqual({
       items: [
@@ -503,6 +507,24 @@ describe(PdfService.name, () => {
     expect(result).toEqual({ items: [], nextPage: null });
     expect(mocks.pdf.searchByText).not.toHaveBeenCalled();
     expect(mocks.pdf.getMatchingPagesByAssets).not.toHaveBeenCalled();
+  });
+
+  it('should pass status filter to search repository query', async () => {
+    mocks.pdf.searchByText.mockResolvedValue({ items: [], hasNextPage: false });
+    mocks.pdf.getMatchingPagesByAssets.mockResolvedValue([]);
+
+    await sut.search({ user: { id: 'user-1' } } as any, {
+      query: 'budget',
+      page: 2,
+      size: 10,
+      status: 'failed',
+    });
+
+    expect(mocks.pdf.searchByText).toHaveBeenCalledWith('user-1', 'budget', {
+      page: 2,
+      size: 10,
+      status: 'failed',
+    });
   });
 
   it('should group matching pages by asset for multi-document search', async () => {
