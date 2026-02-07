@@ -10,11 +10,15 @@ export const load = (async ({ url, fetch }) => {
     ? `/api/documents/search?query=${encodeURIComponent(query)}&page=${normalizedPage}`
     : `/api/documents?page=${normalizedPage}`;
   const response = await fetch(endpoint);
-  const payload = response.ok ? await response.json() : { items: [], nextPage: null };
+  const payload = response.ok
+    ? await response.json()
+    : { items: [], nextPage: null, summary: { total: 0, pending: 0, processing: 0, ready: 0, failed: 0 } };
+  const summary = payload.summary || { total: 0, pending: 0, processing: 0, ready: 0, failed: 0 };
 
   return {
     items: payload.items || [],
     nextPage: payload.nextPage || null,
+    summary,
     page: normalizedPage,
     query,
     meta: {

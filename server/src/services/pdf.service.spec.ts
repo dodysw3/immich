@@ -107,6 +107,58 @@ describe(PdfService.name, () => {
     ]);
   });
 
+  it('should include document status summary in list response', async () => {
+    mocks.pdf.getDocumentsByOwner.mockResolvedValue({
+      items: [
+        {
+          assetId: 'asset-list-1',
+          originalFileName: 'report.pdf',
+          pageCount: 3,
+          title: 'Report',
+          author: 'Alice',
+          processedAt: new Date('2026-02-07T00:00:00.000Z'),
+          status: 'ready',
+          lastError: null,
+          createdAt: new Date('2026-02-06T00:00:00.000Z'),
+        },
+      ],
+      hasNextPage: false,
+    });
+    mocks.pdf.getDocumentStatusSummaryByOwner.mockResolvedValue({
+      total: 4,
+      pending: 1,
+      processing: 1,
+      ready: 1,
+      failed: 1,
+    });
+
+    const result = await sut.getDocuments({ user: { id: 'user-1' } } as any, { page: 1, size: 50 });
+
+    expect(mocks.pdf.getDocumentStatusSummaryByOwner).toHaveBeenCalledWith('user-1');
+    expect(result.summary).toEqual({
+      total: 4,
+      pending: 1,
+      processing: 1,
+      ready: 1,
+      failed: 1,
+    });
+  });
+
+  it('should return zeroed summary when repository summary is missing', async () => {
+    mocks.pdf.getDocumentsByOwner.mockResolvedValue({ items: [], hasNextPage: false });
+    mocks.pdf.getDocumentStatusSummaryByOwner.mockResolvedValue(undefined as any);
+
+    const result = await sut.getDocuments({ user: { id: 'user-1' } } as any, { page: 1, size: 50 });
+
+    expect(result.summary).toEqual({
+      total: 0,
+      pending: 0,
+      processing: 0,
+      ready: 0,
+      failed: 0,
+    });
+  });
+
   it('should skip processing when asset is missing', async () => {
     mocks.pdf.getAssetForProcessing.mockResolvedValue(undefined);
 
@@ -135,6 +187,7 @@ describe(PdfService.name, () => {
     );
     expect(mocks.pdf.replacePages).toHaveBeenCalledWith('asset-3', []);
     expect(mocks.pdf.upsertSearch).toHaveBeenCalledWith('asset-3', '');
+    expect(mocks.pdf.markDocumentReady).toHaveBeenCalledWith('asset-3', expect.any(Date));
   });
 
   it('should run OCR fallback for textless pages', async () => {
@@ -526,6 +579,30 @@ describe(PdfService.name, () => {
     expect(mocks.pdf.searchPagesByOwner).not.toHaveBeenCalled();
   });
 
+  it('should mark document as failed without setting ready when indexing fails', async () => {
+    mocks.pdf.getAssetForProcessing.mockResolvedValue({
+      id: 'asset-failure-status',
+      ownerId: 'user-1',
+      originalPath: '/uploads/failure.pdf',
+      originalFileName: 'failure.pdf',
+      type: AssetType.Other,
+      deletedAt: null,
+    });
+    mocks.metadata.readTags.mockResolvedValue({ PageCount: 0, Title: 'Failure' } as any);
+    mocks.pdf.upsertSearch.mockRejectedValue(new Error('search write failed'));
+
+    const result = await sut.handlePdfProcess({ id: 'asset-failure-status' });
+
+    expect(result).toBe(JobStatus.Failed);
+    expect(mocks.pdf.updateDocumentStatus).toHaveBeenCalledWith('asset-failure-status', 'processing', null);
+    expect(mocks.pdf.updateDocumentStatus).toHaveBeenCalledWith(
+      'asset-failure-status',
+      'failed',
+      expect.stringContaining('search write failed'),
+    );
+    expect(mocks.pdf.markDocumentReady).not.toHaveBeenCalled();
+  });
+
   it('should queue reprocess for an owned document', async () => {
     mocks.pdf.getDocumentByOwner.mockResolvedValue({
       assetId: 'asset-7',
@@ -543,5 +620,43 @@ describe(PdfService.name, () => {
 
     expect(mocks.pdf.updateDocumentStatus).toHaveBeenCalledWith('asset-7', 'pending', null);
     expect(mocks.job.queue).toHaveBeenCalledWith({ name: JobName.PdfProcess, data: { id: 'asset-7' } });
+  });
+
+  it('should not enqueue reprocess when document is already processing', async () => {
+    mocks.pdf.getDocumentByOwner.mockResolvedValue({
+      assetId: 'asset-8',
+      originalFileName: 'processing.pdf',
+      pageCount: 2,
+      title: 'Processing',
+      author: null,
+      processedAt: null,
+      status: 'processing',
+      lastError: null,
+      createdAt: new Date('2026-02-06T00:00:00.000Z'),
+    });
+
+    await sut.reprocessDocument({ user: { id: 'user-1' } } as any, 'asset-8');
+
+    expect(mocks.pdf.updateDocumentStatus).not.toHaveBeenCalledWith('asset-8', 'pending', null);
+    expect(mocks.job.queue).not.toHaveBeenCalledWith({ name: JobName.PdfProcess, data: { id: 'asset-8' } });
+  });
+
+  it('should not enqueue reprocess when document is already pending', async () => {
+    mocks.pdf.getDocumentByOwner.mockResolvedValue({
+      assetId: 'asset-9',
+      originalFileName: 'pending.pdf',
+      pageCount: 2,
+      title: 'Pending',
+      author: null,
+      processedAt: null,
+      status: 'pending',
+      lastError: null,
+      createdAt: new Date('2026-02-06T00:00:00.000Z'),
+    });
+
+    await sut.reprocessDocument({ user: { id: 'user-1' } } as any, 'asset-9');
+
+    expect(mocks.pdf.updateDocumentStatus).not.toHaveBeenCalledWith('asset-9', 'pending', null);
+    expect(mocks.job.queue).not.toHaveBeenCalledWith({ name: JobName.PdfProcess, data: { id: 'asset-9' } });
   });
 });

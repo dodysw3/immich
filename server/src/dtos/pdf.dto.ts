@@ -103,12 +103,32 @@ export class PdfSearchResultDto extends PdfDocumentResponseDto {
   matchingPages!: number[];
 }
 
+export class PdfDocumentStatusSummaryDto {
+  @ApiProperty({ type: 'integer' })
+  total!: number;
+
+  @ApiProperty({ type: 'integer' })
+  pending!: number;
+
+  @ApiProperty({ type: 'integer' })
+  processing!: number;
+
+  @ApiProperty({ type: 'integer' })
+  ready!: number;
+
+  @ApiProperty({ type: 'integer' })
+  failed!: number;
+}
+
 export class PdfDocumentListResponseDto {
   @ApiProperty({ type: PdfDocumentResponseDto, isArray: true })
   items!: PdfDocumentResponseDto[];
 
   @ApiPropertyOptional({ description: 'Next page number as string', nullable: true })
   nextPage!: string | null;
+
+  @ApiProperty({ type: PdfDocumentStatusSummaryDto })
+  summary!: PdfDocumentStatusSummaryDto;
 }
 
 export class PdfSearchResponseDto {

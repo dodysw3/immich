@@ -90,6 +90,21 @@ export class PdfRepository {
       .executeTakeFirst();
   }
 
+  @GenerateSql({ params: [DummyValue.UUID, DummyValue.DATE] })
+  markDocumentReady(assetId: string, processedAt: Date) {
+    return this.db
+      .insertInto('pdf_document')
+      .values({ assetId, status: 'ready', lastError: null, processedAt, pageCount: 0 })
+      .onConflict((oc) =>
+        oc.column('assetId').doUpdateSet((eb) => ({
+          status: eb.ref('excluded.status'),
+          lastError: eb.ref('excluded.lastError'),
+          processedAt: eb.ref('excluded.processedAt'),
+        })),
+      )
+      .executeTakeFirst();
+  }
+
   @GenerateSql({ params: [DummyValue.UUID, [{ pageNumber: DummyValue.NUMBER, text: DummyValue.STRING }]] })
   replacePages(assetId: string, pages: Array<Insertable<PdfPageTable>>) {
     return this.db.transaction().execute(async (trx) => {
@@ -135,6 +150,36 @@ export class PdfRepository {
       .execute();
 
     return paginationHelper(items, pagination.size);
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID] })
+  async getDocumentStatusSummaryByOwner(ownerId: string): Promise<{
+    total: number;
+    pending: number;
+    processing: number;
+    ready: number;
+    failed: number;
+  }> {
+    const statusExpression = sql<'pending' | 'processing' | 'ready' | 'failed'>`coalesce("pdf_document"."status", 'pending')`;
+    const rows = await this.db
+      .selectFrom('asset')
+      .leftJoin('pdf_document', 'pdf_document.assetId', 'asset.id')
+      .select([statusExpression.as('status'), sql<number>`count(*)::int`.as('count')])
+      .where('asset.ownerId', '=', ownerId)
+      .where('asset.type', '=', AssetType.Other)
+      .where('asset.deletedAt', 'is', null)
+      .where(sql<boolean>`lower("asset"."originalFileName") like '%.pdf'`)
+      .groupBy(statusExpression)
+      .execute();
+
+    const summary = { total: 0, pending: 0, processing: 0, ready: 0, failed: 0 };
+    for (const row of rows) {
+      const count = Number(row.count) || 0;
+      summary.total += count;
+      summary[row.status] += count;
+    }
+
+    return summary;
   }
 
   @GenerateSql({ params: [DummyValue.UUID, DummyValue.UUID] })

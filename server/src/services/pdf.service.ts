@@ -115,8 +115,8 @@ export class PdfService extends BaseService {
         creator: metadata.creator,
         producer: metadata.producer,
         creationDate: metadata.creationDate,
-        processedAt: new Date(),
-        status: 'ready',
+        processedAt: null,
+        status: 'processing',
         lastError: null,
       });
 
@@ -141,6 +141,7 @@ export class PdfService extends BaseService {
       await this.pdfRepository.replacePages(id, pages);
       const searchText = tokenizeForSearch(pages.map((item) => item.text).join(' ')).join(' ');
       await this.pdfRepository.upsertSearch(id, searchText);
+      await this.pdfRepository.markDocumentReady(id, new Date());
 
       await this.assetRepository.upsertJobStatus({ assetId: id });
       this.logger.log(
@@ -158,8 +159,17 @@ export class PdfService extends BaseService {
   async getDocuments(auth: AuthDto, dto: PdfDocumentQueryDto): Promise<PdfDocumentListResponseDto> {
     const page = dto.page ?? 1;
     const size = dto.size ?? 50;
-    const { items, hasNextPage } = await this.pdfRepository.getDocumentsByOwner(auth.user.id, { page, size });
-    return { items: items.map((item) => this.mapDocument(item)), nextPage: hasNextPage ? `${page + 1}` : null };
+    const [documentPage, summary] = await Promise.all([
+      this.pdfRepository.getDocumentsByOwner(auth.user.id, { page, size }),
+      this.pdfRepository.getDocumentStatusSummaryByOwner(auth.user.id),
+    ]);
+    const fallbackSummary = { total: 0, pending: 0, processing: 0, ready: 0, failed: 0 };
+
+    return {
+      items: documentPage.items.map((item) => this.mapDocument(item)),
+      nextPage: documentPage.hasNextPage ? `${page + 1}` : null,
+      summary: summary ?? fallbackSummary,
+    };
   }
 
   async getDocument(auth: AuthDto, id: string): Promise<PdfDocumentResponseDto> {
@@ -248,7 +258,15 @@ export class PdfService extends BaseService {
   }
 
   async reprocessDocument(auth: AuthDto, id: string): Promise<void> {
-    await this.ensureDocumentAccess(auth.user.id, id);
+    const item = await this.pdfRepository.getDocumentByOwner(auth.user.id, id);
+    if (!item) {
+      throw new NotFoundException('PDF document not found');
+    }
+
+    if (item.status === 'pending' || item.status === 'processing') {
+      return;
+    }
+
     await this.pdfRepository.updateDocumentStatus(id, 'pending', null);
     await this.jobRepository.queue({ name: JobName.PdfProcess, data: { id } });
   }

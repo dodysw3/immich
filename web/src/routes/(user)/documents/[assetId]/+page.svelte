@@ -91,6 +91,11 @@
   });
 
   const triggerReprocess = async () => {
+    if (document.status === 'pending' || document.status === 'processing') {
+      toastManager.info('Document processing is already in progress.');
+      return;
+    }
+
     reprocessing = true;
     try {
       const response = await fetch(`/api/documents/${document.assetId}/reprocess`, { method: 'POST' });
@@ -117,7 +122,7 @@
       <button
         class="rounded-xl border border-gray-300 px-3 py-2 text-xs font-medium hover:border-primary-400 disabled:opacity-50 dark:border-gray-700"
         onclick={() => triggerReprocess().catch((error) => handleError(error, 'Failed to reprocess document'))}
-        disabled={reprocessing}
+        disabled={reprocessing || document.status === 'pending' || document.status === 'processing'}
       >
         {reprocessing ? 'Reprocessing...' : 'Reprocess'}
       </button>
