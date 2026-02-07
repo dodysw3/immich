@@ -14,6 +14,7 @@
     mdiAccountOutline,
     mdiArchiveArrowDown,
     mdiArchiveArrowDownOutline,
+    mdiFileDocumentOutline,
     mdiFolderOutline,
     mdiHeart,
     mdiHeartOutline,
@@ -65,6 +66,8 @@
   <NavbarGroup title={$t('library')} size="tiny" />
 
   <NavbarItem title={$t('favorites')} href={Route.favorites()} icon={mdiHeartOutline} activeIcon={mdiHeart} />
+
+  <NavbarItem title="Documents" href={Route.documents()} icon={mdiFileDocumentOutline} />
 
   <NavbarItem
     title={$t('albums')}

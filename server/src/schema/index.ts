@@ -52,6 +52,9 @@ import { NotificationTable } from 'src/schema/tables/notification.table';
 import { OcrSearchTable } from 'src/schema/tables/ocr-search.table';
 import { PartnerAuditTable } from 'src/schema/tables/partner-audit.table';
 import { PartnerTable } from 'src/schema/tables/partner.table';
+import { PdfDocumentTable } from 'src/schema/tables/pdf-document.table';
+import { PdfPageTable } from 'src/schema/tables/pdf-page.table';
+import { PdfSearchTable } from 'src/schema/tables/pdf-search.table';
 import { PersonAuditTable } from 'src/schema/tables/person-audit.table';
 import { PersonTable } from 'src/schema/tables/person.table';
 import { PluginActionTable, PluginFilterTable, PluginTable } from 'src/schema/tables/plugin.table';
@@ -109,6 +112,9 @@ export class ImmichDatabase {
     NaturalEarthCountriesTable,
     NotificationTable,
     OcrSearchTable,
+    PdfDocumentTable,
+    PdfPageTable,
+    PdfSearchTable,
     PartnerAuditTable,
     PartnerTable,
     PersonTable,
@@ -191,6 +197,9 @@ export interface DB {
   asset_job_status: AssetJobStatusTable;
   asset_ocr: AssetOcrTable;
   ocr_search: OcrSearchTable;
+  pdf_document: PdfDocumentTable;
+  pdf_page: PdfPageTable;
+  pdf_search: PdfSearchTable;
 
   audit: AuditTable;
 

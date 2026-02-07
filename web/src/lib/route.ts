@@ -62,6 +62,8 @@ export const Route = {
   // explore
   explore: () => '/explore',
   places: () => '/places',
+  documents: () => '/documents',
+  viewDocument: ({ id }: { id: string }) => `/documents/${id}`,
 
   // folders
   folders: (params?: { path?: string }) => '/folders' + asQueryString(params),

@@ -1,0 +1,273 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { spawn } from 'node:child_process';
+import readline from 'node:readline';
+import { JOBS_ASSET_PAGINATION_SIZE } from 'src/constants';
+import { OnEvent, OnJob } from 'src/decorators';
+import { AuthDto } from 'src/dtos/auth.dto';
+import {
+  PdfDocumentQueryDto,
+  PdfDocumentResponseDto,
+  PdfDocumentSearchDto,
+  PdfPageResponseDto,
+  PdfSearchResultDto,
+} from 'src/dtos/pdf.dto';
+import { JobName, JobStatus, QueueName } from 'src/enum';
+import { ArgOf } from 'src/repositories/event.repository';
+import { BaseService } from 'src/services/base.service';
+import { JobItem, JobOf } from 'src/types';
+import { tokenizeForSearch } from 'src/utils/database';
+
+const PDF_TEXT_EXTRACTION_PAGE_LIMIT = 250;
+
+type PdfMetadata = {
+  pageCount: number;
+  title: string | null;
+  author: string | null;
+  subject: string | null;
+  creator: string | null;
+  producer: string | null;
+  creationDate: Date | null;
+};
+
+@Injectable()
+export class PdfService extends BaseService {
+  @OnEvent({ name: 'AssetMetadataExtracted' })
+  async onAssetMetadataExtracted({ assetId }: ArgOf<'AssetMetadataExtracted'>) {
+    const asset = await this.pdfRepository.getAssetForProcessing(assetId);
+    if (!asset || !this.pdfRepository.isPdfAsset(asset)) {
+      return;
+    }
+
+    await this.jobRepository.queue({ name: JobName.PdfProcess, data: { id: asset.id } });
+  }
+
+  @OnJob({ name: JobName.PdfProcessQueueAll, queue: QueueName.PdfProcessing })
+  async handleQueueAll({ force }: JobOf<JobName.PdfProcessQueueAll>): Promise<JobStatus> {
+    const jobs: JobItem[] = [];
+    const assets = this.pdfRepository.streamPdfAssetIds(force);
+
+    for await (const asset of assets) {
+      jobs.push({ name: JobName.PdfProcess, data: { id: asset.id } });
+      if (jobs.length >= JOBS_ASSET_PAGINATION_SIZE) {
+        await this.jobRepository.queueAll(jobs);
+        jobs.length = 0;
+      }
+    }
+
+    await this.jobRepository.queueAll(jobs);
+    return JobStatus.Success;
+  }
+
+  @OnJob({ name: JobName.PdfProcess, queue: QueueName.PdfProcessing })
+  async handlePdfProcess({ id }: JobOf<JobName.PdfProcess>): Promise<JobStatus> {
+    const asset = await this.pdfRepository.getAssetForProcessing(id);
+    if (!asset || asset.deletedAt || !this.pdfRepository.isPdfAsset(asset)) {
+      return JobStatus.Skipped;
+    }
+
+    const metadata = await this.readPdfMetadata(asset.originalPath);
+    await this.pdfRepository.upsertDocument({
+      assetId: id,
+      pageCount: metadata.pageCount,
+      title: metadata.title,
+      author: metadata.author,
+      subject: metadata.subject,
+      creator: metadata.creator,
+      producer: metadata.producer,
+      creationDate: metadata.creationDate,
+      processedAt: new Date(),
+    });
+
+    let pages: Array<{ assetId: string; pageNumber: number; text: string; textSource: 'embedded' | 'none' }> = [];
+    if (metadata.pageCount > 0 && metadata.pageCount <= PDF_TEXT_EXTRACTION_PAGE_LIMIT) {
+      pages = await this.extractTextByPage(asset.originalPath, id, metadata.pageCount);
+    }
+
+    await this.pdfRepository.replacePages(id, pages);
+    const searchText = tokenizeForSearch(pages.map((item) => item.text).join(' ')).join(' ');
+    await this.pdfRepository.upsertSearch(id, searchText);
+
+    await this.assetRepository.upsertJobStatus({ assetId: id });
+    return JobStatus.Success;
+  }
+
+  async getDocuments(auth: AuthDto, dto: PdfDocumentQueryDto) {
+    const page = dto.page ?? 1;
+    const size = dto.size ?? 50;
+    const { items } = await this.pdfRepository.getDocumentsByOwner(auth.user.id, { page, size });
+    return items.map((item) => this.mapDocument(item));
+  }
+
+  async getDocument(auth: AuthDto, id: string): Promise<PdfDocumentResponseDto> {
+    const item = await this.pdfRepository.getDocumentByOwner(auth.user.id, id);
+    if (!item) {
+      throw new NotFoundException('PDF document not found');
+    }
+
+    return this.mapDocument(item);
+  }
+
+  async getPages(auth: AuthDto, id: string): Promise<PdfPageResponseDto[]> {
+    await this.ensureDocumentAccess(auth.user.id, id);
+    const pages = await this.pdfRepository.getPagesByOwner(auth.user.id, id);
+    return pages.map((page) => ({
+      id: page.id,
+      assetId: page.assetId,
+      pageNumber: page.pageNumber,
+      text: page.text,
+      textSource: page.textSource,
+      width: page.width,
+      height: page.height,
+    }));
+  }
+
+  async getPage(auth: AuthDto, id: string, pageNumber: number): Promise<PdfPageResponseDto> {
+    await this.ensureDocumentAccess(auth.user.id, id);
+    const page = await this.pdfRepository.getPageByOwner(auth.user.id, id, pageNumber);
+    if (!page) {
+      throw new NotFoundException('PDF page not found');
+    }
+
+    return {
+      id: page.id,
+      assetId: page.assetId,
+      pageNumber: page.pageNumber,
+      text: page.text,
+      textSource: page.textSource,
+      width: page.width,
+      height: page.height,
+    };
+  }
+
+  async search(auth: AuthDto, dto: PdfDocumentSearchDto): Promise<PdfSearchResultDto[]> {
+    const page = dto.page ?? 1;
+    const size = dto.size ?? 50;
+    const { items } = await this.pdfRepository.searchByText(auth.user.id, dto.query, { page, size });
+
+    const results: PdfSearchResultDto[] = [];
+    for (const item of items) {
+      const matchingPages = await this.pdfRepository.getMatchingPages(item.assetId, dto.query);
+      results.push({
+        ...this.mapDocument(item),
+        matchingPages: matchingPages.map((entry) => entry.pageNumber),
+      });
+    }
+
+    return results;
+  }
+
+  private async ensureDocumentAccess(ownerId: string, id: string): Promise<void> {
+    const item = await this.pdfRepository.getDocumentByOwner(ownerId, id);
+    if (!item) {
+      throw new NotFoundException('PDF document not found');
+    }
+  }
+
+  private mapDocument(item: {
+    assetId: string;
+    originalFileName: string;
+    pageCount: number | null;
+    title: string | null;
+    author: string | null;
+    processedAt: Date | null;
+    createdAt: Date;
+  }): PdfDocumentResponseDto {
+    return {
+      assetId: item.assetId,
+      originalFileName: item.originalFileName,
+      pageCount: item.pageCount ?? 0,
+      title: item.title,
+      author: item.author,
+      processedAt: item.processedAt,
+      createdAt: item.createdAt,
+    };
+  }
+
+  private async readPdfMetadata(path: string): Promise<PdfMetadata> {
+    const tags = await this.metadataRepository.readTags(path);
+    const value = tags as Record<string, unknown>;
+    const pageCount = this.toNumber(value.PageCount) ?? 0;
+
+    return {
+      pageCount,
+      title: this.toStringOrNull(value.Title),
+      author: this.toStringOrNull(value.Author),
+      subject: this.toStringOrNull(value.Subject),
+      creator: this.toStringOrNull(value.Creator),
+      producer: this.toStringOrNull(value.Producer),
+      creationDate: this.toDateOrNull(value.CreateDate),
+    };
+  }
+
+  private async extractTextByPage(path: string, assetId: string, pageCount: number) {
+    const rows: Array<{ assetId: string; pageNumber: number; text: string; textSource: 'embedded' | 'none' }> = [];
+
+    for (let pageNumber = 1; pageNumber <= pageCount; pageNumber++) {
+      const text = await this.extractPageText(path, pageNumber);
+      rows.push({
+        assetId,
+        pageNumber,
+        text,
+        textSource: text.trim().length > 0 ? 'embedded' : 'none',
+      });
+    }
+
+    return rows;
+  }
+
+  private extractPageText(path: string, pageNumber: number): Promise<string> {
+    return new Promise((resolve) => {
+      const child = spawn('pdftotext', ['-q', '-enc', 'UTF-8', '-f', `${pageNumber}`, '-l', `${pageNumber}`, path, '-']);
+      const lines: string[] = [];
+      const rl = readline.createInterface({ input: child.stdout });
+
+      rl.on('line', (line) => lines.push(line));
+      child.on('error', (error) => {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          this.logger.warn('pdftotext is not available, skipping PDF text extraction');
+          resolve('');
+          return;
+        }
+
+        this.logger.warn(`pdftotext failed for page ${pageNumber}: ${error}`);
+        resolve('');
+      });
+      child.on('close', (code) => {
+        if (code !== 0) {
+          resolve('');
+          return;
+        }
+
+        resolve(lines.join('\n').trim());
+      });
+    });
+  }
+
+  private toNumber(value: unknown): number | null {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const num = Number(value);
+      if (Number.isFinite(num)) {
+        return num;
+      }
+    }
+    return null;
+  }
+
+  private toStringOrNull(value: unknown): string | null {
+    return typeof value === 'string' && value.length > 0 ? value : null;
+  }
+
+  private toDateOrNull(value: unknown): Date | null {
+    if (value instanceof Date) {
+      return value;
+    }
+    if (value && typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') {
+      const parsed = value.toDate() as Date;
+      return parsed instanceof Date ? parsed : null;
+    }
+    return null;
+  }
+}

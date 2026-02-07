@@ -385,6 +385,10 @@ export type JobItem =
   | { name: JobName.OcrQueueAll; data: IBaseJob }
   | { name: JobName.Ocr; data: IEntityJob }
 
+  // PDF
+  | { name: JobName.PdfProcessQueueAll; data: IBaseJob }
+  | { name: JobName.PdfProcess; data: IEntityJob }
+
   // Workflow
   | { name: JobName.WorkflowRun; data: IWorkflowJob }
 
