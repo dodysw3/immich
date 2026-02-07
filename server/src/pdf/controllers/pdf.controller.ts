@@ -12,6 +12,7 @@ import { ApiBody, ApiConsumes, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { Endpoint } from 'src/decorators';
 import { AuthDto } from 'src/dtos/auth.dto';
+import { AssetMediaCreateDto } from 'src/dtos/asset-media.dto';
 import { AssetResponseDto } from 'src/dtos/asset-response.dto';
 import {
   PdfAssetResponseDto,
@@ -19,12 +20,12 @@ import {
 } from 'src/pdf/dto/pdf-response.dto';
 import { ApiTag, Permission } from 'src/enum';
 import { Auth, Authenticated, FileResponse } from 'src/middleware/auth.guard';
-import { FileUploadInterceptor, getFiles } from 'src/middleware/file-upload.interceptor';
+import { FileUploadInterceptor } from 'src/middleware/file-upload.interceptor';
 import { LoggingRepository } from 'src/repositories/logging.repository';
+import { AssetMediaService } from 'src/services/asset-media.service';
+import { AssetMediaResponseDto } from 'src/dtos/asset-media-response.dto';
 import { PdfService } from 'src/pdf/services/pdf.service';
 import { UUIDParamDto } from 'src/validation';
-import { mimeTypes } from 'src/utils/mime-types';
-import { UploadFiles } from 'src/types';
 
 const PDF_ROUTE = 'pdf';
 
@@ -34,6 +35,7 @@ export class PdfController {
   constructor(
     private logger: LoggingRepository,
     private service: PdfService,
+    private assetMediaService: AssetMediaService,
   ) {
     this.logger.setContext(PdfController.name);
   }
@@ -46,7 +48,7 @@ export class PdfController {
   @UseInterceptors(FileUploadInterceptor)
   @ApiConsumes('multipart/form-data')
   @ApiBody({
-    description: 'PDF file to upload',
+    description: 'PDF file to upload with metadata',
     schema: {
       type: 'object',
       properties: {
@@ -54,8 +56,30 @@ export class PdfController {
           type: 'string',
           format: 'binary',
         },
+        deviceAssetId: {
+          type: 'string',
+          description: 'Device asset ID',
+        },
+        deviceId: {
+          type: 'string',
+          description: 'Device ID',
+        },
+        fileCreatedAt: {
+          type: 'string',
+          format: 'date-time',
+          description: 'File creation date',
+        },
+        fileModifiedAt: {
+          type: 'string',
+          format: 'date-time',
+          description: 'File modification date',
+        },
+        isFavorite: {
+          type: 'boolean',
+          description: 'Mark as favorite',
+        },
       },
-      required: ['assetData'],
+      required: ['assetData', 'deviceAssetId', 'deviceId', 'fileCreatedAt', 'fileModifiedAt'],
     },
   })
   @ApiResponse({
@@ -65,26 +89,26 @@ export class PdfController {
   })
   @Endpoint({
     summary: 'Upload PDF',
-    description: 'Upload a PDF file to the server using the dedicated PDF upload endpoint.',
+    description: 'Upload a PDF file to the server. PDF files are automatically processed with text extraction and OCR support.',
   })
   async uploadPdf(
     @Auth() auth: AuthDto,
-    files: UploadFiles,
-    @Body() dto: any,
-  ): Promise<AssetResponseDto> {
-    const { file } = getFiles(files);
+    @Body() dto: AssetMediaCreateDto,
+  ): Promise<AssetMediaResponseDto> {
+    // Validate that the file is a PDF
+    const file = dto.assetData as Express.Multer.File;
     if (!file) {
       throw new Error('No file uploaded');
     }
 
-    // Validate file type
-    if (!file.originalName.toLowerCase().endsWith('.pdf')) {
+    if (!file.originalname.toLowerCase().endsWith('.pdf') && file.mimetype !== 'application/pdf') {
       throw new Error('File must be a PDF');
     }
 
-    // TODO: Implement PDF upload logic
-    // This will use AssetMediaService under the hood but with PDF-specific handling
-    throw new Error('PDF upload not yet implemented - use AssetMediaService for now');
+    // Use the existing AssetMediaService to handle the upload
+    // The PDF processing will be triggered automatically by the MetadataService
+    // which detects PDF files and queues the PdfProcessing job
+    return this.assetMediaService.uploadAsset(auth, dto, dto.assetData as any);
   }
 
   /**

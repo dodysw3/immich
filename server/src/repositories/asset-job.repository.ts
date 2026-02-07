@@ -444,4 +444,31 @@ export class AssetJobRepository {
   streamForMigrationJob() {
     return this.db.selectFrom('asset').select(['id']).where('asset.deletedAt', 'is', null).stream();
   }
+
+  @GenerateSql({ params: [], stream: true })
+  streamForPdfProcessing(force?: boolean) {
+    return this.db
+      .selectFrom('asset')
+      .select(['asset.id'])
+      .$if(!force, (qb) =>
+        qb
+          .leftJoin('pdf_asset', 'pdf_asset.assetId', 'asset.id')
+          .where((eb) => {
+            return eb.or([
+              // PDF has not been processed at all
+              eb('pdf_asset.assetId', 'is', null),
+              // Or needs re-processing
+              eb.and([
+                eb('pdf_asset.isOCRProcessed', '=', false),
+                // Add more conditions if needed for re-processing
+              ]),
+            ]);
+          }),
+      )
+      .where('asset.deletedAt', 'is', null)
+      .where('asset.visibility', '!=', AssetVisibility.Hidden)
+      .where('asset.type', '=', AssetType.Other)
+      .where((eb) => eb('asset.originalPath', '~*', '*.pdf'))
+      .stream();
+  }
 }

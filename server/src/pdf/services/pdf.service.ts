@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { join } from 'node:path';
 import { AuthDto } from 'src/dtos/auth.dto';
 import { AssetType, Permission } from 'src/enum';
 import { BaseService } from 'src/services/base.service';
@@ -10,7 +9,12 @@ import {
 } from '../dto/pdf-response.dto';
 import { PdfPageRepository } from '../repositories/pdf-page.repository';
 import { PdfRepository } from '../repositories/pdf.repository';
-import { StorageCore } from 'src/cores/storage.core';
+import { searchAssetBuilder } from 'src/utils/database';
+import { AssetSearchOptions } from 'src/repositories/search.repository';
+import { paginationHelper } from 'src/utils/pagination';
+import { InjectKysely } from 'nestjs-kysely';
+import { Kysely } from 'kysely';
+import { DB } from 'src/schema';
 
 @Injectable()
 export class PdfService extends BaseService {
@@ -69,6 +73,7 @@ export class PdfService extends BaseService {
     viewRepository: any,
     websocketRepository: any,
     workflowRepository: any,
+    @InjectKysely() private db: Kysely<DB>,
   ) {
     super(
       logger,
@@ -139,9 +144,25 @@ export class PdfService extends BaseService {
       ids: [auth.user.id],
     });
 
-    // TODO: Implement proper search for PDF files
-    // For now, return empty array as a placeholder
-    return [];
+    // Use searchAssetBuilder to find all assets for the user
+    // We need to get all assets and filter for PDF files by file extension
+    // since PDF files have type AssetType.Other
+    const options: AssetSearchOptions = {
+      userIds: [auth.user.id],
+      type: AssetType.Other,
+      // No additional filters needed - we'll filter by file extension
+    };
+
+    const assets = await searchAssetBuilder(this.db, options)
+      .selectAll('asset')
+      .execute();
+
+    // Filter for PDF files by file extension
+    const pdfAssets = assets.filter(
+      (asset) => asset.originalPath?.toLowerCase().endsWith('.pdf')
+    );
+
+    return pdfAssets.map((asset) => mapAsset(asset, { auth }));
   }
 
   /**

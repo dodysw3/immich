@@ -14,10 +14,11 @@ import { Insertable } from 'kysely';
 import { PdfAssetTable } from 'src/schema/tables/pdf-asset.table';
 import { PdfPageTable } from 'src/schema/tables/pdf-page.table';
 import { StorageFolder } from 'src/enum';
-import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
+import sharp from 'sharp';
 
 const execAsync = promisify(exec);
 
@@ -155,9 +156,23 @@ export class PdfProcessingService extends BaseService {
    */
   @OnJob({ name: JobName.PdfQueueAll, queue: QueueName.Pdf })
   async handleQueueAllPdf({ force }: JobOf<JobName.PdfQueueAll>): Promise<JobStatus> {
-    // TODO: Implement queue all PDFs for processing
-    // This would need a new method in AssetJobRepository to stream PDF assets
-    // For now, just return success
+    let queue: { name: JobName.PdfProcessing; data: { id: string } }[] = [];
+
+    // Stream all PDF assets that need processing
+    for await (const asset of this.assetJobRepository.streamForPdfProcessing(force)) {
+      queue.push({ name: JobName.PdfProcessing, data: { id: asset.id } });
+
+      if (queue.length >= 100) {
+        await this.jobRepository.queueAll(queue);
+        queue = [];
+      }
+    }
+
+    // Queue any remaining items
+    if (queue.length > 0) {
+      await this.jobRepository.queueAll(queue);
+    }
+
     return JobStatus.Success;
   }
 @OnJob({ name: JobName.PdfProcessing, queue: QueueName.Pdf })
@@ -224,16 +239,43 @@ async handlePdfProcessing({ id }: JobOf<JobName.PdfProcessing>): Promise<JobStat
     // Create page records and generate thumbnails
     const allSearchableText: string[] = [];
 
+    // Create pages directory for temporary PNG files
+    await mkdir(pagesDir, { recursive: true });
+
     for (const pageData of extractionResult.pages) {
       // Create page thumbnail path
       const thumbnailPath = join(thumbnailsDir, `page-${pageData.pageNumber.toString().padStart(3, '0')}-thumb.webp`);
+
+      // Convert PDF page to PNG and get dimensions
+      const pageImagePath = join(pagesDir, `page-${pageData.pageNumber.toString().padStart(3, '0')}.png`);
+      let pageWidth: number | null = null;
+      let pageHeight: number | null = null;
+
+      try {
+        const dimensions = await this.convertPdfPageToImage(pdfPath, pageData.pageNumber, pageImagePath);
+        pageWidth = dimensions.width;
+        pageHeight = dimensions.height;
+
+        // Generate thumbnail from the PNG
+        const thumbnailResult = await this.pdfThumbnailUtil.generateThumbnail(
+          pageImagePath,
+          thumbnailsDir,
+          pageData.pageNumber,
+        );
+
+        // Clean up the temporary PNG file
+        await rm(pageImagePath, { force: true });
+      } catch (error) {
+        this.logger.warn(`Failed to convert page ${pageData.pageNumber} to image: ${error}`);
+        // Continue without thumbnail - the page record will still be created
+      }
 
       // Create page record
       const pageDataToInsert: Insertable<PdfPageTable> = {
         assetId,
         pageNumber: pageData.pageNumber,
-        width: null,
-        height: null,
+        width: pageWidth,
+        height: pageHeight,
         textContent: pageData.text || null,
         thumbnailPath,
         searchableText: pageData.text || '',
@@ -241,10 +283,6 @@ async handlePdfProcessing({ id }: JobOf<JobName.PdfProcessing>): Promise<JobStat
 
       const createdPage = await this.pdfPageRepository.create(pageDataToInsert);
       allSearchableText.push(pageData.text || '');
-
-      // TODO: Convert PDF page to image and generate thumbnail
-      // This requires pdf-poppler or similar tool
-      // For now, we'll skip thumbnail generation
     }
 
     // Update search index with extracted text
@@ -277,8 +315,12 @@ async handlePdfProcessing({ id }: JobOf<JobName.PdfProcessing>): Promise<JobStat
     const outputPrefix = outputPath.replace('.png', '');
     await execAsync(`pdftoppm -png -f ${pageNumber} -l ${pageNumber} -singlefile "${pdfPath}" "${outputPrefix}"`);
 
-    // TODO: Get image dimensions
-    return { width: 1920, height: 1080 };
+    // Get image dimensions using sharp
+    const metadata = await sharp(outputPath).metadata();
+    const width = metadata.width || 1920;
+    const height = metadata.height || 1080;
+
+    return { width, height };
   }
 
   /**
