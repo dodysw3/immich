@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { spawn } from 'node:child_process';
+import { mkdtemp } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import readline from 'node:readline';
+import { tmpdir } from 'node:os';
 import { JOBS_ASSET_PAGINATION_SIZE } from 'src/constants';
 import { OnEvent, OnJob } from 'src/decorators';
 import { AuthDto } from 'src/dtos/auth.dto';
@@ -16,6 +19,7 @@ import { ArgOf } from 'src/repositories/event.repository';
 import { BaseService } from 'src/services/base.service';
 import { JobItem, JobOf } from 'src/types';
 import { tokenizeForSearch } from 'src/utils/database';
+import { isOcrEnabled } from 'src/utils/misc';
 
 const PDF_TEXT_EXTRACTION_PAGE_LIMIT = 250;
 
@@ -31,6 +35,9 @@ type PdfMetadata = {
 
 @Injectable()
 export class PdfService extends BaseService {
+  private hasLoggedMissingPdftotext = false;
+  private hasLoggedMissingPdftoppm = false;
+
   @OnEvent({ name: 'AssetMetadataExtracted' })
   async onAssetMetadataExtracted({ assetId }: ArgOf<'AssetMetadataExtracted'>) {
     const asset = await this.pdfRepository.getAssetForProcessing(assetId);
@@ -60,6 +67,7 @@ export class PdfService extends BaseService {
 
   @OnJob({ name: JobName.PdfProcess, queue: QueueName.PdfProcessing })
   async handlePdfProcess({ id }: JobOf<JobName.PdfProcess>): Promise<JobStatus> {
+    const { machineLearning } = await this.getConfig({ withCache: true });
     const asset = await this.pdfRepository.getAssetForProcessing(id);
     if (!asset || asset.deletedAt || !this.pdfRepository.isPdfAsset(asset)) {
       return JobStatus.Skipped;
@@ -81,6 +89,9 @@ export class PdfService extends BaseService {
     let pages: Array<{ assetId: string; pageNumber: number; text: string; textSource: 'embedded' | 'none' }> = [];
     if (metadata.pageCount > 0 && metadata.pageCount <= PDF_TEXT_EXTRACTION_PAGE_LIMIT) {
       pages = await this.extractTextByPage(asset.originalPath, id, metadata.pageCount);
+      if (isOcrEnabled(machineLearning)) {
+        await this.ocrTextlessPages(asset.originalPath, pages, machineLearning.ocr);
+      }
     }
 
     await this.pdfRepository.replacePages(id, pages);
@@ -224,7 +235,10 @@ export class PdfService extends BaseService {
       rl.on('line', (line) => lines.push(line));
       child.on('error', (error) => {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-          this.logger.warn('pdftotext is not available, skipping PDF text extraction');
+          if (!this.hasLoggedMissingPdftotext) {
+            this.logger.warn('pdftotext is not available, skipping PDF text extraction');
+            this.hasLoggedMissingPdftotext = true;
+          }
           resolve('');
           return;
         }
@@ -241,6 +255,69 @@ export class PdfService extends BaseService {
         resolve(lines.join('\n').trim());
       });
     });
+  }
+
+  private async ocrTextlessPages(
+    inputPath: string,
+    pages: Array<{ pageNumber: number; text: string; textSource: 'embedded' | 'none' | 'ocr' }>,
+    ocrConfig: Parameters<typeof this.machineLearningRepository.ocr>[1],
+  ) {
+    const candidates = pages.filter((page) => page.textSource === 'none');
+    if (candidates.length === 0) {
+      return;
+    }
+
+    for (const page of candidates) {
+      const renderedPath = await this.renderPdfPage(inputPath, page.pageNumber);
+      if (!renderedPath) {
+        continue;
+      }
+
+      try {
+        const response = await this.machineLearningRepository.ocr(renderedPath, ocrConfig);
+        const text = response.text.join(' ').trim();
+        if (text.length > 0) {
+          page.text = text;
+          page.textSource = 'ocr';
+        }
+      } catch (error) {
+        this.logger.warn(`OCR failed for PDF page ${page.pageNumber}: ${error}`);
+      } finally {
+        await this.storageRepository.unlink(renderedPath);
+        await this.storageRepository.unlinkDir(dirname(renderedPath), { recursive: true, force: true });
+      }
+    }
+  }
+
+  private async renderPdfPage(inputPath: string, pageNumber: number): Promise<string | null> {
+    const folder = await mkdtemp(join(tmpdir(), 'immich-pdf-'));
+    const prefix = join(folder, `page-${pageNumber}`);
+    const outputPath = `${prefix}.png`;
+
+    const success = await new Promise<boolean>((resolve) => {
+      const child = spawn('pdftoppm', ['-f', `${pageNumber}`, '-l', `${pageNumber}`, '-singlefile', '-png', inputPath, prefix]);
+      child.on('error', (error) => {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          if (!this.hasLoggedMissingPdftoppm) {
+            this.logger.warn('pdftoppm is not available, skipping PDF OCR fallback');
+            this.hasLoggedMissingPdftoppm = true;
+          }
+          resolve(false);
+          return;
+        }
+
+        this.logger.warn(`pdftoppm failed for PDF page ${pageNumber}: ${error}`);
+        resolve(false);
+      });
+      child.on('close', (code) => resolve(code === 0));
+    });
+
+    if (!success) {
+      await this.storageRepository.unlinkDir(folder, { recursive: true, force: true });
+      return null;
+    }
+
+    return outputPath;
   }
 
   private toNumber(value: unknown): number | null {

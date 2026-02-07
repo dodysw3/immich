@@ -144,6 +144,7 @@ export const endpointTags: Record<ApiTag, string> = {
   [ApiTag.DatabaseBackups]: 'Manage backups of the Immich database.',
   [ApiTag.Deprecated]: 'Deprecated endpoints that are planned for removal in the next major release.',
   [ApiTag.Download]: 'Endpoints for downloading assets or collections of assets.',
+  [ApiTag.Documents]: 'Endpoints for indexing, searching, and browsing uploaded PDF documents.',
   [ApiTag.Duplicates]: 'Endpoints for managing and identifying duplicate assets.',
   [ApiTag.Faces]:
     'A face is a detected human face within an asset, which can be associated with a person. Faces are normally detected via machine learning, but can also be created via manually.',
