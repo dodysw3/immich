@@ -145,4 +145,34 @@ describe(PdfService.name, () => {
       ]),
     );
   });
+
+  it('should include matching pages in search response', async () => {
+    mocks.pdf.searchByText.mockResolvedValue({
+      items: [
+        {
+          assetId: 'asset-5',
+          originalFileName: 'report.pdf',
+          pageCount: 12,
+          title: 'Report',
+          author: 'Alice',
+          processedAt: new Date('2026-02-07T00:00:00.000Z'),
+          createdAt: new Date('2026-02-06T00:00:00.000Z'),
+        },
+      ],
+      hasNextPage: false,
+    });
+    mocks.pdf.getMatchingPages.mockResolvedValue([{ pageNumber: 2 }, { pageNumber: 9 }]);
+
+    const result = await sut.search({ user: { id: 'user-1' } } as any, { query: 'revenue', page: 1, size: 50 });
+
+    expect(mocks.pdf.searchByText).toHaveBeenCalledWith('user-1', 'revenue', { page: 1, size: 50 });
+    expect(mocks.pdf.getMatchingPages).toHaveBeenCalledWith('asset-5', 'revenue');
+    expect(result).toEqual([
+      expect.objectContaining({
+        assetId: 'asset-5',
+        originalFileName: 'report.pdf',
+        matchingPages: [2, 9],
+      }),
+    ]);
+  });
 });

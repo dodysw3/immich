@@ -11,6 +11,7 @@
 
   let { data }: Props = $props();
   let searchQuery = $state('');
+  let viewerPage = $state(1);
 
   const normalized = (value: string) => value.trim().toLowerCase();
   const highlightedPages = $derived.by(() => {
@@ -29,7 +30,7 @@
 >
   <div class="grid gap-4 xl:grid-cols-[2fr_1fr]">
     <div class="space-y-4">
-      <PdfViewer assetId={data.document.assetId} />
+      <PdfViewer assetId={data.document.assetId} requestedPage={viewerPage} onPageChange={(page) => (viewerPage = page)} />
       <PdfSearchBar query={searchQuery} onSearch={(query) => (searchQuery = query)} />
     </div>
 
@@ -44,10 +45,17 @@
       {:else}
         <ul class="mt-3 space-y-3">
           {#each highlightedPages as page}
-            <li class="rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-700">
+            <button
+              class={`w-full rounded-xl border p-3 text-left text-sm transition dark:border-gray-700 ${
+                page.pageNumber === viewerPage
+                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/20'
+                  : 'border-gray-200 hover:border-primary-300 dark:border-gray-700'
+              }`}
+              onclick={() => (viewerPage = page.pageNumber)}
+            >
               <p class="font-medium">Page {page.pageNumber}</p>
               <p class="mt-1 line-clamp-4 text-xs text-gray-600 dark:text-gray-300">{page.text || '(empty)'}</p>
-            </li>
+            </button>
           {/each}
         </ul>
       {/if}

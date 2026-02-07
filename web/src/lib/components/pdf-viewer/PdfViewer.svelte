@@ -13,9 +13,11 @@
 
   interface Props {
     assetId: string;
+    requestedPage?: number;
+    onPageChange?: (page: number) => void;
   }
 
-  let { assetId }: Props = $props();
+  let { assetId, requestedPage = 1, onPageChange }: Props = $props();
   let canvas: HTMLCanvasElement;
   let pdf: PdfDocument | null = null;
   let totalPages = $state(0);
@@ -41,18 +43,27 @@
     await page.render({ canvasContext: ctx, viewport }).promise;
   };
 
-  const updatePage = async (offset: number) => {
+  const clampPage = (page: number) => Math.min(Math.max(1, page), Math.max(1, totalPages));
+
+  const setPage = async (page: number, emit = true) => {
     if (!pdf) {
       return;
     }
 
-    const target = Math.min(Math.max(1, currentPage + offset), totalPages);
+    const target = clampPage(page);
     if (target === currentPage) {
       return;
     }
 
     currentPage = target;
     await renderPage();
+    if (emit) {
+      onPageChange?.(currentPage);
+    }
+  };
+
+  const updatePage = async (offset: number) => {
+    await setPage(currentPage + offset);
   };
 
   const updateScale = async (next: number) => {
@@ -69,12 +80,19 @@
       const loaded = (await task.promise) as unknown as PdfDocument;
       pdf = loaded;
       totalPages = loaded.numPages;
-      currentPage = 1;
+      currentPage = clampPage(requestedPage);
       await renderPage();
+      onPageChange?.(currentPage);
     } catch (value) {
       error = value instanceof Error ? value.message : 'Failed to load PDF';
     } finally {
       loading = false;
+    }
+  });
+
+  $effect(() => {
+    if (pdf) {
+      void setPage(requestedPage, false);
     }
   });
 </script>
