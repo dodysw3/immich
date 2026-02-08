@@ -95,7 +95,7 @@
       return;
     }
 
-    const timer = setInterval(() => void refreshDocument(), 5_000);
+    const timer = setInterval(() => void refreshDocument(), 5000);
     return () => clearInterval(timer);
   });
 
@@ -139,6 +139,7 @@
   {#snippet buttons()}
     <div class="flex gap-2">
       <button
+        type="button"
         class="rounded-xl border border-gray-300 px-3 py-2 text-xs font-medium hover:border-primary-400 disabled:opacity-50 dark:border-gray-700"
         onclick={() => triggerReprocess().catch((error) => handleError(error, 'Failed to reprocess document'))}
         disabled={reprocessing || document.status === 'pending' || document.status === 'processing'}
@@ -180,9 +181,10 @@
           </p>
         {:else}
           <ul class="mt-3 space-y-3 overflow-y-auto pr-1 max-h-[min(22rem,45vh)] xl:max-h-[calc(100vh-32rem)]">
-            {#each highlightedPages as page}
+            {#each highlightedPages as page (page.pageNumber)}
               <li>
                 <button
+                  type="button"
                   class={`w-full rounded-xl border p-3 text-left text-sm transition dark:border-gray-700 ${
                     page.pageNumber === viewerPage
                       ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/20'

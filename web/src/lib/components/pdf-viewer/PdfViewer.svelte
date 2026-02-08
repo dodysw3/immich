@@ -24,14 +24,20 @@
 
   let { assetId, requestedPage = 1, onPageChange }: Props = $props();
   let canvas: HTMLCanvasElement;
-  let pdf: PdfDocument | null = null;
+  let pdf = $state<PdfDocument | null>(null);
   let totalPages = $state(0);
   let currentPage = $state(1);
   let scale = $state(1.2);
   let loading = $state(true);
   let error = $state<string | null>(null);
   let thumbnails = $state<PageThumbnail[]>([]);
+  let pendingRequestedPage = $state<number | null>(null);
   const THUMBNAIL_PAGE_LIMIT = 40;
+
+  const normalizePageNumber = (page: number) => {
+    const next = Number(page);
+    return Number.isFinite(next) ? Math.max(1, Math.floor(next)) : 1;
+  };
 
   const renderPage = async () => {
     if (!pdf || !canvas) {
@@ -57,7 +63,7 @@
       return;
     }
 
-    const target = clampPage(page);
+    const target = clampPage(normalizePageNumber(page));
     if (target === currentPage) {
       return;
     }
@@ -123,9 +129,9 @@
       const loaded = (await task.promise) as unknown as PdfDocument;
       pdf = loaded;
       totalPages = loaded.numPages;
-      currentPage = clampPage(requestedPage);
-    } catch (value) {
-      error = value instanceof Error ? value.message : 'Failed to load PDF';
+      currentPage = clampPage(normalizePageNumber(requestedPage));
+    } catch (error_) {
+      error = error_ instanceof Error ? error_.message : 'Failed to load PDF';
     } finally {
       loading = false;
     }
@@ -134,33 +140,41 @@
       await tick();
       await renderPage();
       void buildThumbnails();
+      if (pendingRequestedPage !== null) {
+        await setPage(pendingRequestedPage, false);
+        pendingRequestedPage = null;
+      }
       onPageChange?.(currentPage);
     }
   });
 
   $effect(() => {
+    const target = normalizePageNumber(requestedPage);
     if (pdf) {
-      void setPage(requestedPage, false);
+      void setPage(target, false);
+      return;
     }
+
+    pendingRequestedPage = target;
   });
 </script>
 
 <div class="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700">
   <div class="flex items-center justify-between border-b border-gray-200 px-3 py-2 text-xs dark:border-gray-700">
     <div class="flex items-center gap-2">
-      <button class="rounded border px-2 py-1" onclick={() => updatePage(-1)} disabled={currentPage <= 1}>
+      <button type="button" class="rounded border px-2 py-1" onclick={() => updatePage(-1)} disabled={currentPage <= 1}>
         Prev
       </button>
-      <button class="rounded border px-2 py-1" onclick={() => updatePage(1)} disabled={currentPage >= totalPages}>
+      <button type="button" class="rounded border px-2 py-1" onclick={() => updatePage(1)} disabled={currentPage >= totalPages}>
         Next
       </button>
       <span>Page {currentPage}/{Math.max(1, totalPages)}</span>
     </div>
 
     <div class="flex items-center gap-2">
-      <button class="rounded border px-2 py-1" onclick={() => updateScale(scale - 0.1)}>-</button>
+      <button type="button" class="rounded border px-2 py-1" onclick={() => updateScale(scale - 0.1)}>-</button>
       <span>{Math.round(scale * 100)}%</span>
-      <button class="rounded border px-2 py-1" onclick={() => updateScale(scale + 0.1)}>+</button>
+      <button type="button" class="rounded border px-2 py-1" onclick={() => updateScale(scale + 0.1)}>+</button>
     </div>
   </div>
 
@@ -172,8 +186,9 @@
     {#if thumbnails.length > 0}
       <div class="max-w-full overflow-x-auto border-b border-gray-200 px-3 py-2 dark:border-gray-700">
         <div class="flex w-max gap-2">
-          {#each thumbnails as thumb}
+          {#each thumbnails as thumb (thumb.pageNumber)}
             <button
+              type="button"
               class={`overflow-hidden rounded border ${
                 thumb.pageNumber === currentPage ? 'border-primary-500' : 'border-gray-300 dark:border-gray-700'
               }`}
