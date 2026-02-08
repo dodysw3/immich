@@ -121,6 +121,15 @@
       reprocessing = false;
     }
   };
+
+  const selectIndexedPage = (pageNumber: number) => {
+    const target = Number(pageNumber);
+    if (!Number.isFinite(target) || target < 1) {
+      return;
+    }
+
+    viewerPage = Math.floor(target);
+  };
 </script>
 
 <UserPageLayout
@@ -170,7 +179,7 @@
             No matching indexed text. Processing may still be running.
           </p>
         {:else}
-          <ul class="mt-3 space-y-3 overflow-y-auto pr-1 max-h-[min(22rem,45vh)] xl:max-h-[calc(100vh-16rem)]">
+          <ul class="mt-3 space-y-3 overflow-y-auto pr-1 max-h-[min(22rem,45vh)] xl:max-h-[calc(100vh-32rem)]">
             {#each highlightedPages as page}
               <li>
                 <button
@@ -179,7 +188,7 @@
                       ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/20'
                       : 'border-gray-200 hover:border-primary-300 dark:border-gray-700'
                   }`}
-                  onclick={() => (viewerPage = page.pageNumber)}
+                  onclick={() => selectIndexedPage(page.pageNumber)}
                 >
                   <p class="font-medium">Page {page.pageNumber}</p>
                   <p class="mt-1 line-clamp-2 text-xs text-gray-600 dark:text-gray-300">{page.text || '(empty)'}</p>
