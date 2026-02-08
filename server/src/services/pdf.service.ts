@@ -142,7 +142,6 @@ export class PdfService extends BaseService {
       await this.pdfRepository.upsertSearch(id, searchText);
       await this.pdfRepository.markDocumentReady(id, new Date());
 
-      await this.assetRepository.upsertJobStatus({ assetId: id });
       this.logger.log(
         `Processed PDF ${id} in ${Date.now() - startedAt}ms (pages=${metadata.pageCount}, indexed=${pages.length}, ocr=${ocrPages})`,
       );

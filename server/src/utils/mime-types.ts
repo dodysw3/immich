@@ -134,6 +134,7 @@ export const mimeTypes = {
   isSidecar: (filename: string) => isType(filename, sidecar),
   isVideo: (filename: string) => isType(filename, video),
   isRaw: (filename: string) => isType(filename, raw),
+  isPdf: (filename: string) => isType(filename, pdf),
   lookup,
   /** return an extension (including a leading `.`) for a mime-type */
   toExtension,

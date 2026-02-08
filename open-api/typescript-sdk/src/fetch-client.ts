@@ -2119,6 +2119,8 @@ export type LicenseKeyDto = {
 export type ServerMediaTypesResponseDto = {
     /** Supported image MIME types */
     image: string[];
+    /** Supported PDF MIME types */
+    pdf: string[];
     /** Supported sidecar MIME types */
     sidecar: string[];
     /** Supported video MIME types */

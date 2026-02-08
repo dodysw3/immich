@@ -1,4 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { SystemConfig } from 'src/config';
 import { FACE_THUMBNAIL_SIZE, JOBS_ASSET_PAGINATION_SIZE } from 'src/constants';
 import { ImagePathOptions, StorageCore, ThumbnailPathEntity } from 'src/cores/storage.core';
@@ -234,6 +237,9 @@ export class MediaService extends BaseService {
     } else if (asset.type === AssetType.Image) {
       this.logger.verbose(`Thumbnail generation for image ${id} ${asset.originalPath}`);
       generated = await this.generateImageThumbnails(asset, config);
+    } else if (mimeTypes.isPdf(asset.originalFileName)) {
+      this.logger.verbose(`Thumbnail generation for PDF ${id} ${asset.originalPath}`);
+      generated = await this.generatePdfThumbnails(asset, config);
     } else {
       this.logger.warn(`Skipping thumbnail generation for asset ${id}: ${asset.type} is not an image or video`);
       return JobStatus.Skipped;
@@ -387,6 +393,56 @@ export class MediaService extends BaseService {
       thumbhash: outputs[0] as Buffer,
       fullsizeDimensions,
     };
+  }
+
+  private async generatePdfThumbnails(asset: ThumbnailAsset, { image }: SystemConfig) {
+    const previewFile = this.getImageFile(asset, {
+      fileType: AssetFileType.Preview,
+      format: image.preview.format,
+      isEdited: false,
+      isProgressive: !!image.preview.progressive && image.preview.format !== ImageFormat.Webp,
+    });
+    const thumbnailFile = this.getImageFile(asset, {
+      fileType: AssetFileType.Thumbnail,
+      format: image.thumbnail.format,
+      isEdited: false,
+      isProgressive: !!image.thumbnail.progressive && image.thumbnail.format !== ImageFormat.Webp,
+    });
+    this.storageCore.ensureFolders(previewFile.path);
+
+    const folder = await mkdtemp(join(tmpdir(), 'immich-pdf-thumb-'));
+    const prefix = join(folder, 'page-1');
+    const pngPath = `${prefix}.png`;
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const child = this.processRepository.spawn('pdftoppm', [
+          '-f', '1', '-l', '1', '-singlefile', '-png', asset.originalPath, prefix,
+        ]);
+        child.on('error', (error) => reject(error));
+        child.on('close', (code) => (code === 0 ? resolve() : reject(new Error(`pdftoppm exited with code ${code}`))));
+      });
+
+      const { info, data } = await this.mediaRepository.decodeImage(pngPath, {
+        colorspace: Colorspace.Srgb,
+        processInvalidImages: false,
+      });
+
+      const thumbnailOptions = { colorspace: Colorspace.Srgb, processInvalidImages: false, raw: info, edits: [] as never[] };
+      const [thumbhash] = await Promise.all([
+        this.mediaRepository.generateThumbhash(data, thumbnailOptions),
+        this.mediaRepository.generateThumbnail(data, { ...image.thumbnail, ...thumbnailOptions }, thumbnailFile.path),
+        this.mediaRepository.generateThumbnail(data, { ...image.preview, ...thumbnailOptions }, previewFile.path),
+      ]);
+
+      return {
+        files: [previewFile, thumbnailFile],
+        thumbhash: thumbhash as Buffer,
+        fullsizeDimensions: { width: info.width, height: info.height },
+      };
+    } finally {
+      await this.storageRepository.unlinkDir(folder, { recursive: true, force: true });
+    }
   }
 
   @OnJob({ name: JobName.PersonGenerateThumbnail, queue: QueueName.ThumbnailGeneration })
