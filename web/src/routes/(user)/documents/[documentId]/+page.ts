@@ -6,8 +6,8 @@ export const load = (async ({ url, fetch, params }) => {
   await authenticate(url);
 
   const [documentResponse, pagesResponse] = await Promise.all([
-    fetch(`/api/documents/${params.assetId}`),
-    fetch(`/api/documents/${params.assetId}/pages`),
+    fetch(`/api/documents/${params.documentId}`),
+    fetch(`/api/documents/${params.documentId}/pages`),
   ]);
 
   if (!documentResponse.ok) {
