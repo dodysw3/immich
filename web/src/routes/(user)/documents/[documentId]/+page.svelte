@@ -152,40 +152,42 @@
       <PdfSearchBar query={searchQuery} onSearch={handleSearch} />
     </div>
 
-    <div class="space-y-4">
+    <div class="space-y-4 xl:sticky xl:top-4 xl:self-start">
       <PdfDocumentInfo {document} />
       <div class="rounded-2xl border border-gray-200 p-4 dark:border-gray-700">
-      <h2 class="text-sm font-semibold">Indexed pages</h2>
-      {#if shouldPollDocument()}
-        <p class="mt-2 text-xs text-gray-500 dark:text-gray-300">Indexing status refreshes every 5 seconds.</p>
-      {:else if (document.status === 'pending' || document.status === 'processing') && refreshFailures >= MAX_REFRESH_FAILURES}
-        <p class="mt-2 text-xs text-amber-700 dark:text-amber-300">
-          Auto-refresh paused after repeated request failures. Use browser refresh to retry.
-        </p>
-      {/if}
-      {#if searching}
-        <p class="mt-3 text-xs text-gray-500 dark:text-gray-300">Searching...</p>
-      {:else if highlightedPages.length === 0}
-        <p class="mt-3 text-xs text-gray-500 dark:text-gray-300">
-          No matching indexed text. Processing may still be running.
-        </p>
-      {:else}
-        <ul class="mt-3 space-y-3">
-          {#each highlightedPages as page}
-            <button
-              class={`w-full rounded-xl border p-3 text-left text-sm transition dark:border-gray-700 ${
-                page.pageNumber === viewerPage
-                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/20'
-                  : 'border-gray-200 hover:border-primary-300 dark:border-gray-700'
-              }`}
-              onclick={() => (viewerPage = page.pageNumber)}
-            >
-              <p class="font-medium">Page {page.pageNumber}</p>
-              <p class="mt-1 line-clamp-4 text-xs text-gray-600 dark:text-gray-300">{page.text || '(empty)'}</p>
-            </button>
-          {/each}
-        </ul>
-      {/if}
+        <h2 class="text-sm font-semibold">Indexed pages</h2>
+        {#if shouldPollDocument()}
+          <p class="mt-2 text-xs text-gray-500 dark:text-gray-300">Indexing status refreshes every 5 seconds.</p>
+        {:else if (document.status === 'pending' || document.status === 'processing') && refreshFailures >= MAX_REFRESH_FAILURES}
+          <p class="mt-2 text-xs text-amber-700 dark:text-amber-300">
+            Auto-refresh paused after repeated request failures. Use browser refresh to retry.
+          </p>
+        {/if}
+        {#if searching}
+          <p class="mt-3 text-xs text-gray-500 dark:text-gray-300">Searching...</p>
+        {:else if highlightedPages.length === 0}
+          <p class="mt-3 text-xs text-gray-500 dark:text-gray-300">
+            No matching indexed text. Processing may still be running.
+          </p>
+        {:else}
+          <ul class="mt-3 space-y-3 overflow-y-auto pr-1 max-h-[min(22rem,45vh)] xl:max-h-[calc(100vh-16rem)]">
+            {#each highlightedPages as page}
+              <li>
+                <button
+                  class={`w-full rounded-xl border p-3 text-left text-sm transition dark:border-gray-700 ${
+                    page.pageNumber === viewerPage
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/20'
+                      : 'border-gray-200 hover:border-primary-300 dark:border-gray-700'
+                  }`}
+                  onclick={() => (viewerPage = page.pageNumber)}
+                >
+                  <p class="font-medium">Page {page.pageNumber}</p>
+                  <p class="mt-1 line-clamp-2 text-xs text-gray-600 dark:text-gray-300">{page.text || '(empty)'}</p>
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
       </div>
     </div>
   </div>

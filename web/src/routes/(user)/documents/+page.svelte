@@ -20,6 +20,14 @@
   let refreshFailures = $state(0);
   const MAX_REFRESH_FAILURES = 3;
 
+  $effect(() => {
+    items = data.items;
+    nextPage = data.nextPage;
+    summary = data.summary;
+    query = data.query ?? '';
+    status = data.status ?? '';
+  });
+
   const navigateDocuments = (next: { query?: string; page?: number; status?: string }) => {
     const nextQuery = next.query ?? query;
     const nextPage = next.page ?? 1;
