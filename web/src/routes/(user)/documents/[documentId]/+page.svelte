@@ -147,7 +147,7 @@
   {/snippet}
 
   <div class="grid gap-4 xl:grid-cols-[2fr_1fr]">
-    <div class="space-y-4">
+    <div class="min-w-0 space-y-4">
       <PdfViewer assetId={document.assetId} requestedPage={viewerPage} onPageChange={(page) => (viewerPage = page)} />
       <PdfSearchBar query={searchQuery} onSearch={handleSearch} />
     </div>

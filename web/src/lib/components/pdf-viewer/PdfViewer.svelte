@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
 
   type PdfDocument = {
     numPages: number;
@@ -124,13 +124,17 @@
       pdf = loaded;
       totalPages = loaded.numPages;
       currentPage = clampPage(requestedPage);
-      await renderPage();
-      void buildThumbnails();
-      onPageChange?.(currentPage);
     } catch (value) {
       error = value instanceof Error ? value.message : 'Failed to load PDF';
     } finally {
       loading = false;
+    }
+
+    if (pdf) {
+      await tick();
+      await renderPage();
+      void buildThumbnails();
+      onPageChange?.(currentPage);
     }
   });
 
