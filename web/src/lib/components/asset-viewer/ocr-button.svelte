@@ -8,7 +8,7 @@
 <IconButton
   title={ocrManager.showOverlay ? $t('hide_text_recognition') : $t('show_text_recognition')}
   icon={mdiTextRecognition}
-  class={"dark {ocrStore.showOverlay ? 'bg-immich-primary text-white dark' : 'dark'}"}
+  class={ocrManager.showOverlay ? 'dark bg-immich-primary text-white' : 'dark'}
   color="secondary"
   variant="ghost"
   shape="round"

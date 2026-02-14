@@ -39,7 +39,7 @@
   import { getPeopleThumbnailUrl } from '$lib/utils';
   import { handleError } from '$lib/utils/handle-error';
   import { isExternalUrl } from '$lib/utils/navigation';
-  import { AssetVisibility, searchPerson, updatePerson, type PersonResponseDto } from '@immich/sdk';
+  import { searchPerson, updatePerson, type PersonResponseDto } from '@immich/sdk';
   import { ContextMenuButton, LoadingSpinner, modalManager, toastManager, type ActionItem } from '@immich/ui';
   import {
     mdiAccountBoxOutline,
@@ -59,10 +59,9 @@
 
   let { data }: Props = $props();
 
-  let numberOfAssets = $derived(data.statistics.assets);
-
   let timelineManager = $state<TimelineManager>() as TimelineManager;
-  const options = $derived({ visibility: AssetVisibility.Timeline, personId: data.person.id });
+  let numberOfAssets = $derived(timelineManager?.assetCount ?? data.statistics.assets);
+  const options = $derived({ personId: data.person.id });
   const assetInteraction = new AssetInteraction();
 
   let viewMode: PersonPageViewMode = $state(PersonPageViewMode.VIEW_ASSETS);

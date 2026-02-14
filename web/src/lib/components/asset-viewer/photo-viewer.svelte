@@ -2,6 +2,9 @@
   import { shortcuts } from '$lib/actions/shortcut';
   import { zoomImageAction } from '$lib/actions/zoom-image';
   import FaceEditor from '$lib/components/asset-viewer/face-editor/face-editor.svelte';
+  import FaceOverlayBox from '$lib/features/face-overlay/face-overlay-box.svelte';
+  import { faceOverlayStore } from '$lib/features/face-overlay/face-overlay.store.svelte';
+  import { getFaceOverlayBoxes } from '$lib/features/face-overlay/face-overlay.utils';
   import OcrBoundingBox from '$lib/components/asset-viewer/ocr-bounding-box.svelte';
   import BrokenAsset from '$lib/components/assets/broken-asset.svelte';
   import AssetViewerEvents from '$lib/components/AssetViewerEvents.svelte';
@@ -70,6 +73,12 @@
       : [],
   );
 
+  let faceBoxes = $derived(
+    faceOverlayStore.showOverlay && !isFaceEditMode.value && assetViewerManager.imgRef
+      ? getFaceOverlayBoxes(faceOverlayStore.data, assetViewerManager.zoomState, assetViewerManager.imgRef)
+      : [],
+  );
+
   let isOcrActive = $derived(ocrManager.showOverlay);
 
   const onCopy = async () => {
@@ -90,6 +99,7 @@
   };
 
   const onPlaySlideshow = () => ($slideshowState = SlideshowState.PlaySlideshow);
+  const onToggleFaceOverlay = () => faceOverlayStore.toggleOverlay();
 
   $effect(() => {
     if (isFaceEditMode.value && assetViewerManager.zoom > 1) {
@@ -187,6 +197,7 @@
     { shortcut: { key: 's' }, onShortcut: onPlaySlideshow, preventDefault: true },
     { shortcut: { key: 'c', ctrl: true }, onShortcut: onCopyShortcut, preventDefault: false },
     { shortcut: { key: 'c', meta: true }, onShortcut: onCopyShortcut, preventDefault: false },
+    { shortcut: { key: 'f', shift: true }, onShortcut: onToggleFaceOverlay, preventDefault: true },
   ]}
 />
 {#if imageError}
@@ -239,6 +250,10 @@
 
       {#each ocrBoxes as ocrBox (ocrBox.id)}
         <OcrBoundingBox {ocrBox} />
+      {/each}
+
+      {#each faceBoxes as faceBox (faceBox.id)}
+        <FaceOverlayBox {faceBox} assetId={asset.id} />
       {/each}
     </div>
 

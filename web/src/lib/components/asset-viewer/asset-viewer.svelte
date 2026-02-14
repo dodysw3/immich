@@ -12,6 +12,8 @@
   import { authManager } from '$lib/managers/auth-manager.svelte';
   import { editManager, EditToolType } from '$lib/managers/edit/edit-manager.svelte';
   import { eventManager } from '$lib/managers/event-manager.svelte';
+  import FaceOverlayButton from '$lib/features/face-overlay/face-overlay-button.svelte';
+  import { faceOverlayStore } from '$lib/features/face-overlay/face-overlay.store.svelte';
   import { imageManager } from '$lib/managers/ImageManager.svelte';
   import { Route } from '$lib/route';
   import { getAssetActions } from '$lib/services/asset.service';
@@ -363,11 +365,15 @@
     await refreshStack();
     await handleGetAllAlbums();
     ocrManager.clear();
+    faceOverlayStore.clear();
     if (!sharedLink) {
       if (previewStackedAsset) {
         await ocrManager.getAssetOcr(previewStackedAsset.id);
       }
       await ocrManager.getAssetOcr(asset.id);
+    }
+    if (!sharedLink || sharedLink.showMetadata) {
+      faceOverlayStore.loadFromAsset(asset);
     }
   };
   $effect(() => {
@@ -420,6 +426,14 @@
       isShared &&
       ((album && album.isActivityEnabled) || activityManager.commentCount > 0) &&
       !activityManager.isLoading,
+  );
+
+  const showFaceButton = $derived(
+    $slideshowState === SlideshowState.None &&
+      asset.type === AssetTypeEnum.Image &&
+      !(asset.exifInfo?.projectionType === ProjectionType.EQUIRECTANGULAR) &&
+      !assetViewerManager.isShowEditor &&
+      faceOverlayStore.hasFaceData,
   );
 
   const showOcrButton = $derived(
@@ -557,8 +571,14 @@
       </div>
     {/if}
 
-    {#if showOcrButton}
+    {#if showFaceButton}
       <div class="absolute bottom-0 end-0 mb-6 me-6">
+        <FaceOverlayButton />
+      </div>
+    {/if}
+
+    {#if showOcrButton}
+      <div class="absolute bottom-0 end-0 me-6" class:mb-20={showFaceButton} class:mb-6={!showFaceButton}>
         <OcrButton />
       </div>
     {/if}
