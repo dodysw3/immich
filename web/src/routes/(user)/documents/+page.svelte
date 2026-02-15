@@ -16,9 +16,12 @@
   let summary = $state(data.summary);
   let query = $state(data.query ?? '');
   let status = $state(data.status ?? '');
+  let loading = $state(false);
   let refreshing = false;
   let refreshFailures = $state(0);
   const MAX_REFRESH_FAILURES = 3;
+
+  let sentinel: HTMLElement | undefined = $state();
 
   $effect(() => {
     items = data.items;
@@ -28,16 +31,12 @@
     status = data.status ?? '';
   });
 
-  const navigateDocuments = (next: { query?: string; page?: number; status?: string }) => {
+  const navigateDocuments = (next: { query?: string; status?: string }) => {
     const nextQuery = next.query ?? query;
-    const nextPage = next.page ?? 1;
     const nextStatus = next.status ?? status;
     const params = new URLSearchParams();
     if (nextQuery) {
       params.set('query', nextQuery);
-    }
-    if (nextPage > 1) {
-      params.set('page', `${nextPage}`);
     }
     if (nextStatus) {
       params.set('status', nextStatus);
@@ -47,28 +46,62 @@
     void goto(`${Route.documents()}${suffix}`);
   };
 
-  const handleSearch = (value: string, page = 1) => {
+  const handleSearch = (value: string) => {
     query = value;
-    navigateDocuments({ query: value, page, status });
-  };
-
-  const gotoPage = (page: number) => {
-    if (page < 1) {
-      return;
-    }
-    navigateDocuments({ query, page, status });
+    navigateDocuments({ query: value, status });
   };
 
   const resetSearch = () => {
     query = '';
-    navigateDocuments({ query: '', page: 1, status });
+    navigateDocuments({ query: '', status });
   };
 
   const setStatus = (value: string) => {
     status = value;
     query = '';
-    navigateDocuments({ query: '', page: 1, status: value });
+    navigateDocuments({ query: '', status: value });
   };
+
+  const loadNextPage = async () => {
+    if (loading || !nextPage) {
+      return;
+    }
+
+    loading = true;
+    try {
+      const endpoint = query
+        ? `/api/documents/search?query=${encodeURIComponent(query)}&page=${nextPage}${status ? `&status=${encodeURIComponent(status)}` : ''}`
+        : `/api/documents?page=${nextPage}${status ? `&status=${encodeURIComponent(status)}` : ''}`;
+      const response = await fetch(endpoint);
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = await response.json();
+      items = [...items, ...(payload.items || [])];
+      nextPage = payload.nextPage || null;
+      if (payload.summary) {
+        summary = payload.summary;
+      }
+    } finally {
+      loading = false;
+    }
+  };
+
+  $effect(() => {
+    if (!sentinel) {
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) {
+        void loadNextPage();
+      }
+    });
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  });
 
   const shouldPollDocuments = () =>
     items.some((item) => item.status === 'pending' || item.status === 'processing') && !query && refreshFailures < MAX_REFRESH_FAILURES;
@@ -81,7 +114,7 @@
     refreshing = true;
     try {
       const response = await fetch(
-        `/api/documents?page=${data.page}${status ? `&status=${encodeURIComponent(status)}` : ''}`,
+        `/api/documents?page=1${status ? `&status=${encodeURIComponent(status)}` : ''}`,
       );
       if (!response.ok) {
         refreshFailures += 1;
@@ -89,8 +122,9 @@
       }
 
       const payload = await response.json();
-      items = payload.items || [];
-      nextPage = payload.nextPage || null;
+      const refreshedItems = payload.items || [];
+      // Update only the first page worth of items, keep the rest
+      items = [...refreshedItems, ...items.slice(refreshedItems.length)];
       summary = payload.summary || { total: 0, pending: 0, processing: 0, ready: 0, failed: 0 };
       refreshFailures = 0;
     } finally {
@@ -163,17 +197,11 @@
     {/if}
   </div>
   <PdfDocumentGrid {items} />
-  <div class="mt-4 flex items-center justify-between text-sm">
-    <button class="rounded border px-3 py-1 disabled:opacity-40" onclick={() => gotoPage(data.page - 1)} disabled={data.page <= 1}>
-      Previous
-    </button>
-    <span>Page {data.page}</span>
-    <button
-      class="rounded border px-3 py-1 disabled:opacity-40"
-      onclick={() => gotoPage(data.page + 1)}
-      disabled={!nextPage}
-    >
-      Next
-    </button>
-  </div>
+  {#if nextPage}
+    <div bind:this={sentinel} class="flex justify-center py-8">
+      {#if loading}
+        <div class="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600 dark:border-gray-600 dark:border-t-gray-300"></div>
+      {/if}
+    </div>
+  {/if}
 </UserPageLayout>
