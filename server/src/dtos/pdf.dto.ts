@@ -90,6 +90,9 @@ export class PdfDocumentResponseDto {
 
   @ApiProperty()
   createdAt!: Date;
+
+  @ApiProperty()
+  updatedAt!: Date;
 }
 
 export class PdfPageResponseDto {

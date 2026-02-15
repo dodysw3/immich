@@ -136,6 +136,22 @@ export const placesViewSettings = persisted<PlacesViewSettings>('places-view-set
   collapsedGroups: {},
 });
 
+export enum PdfDocumentSortBy {
+  FileModifiedAt = 'FileModifiedAt',
+  FileCreatedAt = 'FileCreatedAt',
+  Name = 'Name',
+}
+
+export interface PdfDocumentSortSettings {
+  sortBy: PdfDocumentSortBy;
+  sortOrder: SortOrder;
+}
+
+export const pdfDocumentSortSettings = persisted<PdfDocumentSortSettings>('pdf-document-sort-settings', {
+  sortBy: PdfDocumentSortBy.FileModifiedAt,
+  sortOrder: SortOrder.Desc,
+});
+
 export const showDeleteModal = persisted<boolean>('delete-confirm-dialog', true, {});
 
 export const alwaysLoadOriginalFile = persisted<boolean>('always-load-original-file', false, {});

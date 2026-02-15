@@ -142,7 +142,8 @@ export class PdfRepository {
       .select([
         'asset.id as assetId',
         'asset.originalFileName',
-        'asset.createdAt',
+        'asset.fileCreatedAt as createdAt',
+        'asset.fileModifiedAt as updatedAt',
         'pdf_document.pageCount',
         'pdf_document.title',
         'pdf_document.author',
@@ -203,7 +204,8 @@ export class PdfRepository {
       .select([
         'asset.id as assetId',
         'asset.originalFileName',
-        'asset.createdAt',
+        'asset.fileCreatedAt as createdAt',
+        'asset.fileModifiedAt as updatedAt',
         'pdf_document.pageCount',
         'pdf_document.title',
         'pdf_document.author',
@@ -255,7 +257,8 @@ export class PdfRepository {
       .select([
         'asset.id as assetId',
         'asset.originalFileName',
-        'asset.createdAt',
+        'asset.fileCreatedAt as createdAt',
+        'asset.fileModifiedAt as updatedAt',
         'pdf_document.pageCount',
         'pdf_document.title',
         'pdf_document.author',

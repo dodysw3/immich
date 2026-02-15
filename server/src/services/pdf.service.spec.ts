@@ -122,6 +122,7 @@ describe(PdfService.name, () => {
           status: 'ready',
           lastError: null,
           createdAt: new Date('2026-02-06T00:00:00.000Z'),
+          updatedAt: new Date('2026-02-06T00:00:00.000Z'),
         },
       ],
       hasNextPage: false,
@@ -178,7 +179,7 @@ describe(PdfService.name, () => {
   });
 
   it('should skip processing when asset is missing', async () => {
-    mocks.pdf.getAssetForProcessing.mockResolvedValue(undefined);
+    mocks.pdf.getAssetForProcessing.mockResolvedValue(void 0);
 
     const result = await sut.handlePdfProcess({ id: 'missing-id' });
 
@@ -516,6 +517,7 @@ describe(PdfService.name, () => {
           status: 'ready',
           lastError: null,
           createdAt: new Date('2026-02-06T00:00:00.000Z'),
+          updatedAt: new Date('2026-02-06T00:00:00.000Z'),
         },
       ],
       hasNextPage: false,
@@ -611,6 +613,7 @@ describe(PdfService.name, () => {
           status: 'ready',
           lastError: null,
           createdAt: new Date('2026-02-06T00:00:00.000Z'),
+          updatedAt: new Date('2026-02-06T00:00:00.000Z'),
         },
         {
           assetId: 'asset-b',
@@ -622,6 +625,7 @@ describe(PdfService.name, () => {
           status: 'ready',
           lastError: null,
           createdAt: new Date('2026-02-05T00:00:00.000Z'),
+          updatedAt: new Date('2026-02-05T00:00:00.000Z'),
         },
       ],
       hasNextPage: false,
@@ -652,6 +656,7 @@ describe(PdfService.name, () => {
       status: 'ready',
       lastError: null,
       createdAt: new Date('2026-02-06T00:00:00.000Z'),
+      updatedAt: new Date('2026-02-06T00:00:00.000Z'),
     });
     mocks.pdf.searchPagesByOwner.mockResolvedValue([
       { pageNumber: 2, text: 'This is a longer paragraph about quarterly revenue growth and forecasts.' },
@@ -680,6 +685,7 @@ describe(PdfService.name, () => {
       status: 'ready',
       lastError: null,
       createdAt: new Date('2026-02-06T00:00:00.000Z'),
+      updatedAt: new Date('2026-02-06T00:00:00.000Z'),
     });
 
     const result = await sut.searchInDocument({ user: { id: 'user-1' } } as any, 'asset-6', { query: '   ' });
@@ -699,6 +705,7 @@ describe(PdfService.name, () => {
       status: 'ready',
       lastError: null,
       createdAt: new Date('2026-02-06T00:00:00.000Z'),
+      updatedAt: new Date('2026-02-06T00:00:00.000Z'),
     });
     mocks.pdf.searchPagesByOwner.mockResolvedValue([
       { pageNumber: 1, text: 'first result' },
@@ -745,6 +752,7 @@ describe(PdfService.name, () => {
       status: 'failed',
       lastError: 'test error',
       createdAt: new Date('2026-02-06T00:00:00.000Z'),
+      updatedAt: new Date('2026-02-06T00:00:00.000Z'),
     });
 
     await sut.reprocessDocument({ user: { id: 'user-1' } } as any, 'asset-7');
@@ -764,6 +772,7 @@ describe(PdfService.name, () => {
       status: 'processing',
       lastError: null,
       createdAt: new Date('2026-02-06T00:00:00.000Z'),
+      updatedAt: new Date('2026-02-06T00:00:00.000Z'),
     });
 
     await sut.reprocessDocument({ user: { id: 'user-1' } } as any, 'asset-8');
@@ -783,6 +792,7 @@ describe(PdfService.name, () => {
       status: 'pending',
       lastError: null,
       createdAt: new Date('2026-02-06T00:00:00.000Z'),
+      updatedAt: new Date('2026-02-06T00:00:00.000Z'),
     });
 
     await sut.reprocessDocument({ user: { id: 'user-1' } } as any, 'asset-9');

@@ -25,6 +25,8 @@ import { tokenizeForSearch } from 'src/utils/database';
 import { isOcrEnabled } from 'src/utils/misc';
 
 const DEFAULT_PDF_TEXT_EXTRACTION_PAGE_LIMIT = 250;
+const PDF_PROCESS_TIMEOUT_MS = 120_000;
+const PDF_PROCESS_STDERR_LIMIT = 16_384;
 
 type PdfMetadata = {
   pageCount: number;
@@ -298,6 +300,7 @@ export class PdfService extends BaseService {
     status: 'pending' | 'processing' | 'ready' | 'failed' | null;
     lastError: string | null;
     createdAt: Date;
+    updatedAt: Date;
   }): PdfDocumentResponseDto {
     return {
       assetId: item.assetId,
@@ -309,6 +312,7 @@ export class PdfService extends BaseService {
       status: item.status ?? 'pending',
       lastError: item.lastError,
       createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
     };
   }
 
@@ -362,9 +366,24 @@ export class PdfService extends BaseService {
       const child = this.processRepository.spawn('pdfinfo', ['-f', '1', '-l', `${pageCount}`, path]);
       const lines: string[] = [];
       const rl = readline.createInterface({ input: child.stdout });
+      let timedOut = false;
+      const timeout = setTimeout(() => {
+        timedOut = true;
+        child.kill('SIGKILL');
+      }, PDF_PROCESS_TIMEOUT_MS);
+      timeout.unref?.();
+      let stderr = '';
 
       rl.on('line', (line) => lines.push(line));
+      child.stderr.on('data', (chunk) => {
+        if (stderr.length >= PDF_PROCESS_STDERR_LIMIT) {
+          return;
+        }
+
+        stderr = this.appendProcessOutput(stderr, chunk);
+      });
       child.on('error', (error) => {
+        clearTimeout(timeout);
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
           if (!this.hasLoggedMissingPdfinfo) {
             this.logger.warn('pdfinfo is not available, skipping PDF page dimensions');
@@ -378,7 +397,16 @@ export class PdfService extends BaseService {
         resolve(new Map());
       });
       child.on('close', (code) => {
+        clearTimeout(timeout);
+        if (timedOut) {
+          this.logger.warn(`pdfinfo timed out after ${PDF_PROCESS_TIMEOUT_MS}ms`);
+          resolve(new Map());
+          return;
+        }
+
         if (code !== 0) {
+          const detail = stderr ? `: ${stderr}` : '';
+          this.logger.warn(`pdfinfo exited with code ${code}${detail}`);
           resolve(new Map());
           return;
         }
@@ -408,6 +436,8 @@ export class PdfService extends BaseService {
       const child = this.processRepository.spawn('pdftotext', [
         '-q',
         '-enc',
+        // pdftotext expects UTF-8 here; `utf8` is rejected by some builds.
+        // eslint-disable-next-line unicorn/text-encoding-identifier-case
         'UTF-8',
         '-f',
         `${pageNumber}`,
@@ -418,9 +448,24 @@ export class PdfService extends BaseService {
       ]);
       const lines: string[] = [];
       const rl = readline.createInterface({ input: child.stdout });
+      let timedOut = false;
+      const timeout = setTimeout(() => {
+        timedOut = true;
+        child.kill('SIGKILL');
+      }, PDF_PROCESS_TIMEOUT_MS);
+      timeout.unref?.();
+      let stderr = '';
 
       rl.on('line', (line) => lines.push(line));
+      child.stderr.on('data', (chunk) => {
+        if (stderr.length >= PDF_PROCESS_STDERR_LIMIT) {
+          return;
+        }
+
+        stderr = this.appendProcessOutput(stderr, chunk);
+      });
       child.on('error', (error) => {
+        clearTimeout(timeout);
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
           if (!this.hasLoggedMissingPdftotext) {
             this.logger.warn('pdftotext is not available, skipping PDF text extraction');
@@ -434,7 +479,16 @@ export class PdfService extends BaseService {
         resolve('');
       });
       child.on('close', (code) => {
+        clearTimeout(timeout);
+        if (timedOut) {
+          this.logger.warn(`pdftotext timed out for page ${pageNumber} after ${PDF_PROCESS_TIMEOUT_MS}ms`);
+          resolve('');
+          return;
+        }
+
         if (code !== 0) {
+          const detail = stderr ? `: ${stderr}` : '';
+          this.logger.warn(`pdftotext exited with code ${code} for page ${pageNumber}${detail}`);
           resolve('');
           return;
         }
@@ -496,7 +550,26 @@ export class PdfService extends BaseService {
         inputPath,
         prefix,
       ]);
+      let timedOut = false;
+      const timeout = setTimeout(() => {
+        timedOut = true;
+        child.kill('SIGKILL');
+      }, PDF_PROCESS_TIMEOUT_MS);
+      timeout.unref?.();
+      let stderr = '';
+
+      // We do not use child stdout for PNG output; consume it to avoid deadlocks.
+      child.stdout.resume();
+      child.stderr.on('data', (chunk) => {
+        if (stderr.length >= PDF_PROCESS_STDERR_LIMIT) {
+          return;
+        }
+
+        stderr = this.appendProcessOutput(stderr, chunk);
+      });
+
       child.on('error', (error) => {
+        clearTimeout(timeout);
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
           if (!this.hasLoggedMissingPdftoppm) {
             this.logger.warn('pdftoppm is not available, skipping PDF OCR fallback');
@@ -509,7 +582,23 @@ export class PdfService extends BaseService {
         this.logger.warn(`pdftoppm failed for PDF page ${pageNumber}: ${error}`);
         resolve(false);
       });
-      child.on('close', (code) => resolve(code === 0));
+      child.on('close', (code, signal) => {
+        clearTimeout(timeout);
+        if (timedOut) {
+          this.logger.warn(`pdftoppm timed out for PDF page ${pageNumber} after ${PDF_PROCESS_TIMEOUT_MS}ms`);
+          resolve(false);
+          return;
+        }
+
+        if (code !== 0) {
+          const detail = stderr ? `: ${stderr}` : '';
+          this.logger.warn(`pdftoppm exited with code ${code}${signal ? ` signal ${signal}` : ''} for page ${pageNumber}${detail}`);
+          resolve(false);
+          return;
+        }
+
+        resolve(true);
+      });
     });
 
     if (!success) {
@@ -546,6 +635,15 @@ export class PdfService extends BaseService {
       return parsed instanceof Date ? parsed : null;
     }
     return null;
+  }
+
+  private appendProcessOutput(current: string, chunk: string | Buffer): string {
+    if (current.length >= PDF_PROCESS_STDERR_LIMIT) {
+      return current;
+    }
+
+    const remaining = PDF_PROCESS_STDERR_LIMIT - current.length;
+    return (current + chunk.toString().slice(0, remaining)).trim();
   }
 
   private isPdfEnabled() {
