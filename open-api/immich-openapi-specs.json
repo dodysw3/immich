@@ -20402,6 +20402,7 @@
           "notifications",
           "backupDatabase",
           "ocr",
+          "pdfProcessing",
           "workflow",
           "editor"
         ],
@@ -20545,6 +20546,9 @@
           "ocr": {
             "$ref": "#/components/schemas/QueueResponseLegacyDto"
           },
+          "pdfProcessing": {
+            "$ref": "#/components/schemas/QueueResponseLegacyDto"
+          },
           "search": {
             "$ref": "#/components/schemas/QueueResponseLegacyDto"
           },
@@ -20579,6 +20583,7 @@
           "migration",
           "notifications",
           "ocr",
+          "pdfProcessing",
           "search",
           "sidecar",
           "smartSearch",
@@ -23943,6 +23948,9 @@
           "ocr": {
             "$ref": "#/components/schemas/JobSettingsDto"
           },
+          "pdfProcessing": {
+            "$ref": "#/components/schemas/JobSettingsDto"
+          },
           "search": {
             "$ref": "#/components/schemas/JobSettingsDto"
           },
@@ -23971,6 +23979,7 @@
           "migration",
           "notifications",
           "ocr",
+          "pdfProcessing",
           "search",
           "sidecar",
           "smartSearch",

@@ -24,6 +24,7 @@ import {
   mdiDatabaseOutline,
   mdiFaceRecognition,
   mdiFileJpgBox,
+  mdiFilePdfBox,
   mdiFileXmlBox,
   mdiFolderMove,
   mdiImageSearch,
@@ -208,6 +209,10 @@ export const asQueueItem = ($t: MessageFormatter, queue: { name: QueueName }): Q
       icon: mdiOcr,
       title: $t('admin.machine_learning_ocr'),
       subtitle: $t('admin.ocr_job_description'),
+    },
+    [QueueName.PdfProcessing]: {
+      icon: mdiFilePdfBox,
+      title: 'PDF processing',
     },
     [QueueName.VideoConversion]: {
       icon: mdiVideo,

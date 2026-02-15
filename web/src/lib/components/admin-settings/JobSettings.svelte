@@ -25,6 +25,7 @@
     QueueName.StorageTemplateMigration,
     QueueName.Migration,
     QueueName.Ocr,
+    QueueName.PdfProcessing,
   ];
 
   function isSystemConfigJobDto(jobName: string): jobName is keyof SystemConfigJobDto {
