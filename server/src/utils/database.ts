@@ -197,22 +197,24 @@ export function withFaces(eb: ExpressionBuilder<DB, 'asset'>, withHidden?: boole
   ).as('faces');
 }
 
-export function withFiles(eb: ExpressionBuilder<DB, 'asset'>, type?: AssetFileType) {
+export function withFiles(eb: ExpressionBuilder<DB, 'asset'>, type?: AssetFileType, isEdited?: boolean) {
   return jsonArrayFrom(
     eb
       .selectFrom('asset_file')
       .select(columns.assetFiles)
       .whereRef('asset_file.assetId', '=', 'asset.id')
-      .$if(!!type, (qb) => qb.where('asset_file.type', '=', type!)),
+      .$if(!!type, (qb) => qb.where('asset_file.type', '=', type!))
+      .$if(isEdited !== undefined, (qb) => qb.where('asset_file.isEdited', '=', isEdited!)),
   ).as('files');
 }
 
-export function withFilePath(eb: ExpressionBuilder<DB, 'asset'>, type: AssetFileType) {
+export function withFilePath(eb: ExpressionBuilder<DB, 'asset'>, type: AssetFileType, isEdited = false) {
   return eb
     .selectFrom('asset_file')
     .select('asset_file.path')
     .whereRef('asset_file.assetId', '=', 'asset.id')
-    .where('asset_file.type', '=', type);
+    .where('asset_file.type', '=', type)
+    .where('asset_file.isEdited', '=', isEdited);
 }
 
 export function withFacesAndPeople(
