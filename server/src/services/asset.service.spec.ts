@@ -657,30 +657,24 @@ describe(AssetService.name, () => {
     it('should return OCR data for an asset', async () => {
       const ocr1 = factory.assetOcr({ text: 'Hello World' });
       const ocr2 = factory.assetOcr({ text: 'Test Image' });
-      const asset = AssetFactory.from().exif().build();
 
-      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set([asset.id]));
+      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set(['asset-1']));
       mocks.ocr.getByAssetId.mockResolvedValue([ocr1, ocr2]);
-      mocks.asset.getById.mockResolvedValue(asset);
 
-      await expect(sut.getOcr(authStub.admin, asset.id)).resolves.toEqual([ocr1, ocr2]);
+      await expect(sut.getOcr(authStub.admin, 'asset-1')).resolves.toEqual([ocr1, ocr2]);
 
-      expect(mocks.access.asset.checkOwnerAccess).toHaveBeenCalledWith(
-        authStub.admin.user.id,
-        new Set([asset.id]),
-        undefined,
-      );
-      expect(mocks.ocr.getByAssetId).toHaveBeenCalledWith(asset.id);
+      expect(mocks.ocr.getByAssetId).toHaveBeenCalledWith('asset-1');
+      expect(mocks.asset.getById).not.toHaveBeenCalled();
     });
 
     it('should return empty array when no OCR data exists', async () => {
-      const asset = AssetFactory.from().exif().build();
-      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set([asset.id]));
+      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set(['asset-1']));
       mocks.ocr.getByAssetId.mockResolvedValue([]);
-      mocks.asset.getById.mockResolvedValue(asset);
-      await expect(sut.getOcr(authStub.admin, asset.id)).resolves.toEqual([]);
 
-      expect(mocks.ocr.getByAssetId).toHaveBeenCalledWith(asset.id);
+      await expect(sut.getOcr(authStub.admin, 'asset-1')).resolves.toEqual([]);
+
+      expect(mocks.ocr.getByAssetId).toHaveBeenCalledWith('asset-1');
+      expect(mocks.asset.getById).not.toHaveBeenCalled();
     });
   });
 

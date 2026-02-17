@@ -47,7 +47,6 @@ import {
 } from 'src/utils/asset.util';
 import { updateLockedColumns } from 'src/utils/database';
 import { extractTimeZone } from 'src/utils/date';
-import { transformOcrBoundingBox } from 'src/utils/transform';
 
 @Injectable()
 export class AssetService extends BaseService {
@@ -403,16 +402,7 @@ export class AssetService extends BaseService {
 
   async getOcr(auth: AuthDto, id: string): Promise<AssetOcrResponseDto[]> {
     await this.requireAccess({ auth, permission: Permission.AssetRead, ids: [id] });
-    const ocr = await this.ocrRepository.getByAssetId(id);
-    const asset = await this.assetRepository.getById(id, { exifInfo: true, edits: true });
-
-    if (!asset || !asset.exifInfo || !asset.edits) {
-      throw new BadRequestException('Asset not found');
-    }
-
-    const dimensions = getDimensions(asset.exifInfo);
-
-    return ocr.map((item) => transformOcrBoundingBox(item, asset.edits!, dimensions));
+    return this.ocrRepository.getByAssetId(id);
   }
 
   async upsertBulkMetadata(auth: AuthDto, dto: AssetMetadataBulkUpsertDto): Promise<AssetMetadataBulkResponseDto[]> {
