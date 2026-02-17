@@ -15,6 +15,7 @@ import {
   JobName,
   JobStatus,
   RawExtractedFormat,
+  SourceType,
   TranscodeHardwareAcceleration,
   TranscodePolicy,
   VideoCodec,
@@ -337,8 +338,6 @@ describe(MediaService.name, () => {
 
     beforeEach(() => {
       rawInfo = { width: 100, height: 100, channels: 3 };
-      mocks.person.getFaces.mockResolvedValue([]);
-      mocks.ocr.getByAssetId.mockResolvedValue([]);
       mocks.media.decodeImage.mockImplementation((input) =>
         Promise.resolve(
           typeof input === 'string'
@@ -1275,8 +1274,6 @@ describe(MediaService.name, () => {
 
     beforeEach(() => {
       rawInfo = { width: 100, height: 100, channels: 3 };
-      mocks.person.getFaces.mockResolvedValue([]);
-      mocks.ocr.getByAssetId.mockResolvedValue([]);
       mocks.media.decodeImage.mockImplementation((input) =>
         Promise.resolve(
           typeof input === 'string'
@@ -1308,8 +1305,6 @@ describe(MediaService.name, () => {
       mocks.assetJob.getForGenerateThumbnailJob.mockResolvedValue(asset);
       const thumbhashBuffer = Buffer.from('a thumbhash', 'utf8');
       mocks.media.generateThumbhash.mockResolvedValue(thumbhashBuffer);
-      mocks.person.getFaces.mockResolvedValue([]);
-      mocks.ocr.getByAssetId.mockResolvedValue([]);
 
       await sut.handleAssetEditThumbnailGeneration({ id: asset.id });
 
@@ -1320,6 +1315,11 @@ describe(MediaService.name, () => {
           expect.objectContaining({ type: AssetFileType.Thumbnail, isEdited: true }),
         ]),
       );
+
+      expect(mocks.search.deleteByAssetId).toHaveBeenCalledWith(asset.id);
+      expect(mocks.job.queue).toHaveBeenCalledWith({ name: JobName.SmartSearch, data: { id: asset.id } });
+      expect(mocks.person.deleteFacesByAssetId).toHaveBeenCalledWith(asset.id, SourceType.MachineLearning);
+      expect(mocks.job.queue).toHaveBeenCalledWith({ name: JobName.AssetDetectFaces, data: { id: asset.id } });
     });
 
     it('should apply edits when generating thumbnails', async () => {
@@ -1328,8 +1328,6 @@ describe(MediaService.name, () => {
         .edit({ action: AssetEditAction.Crop, parameters: { height: 1152, width: 1512, x: 216, y: 1512 } })
         .build();
       mocks.assetJob.getForGenerateThumbnailJob.mockResolvedValue(asset);
-      mocks.person.getFaces.mockResolvedValue([]);
-      mocks.ocr.getByAssetId.mockResolvedValue([]);
 
       await sut.handleAssetEditThumbnailGeneration({ id: asset.id });
       expect(mocks.media.generateThumbnail).toHaveBeenCalledWith(
@@ -1374,8 +1372,6 @@ describe(MediaService.name, () => {
     it('should generate all 3 edited files if an asset has edits', async () => {
       const asset = AssetFactory.from().exif().edit().build();
       mocks.assetJob.getForGenerateThumbnailJob.mockResolvedValue(asset);
-      mocks.person.getFaces.mockResolvedValue([]);
-      mocks.ocr.getByAssetId.mockResolvedValue([]);
 
       await sut.handleAssetEditThumbnailGeneration({ id: asset.id });
 
@@ -1412,8 +1408,6 @@ describe(MediaService.name, () => {
       mocks.assetJob.getForGenerateThumbnailJob.mockResolvedValue(asset);
       const thumbhashBuffer = factory.buffer();
       mocks.media.generateThumbhash.mockResolvedValue(thumbhashBuffer);
-      mocks.person.getFaces.mockResolvedValue([]);
-      mocks.ocr.getByAssetId.mockResolvedValue([]);
 
       await sut.handleAssetEditThumbnailGeneration({ id: asset.id });
 

@@ -21,6 +21,7 @@ import {
   LogLevel,
   QueueName,
   RawExtractedFormat,
+  SourceType,
   StorageFolder,
   TranscodeHardwareAcceleration,
   TranscodePolicy,
@@ -43,7 +44,6 @@ import {
   VideoStreamInfo,
 } from 'src/types';
 import { getDimensions } from 'src/utils/asset.util';
-import { checkFaceVisibility, checkOcrVisibility } from 'src/utils/editor';
 import { BaseConfig, ThumbnailConfig } from 'src/utils/media';
 import { mimeTypes } from 'src/utils/mime-types';
 import { clamp, isFaceImportEnabled, isFacialRecognitionEnabled } from 'src/utils/misc';
@@ -209,6 +209,13 @@ export class MediaService extends BaseService {
     await this.ocrRepository.upsert(id, [], '');
     await this.assetRepository.upsertJobStatus({ assetId: id, ocrAt: null as unknown as Date });
     await this.jobRepository.queue({ name: JobName.Ocr, data: { id } });
+
+    await this.searchRepository.deleteByAssetId(id);
+    await this.jobRepository.queue({ name: JobName.SmartSearch, data: { id } });
+
+    await this.personRepository.deleteFacesByAssetId(id, SourceType.MachineLearning);
+    await this.assetRepository.upsertJobStatus({ assetId: id, facesRecognizedAt: null as unknown as Date });
+    await this.jobRepository.queue({ name: JobName.AssetDetectFaces, data: { id } });
 
     return JobStatus.Success;
   }
@@ -892,29 +899,7 @@ export class MediaService extends BaseService {
       return;
     }
 
-    const generated = asset.edits.length > 0 ? await this.generateImageThumbnails(asset, config, true) : undefined;
-
-    const crop = asset.edits.find((e) => e.action === AssetEditAction.Crop);
-    const cropBox = crop
-      ? {
-          x1: crop.parameters.x,
-          y1: crop.parameters.y,
-          x2: crop.parameters.x + crop.parameters.width,
-          y2: crop.parameters.y + crop.parameters.height,
-        }
-      : undefined;
-
-    const originalDimensions = getDimensions(asset.exifInfo!);
-    const assetFaces = await this.personRepository.getFaces(asset.id, {});
-    const ocrData = await this.ocrRepository.getByAssetId(asset.id, {});
-
-    const faceStatuses = checkFaceVisibility(assetFaces, originalDimensions, cropBox);
-    await this.personRepository.updateVisibility(faceStatuses.visible, faceStatuses.hidden);
-
-    const ocrStatuses = checkOcrVisibility(ocrData, originalDimensions, cropBox);
-    await this.ocrRepository.updateOcrVisibilities(asset.id, ocrStatuses.visible, ocrStatuses.hidden);
-
-    return generated;
+    return asset.edits.length > 0 ? await this.generateImageThumbnails(asset, config, true) : undefined;
   }
 
   private getImageFile(asset: ThumbnailPathEntity, options: ImagePathOptions & { isProgressive: boolean }) {

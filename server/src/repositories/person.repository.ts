@@ -113,6 +113,15 @@ export class PersonRepository {
     await this.db.deleteFrom('asset_face').where('asset_face.sourceType', '=', sourceType).execute();
   }
 
+  @GenerateSql({ params: [DummyValue.UUID, SourceType.MachineLearning] })
+  async deleteFacesByAssetId(assetId: string, sourceType: SourceType): Promise<void> {
+    await this.db
+      .deleteFrom('asset_face')
+      .where('asset_face.assetId', '=', assetId)
+      .where('asset_face.sourceType', '=', sourceType)
+      .execute();
+  }
+
   getAllFaces(options: GetAllFacesOptions = {}) {
     return this.db
       .selectFrom('asset_face')

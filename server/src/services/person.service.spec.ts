@@ -724,7 +724,7 @@ describe(PersonService.name, () => {
 
     it('should skip when no resize path', async () => {
       const asset = AssetFactory.create();
-      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(asset);
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue({ ...asset, previewFile: null });
       await sut.handleDetectFaces({ id: asset.id });
       expect(mocks.machineLearning.detectFaces).not.toHaveBeenCalled();
     });
@@ -732,12 +732,13 @@ describe(PersonService.name, () => {
     it('should handle no results', async () => {
       const start = Date.now();
       const asset = AssetFactory.from().file({ type: AssetFileType.Preview }).build();
+      const previewFile = asset.files[0].path;
 
       mocks.machineLearning.detectFaces.mockResolvedValue({ imageHeight: 500, imageWidth: 400, faces: [] });
-      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(asset);
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue({ ...asset, previewFile });
       await sut.handleDetectFaces({ id: asset.id });
       expect(mocks.machineLearning.detectFaces).toHaveBeenCalledWith(
-        asset.files[0].path,
+        previewFile,
         expect.objectContaining({ minScore: 0.7, modelName: 'buffalo_l' }),
       );
       expect(mocks.job.queue).not.toHaveBeenCalled();
@@ -755,7 +756,7 @@ describe(PersonService.name, () => {
       const asset = AssetFactory.from().file({ type: AssetFileType.Preview }).build();
       mocks.machineLearning.detectFaces.mockResolvedValue(detectFaceMock);
       mocks.search.searchFaces.mockResolvedValue([{ ...faceStub.face1, distance: 0.7 }]);
-      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(asset);
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue({ ...asset, previewFile: asset.files[0]?.path ?? null });
       mocks.person.refreshFaces.mockResolvedValue();
 
       await sut.handleDetectFaces({ id: asset.id });
@@ -772,7 +773,7 @@ describe(PersonService.name, () => {
     it('should delete an existing face not among the new detected faces', async () => {
       const asset = AssetFactory.from().face(faceStub.primaryFace1).file({ type: AssetFileType.Preview }).build();
       mocks.machineLearning.detectFaces.mockResolvedValue({ faces: [], imageHeight: 500, imageWidth: 400 });
-      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(asset);
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue({ ...asset, previewFile: asset.files[0]?.path ?? null });
 
       await sut.handleDetectFaces({ id: asset.id });
 
@@ -785,7 +786,7 @@ describe(PersonService.name, () => {
     it('should add new face and delete an existing face not among the new detected faces', async () => {
       const asset = AssetFactory.from().face(faceStub.primaryFace1).file({ type: AssetFileType.Preview }).build();
       mocks.machineLearning.detectFaces.mockResolvedValue(detectFaceMock);
-      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(asset);
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue({ ...asset, previewFile: asset.files[0]?.path ?? null });
       mocks.person.refreshFaces.mockResolvedValue();
 
       await sut.handleDetectFaces({ id: asset.id });
@@ -806,7 +807,7 @@ describe(PersonService.name, () => {
     it('should add embedding to matching metadata face', async () => {
       const asset = AssetFactory.from().face(faceStub.fromExif1).file({ type: AssetFileType.Preview }).build();
       mocks.machineLearning.detectFaces.mockResolvedValue(detectFaceMock);
-      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(asset);
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue({ ...asset, previewFile: asset.files[0]?.path ?? null });
       mocks.person.refreshFaces.mockResolvedValue();
 
       await sut.handleDetectFaces({ id: asset.id });
@@ -824,7 +825,7 @@ describe(PersonService.name, () => {
     it('should not add embedding to non-matching metadata face', async () => {
       const asset = AssetFactory.from().face(faceStub.fromExif2).file({ type: AssetFileType.Preview }).build();
       mocks.machineLearning.detectFaces.mockResolvedValue(detectFaceMock);
-      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(asset);
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue({ ...asset, previewFile: asset.files[0]?.path ?? null });
 
       await sut.handleDetectFaces({ id: asset.id });
 

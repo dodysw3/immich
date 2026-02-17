@@ -14,8 +14,6 @@ import {
 import { TagResponseDto, mapTag } from 'src/dtos/tag.dto';
 import { UserResponseDto, mapUser } from 'src/dtos/user.dto';
 import { AssetStatus, AssetType, AssetVisibility } from 'src/enum';
-import { ImageDimensions } from 'src/types';
-import { getDimensions } from 'src/utils/asset.util';
 import { hexOrBufferToBase64 } from 'src/utils/bytes';
 import { mimeTypes } from 'src/utils/mime-types';
 import { ValidateEnum, ValidateUUID } from 'src/validation';
@@ -193,11 +191,7 @@ export type AssetMapOptions = {
   auth?: AuthDto;
 };
 
-const peopleWithFaces = (
-  faces?: AssetFace[],
-  edits?: AssetEditActionItem[],
-  assetDimensions?: ImageDimensions,
-): PersonWithFacesResponseDto[] => {
+const peopleWithFaces = (faces?: AssetFace[]): PersonWithFacesResponseDto[] => {
   if (!faces) {
     return [];
   }
@@ -212,7 +206,7 @@ const peopleWithFaces = (
     if (!peopleFaces.has(face.person.id)) {
       peopleFaces.set(face.person.id, { ...mapPerson(face.person), faces: [] });
     }
-    const mappedFace = mapFacesWithoutPerson(face, edits, assetDimensions);
+    const mappedFace = mapFacesWithoutPerson(face);
     peopleFaces.get(face.person.id)!.faces.push(mappedFace);
   }
 
@@ -250,8 +244,6 @@ export function mapAsset(entity: MapAsset, options: AssetMapOptions = {}): Asset
     return sanitizedAssetResponse as AssetResponseDto;
   }
 
-  const assetDimensions = entity.exifInfo ? getDimensions(entity.exifInfo) : undefined;
-
   return {
     id: entity.id,
     createdAt: entity.createdAt,
@@ -277,10 +269,8 @@ export function mapAsset(entity: MapAsset, options: AssetMapOptions = {}): Asset
     exifInfo: entity.exifInfo ? mapExif(entity.exifInfo) : undefined,
     livePhotoVideoId: entity.livePhotoVideoId,
     tags: entity.tags?.map((tag) => mapTag(tag)),
-    people: peopleWithFaces(entity.faces, entity.edits, assetDimensions),
-    unassignedFaces: entity.faces
-      ?.filter((face) => !face.person)
-      .map((a) => mapFacesWithoutPerson(a, entity.edits, assetDimensions)),
+    people: peopleWithFaces(entity.faces),
+    unassignedFaces: entity.faces?.filter((face) => !face.person).map((a) => mapFacesWithoutPerson(a)),
     checksum: hexOrBufferToBase64(entity.checksum)!,
     stack: withStack ? mapStack(entity) : undefined,
     isOffline: entity.isOffline,

@@ -6,12 +6,9 @@ import { DateTime } from 'luxon';
 import { AssetFace, Person } from 'src/database';
 import { HistoryBuilder, Property } from 'src/decorators';
 import { AuthDto } from 'src/dtos/auth.dto';
-import { AssetEditActionItem } from 'src/dtos/editing.dto';
 import { SourceType } from 'src/enum';
 import { AssetFaceTable } from 'src/schema/tables/asset-face.table';
-import { ImageDimensions } from 'src/types';
 import { asDateString } from 'src/utils/date';
-import { transformFaceBoundingBox } from 'src/utils/transform';
 import {
   IsDateStringFormat,
   MaxDateString,
@@ -235,37 +232,22 @@ export function mapPerson(person: Person): PersonResponseDto {
   };
 }
 
-export function mapFacesWithoutPerson(
-  face: Selectable<AssetFaceTable>,
-  edits?: AssetEditActionItem[],
-  assetDimensions?: ImageDimensions,
-): AssetFaceWithoutPersonResponseDto {
+export function mapFacesWithoutPerson(face: Selectable<AssetFaceTable>): AssetFaceWithoutPersonResponseDto {
   return {
     id: face.id,
-    ...transformFaceBoundingBox(
-      {
-        boundingBoxX1: face.boundingBoxX1,
-        boundingBoxY1: face.boundingBoxY1,
-        boundingBoxX2: face.boundingBoxX2,
-        boundingBoxY2: face.boundingBoxY2,
-        imageWidth: face.imageWidth,
-        imageHeight: face.imageHeight,
-      },
-      edits ?? [],
-      assetDimensions ?? { width: face.imageWidth, height: face.imageHeight },
-    ),
+    boundingBoxX1: face.boundingBoxX1,
+    boundingBoxY1: face.boundingBoxY1,
+    boundingBoxX2: face.boundingBoxX2,
+    boundingBoxY2: face.boundingBoxY2,
+    imageWidth: face.imageWidth,
+    imageHeight: face.imageHeight,
     sourceType: face.sourceType,
   };
 }
 
-export function mapFaces(
-  face: AssetFace,
-  auth: AuthDto,
-  edits?: AssetEditActionItem[],
-  assetDimensions?: ImageDimensions,
-): AssetFaceResponseDto {
+export function mapFaces(face: AssetFace, auth: AuthDto): AssetFaceResponseDto {
   return {
-    ...mapFacesWithoutPerson(face, edits, assetDimensions),
+    ...mapFacesWithoutPerson(face),
     person: face.person?.ownerId === auth.user.id ? mapPerson(face.person) : null,
   };
 }
