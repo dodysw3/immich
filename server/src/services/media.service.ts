@@ -206,6 +206,7 @@ export class MediaService extends BaseService {
     const fullsizeDimensions = generated?.fullsizeDimensions ?? getDimensions(asset.exifInfo!);
     await this.assetRepository.update({ id: asset.id, ...fullsizeDimensions });
 
+    await this.ocrRepository.upsert(id, [], '');
     await this.assetRepository.upsertJobStatus({ assetId: id, ocrAt: null as unknown as Date });
     await this.jobRepository.queue({ name: JobName.Ocr, data: { id } });
 
