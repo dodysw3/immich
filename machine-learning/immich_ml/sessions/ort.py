@@ -128,6 +128,10 @@ class OrtSession:
     def _sess_options_default(self) -> ort.SessionOptions:
         sess_options = ort.SessionOptions()
         sess_options.enable_cpu_mem_arena = settings.model_arena
+        if any(provider in {"CUDAExecutionProvider", "ROCMExecutionProvider"} for provider in self.providers):
+            # Dynamic-shape OCR on GPU can cause memory-pattern caching to
+            # inflate allocator usage across repeated runs.
+            sess_options.enable_mem_pattern = False
 
         # avoid thread contention between models
         if settings.model_inter_op_threads > 0:

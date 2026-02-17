@@ -311,12 +311,14 @@ class TestOrtSession:
         assert session.sess_options.execution_mode == ort.ExecutionMode.ORT_SEQUENTIAL
         assert session.sess_options.inter_op_num_threads == 1
         assert session.sess_options.intra_op_num_threads == 2
+        assert session.sess_options.enable_mem_pattern
 
     def test_sets_default_sess_options_does_not_set_threads_if_non_cpu_and_default_threads(self) -> None:
         session = OrtSession("ViT-B-32__openai", providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
 
         assert session.sess_options.inter_op_num_threads == 0
         assert session.sess_options.intra_op_num_threads == 0
+        assert not session.sess_options.enable_mem_pattern
 
     def test_sets_default_sess_options_sets_threads_if_non_cpu_and_set_threads(self, mocker: MockerFixture) -> None:
         mock_settings = mocker.patch("immich_ml.sessions.ort.settings", autospec=True)
