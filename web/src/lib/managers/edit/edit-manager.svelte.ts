@@ -3,13 +3,29 @@ import { transformManager } from '$lib/managers/edit/transform-manager.svelte';
 import { eventManager } from '$lib/managers/event-manager.svelte';
 import { waitForWebsocketEvent } from '$lib/stores/websocket';
 import { getFormatter } from '$lib/utils/i18n';
-import { editAsset, removeAssetEdits, type AssetEditsDto, type AssetResponseDto } from '@immich/sdk';
+import {
+  AssetEditAction,
+  editAsset,
+  getAssetEdits,
+  getAssetInfo,
+  removeAssetEdits,
+  type AssetEditsDto,
+  type AssetResponseDto,
+} from '@immich/sdk';
 import { ConfirmModal, modalManager, toastManager } from '@immich/ui';
 import { mdiCropRotate } from '@mdi/js';
 import type { Component } from 'svelte';
 
 export type EditAction = AssetEditsDto['edits'][number];
 export type EditActions = EditAction[];
+
+const getRotateAngle = (edit: EditAction): number | undefined => {
+  if (edit.action !== AssetEditAction.Rotate) {
+    return undefined;
+  }
+
+  return (edit.parameters as { angle: number }).angle;
+};
 
 export interface EditToolManager {
   onActivate: (asset: AssetResponseDto, edits: EditActions) => Promise<void>;
@@ -141,6 +157,68 @@ export class EditManager {
       await editCompleted;
 
       eventManager.emit('AssetEditsApplied', assetId);
+
+      toastManager.success(t('editor_edits_applied_success'));
+      this.hasAppliedEdits = true;
+
+      return true;
+    } catch {
+      toastManager.danger(t('editor_edits_applied_error'));
+      return false;
+    } finally {
+      this.isApplyingEdits = false;
+    }
+  }
+
+  async applyInstantRotate(asset: AssetResponseDto, angle: 90 | -90): Promise<boolean> {
+    if (this.isApplyingEdits) {
+      return false;
+    }
+
+    this.isApplyingEdits = true;
+
+    const assetId = asset.id;
+    const t = await getFormatter();
+    const normalizedAngle = ((angle % 360) + 360) % 360;
+
+    try {
+      const currentEdits = await getAssetEdits({ id: assetId });
+      let currentRotation = 0;
+      const editsWithoutRotate: EditActions = [];
+
+      for (const edit of currentEdits.edits) {
+        const rotateAngle = getRotateAngle(edit);
+        if (rotateAngle === undefined) {
+          editsWithoutRotate.push(edit);
+          continue;
+        }
+
+        currentRotation += rotateAngle;
+      }
+
+      const nextRotation = ((currentRotation + normalizedAngle) % 360 + 360) % 360;
+      const edits: EditActions =
+        nextRotation === 0
+          ? editsWithoutRotate
+          : [...editsWithoutRotate, { action: AssetEditAction.Rotate, parameters: { angle: nextRotation } }];
+
+      const editCompleted = waitForWebsocketEvent('AssetEditReadyV1', (event) => event.asset.id === assetId, 10_000);
+
+      await (edits.length === 0
+        ? removeAssetEdits({ id: assetId })
+        : editAsset({
+            id: assetId,
+            assetEditActionListDto: {
+              edits,
+            },
+          }));
+
+      await editCompleted;
+
+      eventManager.emit('AssetEditsApplied', assetId);
+
+      const updatedAsset = await getAssetInfo({ id: assetId });
+      eventManager.emit('AssetUpdate', updatedAsset);
 
       toastManager.success(t('editor_edits_applied_success'));
       this.hasAppliedEdits = true;

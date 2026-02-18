@@ -43,6 +43,8 @@
         { key: ['⇧', 'l'], action: $t('add_to_shared_album') },
         { key: ['⇧', 'a'], action: $t('archive_or_unarchive_photo') },
         { key: ['⇧', 'd'], action: $t('download') },
+        { key: ['⇧', '['], action: `${$t('editor_rotate_left')} + ${$t('save')}` },
+        { key: ['⇧', ']'], action: `${$t('editor_rotate_right')} + ${$t('save')}` },
         { key: ['Space'], action: $t('play_or_pause_video') },
         { key: ['Del'], action: $t('trash_delete_asset'), info: $t('shift_to_permanent_delete') },
         ...($preferences?.ratings.enabled
