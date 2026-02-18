@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { base } from '$app/paths';
   import { onMount, tick } from 'svelte';
 
   type PdfDocument = {
@@ -126,7 +127,7 @@
       // pdf.js worker must be set in browser context before loading documents.
       pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
       // Needed for JPX/JPEG2000 and other wasm-backed decoders (e.g. openjpeg.wasm).
-      const wasmUrl = new URL('pdfjs-dist/wasm/', import.meta.url).toString();
+      const wasmUrl = `${base}/pdfjs/wasm/`;
       const task = pdfjs.getDocument({ url: `/api/assets/${assetId}/original`, wasmUrl });
       const loaded = (await task.promise) as unknown as PdfDocument;
       pdf = loaded;
