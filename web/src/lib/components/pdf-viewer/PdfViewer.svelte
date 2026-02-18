@@ -125,7 +125,9 @@
       const pdfjs = await import('pdfjs-dist');
       // pdf.js worker must be set in browser context before loading documents.
       pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
-      const task = pdfjs.getDocument(`/api/assets/${assetId}/original`);
+      // Needed for JPX/JPEG2000 and other wasm-backed decoders (e.g. openjpeg.wasm).
+      const wasmUrl = new URL('pdfjs-dist/wasm/', import.meta.url).toString();
+      const task = pdfjs.getDocument({ url: `/api/assets/${assetId}/original`, wasmUrl });
       const loaded = (await task.promise) as unknown as PdfDocument;
       pdf = loaded;
       totalPages = loaded.numPages;
