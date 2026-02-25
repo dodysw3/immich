@@ -1,5 +1,5 @@
 import { AssetTable } from 'src/schema/tables/asset.table';
-import { Column, CreateDateColumn, ForeignKeyColumn, Generated, Table, Timestamp, UpdateDateColumn } from 'src/sql-tools';
+import { Column, CreateDateColumn, ForeignKeyColumn, Generated, Table, Timestamp, UpdateDateColumn } from '@immich/sql-tools';
 
 export type PdfDocumentStatus = 'pending' | 'processing' | 'ready' | 'failed';
 

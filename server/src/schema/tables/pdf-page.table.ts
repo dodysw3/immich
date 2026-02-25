@@ -1,5 +1,5 @@
 import { PdfDocumentTable } from 'src/schema/tables/pdf-document.table';
-import { Column, ForeignKeyColumn, Generated, Index, PrimaryGeneratedColumn, Table } from 'src/sql-tools';
+import { Column, ForeignKeyColumn, Generated, Index, PrimaryGeneratedColumn, Table } from '@immich/sql-tools';
 
 export type PdfTextSource = 'embedded' | 'ocr' | 'none';
 

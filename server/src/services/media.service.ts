@@ -428,12 +428,14 @@ export class MediaService extends BaseService {
       format: image.preview.format,
       isEdited: false,
       isProgressive: !!image.preview.progressive && image.preview.format !== ImageFormat.Webp,
+      isTransparent: false,
     });
     const thumbnailFile = this.getImageFile(asset, {
       fileType: AssetFileType.Thumbnail,
       format: image.thumbnail.format,
       isEdited: false,
       isProgressive: !!image.thumbnail.progressive && image.thumbnail.format !== ImageFormat.Webp,
+      isTransparent: false,
     });
     this.storageCore.ensureFolders(previewFile.path);
 
