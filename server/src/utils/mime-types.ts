@@ -77,6 +77,21 @@ const extensionOverrides: Record<string, string> = {
   'image/jpeg': '.jpg',
 };
 
+const transparentCapableExtensions = new Set([
+  '.avif',
+  '.bmp',
+  '.gif',
+  '.heic',
+  '.heif',
+  '.hif',
+  '.jxl',
+  '.png',
+  '.svg',
+  '.tif',
+  '.tiff',
+  '.webp',
+]);
+
 const profileExtensions = new Set(['.avif', '.dng', '.heic', '.heif', '.jpeg', '.jpg', '.png', '.webp', '.svg']);
 const profile: Record<string, string[]> = Object.fromEntries(
   Object.entries(image).filter(([key]) => profileExtensions.has(key)),
@@ -98,6 +113,7 @@ const video: Record<string, string[]> = {
   '.mpeg': ['video/mpeg'],
   '.mpg': ['video/mpeg'],
   '.mts': ['video/mp2t'],
+  '.mxf': ['application/mxf'],
   '.vob': ['video/mpeg'],
   '.webm': ['video/webm'],
   '.wmv': ['video/x-ms-wmv'],
@@ -138,6 +154,7 @@ export const mimeTypes = {
   isProfile: (filename: string) => isType(filename, profile),
   isSidecar: (filename: string) => isType(filename, sidecar),
   isVideo: (filename: string) => isType(filename, video),
+  canBeTransparent: (filename: string) => transparentCapableExtensions.has(extname(filename).toLowerCase()),
   isRaw: (filename: string) => isType(filename, raw),
   isPdf: (filename: string) => isType(filename, pdf),
   lookup,
@@ -147,9 +164,12 @@ export const mimeTypes = {
     const contentType = lookup(filename);
     if (contentType.startsWith('image/')) {
       return AssetType.Image;
-    } else if (contentType.startsWith('video/')) {
+    }
+
+    if (contentType.startsWith('video/') || contentType === 'application/mxf') {
       return AssetType.Video;
     }
+
     return AssetType.Other;
   },
   getSupportedFileExtensions: () => [...Object.keys(image), ...Object.keys(video), ...Object.keys(pdf)],

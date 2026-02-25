@@ -128,7 +128,6 @@ export class PersonService extends BaseService {
   async getFacesById(auth: AuthDto, dto: FaceDto): Promise<AssetFaceResponseDto[]> {
     await this.requireAccess({ auth, permission: Permission.AssetRead, ids: [dto.id] });
     const faces = await this.personRepository.getFaces(dto.id);
-
     return faces.map((face) => mapFaces(face, auth));
   }
 
@@ -195,13 +194,9 @@ export class PersonService extends BaseService {
     let faceId: string | undefined = undefined;
     if (assetId) {
       await this.requireAccess({ auth, permission: Permission.AssetRead, ids: [assetId] });
-      const [face] = await this.personRepository.getFacesByIds([{ personId: id, assetId }]);
+      const face = await this.personRepository.getForFeatureFaceUpdate({ personId: id, assetId });
       if (!face) {
-        throw new BadRequestException('Invalid assetId for feature face');
-      }
-
-      if (face.asset.isOffline) {
-        throw new BadRequestException('An offline asset cannot be used for feature face');
+        throw new BadRequestException('Invalid assetId for feature face or asset is offline');
       }
 
       faceId = face.id;

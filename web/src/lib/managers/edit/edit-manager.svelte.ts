@@ -9,14 +9,14 @@ import {
   getAssetEdits,
   getAssetInfo,
   removeAssetEdits,
-  type AssetEditsDto,
+  type AssetEditsCreateDto,
   type AssetResponseDto,
 } from '@immich/sdk';
 import { ConfirmModal, modalManager, toastManager } from '@immich/ui';
 import { mdiCropRotate } from '@mdi/js';
 import type { Component } from 'svelte';
 
-export type EditAction = AssetEditsDto['edits'][number];
+export type EditAction = AssetEditsCreateDto['edits'][number];
 export type EditActions = EditAction[];
 
 const getRotateAngle = (edit: EditAction): number | undefined => {
@@ -100,7 +100,7 @@ export class EditManager {
     this.selectedTool = this.tools[0];
   }
 
-  async activateTool(toolType: EditToolType, asset: AssetResponseDto, edits: AssetEditsDto) {
+  async activateTool(toolType: EditToolType, asset: AssetResponseDto, edits: AssetEditsCreateDto) {
     this.hasAppliedEdits = false;
     if (this.selectedTool?.type === toolType) {
       return;
@@ -149,7 +149,7 @@ export class EditManager {
         ? removeAssetEdits({ id: assetId })
         : editAsset({
             id: assetId,
-            assetEditActionListDto: {
+            assetEditsCreateDto: {
               edits,
             },
           }));
@@ -208,7 +208,7 @@ export class EditManager {
         ? removeAssetEdits({ id: assetId })
         : editAsset({
             id: assetId,
-            assetEditActionListDto: {
+            assetEditsCreateDto: {
               edits,
             },
           }));

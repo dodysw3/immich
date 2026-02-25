@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
   import { focusTrap } from '$lib/actions/focus-trap';
   import { shouldIgnoreEvent } from '$lib/actions/shortcut';
@@ -151,6 +152,7 @@
   };
 
   onMount(async () => {
+    syncAssetViewerOpenClass(true);
     unsubscribes.push(
       slideshowState.subscribe((value) => {
         if (value === SlideshowState.PlaySlideshow) {
@@ -169,9 +171,7 @@
       }),
     );
 
-    if (!sharedLink) {
-      await handleGetAllAlbums();
-    }
+    await onAlbumAddAssets();
   });
 
   onDestroy(() => {
@@ -181,9 +181,10 @@
 
     activityManager.reset();
     assetViewerManager.closeEditor();
+    syncAssetViewerOpenClass(false);
   });
 
-  const handleGetAllAlbums = async () => {
+  const onAlbumAddAssets = async () => {
     if (authManager.isSharedLink) {
       return;
     }
@@ -226,7 +227,7 @@
     }
 
     void tracker.invoke(async () => {
-      let hasNext = false;
+      let hasNext: boolean;
 
       if ($slideshowState === SlideshowState.PlaySlideshow && $slideshowNavigation === SlideshowNavigation.Shuffle) {
         hasNext = order === 'previous' ? slideshowHistory.previous() : slideshowHistory.next();
@@ -304,10 +305,6 @@
   };
   const handleAction = async (action: Action) => {
     switch (action.type) {
-      case AssetAction.ADD_TO_ALBUM: {
-        await handleGetAllAlbums();
-        break;
-      }
       case AssetAction.DELETE:
       case AssetAction.TRASH: {
         eventManager.emit('AssetsDelete', [asset.id]);
@@ -340,7 +337,6 @@
         };
         break;
       }
-      case AssetAction.KEEP_THIS_DELETE_OTHERS:
       case AssetAction.UNSTACK: {
         closeViewer();
         break;
@@ -363,9 +359,15 @@
     }
   });
 
+  const syncAssetViewerOpenClass = (isOpen: boolean) => {
+    if (browser) {
+      document.body.classList.toggle('asset-viewer-open', isOpen);
+    }
+  };
+
   const refresh = async () => {
     await refreshStack();
-    await handleGetAllAlbums();
+    await onAlbumAddAssets();
     ocrManager.clear();
     faceOverlayStore.clear();
     if (!sharedLink) {
@@ -397,7 +399,7 @@
 
   const onAssetUpdate = (update: AssetResponseDto) => {
     if (asset.id === update.id) {
-      cursor.current = update;
+      cursor = { ...cursor, current: update };
     }
   };
 
@@ -441,7 +443,6 @@
   const showOcrButton = $derived(
     $slideshowState === SlideshowState.None &&
       asset.type === AssetTypeEnum.Image &&
-      !(asset.exifInfo?.projectionType === 'EQUIRECTANGULAR') &&
       !assetViewerManager.isShowEditor &&
       ocrManager.hasOcrData,
   );
@@ -488,10 +489,17 @@
 
     rotateAndSave(isRotateLeft ? -90 : 90);
   };
+
+  const showDetailPanel = $derived(
+    asset.hasMetadata &&
+      $slideshowState === SlideshowState.None &&
+      assetViewerManager.isShowDetailPanel &&
+      !assetViewerManager.isShowEditor,
+  );
 </script>
 
 <CommandPaletteDefaultProvider name={$t('assets')} actions={[Tag]} />
-<OnEvents {onAssetReplace} {onAssetUpdate} />
+<OnEvents {onAssetReplace} {onAssetUpdate} {onAlbumAddAssets} />
 
 <svelte:document bind:fullscreenElement onkeydown={onInstantRotateShortcut} />
 
@@ -633,25 +641,22 @@
     </div>
   {/if}
 
-  {#if asset.hasMetadata && $slideshowState === SlideshowState.None && assetViewerManager.isShowDetailPanel && !assetViewerManager.isShowEditor}
+  {#if showDetailPanel || assetViewerManager.isShowEditor}
     <div
       transition:fly={{ duration: 150 }}
       id="detail-panel"
-      class="row-start-1 row-span-4 w-90 overflow-y-auto transition-all dark:border-l dark:border-s-immich-dark-gray bg-light"
+      class="row-start-1 row-span-4 overflow-y-auto transition-all dark:border-l dark:border-s-immich-dark-gray bg-light"
       translate="yes"
     >
-      <DetailPanel {asset} currentAlbum={album} albums={appearsInAlbums} />
-    </div>
-  {/if}
-
-  {#if assetViewerManager.isShowEditor}
-    <div
-      transition:fly={{ duration: 150 }}
-      id="editor-panel"
-      class="row-start-1 row-span-4 w-100 overflow-y-auto transition-all dark:border-l dark:border-s-immich-dark-gray"
-      translate="yes"
-    >
-      <EditorPanel {asset} onClose={closeEditor} />
+      {#if showDetailPanel}
+        <div class="w-90 h-full">
+          <DetailPanel {asset} currentAlbum={album} albums={appearsInAlbums} />
+        </div>
+      {:else if assetViewerManager.isShowEditor}
+        <div class="w-100 h-full">
+          <EditorPanel {asset} onClose={closeEditor} />
+        </div>
+      {/if}
     </div>
   {/if}
 
