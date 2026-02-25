@@ -25,3 +25,10 @@
 - Keep commits/patches small and targeted; avoid opportunistic cleanup in heavily upstream-owned files.
 - If touching core code is unavoidable, isolate PDF-specific conditionals and document why the change is needed.
 - Prefer backwards-compatible API and schema changes so upstream merges remain straightforward.
+
+## Operational Memory: Nextcloud Environment
+- Remote Nextcloud host is typically accessed from this machine with SSH alias `nc`.
+- In Codex sandbox, use wrapper pattern: `sudo bash -lc "sudo -u cangka ssh nc '<remote-command>'"`.
+- The `nc` alias depends on mDNS (`nextcloud.local`); disabling `avahi-daemon` on the VM can break resolution.
+- Hypervisor on this machine is `libvirt` (`virsh`), not Proxmox `qm`.
+- Nextcloud VM domain is `nextcloud`; current tuned profile is 6 GiB RAM with persistent vCPU target 2 (reboot required if live CPU remains 4).
