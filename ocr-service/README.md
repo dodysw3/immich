@@ -24,6 +24,30 @@ Required environment variables:
 
 Note: there is no separate `external-ocr.write` scope in the current permission model.
 
+## Docker Compose Variable Mapping
+
+If you use the repository `docker-compose.override.yml`, it maps:
+
+- `IMMICH_API_KEY: "${IMMICH_OCR_API_KEY}"`
+
+So `IMMICH_OCR_API_KEY` must be defined in the Compose interpolation source (for example `docker/.env` when using `--env-file`, or exported in your shell).
+
+If it is missing, Docker Compose shows:
+
+```text
+WARN[0000] The "IMMICH_OCR_API_KEY" variable is not set. Defaulting to a blank string.
+```
+
+Quick fix from repo root:
+
+```bash
+cp docker/example.env docker/.env
+echo "IMMICH_OCR_API_KEY=<your_immich_api_key>" >> docker/.env
+docker compose --env-file docker/.env \
+  -f docker/docker-compose.yml \
+  -f docker-compose.override.yml up -d
+```
+
 ## Health and Metrics
 
 - Health: `GET /healthz`

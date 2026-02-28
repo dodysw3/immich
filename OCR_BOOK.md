@@ -978,6 +978,22 @@ volumes:
   model-cache:
 ```
 
+### Compose env interpolation
+
+`IMMICH_API_KEY` in the override is mapped from `IMMICH_OCR_API_KEY`:
+
+```yaml
+IMMICH_API_KEY: "${IMMICH_OCR_API_KEY}"
+```
+
+If `IMMICH_OCR_API_KEY` is not defined in the compose env source (`docker/.env` with `--env-file`, project `.env`, or shell export), Docker Compose warns and passes a blank value:
+
+```text
+WARN[0000] The "IMMICH_OCR_API_KEY" variable is not set. Defaulting to a blank string.
+```
+
+Set `IMMICH_OCR_API_KEY` explicitly before `docker compose up`.
+
 **Connections**: The container needs two connections:
 1. **PG direct** (`DB_URL`) — for `LISTEN/NOTIFY` and reconcile queries (read-only scope)
 2. **Immich API** (`IMMICH_URL` + `IMMICH_API_KEY`) — for image download + bridge API writes
