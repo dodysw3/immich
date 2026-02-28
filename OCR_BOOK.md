@@ -992,7 +992,7 @@ No upload volume mount needed — images are fetched via API.
 |---|---|---|
 | `DB_URL` | (required) | PostgreSQL connection string (for LISTEN + reconcile queries) |
 | `IMMICH_URL` | (required) | Immich server base URL |
-| `IMMICH_API_KEY` | (required) | API key with asset read + external-ocr write permissions |
+| `IMMICH_API_KEY` | (required) | API key with asset read + asset download + asset update permissions |
 | `EXTERNAL_OCR_MODE` | `bridge` | Write mode: `bridge`, `direct-db`, or `metadata` |
 | `OCR_MAX_RESOLUTION` | `4032` | Max image dimension (long edge) |
 | `OCR_DETECTION_THRESHOLD` | `0.3` | Min PaddleOCR detection score |
@@ -1026,7 +1026,7 @@ No upload volume mount needed — images are fetched via API.
 
 ## Security
 
-- **API key scoping**: Dedicated key with minimum permissions (`asset.read`, `asset.download`, `external-ocr.write`)
+- **API key scoping**: Dedicated key with minimum permissions (`asset.read`, `asset.download`, `asset.update`)
 - **Bridge validation**: Reject payloads with coordinates outside `[0, 1]`, oversized text, invalid asset IDs
 - **PG connection**: Used only for `LISTEN` and read-only reconcile queries — no writes via PG
 - **Rate limiting**: Bridge endpoint rate-limited per API key

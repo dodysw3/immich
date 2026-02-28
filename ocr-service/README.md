@@ -14,6 +14,16 @@ Required environment variables:
 - `IMMICH_URL`
 - `IMMICH_API_KEY`
 
+## Immich API Key Permissions
+
+`IMMICH_API_KEY` should include the minimum scopes required by this service:
+
+- `asset.read` (fetch asset metadata)
+- `asset.download` (download original files)
+- `asset.update` (write OCR result/failure via `/api/external-ocr/*`)
+
+Note: there is no separate `external-ocr.write` scope in the current permission model.
+
 ## Health and Metrics
 
 - Health: `GET /healthz`
