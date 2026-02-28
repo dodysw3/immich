@@ -420,6 +420,11 @@ export class AssetService extends BaseService {
       return ocr;
     }
 
+    // OCR data generated from edited previews is already in edited coordinate space.
+    if (asset.hasEditedPreview) {
+      return ocr;
+    }
+
     return ocr.map((item) => transformOcrBoundingBox(item, asset.edits, dimensions));
   }
 
