@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import torch
 from PIL import Image
@@ -14,6 +14,9 @@ class TrOcrRecognizer:
     model_name: str
     batch_size: int = 16
     min_score: float = 0.6
+    device: torch.device = field(init=False, repr=False)
+    processor: TrOCRProcessor = field(init=False, repr=False)
+    model: VisionEncoderDecoderModel = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

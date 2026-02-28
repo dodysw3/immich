@@ -5,6 +5,7 @@ import threading
 import time
 
 import torch
+from PIL import UnidentifiedImageError
 
 from src.client import ImmichClient
 from src.config import Config
@@ -59,6 +60,12 @@ def safe_process(
         except Exception as error:  # pylint: disable=broad-except
             logger.exception("asset_processing_failed", extra={"assetId": asset_id, "attempt": attempt + 1})
             metrics.set_last_error(str(error))
+            retriable = not _is_non_retriable_error(error)
+            if not retriable:
+                _mark_failure(api, config, asset_id, str(error), attempt + 1, retriable=False)
+                duration = time.monotonic() - started
+                metrics.observe(asset_id, status="failed", lines=0, duration_s=duration, retries=attempt)
+                return
             if attempt == config.max_retries:
                 _mark_failure(api, config, asset_id, str(error), attempt + 1, retriable=True)
                 duration = time.monotonic() - started
@@ -71,7 +78,7 @@ def safe_process(
 
 def _mark_failure(api: ImmichClient, config: Config, asset_id: str, error: str, retry_count: int, retriable: bool) -> None:
     try:
-        update_failure(config.db_url, asset_id, "", config.ocr_model_revision, error)
+        update_failure(config.db_url, asset_id, "", config.ocr_model_revision, error, retriable=retriable)
     except Exception as update_error:  # pylint: disable=broad-except
         logger.exception("state_update_failed", extra={"assetId": asset_id, "error": str(update_error)})
 
@@ -79,6 +86,10 @@ def _mark_failure(api: ImmichClient, config: Config, asset_id: str, error: str, 
         api.report_failure(asset_id, error, retry_count, retriable=retriable)
     except Exception as report_error:  # pylint: disable=broad-except
         logger.exception("failure_report_failed", extra={"assetId": asset_id, "error": str(report_error)})
+
+
+def _is_non_retriable_error(error: Exception) -> bool:
+    return isinstance(error, UnidentifiedImageError)
 
 
 def _metrics_reporter(metrics: Metrics, config: Config) -> None:

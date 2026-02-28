@@ -60,7 +60,7 @@ def get_unprocessed_assets(config: Config, limit: int = 500) -> list[str]:
                   )
                   AND (
                     oes."assetId" IS NULL
-                    OR oes."status" != 'success'
+                    OR oes."status" IN ('pending', 'failed')
                     OR oes."modelRevision" != %s
                   )
                 ORDER BY ajs."ocrAt" DESC
@@ -92,7 +92,7 @@ def get_drift_count(config: Config) -> int:
                   )
                   AND (
                     oes."assetId" IS NULL
-                    OR oes."status" != 'success'
+                    OR oes."status" IN ('pending', 'failed')
                     OR oes."modelRevision" != %s
                   )
                 """,

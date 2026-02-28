@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from urllib.parse import quote
 
 import requests
 
@@ -28,9 +29,25 @@ class ImmichClient:
         return response.json()
 
     def get_asset_metadata(self, asset_id: str, key: str) -> dict | None:
-        response = self.session.get(f"{self.base_url}/api/assets/{asset_id}/metadata/{key}", timeout=20)
+        encoded_key = quote(key, safe="")
+        response = self.session.get(f"{self.base_url}/api/assets/{asset_id}/metadata/{encoded_key}", timeout=20)
+
         if response.status_code == 404:
             return None
+
+        # Immich returns 400 when metadata key does not exist on an asset.
+        if response.status_code == 400:
+            try:
+                payload = response.json()
+                message = payload.get("message", "")
+                if isinstance(message, list):
+                    message = " ".join(str(item) for item in message)
+            except ValueError:
+                message = ""
+
+            if "not found" in str(message).lower():
+                return None
+
         response.raise_for_status()
         return response.json().get("value")
 

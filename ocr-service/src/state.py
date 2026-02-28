@@ -34,19 +34,27 @@ def update_success(db_url: str, asset_id: str, source_checksum: str, model_revis
     _execute(db_url, query, (asset_id, source_checksum, model_revision, processed_at))
 
 
-def update_failure(db_url: str, asset_id: str, source_checksum: str, model_revision: str, error_text: str) -> None:
+def update_failure(
+    db_url: str,
+    asset_id: str,
+    source_checksum: str,
+    model_revision: str,
+    error_text: str,
+    retriable: bool = True,
+) -> None:
+    status = "failed" if retriable else "terminal"
     query = """
         INSERT INTO ocr_external_state
             ("assetId", "sourceChecksum", "modelRevision", "status", "retryCount", "lastError")
-        VALUES (%s, %s, %s, 'failed', 1, %s)
+        VALUES (%s, %s, %s, %s, 1, %s)
         ON CONFLICT ("assetId") DO UPDATE
         SET "sourceChecksum" = EXCLUDED."sourceChecksum",
             "modelRevision" = EXCLUDED."modelRevision",
-            "status" = 'failed',
+            "status" = EXCLUDED."status",
             "retryCount" = ocr_external_state."retryCount" + 1,
             "lastError" = EXCLUDED."lastError"
     """
-    _execute(db_url, query, (asset_id, source_checksum, model_revision, error_text[:4000]))
+    _execute(db_url, query, (asset_id, source_checksum, model_revision, status, error_text[:4000]))
 
 
 def _execute(db_url: str, query: str, params: tuple) -> None:
