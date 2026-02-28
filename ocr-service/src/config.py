@@ -15,10 +15,12 @@ class Config:
     ocr_detection_threshold: float = 0.3
     ocr_recognition_threshold: float = 0.6
     ocr_model_name: str = "microsoft/trocr-base-printed"
+    ocr_detector_model_name: str = "PP-OCRv5_mobile"
     ocr_model_revision: str = "v1.0.0"
     ocr_model_policy: dict = field(default_factory=dict)
     ocr_batch_size: int = 16
     ocr_reconcile_interval: int = 300
+    ocr_startup_backfill_enabled: bool = False
     ocr_channel: str = "ocr_complete"
     ocr_preprocess_block_size: int = 15
     ocr_preprocess_threshold_c: int = 9
@@ -50,10 +52,12 @@ class Config:
             ocr_detection_threshold=float(os.getenv("OCR_DETECTION_THRESHOLD", "0.3")),
             ocr_recognition_threshold=float(os.getenv("OCR_RECOGNITION_THRESHOLD", "0.6")),
             ocr_model_name=os.getenv("OCR_MODEL_NAME", "microsoft/trocr-base-printed"),
+            ocr_detector_model_name=os.getenv("OCR_DETECTOR_MODEL_NAME", "PP-OCRv5_mobile"),
             ocr_model_revision=os.getenv("OCR_MODEL_REVISION", "v1.0.0"),
             ocr_model_policy=model_policy,
             ocr_batch_size=int(os.getenv("OCR_BATCH_SIZE", "16")),
             ocr_reconcile_interval=int(os.getenv("OCR_RECONCILE_INTERVAL", "300")),
+            ocr_startup_backfill_enabled=_as_bool(os.getenv("OCR_STARTUP_BACKFILL_ENABLED", "false")),
             ocr_channel=os.getenv("OCR_CHANNEL", "ocr_complete"),
             ocr_preprocess_block_size=int(os.getenv("OCR_PREPROCESS_BLOCK_SIZE", "15")),
             ocr_preprocess_threshold_c=int(os.getenv("OCR_PREPROCESS_THRESHOLD_C", "9")),

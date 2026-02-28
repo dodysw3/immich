@@ -69,8 +69,12 @@ def main() -> None:
             print(asset_id)
         return
 
-    api = ImmichClient(config.immich_url, config.immich_api_key, config.ocr_model_revision)
-    detector = PaddleDetector(min_score=config.ocr_detection_threshold)
+    api = ImmichClient(config.immich_url, config.immich_api_key, config.ocr_model_revision, config.ocr_model_name)
+    detector = PaddleDetector(
+        min_score=config.ocr_detection_threshold,
+        model_name=config.ocr_detector_model_name,
+        max_resolution=min(config.ocr_max_resolution, 736),
+    )
     recognizer_router = RecognizerRouter(config)
 
     metrics = Metrics()

@@ -7,9 +7,16 @@ import requests
 
 
 class ImmichClient:
-    def __init__(self, base_url: str, api_key: str, model_revision: str) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        api_key: str,
+        model_revision: str,
+        model_name: str = "microsoft/trocr-base-printed",
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model_revision = model_revision
+        self.model_name = model_name
         self.session = requests.Session()
         self.session.headers.update({"x-api-key": api_key})
 
@@ -54,7 +61,7 @@ class ImmichClient:
     def write_ocr_result(self, asset_id: str, lines: list[dict], source_checksum: str, search_text: str | None = None) -> dict:
         payload = {
             "provider": "immich-ocr-gpu",
-            "model": "paddleocr+trocr-base-printed",
+            "model": self.model_name,
             "modelRevision": self.model_revision,
             "sourceChecksum": source_checksum,
             "mode": "replace",

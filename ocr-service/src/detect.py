@@ -2,179 +2,175 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import logging
-import re
-from typing import Any
+import os
+from pathlib import Path
+import threading
 
+import cv2
 import numpy as np
-from paddleocr import PaddleOCR
+import onnxruntime as ort
+from numpy.typing import NDArray
 from PIL import Image
+from rapidocr.ch_ppocr_det.utils import DBPostProcess
+from rapidocr.inference_engine.base import FileInfo, InferSession
+from rapidocr.utils.download_file import DownloadFile, DownloadFileInput
+from rapidocr.utils.typings import EngineType, LangDet, OCRVersion, TaskType
+from rapidocr.utils.typings import ModelType as RapidModelType
 
 from src.models import OcrBox
 
 logger = logging.getLogger(__name__)
-_UNKNOWN_ARGUMENT_PATTERN = re.compile(r"Unknown argument:\s*([A-Za-z_]\w*)")
-_UNEXPECTED_KEYWORD_PATTERN = re.compile(r"unexpected keyword argument ['\"]([A-Za-z_]\w*)['\"]")
 
 
 @dataclass(slots=True)
 class PaddleDetector:
     min_score: float = 0.3
-    _ocr: Any = field(init=False, repr=False)
-    _ocr_call_kwargs: dict[str, Any] = field(init=False, repr=False)
+    model_name: str = "PP-OCRv5_mobile"
+    max_resolution: int = 736
+    _postprocess: DBPostProcess = field(init=False, repr=False)
+    _mean: NDArray[np.float32] = field(init=False, repr=False)
+    _std_inv: NDArray[np.float32] = field(init=False, repr=False)
+    _sessions: dict[str, ort.InferenceSession] = field(init=False, repr=False)
+    _lock: threading.Lock = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
-        self._ocr = _create_ocr_engine(
-            use_angle_cls=True,
-            lang="en",
-            use_gpu=False,
-            det=True,
-            rec=False,
-            cls=True,
+        self._postprocess = DBPostProcess(
+            thresh=0.3,
+            box_thresh=self.min_score,
+            max_candidates=1000,
+            unclip_ratio=1.6,
+            use_dilation=True,
+            score_mode="fast",
         )
-        self._ocr_call_kwargs = {"det": True, "rec": False, "cls": True}
+        self._mean = np.array([0.5, 0.5, 0.5], dtype=np.float32)
+        self._std_inv = np.float32(1.0) / (np.array([0.5, 0.5, 0.5], dtype=np.float32) * 255.0)
+        self._sessions = {}
+        self._lock = threading.Lock()
+        # Preload default detector so first request does not block.
+        self._session_for(self.model_name)
 
-    def detect(self, image: Image.Image) -> list[OcrBox]:
-        width, height = image.size
-        image_array = np.array(image.convert("RGB"))
-        try:
-            result, self._ocr_call_kwargs = _run_ocr(self._ocr, image_array, self._ocr_call_kwargs)
-            page = _extract_page(result)
-        except ValueError as error:
-            if not _is_ambiguous_truth_value(error):
-                raise
-            logger.warning("PaddleOCR.ocr failed with numpy truth-value error; falling back to text_detector")
-            page = _run_text_detector(self._ocr, image_array)
+    def detect(self, image: Image.Image, model_name: str | None = None) -> list[OcrBox]:
+        if image.width < 32 or image.height < 32:
+            return []
 
-        boxes: list[OcrBox] = []
-        for item in page:
-            polygon, score = _extract_polygon_and_score(item)
-            if not polygon or score < self.min_score:
+        session = self._session_for(model_name or self.model_name)
+        original_w, original_h = image.size
+        transformed = self._transform(image)
+        output = session.run(None, {"x": transformed})[0]
+        boxes, scores = self._postprocess(output, (original_h, original_w))
+        if len(boxes) == 0:
+            return []
+
+        sorted_boxes = _sorted_boxes(np.array(boxes, dtype=np.float32))
+        score_values = np.array(scores, dtype=np.float32)
+
+        results: list[OcrBox] = []
+        for polygon, score in zip(sorted_boxes, score_values, strict=False):
+            if score < self.min_score:
                 continue
-
-            normalized = _normalize_quad(polygon, width, height)
-            area = _quad_area(normalized)
-            if area < 0.001:
+            if polygon.shape != (4, 2):
                 continue
-            boxes.append(OcrBox(*normalized, box_score=score))
+            normalized = _normalize_polygon(polygon, original_w, original_h)
+            results.append(OcrBox(*normalized, box_score=float(score)))
+        return results
 
-        boxes.sort(key=lambda box: (min(box.y1, box.y2, box.y3, box.y4), min(box.x1, box.x2, box.x3, box.x4)))
-        return boxes
+    def _transform(self, image: Image.Image) -> NDArray[np.float32]:
+        if image.height < image.width:
+            ratio = float(self.max_resolution) / image.height
+        else:
+            ratio = float(self.max_resolution) / image.width
+        ratio = min(ratio, 1.0)
+
+        resize_h = int(round((image.height * ratio) / 32) * 32)
+        resize_w = int(round((image.width * ratio) / 32) * 32)
+        resized = image.resize((max(32, resize_w), max(32, resize_h)), resample=Image.Resampling.LANCZOS)
+
+        img_np: NDArray[np.float32] = cv2.cvtColor(np.array(resized, dtype=np.float32), cv2.COLOR_RGB2BGR)  # type: ignore
+        img_np -= self._mean
+        img_np *= self._std_inv
+        img_np = np.transpose(img_np, (2, 0, 1))
+        return np.expand_dims(img_np, axis=0)
+
+    def _session_for(self, model_name: str) -> ort.InferenceSession:
+        key = _det_model_key(model_name)
+        with self._lock:
+            session = self._sessions.get(key)
+            if session is not None:
+                return session
+
+            model_path = _download_detection_model(key)
+            providers = _providers()
+            logger.info("loading_detection_model", extra={"model": key, "providers": providers})
+            session = ort.InferenceSession(model_path.as_posix(), providers=providers)
+            self._sessions[key] = session
+            return session
 
 
-def _extract_polygon_and_score(item: Any) -> tuple[list[list[float]] | None, float]:
-    if not isinstance(item, (list, tuple)) or not item:
-        return None, 0.0
-
-    polygon = item[0] if isinstance(item[0], (list, tuple)) else None
-    score = 1.0
-
-    if len(item) > 1:
-        second = item[1]
-        if isinstance(second, (int, float)):
-            score = float(second)
-        elif isinstance(second, (list, tuple)) and len(second) > 1 and isinstance(second[1], (int, float)):
-            score = float(second[1])
-
-    return list(polygon) if polygon else None, score
+def _normalize_polygon(polygon: NDArray[np.float32], width: int, height: int) -> tuple[float, float, float, float, float, float, float, float]:
+    p = []
+    for x, y in polygon.tolist():
+        nx = min(max(float(x) / max(width, 1), 0.0), 1.0)
+        ny = min(max(float(y) / max(height, 1), 0.0), 1.0)
+        p.append((nx, ny))
+    return (p[0][0], p[0][1], p[1][0], p[1][1], p[2][0], p[2][1], p[3][0], p[3][1])
 
 
-def _extract_page(result: Any) -> list[Any]:
-    if isinstance(result, list) and result and isinstance(result[0], list):
-        return result[0]
-    return []
+def _det_model_key(model_name: str) -> str:
+    if "__" in model_name:
+        _, suffix = model_name.split("__", 1)
+        return suffix
+    return model_name
 
 
-def _normalize_quad(polygon: list[list[float]], width: int, height: int) -> tuple[float, float, float, float, float, float, float, float]:
-    if len(polygon) < 4:
-        raise ValueError("expected 4-point polygon")
+def _model_cache_dir() -> Path:
+    return Path(os.getenv("OCR_MODEL_CACHE_DIR", "/root/.cache/rapidocr"))
 
-    points = []
-    for x, y in polygon[:4]:
-        nx = min(max(float(x) / width, 0.0), 1.0)
-        ny = min(max(float(y) / height, 0.0), 1.0)
-        points.append((nx, ny))
 
-    return (
-        points[0][0],
-        points[0][1],
-        points[1][0],
-        points[1][1],
-        points[2][0],
-        points[2][1],
-        points[3][0],
-        points[3][1],
+def _download_detection_model(model_key: str) -> Path:
+    model_type = RapidModelType.MOBILE if "mobile" in model_key.lower() else RapidModelType.SERVER
+    model_info = InferSession.get_model_url(
+        FileInfo(
+            engine_type=EngineType.ONNXRUNTIME,
+            ocr_version=OCRVersion.PPOCRV5,
+            task_type=TaskType.DET,
+            lang_type=LangDet.CH,
+            model_type=model_type,
+        )
     )
 
-
-def _quad_area(coords: tuple[float, float, float, float, float, float, float, float]) -> float:
-    x = [coords[0], coords[2], coords[4], coords[6]]
-    y = [coords[1], coords[3], coords[5], coords[7]]
-    area = 0.0
-    for i in range(4):
-        j = (i + 1) % 4
-        area += x[i] * y[j] - x[j] * y[i]
-    return abs(area) / 2.0
-
-
-def _create_ocr_engine(**kwargs: Any) -> PaddleOCR:
-    engine_kwargs = dict(kwargs)
-    while True:
-        try:
-            return PaddleOCR(**engine_kwargs)
-        except ValueError as error:
-            unknown_key = _extract_unknown_keyword(error)
-            if unknown_key and unknown_key in engine_kwargs:
-                removed = engine_kwargs.pop(unknown_key)
-                logger.warning("PaddleOCR init ignored unsupported arg %s=%r", unknown_key, removed)
-                continue
-            raise
+    model_path = _model_cache_dir() / "det" / f"{model_key}.onnx"
+    model_path.parent.mkdir(parents=True, exist_ok=True)
+    DownloadFile.run(
+        DownloadFileInput(
+            file_url=model_info["model_dir"],
+            sha256=model_info["SHA256"],
+            save_path=model_path,
+            logger=logger,
+        )
+    )
+    return model_path
 
 
-def _run_ocr(ocr_engine: PaddleOCR, image_array: np.ndarray, kwargs: dict[str, Any]) -> tuple[Any, dict[str, Any]]:
-    call_kwargs = dict(kwargs)
-    while True:
-        try:
-            return ocr_engine.ocr(image_array, **call_kwargs), call_kwargs
-        except (TypeError, ValueError) as error:
-            unknown_key = _extract_unknown_keyword(error)
-            if unknown_key and unknown_key in call_kwargs:
-                removed = call_kwargs.pop(unknown_key)
-                logger.warning("PaddleOCR.ocr ignored unsupported arg %s=%r", unknown_key, removed)
-                continue
-            raise
+def _providers() -> list[str]:
+    available = set(ort.get_available_providers())
+    preferred = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+    ordered = [provider for provider in preferred if provider in available]
+    if ordered:
+        return ordered
+    return list(available)
 
 
-def _run_text_detector(ocr_engine: PaddleOCR, image_array: np.ndarray) -> list[Any]:
-    detector = getattr(ocr_engine, "text_detector", None)
-    if detector is None:
-        return []
+def _sorted_boxes(dt_boxes: NDArray[np.float32]) -> NDArray[np.float32]:
+    if len(dt_boxes) == 0:
+        return dt_boxes
 
-    detected = detector(image_array)
-    dt_boxes = detected[0] if isinstance(detected, tuple) else detected
-    if dt_boxes is None:
-        return []
+    y_order = np.argsort(dt_boxes[:, 0, 1], kind="stable")
+    sorted_y = dt_boxes[y_order, 0, 1]
 
-    if isinstance(dt_boxes, np.ndarray):
-        polygons = dt_boxes.tolist()
-    else:
-        polygons = list(dt_boxes)
+    line_ids = np.empty(len(dt_boxes), dtype=np.int32)
+    line_ids[0] = 0
+    np.cumsum(np.abs(np.diff(sorted_y)) >= 10, out=line_ids[1:])
 
-    page: list[Any] = []
-    for polygon in polygons:
-        if isinstance(polygon, np.ndarray):
-            polygon = polygon.tolist()
-        page.append([polygon, 1.0])
-    return page
-
-
-def _extract_unknown_keyword(error: Exception) -> str | None:
-    text = str(error)
-    for pattern in (_UNKNOWN_ARGUMENT_PATTERN, _UNEXPECTED_KEYWORD_PATTERN):
-        match = pattern.search(text)
-        if match:
-            return match.group(1)
-    return None
-
-
-def _is_ambiguous_truth_value(error: ValueError) -> bool:
-    return "truth value of an array with more than one element is ambiguous" in str(error)
+    sort_key = line_ids[y_order] * 1e6 + dt_boxes[y_order, 0, 0]
+    final_order = np.argsort(sort_key, kind="stable")
+    return dt_boxes[y_order[final_order]]

@@ -136,8 +136,12 @@ def main() -> None:
     except Exception as error:  # pylint: disable=broad-except
         logger.warning("initial_drift_count_failed", extra={"error": str(error)})
 
-    api = ImmichClient(config.immich_url, config.immich_api_key, config.ocr_model_revision)
-    detector = PaddleDetector(min_score=config.ocr_detection_threshold)
+    api = ImmichClient(config.immich_url, config.immich_api_key, config.ocr_model_revision, config.ocr_model_name)
+    detector = PaddleDetector(
+        min_score=config.ocr_detection_threshold,
+        model_name=config.ocr_detector_model_name,
+        max_resolution=min(config.ocr_max_resolution, 736),
+    )
     recognizer_router = RecognizerRouter(config)
 
     def process_one(asset_id: str) -> None:
@@ -147,11 +151,14 @@ def main() -> None:
     reconcile_thread = threading.Thread(target=reconciler.run, daemon=True)
     reconcile_thread.start()
 
-    missed = get_unprocessed_assets(config)
-    if missed:
-        logger.info("catchup", extra={"count": len(missed)})
-    for asset_id in missed:
-        process_one(asset_id)
+    if config.ocr_startup_backfill_enabled:
+        missed = get_unprocessed_assets(config)
+        if missed:
+            logger.info("catchup", extra={"count": len(missed)})
+        for asset_id in missed:
+            process_one(asset_id)
+    else:
+        logger.info("startup_backfill_disabled")
 
     health_state.set_ready(True)
 

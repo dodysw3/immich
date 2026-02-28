@@ -83,6 +83,8 @@ Rules:
 - Tag keys are case-insensitive.
 - If no policy matches, `OCR_MODEL_NAME` is used.
 
+Detection model is configured independently with `OCR_DETECTOR_MODEL_NAME` (default `PP-OCRv5_mobile`).
+
 ## Layout Analysis
 
 Environment:
