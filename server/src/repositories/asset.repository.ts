@@ -1144,6 +1144,18 @@ export class AssetRepository {
       .selectFrom('asset')
       .where('asset.id', '=', id)
       .select(withEdits)
+      .select((eb) =>
+        eb
+          .exists(
+            eb
+              .selectFrom('asset_file')
+              .select('asset_file.path')
+              .whereRef('asset_file.assetId', '=', 'asset.id')
+              .where('asset_file.type', '=', AssetFileType.Preview)
+              .where('asset_file.isEdited', '=', true),
+          )
+          .as('hasEditedPreview'),
+      )
       .innerJoin('asset_exif', (join) => join.onRef('asset_exif.assetId', '=', 'asset.id'))
       .select(['asset_exif.exifImageWidth', 'asset_exif.exifImageHeight', 'asset_exif.orientation'])
       .executeTakeFirst();
