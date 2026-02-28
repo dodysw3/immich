@@ -1,0 +1,10 @@
+psycopg2-binary>=2.9
+paddlepaddle-gpu>=2.5
+paddleocr>=2.7
+transformers>=4.35
+torch>=2.1
+Pillow>=10.0
+opencv-python-headless>=4.8
+numpy>=1.24
+requests>=2.31
+pypdfium2>=4.30

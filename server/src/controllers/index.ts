@@ -9,6 +9,7 @@ import { AuthController } from 'src/controllers/auth.controller';
 import { DatabaseBackupController } from 'src/controllers/database-backup.controller';
 import { DownloadController } from 'src/controllers/download.controller';
 import { DuplicateController } from 'src/controllers/duplicate.controller';
+import { ExternalOcrController } from 'src/controllers/external-ocr.controller';
 import { FaceController } from 'src/controllers/face.controller';
 import { JobController } from 'src/controllers/job.controller';
 import { LibraryController } from 'src/controllers/library.controller';
@@ -51,6 +52,7 @@ export const controllers = [
   DatabaseBackupController,
   DownloadController,
   DuplicateController,
+  ExternalOcrController,
   FaceController,
   JobController,
   LibraryController,

@@ -6,7 +6,7 @@ import { PersonFactory } from 'test/factories/person.factory';
 
 describe('mapAsset', () => {
   describe('peopleWithFaces', () => {
-    it('should transform all faces when a person has multiple faces in the same image', () => {
+    it('should include all faces for a person without applying edit-based coordinate transforms', () => {
       const person = PersonFactory.create();
       const face1 = {
         boundingBoxX1: 100,
@@ -47,24 +47,22 @@ describe('mapAsset', () => {
       expect(result.people).toHaveLength(1);
       expect(result.people![0].faces).toHaveLength(2);
 
-      // Verify that both faces have been transformed (bounding boxes adjusted for crop)
+      // mapAsset does not transform face coordinates; it returns stored face boxes.
       const firstFace = result.people![0].faces[0];
       const secondFace = result.people![0].faces[1];
 
-      // After crop (x: 216, y: 1512), the coordinates should be adjusted
-      // Faces outside the crop area will be clamped
-      expect(firstFace.boundingBoxX1).toBe(-116); // 100 - 216 = -116
-      expect(firstFace.boundingBoxY1).toBe(-1412); // 100 - 1512 = -1412
-      expect(firstFace.boundingBoxX2).toBe(-16); // 200 - 216 = -16
-      expect(firstFace.boundingBoxY2).toBe(-1312); // 200 - 1512 = -1312
+      expect(firstFace.boundingBoxX1).toBe(100);
+      expect(firstFace.boundingBoxY1).toBe(100);
+      expect(firstFace.boundingBoxX2).toBe(200);
+      expect(firstFace.boundingBoxY2).toBe(200);
 
-      expect(secondFace.boundingBoxX1).toBe(84); // 300 - 216
-      expect(secondFace.boundingBoxY1).toBe(-1112); // 400 - 1512 = -1112
-      expect(secondFace.boundingBoxX2).toBe(184); // 400 - 216
-      expect(secondFace.boundingBoxY2).toBe(-1012); // 500 - 1512 = -1012
+      expect(secondFace.boundingBoxX1).toBe(300);
+      expect(secondFace.boundingBoxY1).toBe(400);
+      expect(secondFace.boundingBoxX2).toBe(400);
+      expect(secondFace.boundingBoxY2).toBe(500);
     });
 
-    it('should transform unassigned faces with edits and dimensions', () => {
+    it('should include unassigned faces without applying edit-based coordinate transforms', () => {
       const unassignedFace = AssetFaceFactory.create({
         boundingBoxX1: 100,
         boundingBoxY1: 100,
@@ -85,12 +83,12 @@ describe('mapAsset', () => {
       expect(result.unassignedFaces).toBeDefined();
       expect(result.unassignedFaces).toHaveLength(1);
 
-      // Verify that unassigned face has been transformed
+      // mapAsset does not transform face coordinates; it returns stored face boxes.
       const face = result.unassignedFaces![0];
-      expect(face.boundingBoxX1).toBe(50); // 100 - 50
-      expect(face.boundingBoxY1).toBe(50); // 100 - 50
-      expect(face.boundingBoxX2).toBe(150); // 200 - 50
-      expect(face.boundingBoxY2).toBe(150); // 200 - 50
+      expect(face.boundingBoxX1).toBe(100);
+      expect(face.boundingBoxY1).toBe(100);
+      expect(face.boundingBoxX2).toBe(200);
+      expect(face.boundingBoxY2).toBe(200);
     });
 
     it('should handle multiple people each with multiple faces', () => {

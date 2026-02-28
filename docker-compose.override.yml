@@ -1,0 +1,47 @@
+services:
+  immich-ocr:
+    build: ./ocr-service
+    container_name: immich-ocr
+    restart: unless-stopped
+    shm_size: "1g"
+    depends_on:
+      - database
+      - immich-server
+    environment:
+      DB_URL: "postgresql://${DB_USERNAME}:${DB_PASSWORD}@database:5432/${DB_DATABASE_NAME}"
+      IMMICH_URL: "http://immich-server:2283"
+      IMMICH_API_KEY: "${IMMICH_OCR_API_KEY}"
+      EXTERNAL_OCR_MODE: "bridge"
+      OCR_MAX_RESOLUTION: "4032"
+      OCR_DETECTION_THRESHOLD: "0.3"
+      OCR_RECOGNITION_THRESHOLD: "0.6"
+      OCR_PREPROCESS_BLOCK_SIZE: "15"
+      OCR_PREPROCESS_THRESHOLD_C: "9"
+      OCR_PREPROCESS_CLAHE_CLIP: "2.0"
+      OCR_PREPROCESS_UNSHARP_AMOUNT: "1.4"
+      OCR_LAYOUT_ANALYSIS_ENABLED: "true"
+      OCR_LAYOUT_MAX_COLUMNS: "3"
+      OCR_LAYOUT_COLUMN_GAP: "0.12"
+      OCR_MODEL_POLICY_JSON: "{}"
+      OCR_PDF_ENABLED: "false"
+      OCR_PDF_MAX_PAGES: "25"
+      OCR_PDF_DPI: "200"
+      OCR_MODEL_NAME: "microsoft/trocr-base-printed"
+      OCR_MODEL_REVISION: "v1.0.0"
+      OCR_BATCH_SIZE: "16"
+      OCR_RECONCILE_INTERVAL: "300"
+      OCR_METRICS_LOG_INTERVAL: "60"
+      OCR_HEALTH_PORT: "8088"
+      LOG_LEVEL: "INFO"
+    volumes:
+      - model-cache:/root/.cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  model-cache:

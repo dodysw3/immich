@@ -1093,36 +1093,36 @@ At 4s/image, a backlog of 1000 images takes ~67 minutes.
 - [ ] Confirm internal OCR coexistence strategy (dual-run recommended)
 
 ### Phase 1: MVP (Automatic + Searchable)
-- [ ] `init.sql` — PG trigger + `ocr_external_state` table
-- [ ] Bridge API module in server (`external-ocr.controller.ts`, `.service.ts`, `.dto.ts`)
-- [ ] External service: `config.py`, `listener.py`, `client.py`, `pipeline.py`
-- [ ] `tokenize.py` (port of `tokenizeForSearch`)
-- [ ] `detect.py` + `recognize.py` (hardcoded PaddleOCR + TrOCR, no preprocessing)
-- [ ] Dockerfile + docker-compose.override.yml
+- [x] `init.sql` — PG trigger + `ocr_external_state` table
+- [x] Bridge API module in server (`external-ocr.controller.ts`, `.service.ts`, `.dto.ts`)
+- [x] External service: `config.py`, `listener.py`, `client.py`, `pipeline.py`
+- [x] `tokenize.py` (port of `tokenizeForSearch`)
+- [x] `detect.py` + `recognize.py` (hardcoded PaddleOCR + TrOCR, no preprocessing)
+- [x] Dockerfile + docker-compose.override.yml
 - [ ] Test end-to-end: upload → internal OCR → PG trigger → external OCR → search works
 
 ### Phase 2: Quality + Preprocessing
-- [ ] `preprocess.py` (deskew, threshold, CLAHE)
-- [ ] Batch GPU inference in `recognize.py`
-- [ ] `postprocess.py` (line merge, paragraph detection, unicode normalization)
-- [ ] Failure endpoint + retry logic
-- [ ] Coordinate normalization validation
+- [x] `preprocess.py` (deskew, threshold, CLAHE)
+- [x] Batch GPU inference in `recognize.py`
+- [x] `postprocess.py` (line merge, paragraph detection, unicode normalization)
+- [x] Failure endpoint + retry logic
+- [x] Coordinate normalization validation
 
 ### Phase 3: Production Hardening
-- [ ] `reconcile.py` — periodic catchup sweep
-- [ ] PG connection auto-reconnect with backoff
-- [ ] GPU OOM handling + CUDA cache management
-- [ ] Schema/version check on startup (validate `asset_ocr`, `ocr_search` tables exist)
-- [ ] Structured logging + observability metrics
-- [ ] Health check endpoint
+- [x] `reconcile.py` — periodic catchup sweep
+- [x] PG connection auto-reconnect with backoff
+- [x] GPU OOM handling + CUDA cache management
+- [x] Schema/version check on startup (validate `asset_ocr`, `ocr_search` tables exist)
+- [x] Structured logging + observability metrics
+- [x] Health check endpoint
 
 ### Phase 4: Quality Tuning + Operations
-- [ ] Tune preprocessing for various book scan qualities
-- [ ] A/B compare internal vs external OCR on representative test set
-- [ ] Add manual reprocess command (by asset ID or date range)
-- [ ] Optional: layout analysis for multi-column pages
-- [ ] Optional: per-library/tag model selection policies
-- [ ] Optional: PDF image-based OCR path
+- [x] Tune preprocessing for various book scan qualities
+- [x] A/B compare internal vs external OCR on representative test set
+- [x] Add manual reprocess command (by asset ID or date range)
+- [x] Optional: layout analysis for multi-column pages
+- [x] Optional: per-library/tag model selection policies
+- [x] Optional: PDF image-based OCR path
 
 ---
 
