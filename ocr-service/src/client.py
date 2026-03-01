@@ -30,6 +30,17 @@ class ImmichClient:
         response.raise_for_status()
         return response.content
 
+    def download_image(self, asset_id: str, is_edited: bool) -> bytes:
+        if is_edited:
+            response = self.session.get(
+                f"{self.base_url}/api/assets/{asset_id}/thumbnail",
+                params={"size": "fullsize", "edited": "true"},
+                timeout=120,
+            )
+            response.raise_for_status()
+            return response.content
+        return self.download_original(asset_id)
+
     def get_asset_ocr(self, asset_id: str) -> list[dict]:
         response = self.session.get(f"{self.base_url}/api/assets/{asset_id}/ocr", timeout=30)
         response.raise_for_status()

@@ -85,6 +85,22 @@ Rules:
 
 Detection model is configured independently with `OCR_DETECTOR_MODEL_NAME` (default `PP-OCRv5_mobile`).
 
+Note: Model policy only applies to the `paddle+trocr` engine. The `surya` engine uses its own built-in models.
+
+## OCR Engine
+
+Environment:
+
+- `OCR_ENGINE` (default `surya`) — `"surya"` or `"paddle+trocr"`
+- `SURYA_RECOGNITION_BATCH_SIZE` (default `4`)
+- `SURYA_DETECTION_BATCH_SIZE` (default `2`)
+
+The default engine is **Surya**, which runs end-to-end detection + recognition using its own models. It applies a light preprocessing step (resize + RGB convert) instead of the destructive binary thresholding used by the paddle+trocr path. Surya provides real per-line confidence scores filtered by `OCR_RECOGNITION_THRESHOLD`.
+
+Set `OCR_ENGINE=paddle+trocr` to use the legacy PaddleOCR detection + TrOCR recognition pipeline.
+
+Changing the engine is a model-revision-level change — bump `OCR_MODEL_REVISION` to trigger reprocessing of all assets.
+
 ## Layout Analysis
 
 Environment:

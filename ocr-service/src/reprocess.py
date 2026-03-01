@@ -11,6 +11,7 @@ from src.main import safe_process
 from src.model_policy import RecognizerRouter
 from src.observability import Metrics, configure_logging
 from src.reconcile import get_assets_by_ocr_date_range, validate_schema
+from src.surya_engine import SuryaEngine
 
 logger = logging.getLogger(__name__)
 
@@ -70,16 +71,28 @@ def main() -> None:
         return
 
     api = ImmichClient(config.immich_url, config.immich_api_key, config.ocr_model_revision, config.ocr_model_name)
-    detector = PaddleDetector(
-        min_score=config.ocr_detection_threshold,
-        model_name=config.ocr_detector_model_name,
-        max_resolution=min(config.ocr_max_resolution, 736),
-    )
-    recognizer_router = RecognizerRouter(config)
+
+    surya_engine: SuryaEngine | None = None
+    detector: PaddleDetector | None = None
+    recognizer_router: RecognizerRouter | None = None
+
+    if config.ocr_engine == "surya":
+        surya_engine = SuryaEngine.create(
+            min_confidence=config.ocr_recognition_threshold,
+            recognition_batch_size=config.surya_recognition_batch_size,
+            detection_batch_size=config.surya_detection_batch_size,
+        )
+    else:
+        detector = PaddleDetector(
+            min_score=config.ocr_detection_threshold,
+            model_name=config.ocr_detector_model_name,
+            max_resolution=min(config.ocr_max_resolution, 736),
+        )
+        recognizer_router = RecognizerRouter(config)
 
     metrics = Metrics()
     for asset_id in asset_ids:
-        safe_process(api, config, detector, recognizer_router, metrics, asset_id)
+        safe_process(api, config, detector, recognizer_router, metrics, asset_id, surya_engine=surya_engine)
 
     logger.info("manual_reprocess_complete", extra=metrics.snapshot())
 

@@ -17,6 +17,7 @@ from src.observability import Metrics, configure_logging
 from src.pipeline import process_asset
 from src.reconcile import Reconciler, apply_init_sql, get_drift_count, get_unprocessed_assets, validate_schema
 from src.state import update_failure
+from src.surya_engine import SuryaEngine
 
 logger = logging.getLogger(__name__)
 
@@ -24,17 +25,18 @@ logger = logging.getLogger(__name__)
 def safe_process(
     api: ImmichClient,
     config: Config,
-    detector: PaddleDetector,
-    recognizer_router: RecognizerRouter,
+    detector: PaddleDetector | None,
+    recognizer_router: RecognizerRouter | None,
     metrics: Metrics,
     asset_id: str,
+    surya_engine: SuryaEngine | None = None,
 ) -> None:
     attempts = config.max_retries + 1
     started = time.monotonic()
 
     for attempt in range(attempts):
         try:
-            status, lines = process_asset(api, config, detector, recognizer_router, asset_id)
+            status, lines = process_asset(api, config, detector, recognizer_router, asset_id, surya_engine=surya_engine)
             duration = time.monotonic() - started
             metrics.observe(asset_id, status=status, lines=lines, duration_s=duration, retries=attempt)
             logger.info(
@@ -122,6 +124,7 @@ def main() -> None:
     logger.info(
         "starting_external_ocr_service",
         extra={
+            "ocrEngine": config.ocr_engine,
             "modelName": config.ocr_model_name,
             "modelRevision": config.ocr_model_revision,
             "mode": config.external_ocr_mode,
@@ -137,15 +140,27 @@ def main() -> None:
         logger.warning("initial_drift_count_failed", extra={"error": str(error)})
 
     api = ImmichClient(config.immich_url, config.immich_api_key, config.ocr_model_revision, config.ocr_model_name)
-    detector = PaddleDetector(
-        min_score=config.ocr_detection_threshold,
-        model_name=config.ocr_detector_model_name,
-        max_resolution=min(config.ocr_max_resolution, 736),
-    )
-    recognizer_router = RecognizerRouter(config)
+
+    surya_engine: SuryaEngine | None = None
+    detector: PaddleDetector | None = None
+    recognizer_router: RecognizerRouter | None = None
+
+    if config.ocr_engine == "surya":
+        surya_engine = SuryaEngine.create(
+            min_confidence=config.ocr_recognition_threshold,
+            recognition_batch_size=config.surya_recognition_batch_size,
+            detection_batch_size=config.surya_detection_batch_size,
+        )
+    else:
+        detector = PaddleDetector(
+            min_score=config.ocr_detection_threshold,
+            model_name=config.ocr_detector_model_name,
+            max_resolution=min(config.ocr_max_resolution, 736),
+        )
+        recognizer_router = RecognizerRouter(config)
 
     def process_one(asset_id: str) -> None:
-        safe_process(api, config, detector, recognizer_router, metrics, asset_id)
+        safe_process(api, config, detector, recognizer_router, metrics, asset_id, surya_engine=surya_engine)
 
     reconciler = Reconciler(config=config, process_asset_fn=process_one)
     reconcile_thread = threading.Thread(target=reconciler.run, daemon=True)
@@ -162,10 +177,14 @@ def main() -> None:
 
     health_state.set_ready(True)
 
-    listener = PgListener(config.db_url, channel=config.ocr_channel)
-    logger.info("listener_ready", extra={"channel": config.ocr_channel})
-    for asset_id in listener:
-        process_one(asset_id)
+    if config.ocr_listener_enabled:
+        listener = PgListener(config.db_url, channel=config.ocr_channel)
+        logger.info("listener_ready", extra={"channel": config.ocr_channel})
+        for asset_id in listener:
+            process_one(asset_id)
+    else:
+        logger.info("listener_disabled")
+        threading.Event().wait()
 
 
 if __name__ == "__main__":

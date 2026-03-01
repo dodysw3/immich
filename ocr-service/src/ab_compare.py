@@ -15,7 +15,8 @@ from src.model_policy import RecognizerRouter, select_model_for_asset
 from src.observability import configure_logging
 from src.pdf_pages import extract_pdf_page_images
 from src.postprocess import postprocess
-from src.preprocess import preprocess
+from src.preprocess import preprocess, preprocess_light
+from src.surya_engine import SuryaEngine
 from src.tokenize import tokenize_for_search
 
 logger = logging.getLogger(__name__)
@@ -44,14 +45,65 @@ def _text_stats(text: str) -> dict[str, int]:
 def _simulate_external_text(
     api: ImmichClient,
     config: Config,
+    detector: PaddleDetector | None,
+    recognizer_router: RecognizerRouter | None,
+    asset_id: str,
+    asset: dict,
+    surya_engine: SuryaEngine | None = None,
+) -> tuple[str, int, str, str]:
+    is_edited = bool(asset.get("isEdited"))
+    source_bytes = api.download_image(asset_id, is_edited)
+
+    if config.ocr_engine == "surya":
+        assert surya_engine is not None
+        return _simulate_surya(config, surya_engine, source_bytes, asset)
+
+    assert detector is not None and recognizer_router is not None
+    return _simulate_paddle_trocr(config, detector, recognizer_router, source_bytes, asset)
+
+
+def _simulate_surya(
+    config: Config,
+    surya_engine: SuryaEngine,
+    source_bytes: bytes,
+    asset: dict,
+) -> tuple[str, int, str, str]:
+    images: list[Image.Image] = []
+    if _is_pdf_asset(asset):
+        images = extract_pdf_page_images(source_bytes, max_pages=config.ocr_pdf_max_pages, dpi=config.ocr_pdf_dpi)
+    else:
+        images = [Image.open(io.BytesIO(source_bytes))]
+
+    merged_lines = []
+    for image in images:
+        processed_image = preprocess_light(image, max_resolution=config.ocr_max_resolution)
+        page_lines = surya_engine.process(processed_image)
+        if not page_lines:
+            continue
+        page_lines = postprocess(
+            page_lines,
+            layout_analysis_enabled=config.ocr_layout_analysis_enabled,
+            layout_max_columns=config.ocr_layout_max_columns,
+            layout_column_gap=config.ocr_layout_column_gap,
+        )
+        merged_lines.extend(page_lines)
+
+    if not merged_lines:
+        return "", 0, "surya", "surya:no-text"
+
+    text = " ".join(line.text for line in merged_lines)
+    return text, len(merged_lines), "surya", "surya"
+
+
+def _simulate_paddle_trocr(
+    config: Config,
     detector: PaddleDetector,
     recognizer_router: RecognizerRouter,
-    asset_id: str,
+    source_bytes: bytes,
     asset: dict,
 ) -> tuple[str, int, str, str]:
     selection = select_model_for_asset(asset, config)
     recognizer = recognizer_router.get(selection.model_name)
-    source_bytes = api.download_original(asset_id)
 
     images: list[Image.Image] = []
     if _is_pdf_asset(asset):
@@ -110,8 +162,20 @@ def main() -> None:
         raise ValueError("No asset IDs provided")
 
     api = ImmichClient(config.immich_url, config.immich_api_key, config.ocr_model_revision)
-    detector = PaddleDetector(min_score=config.ocr_detection_threshold)
-    recognizer_router = RecognizerRouter(config)
+
+    surya_engine: SuryaEngine | None = None
+    detector: PaddleDetector | None = None
+    recognizer_router: RecognizerRouter | None = None
+
+    if config.ocr_engine == "surya":
+        surya_engine = SuryaEngine.create(
+            min_confidence=config.ocr_recognition_threshold,
+            recognition_batch_size=config.surya_recognition_batch_size,
+            detection_batch_size=config.surya_detection_batch_size,
+        )
+    else:
+        detector = PaddleDetector(min_score=config.ocr_detection_threshold)
+        recognizer_router = RecognizerRouter(config)
 
     items: list[dict] = []
     for asset_id in asset_ids:
@@ -120,7 +184,7 @@ def main() -> None:
         existing_text = " ".join(row.get("text", "") for row in existing_rows if row.get("text"))
 
         external_text, external_lines, model_name, model_reason = _simulate_external_text(
-            api, config, detector, recognizer_router, asset_id, asset
+            api, config, detector, recognizer_router, asset_id, asset, surya_engine=surya_engine
         )
         similarity = SequenceMatcher(a=existing_text, b=external_text).ratio()
 

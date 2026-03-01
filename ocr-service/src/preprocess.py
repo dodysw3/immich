@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 try:
     import cv2
@@ -9,6 +9,12 @@ try:
     HAS_CV2 = True
 except ImportError:
     HAS_CV2 = False
+
+
+def preprocess_light(image: Image.Image, max_resolution: int) -> Image.Image:
+    image = ImageOps.exif_transpose(image)
+    image = _resize_for_max_edge(image, max_resolution)
+    return image.convert("RGB")
 
 
 def preprocess(

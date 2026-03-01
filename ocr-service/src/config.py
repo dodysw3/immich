@@ -21,6 +21,7 @@ class Config:
     ocr_batch_size: int = 16
     ocr_reconcile_interval: int = 300
     ocr_startup_backfill_enabled: bool = False
+    ocr_listener_enabled: bool = False
     ocr_channel: str = "ocr_complete"
     ocr_preprocess_block_size: int = 15
     ocr_preprocess_threshold_c: int = 9
@@ -38,6 +39,9 @@ class Config:
     metrics_log_interval: int = 60
     health_host: str = "0.0.0.0"
     health_port: int = 8088
+    ocr_engine: str = "surya"
+    surya_recognition_batch_size: int = 4
+    surya_detection_batch_size: int = 2
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -58,6 +62,7 @@ class Config:
             ocr_batch_size=int(os.getenv("OCR_BATCH_SIZE", "16")),
             ocr_reconcile_interval=int(os.getenv("OCR_RECONCILE_INTERVAL", "300")),
             ocr_startup_backfill_enabled=_as_bool(os.getenv("OCR_STARTUP_BACKFILL_ENABLED", "false")),
+            ocr_listener_enabled=_as_bool(os.getenv("OCR_LISTENER_ENABLED", "false")),
             ocr_channel=os.getenv("OCR_CHANNEL", "ocr_complete"),
             ocr_preprocess_block_size=int(os.getenv("OCR_PREPROCESS_BLOCK_SIZE", "15")),
             ocr_preprocess_threshold_c=int(os.getenv("OCR_PREPROCESS_THRESHOLD_C", "9")),
@@ -75,6 +80,9 @@ class Config:
             metrics_log_interval=int(os.getenv("OCR_METRICS_LOG_INTERVAL", "60")),
             health_host=os.getenv("OCR_HEALTH_HOST", "0.0.0.0"),
             health_port=int(os.getenv("OCR_HEALTH_PORT", "8088")),
+            ocr_engine=os.getenv("OCR_ENGINE", "surya"),
+            surya_recognition_batch_size=int(os.getenv("SURYA_RECOGNITION_BATCH_SIZE", "4")),
+            surya_detection_batch_size=int(os.getenv("SURYA_DETECTION_BATCH_SIZE", "2")),
         )
 
     def validate(self) -> None:
@@ -123,6 +131,15 @@ class Config:
 
         if self.health_port <= 0 or self.health_port > 65535:
             raise ValueError("OCR_HEALTH_PORT must be in range 1..65535")
+
+        if self.ocr_engine not in {"surya", "paddle+trocr"}:
+            raise ValueError("OCR_ENGINE must be one of: surya, paddle+trocr")
+
+        if self.surya_recognition_batch_size <= 0:
+            raise ValueError("SURYA_RECOGNITION_BATCH_SIZE must be > 0")
+
+        if self.surya_detection_batch_size <= 0:
+            raise ValueError("SURYA_DETECTION_BATCH_SIZE must be > 0")
 
 
 def _as_bool(raw: str) -> bool:
