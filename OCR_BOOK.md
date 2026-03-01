@@ -955,6 +955,7 @@ services:
       DB_URL: "postgresql://${DB_USERNAME}:${DB_PASSWORD}@database:5432/${DB_DATABASE_NAME}"
       IMMICH_URL: "http://immich-server:2283"
       IMMICH_API_KEY: "${IMMICH_OCR_API_KEY}"
+      IMMICH_API_KEYS_JSON: "${IMMICH_OCR_API_KEYS_JSON:-{}}"
       EXTERNAL_OCR_MODE: "bridge"
       OCR_MAX_RESOLUTION: "4032"
       OCR_DETECTION_THRESHOLD: "0.3"
@@ -986,6 +987,12 @@ volumes:
 IMMICH_API_KEY: "${IMMICH_OCR_API_KEY}"
 ```
 
+For multi-user instances, map per-owner keys with:
+
+```yaml
+IMMICH_API_KEYS_JSON: "${IMMICH_OCR_API_KEYS_JSON:-{}}"
+```
+
 If `IMMICH_OCR_API_KEY` is not defined in the compose env source (`docker/.env` with `--env-file`, project `.env`, or shell export), Docker Compose warns and passes a blank value:
 
 ```text
@@ -996,7 +1003,7 @@ Set `IMMICH_OCR_API_KEY` explicitly before `docker compose up`.
 
 **Connections**: The container needs two connections:
 1. **PG direct** (`DB_URL`) — for `LISTEN/NOTIFY` and reconcile queries (read-only scope)
-2. **Immich API** (`IMMICH_URL` + `IMMICH_API_KEY`) — for image download + bridge API writes
+2. **Immich API** (`IMMICH_URL` + owner key routing) — for image download + bridge API writes
 
 No upload volume mount needed — images are fetched via API.
 
@@ -1008,7 +1015,8 @@ No upload volume mount needed — images are fetched via API.
 |---|---|---|
 | `DB_URL` | (required) | PostgreSQL connection string (for LISTEN + reconcile queries) |
 | `IMMICH_URL` | (required) | Immich server base URL |
-| `IMMICH_API_KEY` | (required) | API key with asset read + asset download + asset update permissions |
+| `IMMICH_API_KEY` | optional fallback | Single API key fallback (legacy behavior) |
+| `IMMICH_API_KEYS_JSON` | `{}` | OwnerId -> API key map for multi-user instances |
 | `EXTERNAL_OCR_MODE` | `bridge` | Write mode: `bridge`, `direct-db`, or `metadata` |
 | `OCR_MAX_RESOLUTION` | `4032` | Max image dimension (long edge) |
 | `OCR_DETECTION_THRESHOLD` | `0.3` | Min PaddleOCR detection score |

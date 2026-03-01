@@ -11,6 +11,7 @@ services:
       DB_URL: "postgresql://${DB_USERNAME}:${DB_PASSWORD}@database:5432/${DB_DATABASE_NAME}"
       IMMICH_URL: "http://immich-server:2283"
       IMMICH_API_KEY: "${IMMICH_OCR_API_KEY}"
+      IMMICH_API_KEYS_JSON: "${IMMICH_OCR_API_KEYS_JSON:-{}}"
       EXTERNAL_OCR_MODE: "bridge"
       OCR_MAX_RESOLUTION: "4032"
       OCR_DETECTION_THRESHOLD: "0.3"

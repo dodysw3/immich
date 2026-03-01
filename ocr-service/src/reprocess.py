@@ -10,7 +10,7 @@ from src.detect import PaddleDetector
 from src.main import safe_process
 from src.model_policy import RecognizerRouter
 from src.observability import Metrics, configure_logging
-from src.reconcile import get_assets_by_ocr_date_range, validate_schema
+from src.reconcile import get_asset_owner, get_assets_by_ocr_date_range, validate_schema
 from src.surya_engine import SuryaEngine
 
 logger = logging.getLogger(__name__)
@@ -70,7 +70,15 @@ def main() -> None:
             print(asset_id)
         return
 
-    api = ImmichClient(config.immich_url, config.immich_api_key, config.ocr_model_revision, config.ocr_model_name)
+    default_api = (
+        ImmichClient(config.immich_url, config.immich_api_key, config.ocr_model_revision, config.ocr_model_name)
+        if config.immich_api_key
+        else None
+    )
+    owner_api = {
+        owner_id: ImmichClient(config.immich_url, api_key, config.ocr_model_revision, config.ocr_model_name)
+        for owner_id, api_key in config.immich_api_keys.items()
+    }
 
     surya_engine: SuryaEngine | None = None
     detector: PaddleDetector | None = None
@@ -92,6 +100,24 @@ def main() -> None:
 
     metrics = Metrics()
     for asset_id in asset_ids:
+        owner_id = get_asset_owner(config, asset_id)
+        if owner_id is None:
+            logger.debug("Skipping %s: owner not found", asset_id)
+            continue
+
+        # If owner-key routing is configured, process only mapped owners.
+        if owner_api:
+            api = owner_api.get(owner_id)
+            if api is None:
+                logger.debug("Skipping %s: ownerId=%s not mapped in IMMICH_API_KEYS_JSON", asset_id, owner_id)
+                continue
+        else:
+            api = default_api
+
+        if api is None:
+            logger.debug("Skipping %s: missing default API key for ownerId=%s", asset_id, owner_id)
+            continue
+
         safe_process(api, config, detector, recognizer_router, metrics, asset_id, surya_engine=surya_engine)
 
     logger.info("manual_reprocess_complete", extra=metrics.snapshot())

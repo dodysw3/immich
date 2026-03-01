@@ -42,12 +42,16 @@ def validate_schema(db_url: str) -> None:
 
 
 def get_unprocessed_assets(config: Config, limit: int = 500) -> list[str]:
+    return [asset_id for asset_id, _ in get_unprocessed_assets_with_owner(config, limit=limit)]
+
+
+def get_unprocessed_assets_with_owner(config: Config, limit: int = 500) -> list[tuple[str, str]]:
     conn = psycopg2.connect(config.db_url)
     try:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT ajs."assetId"
+                SELECT ajs."assetId", a."ownerId"
                 FROM asset_job_status ajs
                 JOIN asset a ON a.id = ajs."assetId"
                 LEFT JOIN ocr_external_state oes ON oes."assetId" = ajs."assetId"
@@ -68,7 +72,7 @@ def get_unprocessed_assets(config: Config, limit: int = 500) -> list[str]:
                 """,
                 (config.ocr_pdf_enabled, config.ocr_model_revision, limit),
             )
-            return [row[0] for row in cur.fetchall()]
+            return [(row[0], row[1]) for row in cur.fetchall()]
     finally:
         conn.close()
 
@@ -131,6 +135,25 @@ def get_assets_by_ocr_date_range(config: Config, date_from: datetime, date_to: d
         conn.close()
 
 
+def get_asset_owner(config: Config, asset_id: str) -> str | None:
+    conn = psycopg2.connect(config.db_url)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT a."ownerId"
+                FROM asset a
+                WHERE a.id = %s
+                  AND a."deletedAt" IS NULL
+                """,
+                (asset_id,),
+            )
+            row = cur.fetchone()
+            return row[0] if row else None
+    finally:
+        conn.close()
+
+
 class Reconciler:
     def __init__(self, config: Config, process_asset_fn):
         self.config = config
@@ -144,10 +167,10 @@ class Reconciler:
         while True:
             time.sleep(self.config.ocr_reconcile_interval)
             try:
-                missed = get_unprocessed_assets(self.config)
+                missed = get_unprocessed_assets_with_owner(self.config)
                 if missed:
                     logger.info("Reconcile found %s assets", len(missed))
-                for asset_id in missed:
-                    self.process_asset_fn(asset_id)
+                for asset_id, owner_id in missed:
+                    self.process_asset_fn(asset_id, owner_id)
             except Exception as error:
                 logger.exception("Reconcile cycle failed: %s", error)

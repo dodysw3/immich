@@ -12,11 +12,25 @@ Required environment variables:
 
 - `DB_URL`
 - `IMMICH_URL`
-- `IMMICH_API_KEY`
+- `IMMICH_API_KEY` (single key fallback), or `IMMICH_API_KEYS_JSON` (recommended for multi-user)
+
+`IMMICH_API_KEYS_JSON` format:
+
+```json
+{
+  "immich-user-id-1": "api-key-for-user-1",
+  "immich-user-id-2": "api-key-for-user-2"
+}
+```
+
+When both are set, the service uses:
+
+1. Owner-specific key from `IMMICH_API_KEYS_JSON` (by `asset.ownerId`)
+2. `IMMICH_API_KEY` as fallback
 
 ## Immich API Key Permissions
 
-`IMMICH_API_KEY` should include the minimum scopes required by this service:
+Every configured key (`IMMICH_API_KEY` and each value in `IMMICH_API_KEYS_JSON`) should include the minimum scopes required by this service:
 
 - `asset.read` (fetch asset metadata)
 - `asset.download` (download original files)
@@ -29,6 +43,8 @@ Note: there is no separate `external-ocr.write` scope in the current permission 
 If you use the repository `docker-compose.override.yml`, it maps:
 
 - `IMMICH_API_KEY: "${IMMICH_OCR_API_KEY}"`
+
+For multi-user setups, also set `IMMICH_API_KEYS_JSON` in your compose env source.
 
 So `IMMICH_OCR_API_KEY` must be defined in the Compose interpolation source (for example `docker/.env` when using `--env-file`, or exported in your shell).
 

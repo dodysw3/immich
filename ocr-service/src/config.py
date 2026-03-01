@@ -10,6 +10,7 @@ class Config:
     db_url: str
     immich_url: str
     immich_api_key: str
+    immich_api_keys: dict[str, str] = field(default_factory=dict)
     external_ocr_mode: str = "bridge"
     ocr_max_resolution: int = 4032
     ocr_detection_threshold: float = 0.3
@@ -51,6 +52,7 @@ class Config:
             db_url=os.getenv("DB_URL", ""),
             immich_url=os.getenv("IMMICH_URL", ""),
             immich_api_key=os.getenv("IMMICH_API_KEY", ""),
+            immich_api_keys=_parse_api_keys(os.getenv("IMMICH_API_KEYS_JSON", "{}")),
             external_ocr_mode=os.getenv("EXTERNAL_OCR_MODE", "bridge"),
             ocr_max_resolution=int(os.getenv("OCR_MAX_RESOLUTION", "4032")),
             ocr_detection_threshold=float(os.getenv("OCR_DETECTION_THRESHOLD", "0.3")),
@@ -91,8 +93,8 @@ class Config:
             missing.append("DB_URL")
         if not self.immich_url:
             missing.append("IMMICH_URL")
-        if not self.immich_api_key:
-            missing.append("IMMICH_API_KEY")
+        if not self.immich_api_key and not self.immich_api_keys:
+            missing.append("IMMICH_API_KEY or IMMICH_API_KEYS_JSON")
         if missing:
             raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
 
@@ -181,3 +183,24 @@ def _parse_model_policy(raw: str) -> dict:
         policy[section] = mapped
 
     return policy
+
+
+def _parse_api_keys(raw: str) -> dict[str, str]:
+    if not raw.strip():
+        return {}
+
+    data = json.loads(raw)
+    if not isinstance(data, dict):
+        raise ValueError("IMMICH_API_KEYS_JSON must be a JSON object")
+
+    parsed: dict[str, str] = {}
+    for owner_id, api_key in data.items():
+        normalized_owner = str(owner_id).strip()
+        normalized_key = str(api_key or "").strip()
+        if not normalized_owner:
+            raise ValueError("IMMICH_API_KEYS_JSON contains an empty ownerId key")
+        if not normalized_key:
+            raise ValueError(f"IMMICH_API_KEYS_JSON.{normalized_owner} must be a non-empty string")
+        parsed[normalized_owner] = normalized_key
+
+    return parsed
