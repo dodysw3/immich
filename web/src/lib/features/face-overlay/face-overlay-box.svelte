@@ -19,7 +19,9 @@
 
   const handleClick = () => {
     if (!faceBox.personId) {
-      assetViewerManager.openDetailPanel();
+      if (!assetViewerManager.isShowDetailPanel) {
+        assetViewerManager.openDetailPanel();
+      }
       showFacePanel.faceId = faceBox.id;
       showFacePanel.directCreate = true;
       showFacePanel.value = true;

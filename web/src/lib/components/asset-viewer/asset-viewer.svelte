@@ -611,7 +611,7 @@
     <div
       transition:fly={{ duration: 150 }}
       id="detail-panel"
-      class="row-start-1 row-span-4 overflow-y-auto transition-all dark:border-l dark:border-s-immich-dark-gray bg-light"
+      class="relative row-start-1 row-span-4 overflow-y-auto overflow-x-hidden transition-all dark:border-l dark:border-s-immich-dark-gray bg-light"
       translate="yes"
     >
       {#if showDetailPanel}

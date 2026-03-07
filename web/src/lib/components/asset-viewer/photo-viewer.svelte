@@ -73,7 +73,7 @@
   });
 
   const overlayMetrics = $derived.by((): ContentMetrics => {
-    if (!assetViewerManager.imgRef || !visibleImageReady) {
+    if (!assetViewerManager.imgRef || !visibleImageReady || !containerWidth || !containerHeight) {
       return { contentWidth: 0, contentHeight: 0, offsetX: 0, offsetY: 0 };
     }
 
@@ -91,7 +91,7 @@
   let ocrBoxes = $derived(ocrManager.showOverlay ? getOcrBoundingBoxes(ocrManager.data, overlayMetrics) : []);
 
   let faceBoxes = $derived(
-    faceOverlayStore.showOverlay && !isFaceEditMode.value && assetViewerManager.imgRef
+    faceOverlayStore.showOverlay && !isFaceEditMode.value && assetViewerManager.imgRef && containerWidth && containerHeight
       ? getFaceOverlayBoxes(faceOverlayStore.data, assetViewerManager.zoomState, assetViewerManager.imgRef)
       : [],
   );
