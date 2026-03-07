@@ -8,6 +8,7 @@ export type FaceOverlayData = AssetFaceWithoutPersonResponseDto & {
 class FaceOverlayStore {
   #data = $state<FaceOverlayData[]>([]);
   showOverlay = $state(false);
+  activeFaceId = $state<string | undefined>(undefined);
   #hasFaceData = $derived(this.#data.length > 0);
 
   get data() {

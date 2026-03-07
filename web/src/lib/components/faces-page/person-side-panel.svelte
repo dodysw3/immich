@@ -24,6 +24,7 @@
   import ImageThumbnail from '../assets/thumbnail/image-thumbnail.svelte';
   import AssignFaceSidePanel from './assign-face-side-panel.svelte';
   import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
+  import { faceOverlayStore } from '$lib/features/face-overlay/face-overlay.store.svelte';
 
   interface Props {
     assetId: string;
@@ -48,6 +49,10 @@
   // search people
   let showSelectedFaces = $state(false);
   let assignPanelDirectCreate = $state(false);
+
+  $effect(() => {
+    faceOverlayStore.activeFaceId = showSelectedFaces && editedFace ? editedFace.id : undefined;
+  });
 
   // timers
   let loaderLoadingDoneTimeout: ReturnType<typeof setTimeout>;
