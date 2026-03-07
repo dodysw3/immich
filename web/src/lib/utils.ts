@@ -7,7 +7,6 @@ import {
   AssetMediaSize,
   AssetTypeEnum,
   MemoryType,
-  QueueName,
   finishOAuth,
   getAssetOriginalPath,
   getAssetPlaybackPath,
@@ -172,10 +171,11 @@ export const getQueueName = derived(t, ($t) => {
   };
 });
 
+
 let _sharedLink: SharedLinkResponseDto | undefined;
 
-export const setSharedLink = (sharedLink: SharedLinkResponseDto) => (_sharedLink = sharedLink);
-export const getSharedLink = (): SharedLinkResponseDto | undefined => _sharedLink;
+export const setSharedLink = (sharedLink: typeof _sharedLink) => (_sharedLink = sharedLink);
+export const getSharedLink = (): typeof _sharedLink => _sharedLink;
 
 const createUrl = (path: string, parameters?: Record<string, unknown>) => {
   const searchParameters = new URLSearchParams();
