@@ -82,6 +82,11 @@ export class AssetViewerManager extends BaseEventManager<Events> {
     this.isShowActivityPanel = false;
   }
 
+  openDetailPanel() {
+    this.closeActivityPanel();
+    this.isShowDetailPanel = true;
+  }
+
   toggleDetailPanel() {
     this.closeActivityPanel();
     this.isShowDetailPanel = !this.isShowDetailPanel;

@@ -46,6 +46,8 @@
   import ImageThumbnail from '../assets/thumbnail/image-thumbnail.svelte';
   import PersonSidePanel from '../faces-page/person-side-panel.svelte';
   import OnEvents from '../OnEvents.svelte';
+  import { showFacePanel } from '$lib/stores/face-panel.svelte';
+  import { faceOverlayStore } from '$lib/features/face-overlay/face-overlay.store.svelte';
   import UserAvatar from '../shared-components/user-avatar.svelte';
   import AlbumListItemDetails from './album-list-item-details.svelte';
 
@@ -58,6 +60,19 @@
 
   let showAssetPath = $state(false);
   let showEditFaces = $state(false);
+  let initialFaceId = $state<string | undefined>(undefined);
+  let initialDirectCreate = $state(false);
+
+  $effect(() => {
+    if (showFacePanel.value) {
+      showEditFaces = true;
+      initialFaceId = showFacePanel.faceId;
+      initialDirectCreate = showFacePanel.directCreate;
+      showFacePanel.value = false;
+      showFacePanel.faceId = undefined;
+      showFacePanel.directCreate = false;
+    }
+  });
   let isOwner = $derived($user?.id === asset.ownerId);
   let people = $derived(asset.people || []);
   let unassignedFaces = $derived(asset.unassignedFaces || []);
@@ -122,6 +137,7 @@
 
   const handleRefreshPeople = async () => {
     asset = await getAssetInfo({ id: asset.id });
+    faceOverlayStore.loadFromAsset(asset);
     showEditFaces = false;
   };
 
@@ -576,5 +592,7 @@
     assetType={asset.type}
     onClose={() => (showEditFaces = false)}
     onRefresh={handleRefreshPeople}
+    {initialFaceId}
+    {initialDirectCreate}
   />
 {/if}

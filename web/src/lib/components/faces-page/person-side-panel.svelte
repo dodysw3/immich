@@ -1,5 +1,4 @@
 <script lang="ts">
-  import OnEvents from '$lib/components/OnEvents.svelte';
   import { timeBeforeShowLoadingSpinner } from '$lib/constants';
   import { eventManager } from '$lib/managers/event-manager.svelte';
   import { assetViewingStore } from '$lib/stores/asset-viewing.store';
@@ -10,7 +9,6 @@
   import { getPersonNameWithHiddenValue } from '$lib/utils/person';
   import {
     AssetTypeEnum,
-    createPerson,
     deleteFace,
     getFaces,
     reassignFacesById,
@@ -32,18 +30,15 @@
     assetType: AssetTypeEnum;
     onClose: () => void;
     onRefresh: () => void;
+    initialFaceId?: string;
+    initialDirectCreate?: boolean;
   }
 
-  let { assetId, assetType, onClose, onRefresh }: Props = $props();
-
-  // keep track of the changes
-  let peopleToCreate: string[] = [];
-  let assetFaceGenerated: string[] = [];
+  let { assetId, assetType, onClose, onRefresh, initialFaceId, initialDirectCreate = false }: Props = $props();
 
   // faces
   let peopleWithFaces: AssetFaceResponseDto[] = $state([]);
   let selectedPersonToReassign: Record<string, PersonResponseDto> = $state({});
-  let selectedPersonToCreate: Record<string, string> = $state({});
   let editedFace: AssetFaceResponseDto | undefined = $state();
 
   // loading spinners
@@ -52,12 +47,13 @@
 
   // search people
   let showSelectedFaces = $state(false);
+  let assignPanelDirectCreate = $state(false);
 
   // timers
   let loaderLoadingDoneTimeout: ReturnType<typeof setTimeout>;
-  let automaticRefreshTimeout: ReturnType<typeof setTimeout>;
 
   const thumbnailWidth = '90px';
+  let initialFaceHandled = false;
 
   async function loadPeople() {
     const timeout = setTimeout(() => (isShowLoadingPeople = true), timeBeforeShowLoadingSpinner);
@@ -69,42 +65,29 @@
       clearTimeout(timeout);
     }
     isShowLoadingPeople = false;
-  }
 
-  const onPersonThumbnailReady = ({ id }: { id: string }) => {
-    assetFaceGenerated.push(id);
-    if (
-      isEqual(assetFaceGenerated, peopleToCreate) &&
-      loaderLoadingDoneTimeout &&
-      automaticRefreshTimeout &&
-      Object.keys(selectedPersonToCreate).length === peopleToCreate.length
-    ) {
-      clearTimeout(loaderLoadingDoneTimeout);
-      clearTimeout(automaticRefreshTimeout);
-      onRefresh();
+    if (initialFaceId && !initialFaceHandled) {
+      const targetFace = peopleWithFaces.find((f) => f.id === initialFaceId);
+      if (targetFace) {
+        initialFaceHandled = true;
+        handleFacePicker(targetFace, initialDirectCreate);
+      }
     }
-  };
+  }
 
   onMount(() => {
     handlePromiseError(loadPeople());
   });
 
-  const isEqual = (a: string[], b: string[]): boolean => {
-    return b.every((valueB) => a.includes(valueB));
-  };
-
   const handleReset = (id: string) => {
     if (selectedPersonToReassign[id]) {
       delete selectedPersonToReassign[id];
-    }
-    if (selectedPersonToCreate[id]) {
-      delete selectedPersonToCreate[id];
     }
   };
 
   const handleEditFaces = async () => {
     loaderLoadingDoneTimeout = setTimeout(() => (isShowLoadingDone = true), timeBeforeShowLoadingSpinner);
-    const numberOfChanges = Object.keys(selectedPersonToCreate).length + Object.keys(selectedPersonToReassign).length;
+    const numberOfChanges = Object.keys(selectedPersonToReassign).length;
 
     if (numberOfChanges > 0) {
       try {
@@ -114,13 +97,6 @@
           if (personId) {
             await reassignFacesById({
               id: personId,
-              faceDto: { id: personWithFace.id },
-            });
-          } else if (selectedPersonToCreate[personWithFace.id]) {
-            const data = await createPerson({ personCreateDto: {} });
-            peopleToCreate.push(data.id);
-            await reassignFacesById({
-              id: data.id,
               faceDto: { id: personWithFace.id },
             });
           }
@@ -133,19 +109,13 @@
     }
 
     isShowLoadingDone = false;
-    if (peopleToCreate.length === 0) {
-      clearTimeout(loaderLoadingDoneTimeout);
-      onRefresh();
-    } else {
-      automaticRefreshTimeout = setTimeout(onRefresh, 15_000);
-    }
+    clearTimeout(loaderLoadingDoneTimeout);
+    onRefresh();
   };
 
-  const handleCreatePerson = (newFeaturePhoto: string | null) => {
-    if (newFeaturePhoto && editedFace) {
-      selectedPersonToCreate[editedFace.id] = newFeaturePhoto;
-    }
+  const handleCreatePerson = (_person: PersonResponseDto) => {
     showSelectedFaces = false;
+    handlePromiseError(handleEditFaces());
   };
 
   const handleReassignFace = (person: PersonResponseDto | null) => {
@@ -155,8 +125,9 @@
     showSelectedFaces = false;
   };
 
-  const handleFacePicker = (face: AssetFaceResponseDto) => {
+  const handleFacePicker = (face: AssetFaceResponseDto, startInCreateMode = false) => {
     editedFace = face;
+    assignPanelDirectCreate = startInCreateMode;
     showSelectedFaces = true;
   };
 
@@ -185,8 +156,6 @@
     }
   };
 </script>
-
-<OnEvents {onPersonThumbnailReady} />
 
 <section
   transition:fly={{ x: 360, duration: 100, easing: linear }}
@@ -236,17 +205,7 @@
               onmouseleave={() => ($boundingBoxesArray = [])}
             >
               <div class="relative">
-                {#if selectedPersonToCreate[face.id]}
-                  <ImageThumbnail
-                    curve
-                    shadow
-                    url={selectedPersonToCreate[face.id]}
-                    altText={$t('new_person')}
-                    title={$t('new_person')}
-                    widthStyle={thumbnailWidth}
-                    heightStyle={thumbnailWidth}
-                  />
-                {:else if selectedPersonToReassign[face.id]}
+                {#if selectedPersonToReassign[face.id]}
                   <ImageThumbnail
                     curve
                     shadow
@@ -296,18 +255,16 @@
                 {/if}
               </div>
 
-              {#if !selectedPersonToCreate[face.id]}
-                <p class="relative mt-1 truncate font-medium" title={personName}>
-                  {#if selectedPersonToReassign[face.id]?.id}
-                    {selectedPersonToReassign[face.id]?.name}
-                  {:else}
-                    <span class={personName === $t('face_unassigned') ? 'dark:text-gray-500' : ''}>{personName}</span>
-                  {/if}
-                </p>
-              {/if}
+              <p class="relative mt-1 truncate font-medium" title={personName}>
+                {#if selectedPersonToReassign[face.id]?.id}
+                  {selectedPersonToReassign[face.id]?.name}
+                {:else}
+                  <span class={personName === $t('face_unassigned') ? 'dark:text-gray-500' : ''}>{personName}</span>
+                {/if}
+              </p>
 
               <div class="absolute -end-[3px] -top-[3px] h-5 w-5 rounded-full">
-                {#if selectedPersonToCreate[face.id] || selectedPersonToReassign[face.id]}
+                {#if selectedPersonToReassign[face.id]}
                   <IconButton
                     shape="round"
                     variant="ghost"
@@ -331,7 +288,7 @@
                 {/if}
               </div>
               <div class="absolute end-8 -top-[3px] h-5 w-5 rounded-full">
-                {#if !selectedPersonToCreate[face.id] && !selectedPersonToReassign[face.id] && !face.person}
+                {#if !selectedPersonToReassign[face.id] && !face.person}
                   <div
                     class="flex place-content-center place-items-center rounded-full bg-[#d3d3d3] p-1 transition-all absolute start-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] transform"
                   >
@@ -365,6 +322,7 @@
     {editedFace}
     {assetId}
     {assetType}
+    startInCreateMode={assignPanelDirectCreate}
     onClose={() => (showSelectedFaces = false)}
     onCreatePerson={handleCreatePerson}
     onReassign={handleReassignFace}

@@ -299,20 +299,27 @@
           : slideshowLookCssMapping[$slideshowLook]}"
         draggable="false"
       />
-      {#each getBoundingBox($boundingBoxesArray, overlayMetrics) as boundingbox, index (boundingbox.id)}
-        <div
-          class="absolute border-solid border-white border-3 rounded-lg"
-          style="top: {boundingbox.top}px; left: {boundingbox.left}px; height: {boundingbox.height}px; width: {boundingbox.width}px;"
-        ></div>
-        {#if faceToNameMap.get($boundingBoxesArray[index])}
-          <div
-            class="absolute bg-white/90 text-black px-2 py-1 rounded text-sm font-medium whitespace-nowrap pointer-events-none shadow-lg"
-            style="top: {boundingbox.top + boundingbox.height + 4}px; left: {boundingbox.left +
-              boundingbox.width}px; transform: translateX(-100%);"
-          >
-            {faceToNameMap.get($boundingBoxesArray[index])}
-          </div>
-        {/if}
+      {#each getBoundingBox($boundingBoxesArray, overlayMetrics) as boundingbox (boundingbox.id)}
+        <svg
+          class="absolute pointer-events-none overflow-visible"
+          style="top: {boundingbox.top}px; left: {boundingbox.left}px;"
+          width={boundingbox.width}
+          height={boundingbox.height}
+        >
+          <rect
+            x="1"
+            y="1"
+            width={boundingbox.width - 2}
+            height={boundingbox.height - 2}
+            rx="8"
+            ry="8"
+            fill="none"
+            stroke="white"
+            stroke-width="2.5"
+            stroke-dasharray="8 4"
+            class="marching-ants"
+          />
+        </svg>
       {/each}
 
       {#each ocrBoxes as ocrBox (ocrBox.id)}
@@ -340,5 +347,14 @@
   #spinner {
     visibility: hidden;
     animation: 0s linear 0.4s forwards delayedVisibility;
+  }
+
+  @keyframes march {
+    to {
+      stroke-dashoffset: -12;
+    }
+  }
+  .marching-ants {
+    animation: march 0.4s linear infinite;
   }
 </style>
