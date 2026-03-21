@@ -6,9 +6,12 @@ import { DateTime } from 'luxon';
 import { AssetFace, Person } from 'src/database';
 import { HistoryBuilder, Property } from 'src/decorators';
 import { AuthDto } from 'src/dtos/auth.dto';
+import { AssetEditActionItem } from 'src/dtos/editing.dto';
 import { SourceType } from 'src/enum';
 import { AssetFaceTable } from 'src/schema/tables/asset-face.table';
-import { asDateString } from 'src/utils/date';
+import { ImageDimensions, MaybeDehydrated } from 'src/types';
+import { asBirthDateString, asDateString } from 'src/utils/date';
+import { transformFaceBoundingBox } from 'src/utils/transform';
 import {
   IsDateStringFormat,
   MaxDateString,
@@ -30,7 +33,7 @@ export class PersonCreateDto {
   @MaxDateString(() => DateTime.now(), { message: 'Birth date cannot be in the future' })
   @IsDateStringFormat('yyyy-MM-dd')
   @Optional({ nullable: true, emptyToNull: true })
-  birthDate?: Date | null;
+  birthDate?: string | null;
 
   @ValidateBoolean({ optional: true, description: 'Person visibility (hidden)' })
   isHidden?: boolean;
@@ -102,8 +105,12 @@ export class PersonResponseDto {
   thumbnailPath!: string;
   @ApiProperty({ description: 'Is hidden' })
   isHidden!: boolean;
-  @Property({ description: 'Last update date', history: new HistoryBuilder().added('v1.107.0').stable('v2') })
-  updatedAt?: Date;
+  @Property({
+    description: 'Last update date',
+    format: 'date-time',
+    history: new HistoryBuilder().added('v1.107.0').stable('v2'),
+  })
+  updatedAt?: string;
   @Property({ description: 'Is favorite', history: new HistoryBuilder().added('v1.126.0').stable('v2') })
   isFavorite?: boolean;
   @Property({ description: 'Person color (hex)', history: new HistoryBuilder().added('v1.126.0').stable('v2') })
@@ -219,35 +226,50 @@ export class PeopleResponseDto {
   hasNextPage?: boolean;
 }
 
-export function mapPerson(person: Person): PersonResponseDto {
+export function mapPerson(person: MaybeDehydrated<Person>): PersonResponseDto {
   return {
     id: person.id,
     name: person.name,
-    birthDate: asDateString(person.birthDate),
+    birthDate: asBirthDateString(person.birthDate),
     thumbnailPath: person.thumbnailPath,
     isHidden: person.isHidden,
     isFavorite: person.isFavorite,
     color: person.color ?? undefined,
-    updatedAt: person.updatedAt,
+    updatedAt: asDateString(person.updatedAt),
   };
 }
 
-export function mapFacesWithoutPerson(face: Selectable<AssetFaceTable>): AssetFaceWithoutPersonResponseDto {
+export function mapFacesWithoutPerson(
+  face: MaybeDehydrated<Selectable<AssetFaceTable>>,
+  edits?: AssetEditActionItem[],
+  assetDimensions?: ImageDimensions,
+): AssetFaceWithoutPersonResponseDto {
   return {
     id: face.id,
-    boundingBoxX1: face.boundingBoxX1,
-    boundingBoxY1: face.boundingBoxY1,
-    boundingBoxX2: face.boundingBoxX2,
-    boundingBoxY2: face.boundingBoxY2,
-    imageWidth: face.imageWidth,
-    imageHeight: face.imageHeight,
+    ...transformFaceBoundingBox(
+      {
+        boundingBoxX1: face.boundingBoxX1,
+        boundingBoxY1: face.boundingBoxY1,
+        boundingBoxX2: face.boundingBoxX2,
+        boundingBoxY2: face.boundingBoxY2,
+        imageWidth: face.imageWidth,
+        imageHeight: face.imageHeight,
+      },
+      edits ?? [],
+      assetDimensions ?? { width: face.imageWidth, height: face.imageHeight },
+    ),
     sourceType: face.sourceType,
   };
 }
 
-export function mapFaces(face: AssetFace, auth: AuthDto): AssetFaceResponseDto {
+export function mapFaces(
+  face: AssetFace,
+  auth: AuthDto,
+  edits?: AssetEditActionItem[],
+  assetDimensions?: ImageDimensions,
+): AssetFaceResponseDto {
   return {
-    ...mapFacesWithoutPerson(face),
+    ...mapFacesWithoutPerson(face, edits, assetDimensions),
     person: face.person?.ownerId === auth.user.id ? mapPerson(face.person) : null,
   };
 }

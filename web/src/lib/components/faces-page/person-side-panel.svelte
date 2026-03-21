@@ -1,5 +1,6 @@
 <script lang="ts">
   import { timeBeforeShowLoadingSpinner } from '$lib/constants';
+  import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
   import { eventManager } from '$lib/managers/event-manager.svelte';
   import { assetViewingStore } from '$lib/stores/asset-viewing.store';
   import { boundingBoxesArray } from '$lib/stores/people.store';
@@ -23,7 +24,6 @@
   import { fly } from 'svelte/transition';
   import ImageThumbnail from '../assets/thumbnail/image-thumbnail.svelte';
   import AssignFaceSidePanel from './assign-face-side-panel.svelte';
-  import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
   import { faceOverlayStore } from '$lib/features/face-overlay/face-overlay.store.svelte';
 
   interface Props {
@@ -107,7 +107,7 @@
           }
         }
 
-        toastManager.success($t('people_edits_count', { values: { count: numberOfChanges } }));
+        toastManager.primary($t('people_edits_count', { values: { count: numberOfChanges } }));
       } catch (error) {
         handleError(error, $t('errors.cant_apply_changes'));
       }
