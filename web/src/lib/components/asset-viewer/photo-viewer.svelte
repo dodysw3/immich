@@ -8,7 +8,7 @@
   import AssetViewerEvents from '$lib/components/AssetViewerEvents.svelte';
   import FaceOverlayBox from '$lib/features/face-overlay/face-overlay-box.svelte';
   import { faceOverlayStore } from '$lib/features/face-overlay/face-overlay.store.svelte';
-  import { getFaceLabelCompensation, type FaceOverlayBoundingBox } from '$lib/features/face-overlay/face-overlay.utils';
+  import type { FaceOverlayBoundingBox } from '$lib/features/face-overlay/face-overlay.utils';
   import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
   import { castManager } from '$lib/managers/cast-manager.svelte';
   import { isFaceEditMode } from '$lib/stores/face-edit.svelte';
@@ -109,8 +109,6 @@
     });
   });
 
-  const hoverLabelCompensation = $derived(getFaceLabelCompensation(assetViewerManager.zoomState.currentZoom, 4));
-
   const onCopy = async () => {
     if (!canCopyImageToClipboard() || !assetViewerManager.imgRef) {
       return;
@@ -176,18 +174,36 @@
     $slideshowState !== SlideshowState.None && $slideshowLook === SlideshowLook.BlurredBackground && !!asset.thumbhash,
   );
 
-  const faceToNameMap = $derived.by(() => {
+  const facePersonData = $derived.by(() => {
     // eslint-disable-next-line svelte/prefer-svelte-reactivity
-    const map = new Map<Faces, string>();
+    const metadataById = new Map<string, { personId: string; personName: string }>();
+    const faces: Faces[] = [];
     for (const person of asset.people ?? []) {
       for (const face of person.faces ?? []) {
-        map.set(face, person.name);
+        faces.push(face);
+        metadataById.set(face.id, { personId: person.id, personName: person.name });
       }
     }
-    return map;
+    return { faces, metadataById };
   });
 
-  const faces = $derived(Array.from(faceToNameMap.keys()));
+  const faces = $derived(facePersonData.faces);
+
+  const hoverFaceBoxes = $derived.by((): FaceOverlayBoundingBox[] => {
+    if (!overlayMetrics.contentWidth || !overlayMetrics.contentHeight) {
+      return [];
+    }
+
+    return getBoundingBox($boundingBoxesArray, overlayMetrics).flatMap((box, index) => {
+      const face = $boundingBoxesArray[index];
+      const metadata = facePersonData.metadataById.get(face.id);
+      if (!metadata) {
+        return [];
+      }
+
+      return [{ ...box, ...metadata }];
+    });
+  });
 
   const handleImageMouseMove = (event: MouseEvent) => {
     $boundingBoxesArray = [];
@@ -272,21 +288,8 @@
       {/if}
     {/snippet}
     {#snippet overlays()}
-      {#each getBoundingBox($boundingBoxesArray, overlayMetrics) as boundingbox, index (boundingbox.id)}
-        <div
-          class="absolute pointer-events-none"
-          style="top: {boundingbox.top}px; left: {boundingbox.left}px; height: {boundingbox.height}px; width: {boundingbox.width}px;"
-        >
-          <div class="absolute inset-0 border-solid border-white border-3 rounded-lg"></div>
-          {#if faceToNameMap.get($boundingBoxesArray[index])}
-            <div
-              class="absolute bg-white/90 text-black px-2 py-1 rounded text-sm font-medium whitespace-nowrap pointer-events-none shadow-lg"
-              style="top: calc(100% + {hoverLabelCompensation.gap}px); right: 0; transform: scale({hoverLabelCompensation.scale}); transform-origin: top right;"
-            >
-              {faceToNameMap.get($boundingBoxesArray[index])}
-            </div>
-          {/if}
-        </div>
+      {#each hoverFaceBoxes as faceBox (faceBox.id)}
+        <FaceOverlayBox {faceBox} assetId={asset.id} variant="hover" />
       {/each}
 
       {#each ocrBoxes as ocrBox (ocrBox.id)}

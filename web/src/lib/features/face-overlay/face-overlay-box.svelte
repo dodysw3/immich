@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
+  import { goto, preloadData } from '$app/navigation';
   import { page } from '$app/stores';
   import { QueryParameter } from '$lib/constants';
   import { Route } from '$lib/route';
@@ -7,18 +7,45 @@
   import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
   import { showFacePanel } from '$lib/stores/face-panel.svelte';
   import { faceOverlayStore } from '$lib/features/face-overlay/face-overlay.store.svelte';
+  import { LoadingSpinner } from '@immich/ui';
 
   type Props = {
     faceBox: FaceOverlayBoundingBox;
     assetId: string;
+    variant?: 'default' | 'hover';
   };
 
-  let { faceBox, assetId }: Props = $props();
+  let { faceBox, assetId, variant = 'default' }: Props = $props();
   let isHovered = $state(false);
+  let isNavigating = $state(false);
+  let hasPreloadedPerson = $state(false);
   let isActive = $derived(faceOverlayStore.activeFaceId === faceBox.id);
   const labelCompensation = $derived(getFaceLabelCompensation(assetViewerManager.zoomState.currentZoom));
+  const hoverLabelCompensation = $derived(getFaceLabelCompensation(assetViewerManager.zoomState.currentZoom, 4));
 
-  const handleClick = () => {
+  const getPersonHref = () => {
+    const params = new URLSearchParams({
+      at: assetId,
+      [QueryParameter.PREVIOUS_ROUTE]: $page.url.pathname,
+    });
+    const personPath = Route.viewPerson({ id: faceBox.personId! });
+    return `${personPath}?${params.toString()}`;
+  };
+
+  const preloadPersonPage = () => {
+    if (!faceBox.personId || hasPreloadedPerson) {
+      return;
+    }
+
+    hasPreloadedPerson = true;
+    void preloadData(getPersonHref());
+  };
+
+  const handleClick = async () => {
+    if (isNavigating) {
+      return;
+    }
+
     if (!faceBox.personId) {
       if (!assetViewerManager.isShowDetailPanel) {
         assetViewerManager.openDetailPanel();
@@ -29,27 +56,56 @@
       return;
     }
 
-    const params = new URLSearchParams({
-      at: assetId,
-      [QueryParameter.PREVIOUS_ROUTE]: $page.url.pathname,
-    });
-    const personPath = Route.viewPerson({ id: faceBox.personId });
-    void goto(`${personPath}?${params.toString()}`);
+    isNavigating = true;
+
+    try {
+      await goto(getPersonHref());
+    } catch (error) {
+      isNavigating = false;
+      throw error;
+    }
   };
+
+  $effect(() => {
+    if (variant === 'hover') {
+      preloadPersonPage();
+    }
+  });
 </script>
 
 <div
   data-zoom-image-ignore
-  class="absolute group cursor-pointer pointer-events-auto"
+  class="absolute group pointer-events-auto"
   style="top: {faceBox.top}px; left: {faceBox.left}px; width: {faceBox.width}px; height: {faceBox.height}px;"
   role="button"
   tabindex="0"
   onclick={handleClick}
   onkeydown={(event) => event.key === 'Enter' && handleClick()}
-  onmouseenter={() => (isHovered = true)}
+  onmouseenter={() => {
+    isHovered = true;
+    preloadPersonPage();
+  }}
+  onfocus={preloadPersonPage}
   onmouseleave={() => (isHovered = false)}
+  class:cursor-progress={isNavigating}
+  class:cursor-pointer={!isNavigating}
 >
-  {#if isHovered || isActive}
+  {#if isNavigating}
+    <div class="absolute inset-0 rounded-lg border-2 border-white bg-black/45"></div>
+    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <LoadingSpinner />
+    </div>
+  {:else if variant === 'hover'}
+    <div class="absolute inset-0 border-solid border-white border-3 rounded-lg"></div>
+    {#if faceBox.personName}
+      <div
+        class="absolute bg-white/90 text-black px-2 py-1 rounded text-sm font-medium whitespace-nowrap pointer-events-none shadow-lg"
+        style="top: calc(100% + {hoverLabelCompensation.gap}px); right: 0; transform: scale({hoverLabelCompensation.scale}); transform-origin: top right;"
+      >
+        {faceBox.personName}
+      </div>
+    {/if}
+  {:else if isHovered || isActive}
     <svg
       class="absolute inset-0 pointer-events-none overflow-visible"
       width={faceBox.width}
