@@ -3,7 +3,7 @@
   import { page } from '$app/stores';
   import { QueryParameter } from '$lib/constants';
   import { Route } from '$lib/route';
-  import type { FaceOverlayBoundingBox } from '$lib/features/face-overlay/face-overlay.utils';
+  import { getFaceLabelCompensation, type FaceOverlayBoundingBox } from '$lib/features/face-overlay/face-overlay.utils';
   import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
   import { showFacePanel } from '$lib/stores/face-panel.svelte';
   import { faceOverlayStore } from '$lib/features/face-overlay/face-overlay.store.svelte';
@@ -16,6 +16,7 @@
   let { faceBox, assetId }: Props = $props();
   let isHovered = $state(false);
   let isActive = $derived(faceOverlayStore.activeFaceId === faceBox.id);
+  const labelCompensation = $derived(getFaceLabelCompensation(assetViewerManager.zoomState.currentZoom));
 
   const handleClick = () => {
     if (!faceBox.personId) {
@@ -38,6 +39,7 @@
 </script>
 
 <div
+  data-zoom-image-ignore
   class="absolute group cursor-pointer pointer-events-auto"
   style="top: {faceBox.top}px; left: {faceBox.left}px; width: {faceBox.width}px; height: {faceBox.height}px;"
   role="button"
@@ -72,7 +74,7 @@
     {#if faceBox.personName && !isActive}
       <div
         class="absolute left-0 right-0 text-center text-white text-xs bg-black/75 px-1 py-0.5 rounded-b break-all max-w-full pointer-events-none"
-        style="top: {faceBox.height}px;"
+        style="top: {faceBox.height}px; transform: scale({labelCompensation.scale}); transform-origin: top center;"
       >
         {faceBox.personName}
       </div>

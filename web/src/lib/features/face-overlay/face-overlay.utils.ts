@@ -22,6 +22,14 @@ export interface FaceOverlayBoundingBox {
   personName?: string;
 }
 
+export const getFaceLabelCompensation = (zoom: number, gap = 0): { scale: number; gap: number } => {
+  const safeZoom = Math.max(zoom, 1);
+  return {
+    scale: 1 / safeZoom,
+    gap: gap / safeZoom,
+  };
+};
+
 export const getFaceOverlayBoxes = (
   faceData: FaceOverlayData[],
   zoom: ZoomImageWheelState,
