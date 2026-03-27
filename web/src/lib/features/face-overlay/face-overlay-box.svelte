@@ -22,6 +22,8 @@
   let isActive = $derived(faceOverlayStore.activeFaceId === faceBox.id);
   const labelCompensation = $derived(getFaceLabelCompensation(assetViewerManager.zoomState.currentZoom));
   const hoverLabelCompensation = $derived(getFaceLabelCompensation(assetViewerManager.zoomState.currentZoom, 4));
+  const labelWidth = $derived(`calc(100% / ${labelCompensation.scale})`);
+  const hoverLabelWidth = $derived(`calc(100% / ${hoverLabelCompensation.scale})`);
 
   const getPersonHref = () => {
     const params = new URLSearchParams({
@@ -99,18 +101,19 @@
     <div class="absolute inset-0 border-solid border-white border-3 rounded-lg"></div>
     {#if faceBox.personName}
       <div
-        class="absolute bg-white/90 text-black px-2 py-1 rounded text-sm font-medium whitespace-nowrap pointer-events-none shadow-lg"
-        style="top: calc(100% + {hoverLabelCompensation.gap}px); right: 0; transform: scale({hoverLabelCompensation.scale}); transform-origin: top right;"
+        class="absolute left-0 right-0 flex justify-end pointer-events-none overflow-hidden"
+        style="top: calc(100% + {hoverLabelCompensation.gap}px);"
       >
-        {faceBox.personName}
+        <div
+          class="bg-white/90 text-black px-2 py-1 rounded text-sm font-medium whitespace-nowrap shadow-lg"
+          style="width: {hoverLabelWidth}; transform: scale({hoverLabelCompensation.scale}); transform-origin: top right;"
+        >
+          {faceBox.personName}
+        </div>
       </div>
     {/if}
   {:else if isHovered || isActive}
-    <svg
-      class="absolute inset-0 pointer-events-none overflow-visible"
-      width={faceBox.width}
-      height={faceBox.height}
-    >
+    <svg class="absolute inset-0 pointer-events-none overflow-visible" width={faceBox.width} height={faceBox.height}>
       <rect
         x="1"
         y="1"
@@ -129,10 +132,15 @@
     <div class="absolute inset-0 rounded-lg border border-green-500"></div>
     {#if faceBox.personName && !isActive}
       <div
-        class="absolute left-0 right-0 text-center text-white text-xs bg-black/75 px-1 py-0.5 rounded-b break-all max-w-full pointer-events-none"
-        style="top: {faceBox.height}px; transform: scale({labelCompensation.scale}); transform-origin: top center;"
+        class="absolute left-0 right-0 flex justify-center pointer-events-none overflow-hidden"
+        style="top: {faceBox.height}px;"
       >
-        {faceBox.personName}
+        <div
+          class="text-center text-white text-xs bg-black/75 px-1 py-0.5 rounded-b break-all"
+          style="width: {labelWidth}; transform: scale({labelCompensation.scale}); transform-origin: top center;"
+        >
+          {faceBox.personName}
+        </div>
       </div>
     {/if}
   {/if}
