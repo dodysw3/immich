@@ -11,16 +11,15 @@
   import type { FaceOverlayBoundingBox } from '$lib/features/face-overlay/face-overlay.utils';
   import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
   import { castManager } from '$lib/managers/cast-manager.svelte';
-  import { isFaceEditMode } from '$lib/stores/face-edit.svelte';
   import { ocrManager } from '$lib/stores/ocr.svelte';
   import { boundingBoxesArray, type Faces } from '$lib/stores/people.store';
   import { SlideshowLook, SlideshowState, slideshowStore } from '$lib/stores/slideshow.store';
   import { handlePromiseError } from '$lib/utils';
   import { canCopyImageToClipboard, copyImageToClipboard } from '$lib/utils/asset-utils';
-  import { getNaturalSize, scaleToFit, type ContentMetrics } from '$lib/utils/container-utils';
+  import { getNaturalSize, scaleToFit, type Size } from '$lib/utils/container-utils';
   import { handleError } from '$lib/utils/handle-error';
   import { getOcrBoundingBoxes } from '$lib/utils/ocr-utils';
-  import { getBoundingBox } from '$lib/utils/people-utils';
+  import { getBoundingBox, type BoundingBox } from '$lib/utils/people-utils';
   import { type SharedLinkResponseDto } from '@immich/sdk';
   import { toastManager } from '@immich/ui';
   import { onDestroy, untrack } from 'svelte';
@@ -28,14 +27,14 @@
   import { t } from 'svelte-i18n';
   import type { AssetCursor } from './asset-viewer.svelte';
 
-  interface Props {
+  type Props = {
     cursor: AssetCursor;
     element?: HTMLDivElement;
     sharedLink?: SharedLinkResponseDto;
     onReady?: () => void;
     onError?: () => void;
     onSwipe?: (event: SwipeCustomEvent) => void;
-  }
+  };
 
   let { cursor, element = $bindable(), sharedLink, onReady, onError, onSwipe }: Props = $props();
 
@@ -70,37 +69,35 @@
     height: containerHeight,
   });
 
-  const overlayMetrics = $derived.by((): ContentMetrics => {
-    if (!assetViewerManager.imgRef || !visibleImageReady || !containerWidth || !containerHeight) {
-      return { contentWidth: 0, contentHeight: 0, offsetX: 0, offsetY: 0 };
+  const overlaySize = $derived.by((): Size => {
+    if (!assetViewerManager.imgRef || !visibleImageReady) {
+      return { width: 0, height: 0 };
     }
 
-    const natural = getNaturalSize(assetViewerManager.imgRef);
-    const scaled = scaleToFit(natural, { width: containerWidth, height: containerHeight });
-
-    return {
-      contentWidth: scaled.width,
-      contentHeight: scaled.height,
-      offsetX: 0,
-      offsetY: 0,
-    };
+    return scaleToFit(getNaturalSize(assetViewerManager.imgRef), { width: containerWidth, height: containerHeight });
   });
 
-  const ocrBoxes = $derived(ocrManager.showOverlay ? getOcrBoundingBoxes(ocrManager.data, overlayMetrics) : []);
+  const highlightedBoxes = $derived(getBoundingBox($boundingBoxesArray, overlaySize));
+  const isHighlighting = $derived(highlightedBoxes.length > 0);
+
+  let visibleBoxes = $state<BoundingBox[]>([]);
+  let visibleBoundingBoxes = $state<Faces[]>([]);
+  $effect(() => {
+    if (isHighlighting) {
+      visibleBoxes = highlightedBoxes;
+      visibleBoundingBoxes = $boundingBoxesArray;
+    }
+  });
+
+  const ocrBoxes = $derived(ocrManager.showOverlay ? getOcrBoundingBoxes(ocrManager.data, overlaySize) : []);
 
   const faceBoxes = $derived.by((): FaceOverlayBoundingBox[] => {
-    if (
-      !faceOverlayStore.showOverlay ||
-      isFaceEditMode.value ||
-      !visibleImageReady ||
-      !overlayMetrics.contentWidth ||
-      !overlayMetrics.contentHeight
-    ) {
+    if (!faceOverlayStore.showOverlay || assetViewerManager.isFaceEditMode || !visibleImageReady || !overlaySize.width) {
       return [];
     }
 
     return faceOverlayStore.data.map((face) => {
-      const [box] = getBoundingBox([face], overlayMetrics);
+      const [box] = getBoundingBox([face], overlaySize);
       return {
         ...box!,
         personId: face.personId,
@@ -131,11 +128,12 @@
   const onToggleFaceOverlay = () => faceOverlayStore.toggleOverlay();
 
   $effect(() => {
-    if (isFaceEditMode.value && assetViewerManager.zoom > 1) {
+    if (assetViewerManager.isFaceEditMode && assetViewerManager.zoom > 1) {
       onZoom();
     }
   });
 
+  // TODO move to action + command palette
   const onCopyShortcut = (event: KeyboardEvent) => {
     if (globalThis.getSelection()?.type === 'Range') {
       return;
@@ -167,12 +165,15 @@
       await castManager.loadMedia(fullUrl.href);
     } catch (error) {
       handleError(error, 'Unable to cast');
+      return;
     }
   };
 
   const blurredSlideshow = $derived(
     $slideshowState !== SlideshowState.None && $slideshowLook === SlideshowLook.BlurredBackground && !!asset.thumbhash,
   );
+
+  let adaptiveImage = $state<HTMLDivElement | undefined>();
 
   const facePersonData = $derived.by(() => {
     // eslint-disable-next-line svelte/prefer-svelte-reactivity
@@ -190,11 +191,11 @@
   const faces = $derived(facePersonData.faces);
 
   const hoverFaceBoxes = $derived.by((): FaceOverlayBoundingBox[] => {
-    if (!overlayMetrics.contentWidth || !overlayMetrics.contentHeight) {
+    if (!overlaySize.width || !overlaySize.height) {
       return [];
     }
 
-    return getBoundingBox($boundingBoxesArray, overlayMetrics).flatMap((box, index) => {
+    return getBoundingBox($boundingBoxesArray, overlaySize).flatMap((box, index) => {
       const face = $boundingBoxesArray[index];
       const metadata = facePersonData.metadataById.get(face.id);
       if (!metadata) {
@@ -207,7 +208,7 @@
 
   const handleImageMouseMove = (event: MouseEvent) => {
     $boundingBoxesArray = [];
-    if (!assetViewerManager.imgRef || !element || isFaceEditMode.value || ocrManager.showOverlay) {
+    if (!assetViewerManager.imgRef || !element || assetViewerManager.isFaceEditMode || ocrManager.showOverlay) {
       return;
     }
 
@@ -222,7 +223,7 @@
     const mouseX = (event.clientX - containerRect.left - contentOffsetX * currentZoom - currentPositionX) / currentZoom;
     const mouseY = (event.clientY - containerRect.top - contentOffsetY * currentZoom - currentPositionY) / currentZoom;
 
-    const faceBounds = getBoundingBox(faces, overlayMetrics);
+    const faceBounds = getBoundingBox(faces, overlaySize);
 
     for (const [index, box] of faceBounds.entries()) {
       if (mouseX >= box.left && mouseX <= box.left + box.width && mouseY >= box.top && mouseY <= box.top + box.height) {
@@ -258,7 +259,8 @@
   onmousemove={handleImageMouseMove}
   onmouseleave={handleImageMouseLeave}
   use:zoomImageAction={{
-    disabled: isFaceEditMode.value || ocrManager.showOverlay,
+    zoomTarget: adaptiveImage,
+    disabled: assetViewerManager.isFaceEditMode || ocrManager.showOverlay,
     ignoreSelector: '[data-zoom-image-ignore]',
   }}
   {...useSwipe((event) => onSwipe?.(event))}
@@ -278,6 +280,7 @@
       onReady?.();
     }}
     bind:imgRef={assetViewerManager.imgRef}
+    bind:ref={adaptiveImage}
   >
     {#snippet backdrop()}
       {#if blurredSlideshow}
@@ -292,6 +295,40 @@
         <FaceOverlayBox {faceBox} assetId={asset.id} variant="hover" />
       {/each}
 
+      <div
+        class="absolute inset-0 pointer-events-none transition-opacity duration-150"
+        style:opacity={isHighlighting ? 1 : 0}
+      >
+        <svg class="absolute inset-0 w-full h-full">
+          <defs>
+            <mask id="face-dim-mask">
+              <rect width="100%" height="100%" fill="white" />
+              {#each visibleBoxes as box (box.id)}
+                <rect x={box.left} y={box.top} width={box.width} height={box.height} fill="black" rx="8" />
+              {/each}
+            </mask>
+          </defs>
+          <rect width="100%" height="100%" fill="rgba(0,0,0,0.4)" mask="url(#face-dim-mask)" />
+        </svg>
+        {#each visibleBoxes as boundingbox, index (boundingbox.id)}
+          <div
+            class="absolute border-solid border-white border-3 rounded-lg"
+            style="top: {boundingbox.top}px; left: {boundingbox.left}px; height: {boundingbox.height}px; width: {boundingbox.width}px;"
+          ></div>
+          {@const highlightedFace = visibleBoundingBoxes[index]}
+          {@const highlightedMetadata = highlightedFace ? facePersonData.metadataById.get(highlightedFace.id) : undefined}
+          {#if highlightedMetadata?.personName}
+            <div
+              class="absolute bg-white/90 text-black px-2 py-1 rounded text-sm font-medium whitespace-nowrap pointer-events-none shadow-lg"
+              style="top: {boundingbox.top + boundingbox.height + 4}px; left: {boundingbox.left +
+                boundingbox.width}px; transform: translateX(-100%);"
+            >
+              {highlightedMetadata.personName}
+            </div>
+          {/if}
+        {/each}
+      </div>
+
       {#each ocrBoxes as ocrBox (ocrBox.id)}
         <OcrBoundingBox {ocrBox} />
       {/each}
@@ -302,7 +339,7 @@
     {/snippet}
   </AdaptiveImage>
 
-  {#if isFaceEditMode.value && assetViewerManager.imgRef}
+  {#if assetViewerManager.isFaceEditMode && assetViewerManager.imgRef}
     <FaceEditor htmlElement={assetViewerManager.imgRef} {containerWidth} {containerHeight} assetId={asset.id} />
   {/if}
 </div>

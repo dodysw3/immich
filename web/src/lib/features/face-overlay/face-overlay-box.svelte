@@ -22,8 +22,8 @@
   let isActive = $derived(faceOverlayStore.activeFaceId === faceBox.id);
   const labelCompensation = $derived(getFaceLabelCompensation(assetViewerManager.zoomState.currentZoom));
   const hoverLabelCompensation = $derived(getFaceLabelCompensation(assetViewerManager.zoomState.currentZoom, 4));
-  const labelWidth = $derived(`calc(100% / ${labelCompensation.scale})`);
-  const hoverLabelWidth = $derived(`calc(100% / ${hoverLabelCompensation.scale})`);
+  const labelWidth = $derived(`${faceBox.width / labelCompensation.scale}px`);
+  const hoverLabelWidth = $derived(`${faceBox.width / hoverLabelCompensation.scale}px`);
 
   const getPersonHref = () => {
     const params = new URLSearchParams({
@@ -105,8 +105,8 @@
         style="top: calc(100% + {hoverLabelCompensation.gap}px);"
       >
         <div
-          class="bg-white/90 text-black px-2 py-1 rounded text-sm font-medium whitespace-nowrap shadow-lg"
-          style="width: {hoverLabelWidth}; transform: scale({hoverLabelCompensation.scale}); transform-origin: top right;"
+          class="flex-none bg-white/90 text-black px-2 py-1 rounded text-sm font-medium whitespace-nowrap shadow-lg"
+          style="width: {hoverLabelWidth}; min-width: {hoverLabelWidth}; transform: scale({hoverLabelCompensation.scale}); transform-origin: top right;"
         >
           {faceBox.personName}
         </div>
@@ -136,8 +136,8 @@
         style="top: {faceBox.height}px;"
       >
         <div
-          class="text-center text-white text-xs bg-black/75 px-1 py-0.5 rounded-b break-all"
-          style="width: {labelWidth}; transform: scale({labelCompensation.scale}); transform-origin: top center;"
+          class="flex-none text-center text-white text-xs bg-black/75 px-1 py-0.5 rounded-b break-all"
+          style="width: {labelWidth}; min-width: {labelWidth}; transform: scale({labelCompensation.scale}); transform-origin: top center;"
         >
           {faceBox.personName}
         </div>

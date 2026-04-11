@@ -853,6 +853,7 @@ export enum AssetVisibility {
 export enum CronJob {
   LibraryScan = 'LibraryScan',
   NightlyJobs = 'NightlyJobs',
+  VersionCheck = 'VersionCheck',
 }
 
 export enum ApiTag {

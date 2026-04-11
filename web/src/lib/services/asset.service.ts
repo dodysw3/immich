@@ -1,13 +1,12 @@
 import { ProjectionType } from '$lib/constants';
+import { assetMultiSelectManager } from '$lib/managers/asset-multi-select-manager.svelte';
 import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
 import { authManager } from '$lib/managers/auth-manager.svelte';
 import { eventManager } from '$lib/managers/event-manager.svelte';
 import AssetAddToAlbumModal from '$lib/modals/AssetAddToAlbumModal.svelte';
 import AssetTagModal from '$lib/modals/AssetTagModal.svelte';
 import SharedLinkCreateModal from '$lib/modals/SharedLinkCreateModal.svelte';
-import { isFaceEditMode } from '$lib/stores/face-edit.svelte';
 import { user as authUser, preferences } from '$lib/stores/user.store';
-import type { AssetControlContext } from '$lib/types';
 import { getAssetMediaUrl, getSharedLink, sleep } from '$lib/utils';
 import { downloadUrl } from '$lib/utils/asset-utils';
 import { handleError } from '$lib/utils/handle-error';
@@ -69,14 +68,14 @@ export const canOpenEditorForAsset = (asset: AssetResponseDto, { isOwner, isShar
   );
 };
 
-export const getAssetBulkActions = ($t: MessageFormatter, ctx: AssetControlContext) => {
-  const ownedAssets = ctx.getOwnedAssets();
+export const getAssetBulkActions = ($t: MessageFormatter) => {
+  const ownedAssets = assetMultiSelectManager.ownedAssets;
   const assetIds = ownedAssets.map((asset) => asset.id);
   const isAllVideos = ownedAssets.every((asset) => asset.isVideo);
 
   const onAction = async (name: AssetJobName) => {
     await handleRunAssetJob({ name, assetIds });
-    ctx.clearSelect();
+    assetMultiSelectManager.clear();
   };
 
   const AddToAlbum: ActionItem = {
@@ -249,9 +248,7 @@ export const getAssetActions = ($t: MessageFormatter, asset: AssetResponseDto) =
     icon: mdiFaceRecognition,
     type: $t('assets'),
     $if: () => isOwner && asset.type === AssetTypeEnum.Image && !asset.isTrashed,
-    onAction: () => {
-      isFaceEditMode.value = !isFaceEditMode.value;
-    },
+    onAction: () => assetViewerManager.toggleFaceEditMode(),
     shortcuts: { key: 'p' },
   };
 

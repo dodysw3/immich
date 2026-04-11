@@ -17,7 +17,6 @@
   import FaceOverlayButton from '$lib/features/face-overlay/face-overlay-button.svelte';
   import { faceOverlayStore } from '$lib/features/face-overlay/face-overlay.store.svelte';
   import { canOpenEditorForAsset, getAssetActions } from '$lib/services/asset.service';
-  import { isFaceEditMode } from '$lib/stores/face-edit.svelte';
   import { ocrManager } from '$lib/stores/ocr.svelte';
   import { alwaysLoadOriginalVideo } from '$lib/stores/preferences.store';
   import { SlideshowNavigation, SlideshowState, slideshowStore } from '$lib/stores/slideshow.store';
@@ -282,7 +281,6 @@
   const handleStopSlideshow = async () => {
     try {
       if (document.fullscreenElement) {
-        document.body.style.cursor = '';
         await document.exitFullscreen();
       }
     } catch (error) {
@@ -344,7 +342,7 @@
     onAction?.(action);
   };
 
-  let isFullScreen = $derived(fullscreenElement !== null);
+  let isFullScreen = $derived(!!fullscreenElement);
 
   $effect(() => {
     if (album && !album.isActivityEnabled && activityManager.commentCount === 0) {
@@ -556,7 +554,7 @@
     </div>
   {/if}
 
-  {#if $slideshowState === SlideshowState.None && showNavigation && !assetViewerManager.isShowEditor && !isFaceEditMode.value && previousAsset}
+  {#if $slideshowState === SlideshowState.None && showNavigation && !assetViewerManager.isShowEditor && !assetViewerManager.isFaceEditMode && previousAsset}
     <div class="my-auto col-span-1 col-start-1 row-span-full row-start-1 justify-self-start">
       <PreviousAssetAction onPreviousAsset={() => navigateAsset('previous')} />
     </div>
@@ -635,7 +633,7 @@
     {/if}
   </div>
 
-  {#if $slideshowState === SlideshowState.None && showNavigation && !assetViewerManager.isShowEditor && !isFaceEditMode.value && nextAsset}
+  {#if $slideshowState === SlideshowState.None && showNavigation && !assetViewerManager.isShowEditor && !assetViewerManager.isFaceEditMode && nextAsset}
     <div class="my-auto col-span-1 col-start-4 row-span-full row-start-1 justify-self-end">
       <NextAssetAction onNextAsset={() => navigateAsset('next')} />
     </div>

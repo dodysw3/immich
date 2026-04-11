@@ -199,6 +199,7 @@
       {:else}
         {#each peopleWithFaces as face, index (face.id)}
           {@const personName = face.person ? face.person?.name : $t('face_unassigned')}
+          {@const isHighlighted = $boundingBoxesArray.some((b) => b.id === face.id)}
           <div class="relative h-29 w-24">
             <div
               role="button"
@@ -209,10 +210,22 @@
               onmouseleave={() => ($boundingBoxesArray = [])}
             >
               <div class="relative">
-                {#if selectedPersonToReassign[face.id]}
+                {#if selectedPersonToCreate[face.id]}
                   <ImageThumbnail
                     curve
                     shadow
+                    highlighted={isHighlighted}
+                    url={selectedPersonToCreate[face.id]}
+                    altText={$t('new_person')}
+                    title={$t('new_person')}
+                    widthStyle={thumbnailWidth}
+                    heightStyle={thumbnailWidth}
+                  />
+                {:else if selectedPersonToReassign[face.id]}
+                  <ImageThumbnail
+                    curve
+                    shadow
+                    highlighted={isHighlighted}
                     url={getPeopleThumbnailUrl(selectedPersonToReassign[face.id])}
                     altText={selectedPersonToReassign[face.id].name}
                     title={$getPersonNameWithHiddenValue(
@@ -227,6 +240,7 @@
                   <ImageThumbnail
                     curve
                     shadow
+                    highlighted={isHighlighted}
                     url={getPeopleThumbnailUrl(face.person)}
                     altText={face.person.name}
                     title={$getPersonNameWithHiddenValue(face.person.name, face.person.isHidden)}
@@ -239,6 +253,7 @@
                     <ImageThumbnail
                       curve
                       shadow
+                      highlighted={isHighlighted}
                       url="/src/lib/assets/no-thumbnail.png"
                       altText={$t('face_unassigned')}
                       title={$t('face_unassigned')}
@@ -249,6 +264,7 @@
                     <ImageThumbnail
                       curve
                       shadow
+                      highlighted={isHighlighted}
                       url={data === null ? '/src/lib/assets/no-thumbnail.png' : data}
                       altText={$t('face_unassigned')}
                       title={$t('face_unassigned')}

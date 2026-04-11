@@ -440,8 +440,8 @@ select
         "asset_file"
       where
         "asset_file"."assetId" = "asset"."id"
-        and "asset_file"."type" = $1
-        and "asset_file"."isEdited" = $2
+        and "asset_file"."type" = 'preview'
+        and "asset_file"."isEdited" = true
     ),
     (
       select
@@ -450,14 +450,14 @@ select
         "asset_file"
       where
         "asset_file"."assetId" = "asset"."id"
-        and "asset_file"."type" = $3
-        and "asset_file"."isEdited" = $4
+        and "asset_file"."type" = 'preview'
+        and "asset_file"."isEdited" = false
     )
   ) as "previewFile"
 from
   "asset"
 where
-  "asset"."id" = $5
+  "asset"."id" = $1
 
 -- AssetJobRepository.getForSyncAssets
 select
