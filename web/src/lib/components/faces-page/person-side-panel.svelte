@@ -39,6 +39,7 @@
   // faces
   let peopleWithFaces: AssetFaceResponseDto[] = $state([]);
   let selectedPersonToReassign: Record<string, PersonResponseDto> = $state({});
+  let selectedPersonToCreate: Record<string, string> = $state({});
   let editedFace: AssetFaceResponseDto | undefined = $state();
 
   // loading spinners
