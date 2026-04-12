@@ -3,7 +3,7 @@
   import { page } from '$app/stores';
   import { QueryParameter } from '$lib/constants';
   import { Route } from '$lib/route';
-  import { getFaceLabelCompensation, type FaceOverlayBoundingBox } from '$lib/features/face-overlay/face-overlay.utils';
+  import type { FaceOverlayBoundingBox } from '$lib/features/face-overlay/face-overlay.utils';
   import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
   import { showFacePanel } from '$lib/stores/face-panel.svelte';
   import { faceOverlayStore } from '$lib/features/face-overlay/face-overlay.store.svelte';
@@ -20,10 +20,6 @@
   let isNavigating = $state(false);
   let hasPreloadedPerson = $state(false);
   let isActive = $derived(faceOverlayStore.activeFaceId === faceBox.id);
-  const labelCompensation = $derived(getFaceLabelCompensation(assetViewerManager.zoomState.currentZoom));
-  const hoverLabelCompensation = $derived(getFaceLabelCompensation(assetViewerManager.zoomState.currentZoom, 4));
-  const labelWidth = $derived(`${faceBox.width / labelCompensation.scale}px`);
-  const hoverLabelWidth = $derived(`${faceBox.width / hoverLabelCompensation.scale}px`);
 
   const getPersonHref = () => {
     const params = new URLSearchParams({
@@ -102,12 +98,9 @@
     {#if faceBox.personName}
       <div
         class="absolute left-0 right-0 flex justify-end pointer-events-none overflow-hidden"
-        style="top: calc(100% + {hoverLabelCompensation.gap}px);"
+        style="top: calc(100% + 4px);"
       >
-        <div
-          class="flex-none bg-white/90 text-black px-2 py-1 rounded text-sm font-medium whitespace-nowrap shadow-lg"
-          style="width: {hoverLabelWidth}; min-width: {hoverLabelWidth}; transform: scale({hoverLabelCompensation.scale}); transform-origin: top right;"
-        >
+        <div class="flex-none bg-white/90 text-black px-2 py-1 rounded text-sm font-medium whitespace-nowrap shadow-lg">
           {faceBox.personName}
         </div>
       </div>
@@ -135,10 +128,7 @@
         class="absolute left-0 right-0 flex justify-center pointer-events-none overflow-hidden"
         style="top: {faceBox.height}px;"
       >
-        <div
-          class="flex-none text-center text-white text-xs bg-black/75 px-1 py-0.5 rounded-b break-all"
-          style="width: {labelWidth}; min-width: {labelWidth}; transform: scale({labelCompensation.scale}); transform-origin: top center;"
-        >
+        <div class="flex-none text-center text-white text-xs bg-black/75 px-1 py-0.5 rounded-b break-all">
           {faceBox.personName}
         </div>
       </div>

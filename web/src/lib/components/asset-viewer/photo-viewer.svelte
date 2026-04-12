@@ -106,6 +106,25 @@
     });
   });
 
+  // Convert overlay-space coordinates (origin = image top-left) to outer-container coordinates
+  // accounting for zoom, so face boxes can be rendered outside the zoom target and avoid GPU
+  // upscaling blur on text labels.
+  const toContainerCoords = (box: FaceOverlayBoundingBox): FaceOverlayBoundingBox => {
+    const { currentZoom, currentPositionX, currentPositionY } = assetViewerManager.zoomState;
+    const offsetX = (containerWidth - overlaySize.width) / 2;
+    const offsetY = (containerHeight - overlaySize.height) / 2;
+    return {
+      ...box,
+      left: (box.left + offsetX) * currentZoom + currentPositionX,
+      top: (box.top + offsetY) * currentZoom + currentPositionY,
+      width: box.width * currentZoom,
+      height: box.height * currentZoom,
+    };
+  };
+
+  const faceBoxesOuter = $derived(faceBoxes.map(toContainerCoords));
+  const hoverFaceBoxesOuter = $derived(hoverFaceBoxes.map(toContainerCoords));
+
   const onCopy = async () => {
     if (!canCopyImageToClipboard() || !assetViewerManager.imgRef) {
       return;
@@ -291,10 +310,6 @@
       {/if}
     {/snippet}
     {#snippet overlays()}
-      {#each hoverFaceBoxes as faceBox (faceBox.id)}
-        <FaceOverlayBox {faceBox} assetId={asset.id} variant="hover" />
-      {/each}
-
       <div
         class="absolute inset-0 pointer-events-none transition-opacity duration-150"
         style:opacity={isHighlighting ? 1 : 0}
@@ -332,12 +347,16 @@
       {#each ocrBoxes as ocrBox (ocrBox.id)}
         <OcrBoundingBox {ocrBox} />
       {/each}
-
-      {#each faceBoxes as faceBox (faceBox.id)}
-        <FaceOverlayBox {faceBox} assetId={asset.id} />
-      {/each}
     {/snippet}
   </AdaptiveImage>
+
+  <!-- Face overlay boxes rendered outside the zoom target so text labels are not GPU-upscaled -->
+  {#each hoverFaceBoxesOuter as faceBox (faceBox.id)}
+    <FaceOverlayBox {faceBox} assetId={asset.id} variant="hover" />
+  {/each}
+  {#each faceBoxesOuter as faceBox (faceBox.id)}
+    <FaceOverlayBox {faceBox} assetId={asset.id} />
+  {/each}
 
   {#if assetViewerManager.isFaceEditMode && assetViewerManager.imgRef}
     <FaceEditor htmlElement={assetViewerManager.imgRef} {containerWidth} {containerHeight} assetId={asset.id} />
