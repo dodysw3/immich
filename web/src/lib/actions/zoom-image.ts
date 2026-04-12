@@ -153,12 +153,29 @@ export const zoomImageAction = (node: HTMLElement, options?: ZoomImageActionOpti
 
   if (options?.zoomTarget) {
     options.zoomTarget.style.willChange = 'transform';
+    // When a dedicated zoomTarget is provided the library applies transform to it.
+    // The library already sets container.style.overflow = "hidden" so that the
+    // transformed target is properly clipped — do NOT override that here.
+  } else {
+    // No external zoom target: allow any manually-driven transform on a child
+    // element to render outside the container bounds.
+    node.style.overflow = 'visible';
   }
-  node.style.overflow = 'visible';
   node.style.touchAction = 'none';
   return {
     update(newOptions?: ZoomImageActionOptions) {
+      const prevTarget = options?.zoomTarget;
       options = newOptions;
+      // If the zoom target element changed, clear the transform on the old one
+      // so we don't end up with a stale transform layered beneath the new target.
+      if (prevTarget && prevTarget !== newOptions?.zoomTarget) {
+        prevTarget.style.transform = '';
+        prevTarget.style.transformOrigin = '';
+        prevTarget.style.willChange = '';
+      }
+      if (newOptions?.zoomTarget) {
+        newOptions.zoomTarget.style.willChange = 'transform';
+      }
       if (newOptions?.zoomTarget !== undefined) {
         zoomInstance.setState({ zoomTarget: newOptions.zoomTarget });
       }
@@ -167,7 +184,12 @@ export const zoomImageAction = (node: HTMLElement, options?: ZoomImageActionOpti
       controller.abort();
       if (options?.zoomTarget) {
         options.zoomTarget.style.willChange = '';
+        options.zoomTarget.style.transform = '';
+        options.zoomTarget.style.transformOrigin = '';
+      } else {
+        node.style.overflow = '';
       }
+      node.style.touchAction = '';
       for (const unsubscribe of unsubscribes) {
         unsubscribe();
       }
