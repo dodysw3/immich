@@ -63,6 +63,19 @@ These environment variables are used by the `docker-compose.yml` file and do **N
 Information on the current workers can be found [here](/administration/jobs-workers).
 :::
 
+## PDF
+
+| Variable                   | Description                                                               | Default | Containers |
+| :------------------------- | :------------------------------------------------------------------------ | :-----: | :--------- |
+| `PDF_ENABLE`               | Enable PDF extraction, indexing, and `/documents` processing              | `true`  | server     |
+| `PDF_OCR_ENABLE`           | Enable OCR fallback for textless/low-text PDF pages                       | `true`  | server     |
+| `PDF_MAX_PAGES_PER_DOC`    | Maximum pages to index per document (`> 0`)                               |  `250`  | server     |
+| `PDF_MAX_FILE_SIZE_MB`     | Maximum PDF file size in MB to process (`> 0`), unset means no hard limit |         | server     |
+| `PDF_MIN_EMBEDDED_TEXT_LENGTH` | Minimum extracted text length required before skipping OCR fallback (`> 0`) |  `10`   | server     |
+
+PDF processing uses Poppler CLI tools (`pdftotext`, `pdfinfo`, `pdftoppm`) when available.
+If a tool is missing, processing degrades gracefully and continues with reduced capability.
+
 ## Ports
 
 | Variable      | Description    |                  Default                   | Containers               |
