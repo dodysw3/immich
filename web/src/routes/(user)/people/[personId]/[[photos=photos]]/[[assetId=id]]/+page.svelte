@@ -61,9 +61,8 @@
 
   let { data }: Props = $props();
 
-  let numberOfAssets = $derived(data.statistics.assets);
-
   let timelineManager = $state<TimelineManager>() as TimelineManager;
+  let numberOfAssets = $derived(timelineManager?.assetCount ?? data.statistics.assets);
   const options = $derived({ visibility: AssetVisibility.Timeline, personId: data.person.id });
 
   let viewMode: PersonPageViewMode = $state(PersonPageViewMode.VIEW_ASSETS);
