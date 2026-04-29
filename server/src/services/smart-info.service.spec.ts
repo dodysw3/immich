@@ -189,7 +189,7 @@ describe(SmartInfoService.name, () => {
 
     it('should skip assets without a resize path', async () => {
       const asset = AssetFactory.create();
-      mocks.assetJob.getForClipEncoding.mockResolvedValue(asset);
+      mocks.assetJob.getForClipEncoding.mockResolvedValue({ id: asset.id, visibility: asset.visibility, previewFile: null });
 
       expect(await sut.handleEncodeClip({ id: asset.id })).toEqual(JobStatus.Failed);
 
@@ -199,13 +199,14 @@ describe(SmartInfoService.name, () => {
 
     it('should save the returned objects', async () => {
       const asset = AssetFactory.from().file({ type: AssetFileType.Preview }).build();
+      const previewFile = asset.files[0].path;
       mocks.machineLearning.encodeImage.mockResolvedValue('[0.01, 0.02, 0.03]');
-      mocks.assetJob.getForClipEncoding.mockResolvedValue(asset);
+      mocks.assetJob.getForClipEncoding.mockResolvedValue({ id: asset.id, visibility: asset.visibility, previewFile });
 
       expect(await sut.handleEncodeClip({ id: asset.id })).toEqual(JobStatus.Success);
 
       expect(mocks.machineLearning.encodeImage).toHaveBeenCalledWith(
-        asset.files[0].path,
+        previewFile,
         expect.objectContaining({ modelName: 'ViT-B-32__openai' }),
       );
       expect(mocks.search.upsert).toHaveBeenCalledWith(asset.id, '[0.01, 0.02, 0.03]');
@@ -215,7 +216,8 @@ describe(SmartInfoService.name, () => {
       const asset = AssetFactory.from({ visibility: AssetVisibility.Hidden })
         .file({ type: AssetFileType.Preview })
         .build();
-      mocks.assetJob.getForClipEncoding.mockResolvedValue(asset);
+      const previewFile = asset.files[0].path;
+      mocks.assetJob.getForClipEncoding.mockResolvedValue({ id: asset.id, visibility: asset.visibility, previewFile });
 
       expect(await sut.handleEncodeClip({ id: asset.id })).toEqual(JobStatus.Skipped);
 
@@ -234,15 +236,16 @@ describe(SmartInfoService.name, () => {
 
     it('should wait for database', async () => {
       const asset = AssetFactory.from().file({ type: AssetFileType.Preview }).build();
+      const previewFile = asset.files[0].path;
       mocks.machineLearning.encodeImage.mockResolvedValue('[0.01, 0.02, 0.03]');
       mocks.database.isBusy.mockReturnValue(true);
-      mocks.assetJob.getForClipEncoding.mockResolvedValue(asset);
+      mocks.assetJob.getForClipEncoding.mockResolvedValue({ id: asset.id, visibility: asset.visibility, previewFile });
 
       expect(await sut.handleEncodeClip({ id: asset.id })).toEqual(JobStatus.Success);
 
       expect(mocks.database.wait).toHaveBeenCalledWith(512);
       expect(mocks.machineLearning.encodeImage).toHaveBeenCalledWith(
-        asset.files[0].path,
+        previewFile,
         expect.objectContaining({ modelName: 'ViT-B-32__openai' }),
       );
       expect(mocks.search.upsert).toHaveBeenCalledWith(asset.id, '[0.01, 0.02, 0.03]');

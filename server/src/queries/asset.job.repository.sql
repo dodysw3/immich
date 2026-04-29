@@ -379,12 +379,13 @@ select
         where
           "asset_file"."assetId" = "asset"."id"
           and "asset_file"."type" = $1
+          and "asset_file"."isEdited" = $2
       ) as agg
   ) as "files"
 from
   "asset"
 where
-  "asset"."id" = $2
+  "asset"."id" = $3
 
 -- AssetJobRepository.getForDetectFacesJob
 select
@@ -419,26 +420,39 @@ select
         where
           "asset_file"."assetId" = "asset"."id"
           and "asset_file"."type" = $1
+          and "asset_file"."isEdited" = $2
       ) as agg
   ) as "files"
 from
   "asset"
   inner join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."id" = $2
+  "asset"."id" = $3
 
 -- AssetJobRepository.getForOcr
 select
   "asset"."visibility",
-  (
-    select
-      "asset_file"."path"
-    from
-      "asset_file"
-    where
-      "asset_file"."assetId" = "asset"."id"
-      and "asset_file"."type" = 'preview'
-      and "asset_file"."isEdited" = false
+  coalesce(
+    (
+      select
+        "asset_file"."path"
+      from
+        "asset_file"
+      where
+        "asset_file"."assetId" = "asset"."id"
+        and "asset_file"."type" = 'preview'
+        and "asset_file"."isEdited" = true
+    ),
+    (
+      select
+        "asset_file"."path"
+      from
+        "asset_file"
+      where
+        "asset_file"."assetId" = "asset"."id"
+        and "asset_file"."type" = 'preview'
+        and "asset_file"."isEdited" = false
+    )
   ) as "previewFile"
 from
   "asset"

@@ -215,8 +215,16 @@ export class AssetJobRepository {
   getForClipEncoding(id: string) {
     return this.db
       .selectFrom('asset')
-      .select(['asset.id', 'asset.visibility'])
-      .select((eb) => withFiles(eb, AssetFileType.Preview))
+      .select((eb) => [
+        'asset.id' as const,
+        'asset.visibility' as const,
+        eb.fn
+          .coalesce(
+            withFilePath(eb, AssetFileType.Preview, true),
+            withFilePath(eb, AssetFileType.Preview, false),
+          )
+          .as('previewFile'),
+      ])
       .where('asset.id', '=', id)
       .executeTakeFirst();
   }
@@ -228,7 +236,14 @@ export class AssetJobRepository {
       .select(['asset.id', 'asset.visibility'])
       .$call(withExifInner)
       .select((eb) => withFaces(eb, true, true))
-      .select((eb) => withFiles(eb, AssetFileType.Preview))
+      .select((eb) =>
+        eb.fn
+          .coalesce(
+            withFilePath(eb, AssetFileType.Preview, true),
+            withFilePath(eb, AssetFileType.Preview, false),
+          )
+          .as('previewFile'),
+      )
       .where('asset.id', '=', id)
       .executeTakeFirst();
   }
@@ -237,7 +252,15 @@ export class AssetJobRepository {
   getForOcr(id: string) {
     return this.db
       .selectFrom('asset')
-      .select((eb) => ['asset.visibility', withFilePath(eb, AssetFileType.Preview).as('previewFile')])
+      .select((eb) => [
+        'asset.visibility',
+        eb.fn
+          .coalesce(
+            withFilePath(eb, AssetFileType.Preview, true),
+            withFilePath(eb, AssetFileType.Preview, false),
+          )
+          .as('previewFile'),
+      ])
       .where('asset.id', '=', id)
       .executeTakeFirst();
   }

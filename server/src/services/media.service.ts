@@ -1,4 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { SystemConfig } from 'src/config';
 import { FACE_THUMBNAIL_SIZE, JOBS_ASSET_PAGINATION_SIZE } from 'src/constants';
 import { ImagePathOptions, StorageCore, ThumbnailPathEntity } from 'src/cores/storage.core';
@@ -18,6 +21,7 @@ import {
   LogLevel,
   QueueName,
   RawExtractedFormat,
+  SourceType,
   StorageFolder,
   TranscodeHardwareAcceleration,
   TranscodePolicy,
@@ -40,7 +44,6 @@ import {
   VideoStreamInfo,
 } from 'src/types';
 import { getAssetFile, getDimensions } from 'src/utils/asset.util';
-import { checkFaceVisibility, checkOcrVisibility } from 'src/utils/editor';
 import { BaseConfig, ThumbnailConfig } from 'src/utils/media';
 import { mimeTypes } from 'src/utils/mime-types';
 import { clamp, isFaceImportEnabled, isFacialRecognitionEnabled } from 'src/utils/misc';
@@ -204,6 +207,17 @@ export class MediaService extends BaseService {
     const fullsizeDimensions = generated?.fullsizeDimensions ?? getDimensions(asset.exifInfo!);
     await this.assetRepository.update({ id: asset.id, ...fullsizeDimensions });
 
+    await this.ocrRepository.upsert(id, [], '');
+    await this.assetRepository.upsertJobStatus({ assetId: id, ocrAt: null as unknown as Date });
+    await this.jobRepository.queue({ name: JobName.Ocr, data: { id } });
+
+    await this.searchRepository.deleteByAssetId(id);
+    await this.jobRepository.queue({ name: JobName.SmartSearch, data: { id } });
+
+    await this.personRepository.deleteFacesByAssetId(id, SourceType.MachineLearning);
+    await this.assetRepository.upsertJobStatus({ assetId: id, facesRecognizedAt: null as unknown as Date });
+    await this.jobRepository.queue({ name: JobName.AssetDetectFaces, data: { id } });
+
     return JobStatus.Success;
   }
 
@@ -229,6 +243,9 @@ export class MediaService extends BaseService {
     } else if (asset.type === AssetType.Image) {
       this.logger.verbose(`Thumbnail generation for image ${id} ${asset.originalPath}`);
       generated = await this.generateImageThumbnails(asset, config);
+    } else if (mimeTypes.isPdf(asset.originalFileName)) {
+      this.logger.verbose(`Thumbnail generation for PDF ${id} ${asset.originalPath}`);
+      generated = await this.generatePdfThumbnails(asset, config);
     } else {
       this.logger.warn(`Skipping thumbnail generation for asset ${id}: ${asset.type} is not an image or video`);
       return JobStatus.Skipped;
@@ -403,6 +420,58 @@ export class MediaService extends BaseService {
       thumbhash: outputs[0] as Buffer,
       fullsizeDimensions,
     };
+  }
+
+  private async generatePdfThumbnails(asset: ThumbnailAsset, { image }: SystemConfig) {
+    const previewFile = this.getImageFile(asset, {
+      fileType: AssetFileType.Preview,
+      format: image.preview.format,
+      isEdited: false,
+      isProgressive: !!image.preview.progressive && image.preview.format !== ImageFormat.Webp,
+      isTransparent: false,
+    });
+    const thumbnailFile = this.getImageFile(asset, {
+      fileType: AssetFileType.Thumbnail,
+      format: image.thumbnail.format,
+      isEdited: false,
+      isProgressive: !!image.thumbnail.progressive && image.thumbnail.format !== ImageFormat.Webp,
+      isTransparent: false,
+    });
+    this.storageCore.ensureFolders(previewFile.path);
+
+    const folder = await mkdtemp(join(tmpdir(), 'immich-pdf-thumb-'));
+    const prefix = join(folder, 'page-1');
+    const pngPath = `${prefix}.png`;
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const child = this.processRepository.spawn('pdftoppm', [
+          '-f', '1', '-l', '1', '-singlefile', '-png', asset.originalPath, prefix,
+        ]);
+        child.on('error', (error) => reject(error));
+        child.on('close', (code) => (code === 0 ? resolve() : reject(new Error(`pdftoppm exited with code ${code}`))));
+      });
+
+      const { info, data } = await this.mediaRepository.decodeImage(pngPath, {
+        colorspace: Colorspace.Srgb,
+        processInvalidImages: false,
+      });
+
+      const thumbnailOptions = { colorspace: Colorspace.Srgb, processInvalidImages: false, raw: info, edits: [] as never[] };
+      const [thumbhash] = await Promise.all([
+        this.mediaRepository.generateThumbhash(data, thumbnailOptions),
+        this.mediaRepository.generateThumbnail(data, { ...image.thumbnail, ...thumbnailOptions }, thumbnailFile.path),
+        this.mediaRepository.generateThumbnail(data, { ...image.preview, ...thumbnailOptions }, previewFile.path),
+      ]);
+
+      return {
+        files: [previewFile, thumbnailFile],
+        thumbhash: thumbhash as Buffer,
+        fullsizeDimensions: { width: info.width, height: info.height },
+      };
+    } finally {
+      await this.storageRepository.unlinkDir(folder, { recursive: true, force: true });
+    }
   }
 
   @OnJob({ name: JobName.PersonGenerateThumbnail, queue: QueueName.ThumbnailGeneration })
@@ -885,29 +954,7 @@ export class MediaService extends BaseService {
       return;
     }
 
-    const generated = asset.edits.length > 0 ? await this.generateImageThumbnails(asset, config, true) : undefined;
-
-    const crop = asset.edits.find((e) => e.action === AssetEditAction.Crop);
-    const cropBox = crop
-      ? {
-          x1: crop.parameters.x,
-          y1: crop.parameters.y,
-          x2: crop.parameters.x + crop.parameters.width,
-          y2: crop.parameters.y + crop.parameters.height,
-        }
-      : undefined;
-
-    const originalDimensions = getDimensions(asset.exifInfo!);
-    const assetFaces = await this.personRepository.getFaces(asset.id, {});
-    const ocrData = await this.ocrRepository.getByAssetId(asset.id, {});
-
-    const faceStatuses = checkFaceVisibility(assetFaces, originalDimensions, cropBox);
-    await this.personRepository.updateVisibility(faceStatuses.visible, faceStatuses.hidden);
-
-    const ocrStatuses = checkOcrVisibility(ocrData, originalDimensions, cropBox);
-    await this.ocrRepository.updateOcrVisibilities(asset.id, ocrStatuses.visible, ocrStatuses.hidden);
-
-    return generated;
+    return asset.edits.length > 0 ? await this.generateImageThumbnails(asset, config, true) : undefined;
   }
 
   private warnOnTransparencyLoss(isTransparent: boolean, format: ImageFormat, assetId: string) {

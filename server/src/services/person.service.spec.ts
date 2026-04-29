@@ -832,12 +832,13 @@ describe(PersonService.name, () => {
     it('should handle no results', async () => {
       const start = Date.now();
       const asset = AssetFactory.from().file({ type: AssetFileType.Preview }).exif().build();
+      const previewFile = asset.files[0].path;
 
       mocks.machineLearning.detectFaces.mockResolvedValue({ imageHeight: 500, imageWidth: 400, faces: [] });
       mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
       await sut.handleDetectFaces({ id: asset.id });
       expect(mocks.machineLearning.detectFaces).toHaveBeenCalledWith(
-        asset.files[0].path,
+        previewFile,
         expect.objectContaining({ minScore: 0.7, modelName: 'buffalo_l' }),
       );
       expect(mocks.job.queue).not.toHaveBeenCalled();

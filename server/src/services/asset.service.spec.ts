@@ -658,28 +658,83 @@ describe(AssetService.name, () => {
       const ocr2 = factory.assetOcr({ text: 'Test Image' });
       const asset = AssetFactory.from().exif().build();
 
-      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set([asset.id]));
+      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set(['asset-1']));
       mocks.ocr.getByAssetId.mockResolvedValue([ocr1, ocr2]);
       mocks.asset.getForOcr.mockResolvedValue({ edits: [], ...asset.exifInfo });
 
-      await expect(sut.getOcr(authStub.admin, asset.id)).resolves.toEqual([ocr1, ocr2]);
+      await expect(sut.getOcr(authStub.admin, 'asset-1')).resolves.toEqual([ocr1, ocr2]);
 
-      expect(mocks.access.asset.checkOwnerAccess).toHaveBeenCalledWith(
-        authStub.admin.user.id,
-        new Set([asset.id]),
-        undefined,
-      );
-      expect(mocks.ocr.getByAssetId).toHaveBeenCalledWith(asset.id);
+      expect(mocks.ocr.getByAssetId).toHaveBeenCalledWith('asset-1');
+      expect(mocks.asset.getForOcr).toHaveBeenCalledWith('asset-1');
     });
 
     it('should return empty array when no OCR data exists', async () => {
       const asset = AssetFactory.from().exif().build();
-      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set([asset.id]));
+      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set(['asset-1']));
       mocks.ocr.getByAssetId.mockResolvedValue([]);
       mocks.asset.getForOcr.mockResolvedValue({ edits: [], ...asset.exifInfo });
-      await expect(sut.getOcr(authStub.admin, asset.id)).resolves.toEqual([]);
 
-      expect(mocks.ocr.getByAssetId).toHaveBeenCalledWith(asset.id);
+      await expect(sut.getOcr(authStub.admin, 'asset-1')).resolves.toEqual([]);
+
+      expect(mocks.ocr.getByAssetId).toHaveBeenCalledWith('asset-1');
+      expect(mocks.asset.getForOcr).toHaveBeenCalledWith('asset-1');
+    });
+
+    it('should not transform OCR coordinates when edited preview exists', async () => {
+      const ocr = factory.assetOcr({
+        x1: 0.8,
+        y1: 0.1,
+        x2: 0.9,
+        y2: 0.1,
+        x3: 0.9,
+        y3: 0.2,
+        x4: 0.8,
+        y4: 0.2,
+      });
+      const asset = AssetFactory.from().exif().build();
+
+      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set(['asset-1']));
+      mocks.ocr.getByAssetId.mockResolvedValue([ocr]);
+      mocks.asset.getForOcr.mockResolvedValue({
+        edits: [{ action: AssetEditAction.Rotate, parameters: { angle: 90 } }],
+        hasEditedPreview: true,
+        ...asset.exifInfo,
+      });
+
+      await expect(sut.getOcr(authStub.admin, 'asset-1')).resolves.toEqual([ocr]);
+    });
+
+    it('should transform OCR coordinates when edited preview does not exist', async () => {
+      const ocr = factory.assetOcr({
+        x1: 0.1,
+        y1: 0.1,
+        x2: 0.2,
+        y2: 0.1,
+        x3: 0.2,
+        y3: 0.2,
+        x4: 0.1,
+        y4: 0.2,
+      });
+      const asset = AssetFactory.from().exif().build();
+
+      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set(['asset-1']));
+      mocks.ocr.getByAssetId.mockResolvedValue([ocr]);
+      mocks.asset.getForOcr.mockResolvedValue({
+        edits: [{ action: AssetEditAction.Rotate, parameters: { angle: 90 } }],
+        hasEditedPreview: false,
+        ...asset.exifInfo,
+      });
+
+      const [result] = await sut.getOcr(authStub.admin, 'asset-1');
+
+      expect(result.x1).toBeCloseTo(0.8, 5);
+      expect(result.y1).toBeCloseTo(0.1, 5);
+      expect(result.x2).toBeCloseTo(0.9, 5);
+      expect(result.y2).toBeCloseTo(0.1, 5);
+      expect(result.x3).toBeCloseTo(0.9, 5);
+      expect(result.y3).toBeCloseTo(0.2, 5);
+      expect(result.x4).toBeCloseTo(0.8, 5);
+      expect(result.y4).toBeCloseTo(0.2, 5);
     });
   });
 

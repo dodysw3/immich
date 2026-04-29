@@ -128,10 +128,7 @@ export class PersonService extends BaseService {
   async getFacesById(auth: AuthDto, dto: FaceDto): Promise<AssetFaceResponseDto[]> {
     await this.requireAccess({ auth, permission: Permission.AssetRead, ids: [dto.id] });
     const faces = await this.personRepository.getFaces(dto.id);
-    const asset = await this.assetRepository.getForFaces(dto.id);
-    const assetDimensions = getDimensions(asset);
-
-    return faces.map((face) => mapFaces(face, auth, asset.edits, assetDimensions));
+    return faces.map((face) => mapFaces(face, auth));
   }
 
   async createNewFeaturePhoto(changeFeaturePhoto: string[]) {
@@ -307,8 +304,7 @@ export class PersonService extends BaseService {
     }
 
     const asset = await this.assetJobRepository.getForDetectFacesJob(id);
-    const previewFile = asset?.files[0];
-    if (!asset || asset.files.length !== 1 || !previewFile) {
+    if (!asset || !asset.previewFile) {
       return JobStatus.Failed;
     }
 
@@ -317,10 +313,10 @@ export class PersonService extends BaseService {
     }
 
     const { imageHeight, imageWidth, faces } = await this.machineLearningRepository.detectFaces(
-      previewFile.path,
+      asset.previewFile,
       machineLearning.facialRecognition,
     );
-    this.logger.debug(`${faces.length} faces detected in ${previewFile.path}`);
+    this.logger.debug(`${faces.length} faces detected in ${asset.previewFile}`);
 
     const facesToAdd: (Insertable<AssetFaceTable> & { id: string })[] = [];
     const embeddings: FaceSearchTable[] = [];

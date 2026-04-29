@@ -407,7 +407,7 @@ export class AssetService extends BaseService {
     const asset = await this.assetRepository.getForOcr(id);
 
     if (!asset) {
-      throw new BadRequestException('Asset not found');
+      return ocr;
     }
 
     const dimensions = getDimensions({
@@ -415,6 +415,15 @@ export class AssetService extends BaseService {
       exifImageWidth: asset.exifImageWidth,
       orientation: asset.orientation,
     });
+
+    if (dimensions.width === 0 || dimensions.height === 0) {
+      return ocr;
+    }
+
+    // OCR data generated from edited previews is already in edited coordinate space.
+    if (asset.hasEditedPreview) {
+      return ocr;
+    }
 
     return ocr.map((item) => transformOcrBoundingBox(item, asset.edits, dimensions));
   }

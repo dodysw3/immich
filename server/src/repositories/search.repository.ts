@@ -440,6 +440,11 @@ export class SearchRepository {
       .execute();
   }
 
+  @GenerateSql({ params: [DummyValue.UUID] })
+  async deleteByAssetId(assetId: string): Promise<void> {
+    await this.db.deleteFrom('smart_search').where('assetId', '=', assetId).execute();
+  }
+
   async upsert(assetId: string, embedding: string): Promise<void> {
     await this.db
       .insertInto('smart_search')
