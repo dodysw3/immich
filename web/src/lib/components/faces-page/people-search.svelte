@@ -63,6 +63,25 @@
     onReset();
   };
 
+  const API_PERSON_LIMIT = 100;
+  let lastApiResultWasComplete = false;
+
+  const canUseLocalSearch = (currentSearch: string, previousSearch: string): boolean => {
+    if (!currentSearch.startsWith(previousSearch)) {
+      return false;
+    }
+    if (searchedPeople.length === 0) {
+      return false;
+    }
+    if (!lastApiResultWasComplete) {
+      return true;
+    }
+    if (previousSearch.length < 3) {
+      return false;
+    }
+    return true;
+  };
+
   export async function searchPeople(force?: boolean, name?: string) {
     searchName = name ?? searchName;
     onSearch();
@@ -70,12 +89,7 @@
       reset();
       return;
     }
-    if (
-      !force &&
-      searchedPeople.length > 0 &&
-      searchedPeople.length < maximumLengthSearchPeople &&
-      searchName.startsWith(searchWord)
-    ) {
+    if (!force && canUseLocalSearch(searchName, searchWord)) {
       search();
       return;
     }
@@ -84,16 +98,23 @@
     timeout = setTimeout(() => (showLoadingSpinner = true), timeBeforeShowLoadingSpinner);
     try {
       const data = await searchPerson({ name: searchName }, { signal: abortController?.signal });
-      searchedPeople = data;
-      searchWord = searchName;
+      if (abortController) {
+        searchedPeople = data;
+        searchWord = searchName;
+        lastApiResultWasComplete = data.length >= API_PERSON_LIMIT;
+      }
     } catch (error) {
-      handleError(error, $t('errors.cant_search_people'));
+      if (abortController) {
+        handleError(error, $t('errors.cant_search_people'));
+      }
     } finally {
       clearTimeout(timeout);
       timeout = null;
+      if (abortController) {
+        search();
+      }
       abortController = null;
       showLoadingSpinner = false;
-      search();
     }
   }
 </script>
