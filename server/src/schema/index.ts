@@ -54,6 +54,9 @@ import { NotificationTable } from 'src/schema/tables/notification.table';
 import { OcrSearchTable } from 'src/schema/tables/ocr-search.table';
 import { PartnerAuditTable } from 'src/schema/tables/partner-audit.table';
 import { PartnerTable } from 'src/schema/tables/partner.table';
+import { PdfDocumentTable } from 'src/schema/tables/pdf-document.table';
+import { PdfPageTable } from 'src/schema/tables/pdf-page.table';
+import { PdfSearchTable } from 'src/schema/tables/pdf-search.table';
 import { PersonAuditTable } from 'src/schema/tables/person-audit.table';
 import { PersonTable } from 'src/schema/tables/person.table';
 import { PluginActionTable, PluginFilterTable, PluginTable } from 'src/schema/tables/plugin.table';
@@ -113,7 +116,9 @@ export class ImmichDatabase {
     OcrSearchTable,
     PartnerAuditTable,
     PartnerTable,
-    PersonTable,
+    PdfDocumentTable,
+    PdfPageTable,
+    PdfSearchTable,
     PersonAuditTable,
     SessionTable,
     SharedLinkAssetTable,
@@ -220,6 +225,10 @@ export interface DB {
 
   partner: PartnerTable;
   partner_audit: PartnerAuditTable;
+
+  pdf_document: PdfDocumentTable;
+  pdf_page: PdfPageTable;
+  pdf_search: PdfSearchTable;
 
   person: PersonTable;
   person_audit: PersonAuditTable;

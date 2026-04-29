@@ -3,6 +3,7 @@ node_modules
 /build
 /.svelte-kit
 /package
+/static/pdfjs/wasm
 .env
 .env.*
 !.env.example

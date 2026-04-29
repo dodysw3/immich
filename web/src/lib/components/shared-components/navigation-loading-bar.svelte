@@ -26,7 +26,7 @@
 </script>
 
 {#if showing}
-  <div class="absolute start-0 top-0 h-[3px] w-dvw bg-white">
+  <div class="pointer-events-none fixed start-0 top-0 z-80 h-[3px] w-dvw bg-white">
     <span class="absolute h-[3px] bg-immich-primary" style:width={`${$progress}%`}></span>
   </div>
 {/if}

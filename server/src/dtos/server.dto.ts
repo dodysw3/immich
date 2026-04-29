@@ -176,6 +176,8 @@ export class ServerMediaTypesResponseDto {
   image!: string[];
   @ApiProperty({ description: 'Supported sidecar MIME types' })
   sidecar!: string[];
+  @ApiProperty({ description: 'Supported PDF MIME types' })
+  pdf!: string[];
 }
 
 export class ServerThemeDto extends SystemConfigThemeDto {}

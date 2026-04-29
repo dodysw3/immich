@@ -4,7 +4,7 @@ import { cancelUploadRequests } from '$lib/utils';
 import { getSupportedMediaTypes, type ServerMediaTypesResponseDto } from '@immich/sdk';
 
 class UploadManager {
-  mediaTypes = $state<ServerMediaTypesResponseDto>({ image: [], sidecar: [], video: [] });
+  mediaTypes = $state<ServerMediaTypesResponseDto>({ image: [], pdf: [], sidecar: [], video: [] });
 
   constructor() {
     eventManager.on({
@@ -27,7 +27,7 @@ class UploadManager {
   }
 
   getExtensions() {
-    return [...this.mediaTypes.image, ...this.mediaTypes.video];
+    return [...this.mediaTypes.image, ...this.mediaTypes.video, ...(this.mediaTypes.pdf ?? [])];
   }
 }
 

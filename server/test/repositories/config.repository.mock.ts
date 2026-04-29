@@ -107,6 +107,14 @@ const envData: EnvData = {
     },
   },
 
+  pdf: {
+    enabled: true,
+    ocrEnabled: true,
+    maxPagesPerDoc: 250,
+    maxFileSizeMb: null,
+    minEmbeddedTextLength: 10,
+  },
+
   noColor: false,
 };
 

@@ -1279,6 +1279,7 @@ export type QueuesResponseLegacyDto = {
     migration: QueueResponseLegacyDto;
     notifications: QueueResponseLegacyDto;
     ocr: QueueResponseLegacyDto;
+    pdfProcessing: QueueResponseLegacyDto;
     search: QueueResponseLegacyDto;
     sidecar: QueueResponseLegacyDto;
     smartSearch: QueueResponseLegacyDto;
@@ -2138,6 +2139,8 @@ export type LicenseKeyDto = {
 export type ServerMediaTypesResponseDto = {
     /** Supported image MIME types */
     image: string[];
+    /** Supported PDF MIME types */
+    pdf: string[];
     /** Supported sidecar MIME types */
     sidecar: string[];
     /** Supported video MIME types */
@@ -2496,6 +2499,7 @@ export type SystemConfigJobDto = {
     migration: JobSettingsDto;
     notifications: JobSettingsDto;
     ocr: JobSettingsDto;
+    pdfProcessing: JobSettingsDto;
     search: JobSettingsDto;
     sidecar: JobSettingsDto;
     smartSearch: JobSettingsDto;
@@ -7150,6 +7154,7 @@ export enum QueueName {
     Notifications = "notifications",
     BackupDatabase = "backupDatabase",
     Ocr = "ocr",
+    PdfProcessing = "pdfProcessing",
     Workflow = "workflow",
     Editor = "editor"
 }

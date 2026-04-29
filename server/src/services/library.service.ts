@@ -19,7 +19,6 @@ import {
 } from 'src/dtos/library.dto';
 import {
   AssetStatus,
-  AssetType,
   ChecksumAlgorithm,
   CronJob,
   DatabaseLock,
@@ -413,7 +412,7 @@ export class LibraryService extends BaseService {
       // TODO: device asset id is deprecated, remove it
       deviceAssetId: `${basename(assetPath)}`.replaceAll(/\s+/g, ''),
       deviceId: 'Library Import',
-      type: mimeTypes.isVideo(assetPath) ? AssetType.Video : AssetType.Image,
+      type: mimeTypes.assetType(assetPath),
       originalFileName: parse(assetPath).base,
       isExternal: true,
       livePhotoVideoId: null,

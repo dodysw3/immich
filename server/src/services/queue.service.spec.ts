@@ -23,11 +23,15 @@ describe(QueueService.name, () => {
     it('should update concurrency', () => {
       sut.onConfigUpdate({ newConfig: defaults, oldConfig: {} as SystemConfig });
 
-      expect(mocks.job.setConcurrency).toHaveBeenCalledTimes(18);
-      expect(mocks.job.setConcurrency).toHaveBeenNthCalledWith(5, QueueName.FacialRecognition, 1);
-      expect(mocks.job.setConcurrency).toHaveBeenNthCalledWith(7, QueueName.DuplicateDetection, 1);
-      expect(mocks.job.setConcurrency).toHaveBeenNthCalledWith(8, QueueName.BackgroundTask, 5);
-      expect(mocks.job.setConcurrency).toHaveBeenNthCalledWith(9, QueueName.StorageTemplateMigration, 1);
+      expect(mocks.job.setConcurrency).toHaveBeenCalledTimes(Object.values(QueueName).length);
+      expect(mocks.job.setConcurrency).toHaveBeenCalledWith(QueueName.FacialRecognition, 1);
+      expect(mocks.job.setConcurrency).toHaveBeenCalledWith(QueueName.DuplicateDetection, 1);
+      expect(mocks.job.setConcurrency).toHaveBeenCalledWith(QueueName.BackgroundTask, 5);
+      expect(mocks.job.setConcurrency).toHaveBeenCalledWith(QueueName.StorageTemplateMigration, 1);
+      expect(mocks.job.setConcurrency).toHaveBeenCalledWith(
+        QueueName.PdfProcessing,
+        defaults.job[QueueName.PdfProcessing].concurrency,
+      );
     });
   });
 
@@ -61,6 +65,7 @@ describe(QueueService.name, () => {
 
       await expect(sut.getAllLegacy(factory.auth())).resolves.toEqual({
         [QueueName.BackgroundTask]: expected,
+        [QueueName.PdfProcessing]: expected,
         [QueueName.DuplicateDetection]: expected,
         [QueueName.SmartSearch]: expected,
         [QueueName.MetadataExtraction]: expected,

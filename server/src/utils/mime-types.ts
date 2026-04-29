@@ -124,7 +124,11 @@ const sidecar: Record<string, string[]> = {
   '.xmp': ['application/xml', 'text/xml'],
 };
 
-const types = { ...image, ...video, ...sidecar };
+const pdf: Record<string, string[]> = {
+  '.pdf': ['application/pdf'],
+};
+
+const types = { ...image, ...video, ...sidecar, ...pdf };
 
 const isType = (filename: string, r: Record<string, string[]>) => extname(filename).toLowerCase() in r;
 
@@ -141,9 +145,10 @@ export const mimeTypes = {
   sidecar,
   video,
   raw,
+  pdf,
   webUnsupportedImage,
 
-  isAsset: (filename: string) => isType(filename, image) || isType(filename, video),
+  isAsset: (filename: string) => isType(filename, image) || isType(filename, video) || isType(filename, pdf),
   isImage: (filename: string) => isType(filename, image),
   isWebSupportedImage: (filename: string) => isType(filename, webSupportedImage),
   isPossiblyAnimatedImage: (filename: string) => isType(filename, possiblyAnimatedImage),
@@ -152,6 +157,7 @@ export const mimeTypes = {
   isVideo: (filename: string) => isType(filename, video),
   canBeTransparent: (filename: string) => transparentCapableExtensions.has(extname(filename).toLowerCase()),
   isRaw: (filename: string) => isType(filename, raw),
+  isPdf: (filename: string) => isType(filename, pdf),
   lookup,
   /** return an extension (including a leading `.`) for a mime-type */
   toExtension,
@@ -167,5 +173,5 @@ export const mimeTypes = {
 
     return AssetType.Other;
   },
-  getSupportedFileExtensions: () => [...Object.keys(image), ...Object.keys(video)],
+  getSupportedFileExtensions: () => [...Object.keys(image), ...Object.keys(video), ...Object.keys(pdf)],
 };

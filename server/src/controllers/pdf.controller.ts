@@ -1,0 +1,110 @@
+import { Controller, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { Endpoint, HistoryBuilder } from 'src/decorators';
+import { AuthDto } from 'src/dtos/auth.dto';
+import {
+  PdfDocumentListResponseDto,
+  PdfInDocumentSearchDto,
+  PdfInDocumentSearchResultDto,
+  PdfDocumentPageParamsDto,
+  PdfDocumentParamsDto,
+  PdfDocumentQueryDto,
+  PdfDocumentResponseDto,
+  PdfSearchResponseDto,
+  PdfDocumentSearchDto,
+  PdfPageResponseDto,
+} from 'src/dtos/pdf.dto';
+import { ApiTag, Permission } from 'src/enum';
+import { Auth, Authenticated } from 'src/middleware/auth.guard';
+import { PdfService } from 'src/services/pdf.service';
+
+@ApiTags(ApiTag.Documents)
+@Controller('documents')
+export class PdfController {
+  constructor(private service: PdfService) {}
+
+  @Get()
+  @Authenticated({ permission: Permission.AssetRead })
+  @Endpoint({
+    summary: 'List PDF documents',
+    description: 'List PDF documents owned by the authenticated user.',
+    history: new HistoryBuilder().added('v2.5.6').alpha('v2.5.6'),
+  })
+  getDocuments(@Auth() auth: AuthDto, @Query() dto: PdfDocumentQueryDto): Promise<PdfDocumentListResponseDto> {
+    return this.service.getDocuments(auth, dto);
+  }
+
+  @Get('search')
+  @Authenticated({ permission: Permission.AssetRead })
+  @Endpoint({
+    summary: 'Search PDF documents',
+    description: 'Search PDF text and return matching documents with matching page numbers.',
+    history: new HistoryBuilder().added('v2.5.6').alpha('v2.5.6'),
+  })
+  searchDocuments(@Auth() auth: AuthDto, @Query() dto: PdfDocumentSearchDto): Promise<PdfSearchResponseDto> {
+    return this.service.search(auth, dto);
+  }
+
+  @Get(':id/search')
+  @Authenticated({ permission: Permission.AssetRead })
+  @Endpoint({
+    summary: 'Search inside a PDF document',
+    description: 'Search indexed page text for a specific PDF and return snippets per matching page.',
+    history: new HistoryBuilder().added('v2.5.6').alpha('v2.5.6'),
+  })
+  searchInDocument(
+    @Auth() auth: AuthDto,
+    @Param() { id }: PdfDocumentParamsDto,
+    @Query() dto: PdfInDocumentSearchDto,
+  ): Promise<PdfInDocumentSearchResultDto[]> {
+    return this.service.searchInDocument(auth, id, dto);
+  }
+
+  @Get(':id')
+  @Authenticated({ permission: Permission.AssetRead })
+  @Endpoint({
+    summary: 'Get PDF document metadata',
+    description: 'Get metadata for a single PDF document.',
+    history: new HistoryBuilder().added('v2.5.6').alpha('v2.5.6'),
+  })
+  getDocument(@Auth() auth: AuthDto, @Param() { id }: PdfDocumentParamsDto): Promise<PdfDocumentResponseDto> {
+    return this.service.getDocument(auth, id);
+  }
+
+  @Post(':id/reprocess')
+  @Authenticated({ permission: Permission.AssetUpdate })
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Endpoint({
+    summary: 'Reprocess a PDF document',
+    description: 'Queue PDF text extraction and OCR processing for a specific document again.',
+    history: new HistoryBuilder().added('v2.5.6').alpha('v2.5.6'),
+  })
+  reprocessDocument(@Auth() auth: AuthDto, @Param() { id }: PdfDocumentParamsDto): Promise<void> {
+    return this.service.reprocessDocument(auth, id);
+  }
+
+  @Get(':id/pages')
+  @Authenticated({ permission: Permission.AssetRead })
+  @Endpoint({
+    summary: 'Get PDF pages',
+    description: 'Get all indexed pages for a PDF document.',
+    history: new HistoryBuilder().added('v2.5.6').alpha('v2.5.6'),
+  })
+  getPages(@Auth() auth: AuthDto, @Param() { id }: PdfDocumentParamsDto): Promise<PdfPageResponseDto[]> {
+    return this.service.getPages(auth, id);
+  }
+
+  @Get(':id/pages/:pageNumber')
+  @Authenticated({ permission: Permission.AssetRead })
+  @Endpoint({
+    summary: 'Get PDF page',
+    description: 'Get one indexed page for a PDF document.',
+    history: new HistoryBuilder().added('v2.5.6').alpha('v2.5.6'),
+  })
+  getPage(
+    @Auth() auth: AuthDto,
+    @Param() { id, pageNumber }: PdfDocumentPageParamsDto,
+  ): Promise<PdfPageResponseDto> {
+    return this.service.getPage(auth, id, pageNumber);
+  }
+}

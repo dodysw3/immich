@@ -23,6 +23,7 @@ import { NotificationAdminService } from 'src/services/notification-admin.servic
 import { NotificationService } from 'src/services/notification.service';
 import { OcrService } from 'src/services/ocr.service';
 import { PartnerService } from 'src/services/partner.service';
+import { PdfService } from 'src/services/pdf.service';
 import { PersonService } from 'src/services/person.service';
 import { PluginService } from 'src/services/plugin.service';
 import { QueueService } from 'src/services/queue.service';
@@ -72,6 +73,7 @@ export const services = [
   NotificationService,
   NotificationAdminService,
   OcrService,
+  PdfService,
   PartnerService,
   PersonService,
   PluginService,

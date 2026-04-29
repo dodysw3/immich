@@ -46,13 +46,13 @@ export class CronRepository {
       true,
     );
 
-    this.schedulerRegistry.addCronJob(name, job);
+    this.schedulerRegistry.addCronJob(name, job as any);
   }
 
   update({ name, expression, start }: CronUpdate): void {
     const job = this.schedulerRegistry.getCronJob(name);
     if (expression) {
-      job.setTime(new CronTime(expression));
+      job.setTime(new CronTime(expression) as any);
     }
     if (start !== undefined) {
       if (start) {
