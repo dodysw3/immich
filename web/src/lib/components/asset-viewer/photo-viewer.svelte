@@ -6,6 +6,9 @@
   import FaceEditor from '$lib/components/asset-viewer/face-editor/face-editor.svelte';
   import OcrBoundingBox from '$lib/components/asset-viewer/ocr-bounding-box.svelte';
   import AssetViewerEvents from '$lib/components/AssetViewerEvents.svelte';
+  import FaceOverlayBox from '$lib/features/face-overlay/face-overlay-box.svelte';
+  import { faceOverlayStore } from '$lib/features/face-overlay/face-overlay.store.svelte';
+  import type { FaceOverlayBoundingBox } from '$lib/features/face-overlay/face-overlay.utils';
   import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
   import { castManager } from '$lib/managers/cast-manager.svelte';
   import { ocrManager } from '$lib/stores/ocr.svelte';
@@ -88,6 +91,21 @@
 
   const ocrBoxes = $derived(ocrManager.showOverlay ? getOcrBoundingBoxes(ocrManager.data, overlaySize) : []);
 
+  const faceBoxes = $derived.by((): FaceOverlayBoundingBox[] => {
+    if (!faceOverlayStore.showOverlay || assetViewerManager.isFaceEditMode || !visibleImageReady || !overlaySize.width) {
+      return [];
+    }
+
+    return faceOverlayStore.data.map((face) => {
+      const [box] = getBoundingBox([face], overlaySize);
+      return {
+        ...box!,
+        personId: face.personId,
+        personName: face.personName,
+      };
+    });
+  });
+
   const onCopy = async () => {
     if (!canCopyImageToClipboard() || !assetViewerManager.imgRef) {
       return;
@@ -107,6 +125,7 @@
   };
 
   const onPlaySlideshow = () => ($slideshowState = SlideshowState.PlaySlideshow);
+  const onToggleFaceOverlay = () => faceOverlayStore.toggleOverlay();
 
   $effect(() => {
     if (assetViewerManager.isFaceEditMode && assetViewerManager.zoom > 1) {
@@ -156,18 +175,36 @@
 
   let adaptiveImage = $state<HTMLDivElement | undefined>();
 
-  const faceToNameMap = $derived.by(() => {
+  const facePersonData = $derived.by(() => {
     // eslint-disable-next-line svelte/prefer-svelte-reactivity
-    const map = new Map<Faces, string>();
+    const metadataById = new Map<string, { personId: string; personName: string }>();
+    const faces: Faces[] = [];
     for (const person of asset.people ?? []) {
       for (const face of person.faces ?? []) {
-        map.set(face, person.name);
+        faces.push(face);
+        metadataById.set(face.id, { personId: person.id, personName: person.name });
       }
     }
-    return map;
+    return { faces, metadataById };
   });
 
-  const faces = $derived(Array.from(faceToNameMap.keys()));
+  const faces = $derived(facePersonData.faces);
+
+  const hoverFaceBoxes = $derived.by((): FaceOverlayBoundingBox[] => {
+    if (!overlaySize.width || !overlaySize.height) {
+      return [];
+    }
+
+    return getBoundingBox($boundingBoxesArray, overlaySize).flatMap((box, index) => {
+      const face = $boundingBoxesArray[index];
+      const metadata = facePersonData.metadataById.get(face.id);
+      if (!metadata) {
+        return [];
+      }
+
+      return [{ ...box, ...metadata }];
+    });
+  });
 
   const handleImageMouseMove = (event: MouseEvent) => {
     $boundingBoxesArray = [];
@@ -186,9 +223,9 @@
     const mouseX = (event.clientX - containerRect.left - contentOffsetX * currentZoom - currentPositionX) / currentZoom;
     const mouseY = (event.clientY - containerRect.top - contentOffsetY * currentZoom - currentPositionY) / currentZoom;
 
-    const faceBoxes = getBoundingBox(faces, overlaySize);
+    const faceBounds = getBoundingBox(faces, overlaySize);
 
-    for (const [index, box] of faceBoxes.entries()) {
+    for (const [index, box] of faceBounds.entries()) {
       if (mouseX >= box.left && mouseX <= box.left + box.width && mouseY >= box.top && mouseY <= box.top + box.height) {
         $boundingBoxesArray.push(faces[index]);
       }
@@ -208,6 +245,7 @@
     { shortcut: { key: 's' }, onShortcut: onPlaySlideshow, preventDefault: true },
     { shortcut: { key: 'c', ctrl: true }, onShortcut: onCopyShortcut, preventDefault: false },
     { shortcut: { key: 'c', meta: true }, onShortcut: onCopyShortcut, preventDefault: false },
+    { shortcut: { key: 'f', shift: true }, onShortcut: onToggleFaceOverlay, preventDefault: true },
   ]}
 />
 
@@ -220,7 +258,11 @@
   ondblclick={onZoom}
   onmousemove={handleImageMouseMove}
   onmouseleave={handleImageMouseLeave}
-  use:zoomImageAction={{ zoomTarget: adaptiveImage }}
+  use:zoomImageAction={{
+    zoomTarget: adaptiveImage,
+    disabled: assetViewerManager.isFaceEditMode || ocrManager.showOverlay,
+    ignoreSelector: '[data-zoom-image-ignore]',
+  }}
   {...useSwipe((event) => onSwipe?.(event))}
 >
   <AdaptiveImage
@@ -249,6 +291,10 @@
       {/if}
     {/snippet}
     {#snippet overlays()}
+      {#each hoverFaceBoxes as faceBox (faceBox.id)}
+        <FaceOverlayBox {faceBox} assetId={asset.id} variant="hover" />
+      {/each}
+
       <div
         class="absolute inset-0 pointer-events-none transition-opacity duration-150"
         style:opacity={isHighlighting ? 1 : 0}
@@ -269,13 +315,15 @@
             class="absolute border-solid border-white border-3 rounded-lg"
             style="top: {boundingbox.top}px; left: {boundingbox.left}px; height: {boundingbox.height}px; width: {boundingbox.width}px;"
           ></div>
-          {#if faceToNameMap.get(visibleBoundingBoxes[index])}
+          {@const highlightedFace = visibleBoundingBoxes[index]}
+          {@const highlightedMetadata = highlightedFace ? facePersonData.metadataById.get(highlightedFace.id) : undefined}
+          {#if highlightedMetadata?.personName}
             <div
               class="absolute bg-white/90 text-black px-2 py-1 rounded text-sm font-medium whitespace-nowrap pointer-events-none shadow-lg"
               style="top: {boundingbox.top + boundingbox.height + 4}px; left: {boundingbox.left +
                 boundingbox.width}px; transform: translateX(-100%);"
             >
-              {faceToNameMap.get(visibleBoundingBoxes[index])}
+              {highlightedMetadata.personName}
             </div>
           {/if}
         {/each}
@@ -283,6 +331,10 @@
 
       {#each ocrBoxes as ocrBox (ocrBox.id)}
         <OcrBoundingBox {ocrBox} />
+      {/each}
+
+      {#each faceBoxes as faceBox (faceBox.id)}
+        <FaceOverlayBox {faceBox} assetId={asset.id} />
       {/each}
     {/snippet}
   </AdaptiveImage>

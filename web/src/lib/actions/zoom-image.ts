@@ -1,14 +1,29 @@
 import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
 import { createZoomImageWheel } from '@zoom-image/core';
 
+type ZoomImageActionOptions = {
+  zoomTarget?: HTMLElement;
+  disabled?: boolean;
+  ignoreSelector?: string;
+};
+
 // Minimal touch shape — avoids importing DOM TouchEvent which isn't available in all TS targets.
 type TouchEventLike = {
   touches: Iterable<{ clientX: number; clientY: number }> & { length: number };
   targetTouches: ArrayLike<unknown>;
 };
+
 const asTouchEvent = (event: Event) => event as unknown as TouchEventLike;
 
-export const zoomImageAction = (node: HTMLElement, options?: { zoomTarget?: HTMLElement }) => {
+const matchesIgnoreSelector = (target: EventTarget | Element | null, options?: ZoomImageActionOptions) => {
+  if (!options?.ignoreSelector || !(target instanceof Element)) {
+    return false;
+  }
+
+  return !!target.closest(options.ignoreSelector);
+};
+
+export const zoomImageAction = (node: HTMLElement, options?: ZoomImageActionOptions) => {
   const zoomInstance = createZoomImageWheel(node, {
     maxZoom: 10,
     initialState: assetViewerManager.zoomState,
@@ -25,22 +40,27 @@ export const zoomImageAction = (node: HTMLElement, options?: { zoomTarget?: HTML
 
   node.addEventListener('pointerdown', () => assetViewerManager.cancelZoomAnimation(), { capture: true, signal });
 
-  // Intercept events in capture phase to prevent zoom-image from seeing interactions on
-  // overlay elements (e.g. OCR text boxes), preserving browser defaults like text selection.
-  const isOverlayEvent = (event: Event) => !!(event.target as HTMLElement).closest('[data-overlay-interactive]');
-  const isOverlayAtPoint = (x: number, y: number) =>
-    !!document.elementFromPoint(x, y)?.closest('[data-overlay-interactive]');
+  const isOverlayEvent = (event: Event) =>
+    !!(event.target as HTMLElement).closest('[data-overlay-interactive]') || matchesIgnoreSelector(event.target, options);
+  const isOverlayAtPoint = (x: number, y: number) => {
+    const target = document.elementFromPoint(x, y);
+    return !!target?.closest('[data-overlay-interactive]') || matchesIgnoreSelector(target, options);
+  };
 
-  // Pointer event interception: track pointers that start on overlays and intercept the entire gesture.
   const overlayPointers = new Set<number>();
   const interceptedPointers = new Set<number>();
   const interceptOverlayPointerDown = (event: PointerEvent) => {
+    if (options?.disabled) {
+      interceptedPointers.add(event.pointerId);
+      event.stopImmediatePropagation();
+      return;
+    }
+
     if (isOverlayEvent(event) || isOverlayAtPoint(event.clientX, event.clientY)) {
       overlayPointers.add(event.pointerId);
       interceptedPointers.add(event.pointerId);
       event.stopPropagation();
     } else if (overlayPointers.size > 0) {
-      // Split gesture (e.g. pinch with one finger on overlay) — intercept entirely.
       interceptedPointers.add(event.pointerId);
       event.stopPropagation();
     }
@@ -61,14 +81,19 @@ export const zoomImageAction = (node: HTMLElement, options?: { zoomTarget?: HTML
   node.addEventListener('pointerup', interceptOverlayPointerEnd, { capture: true, signal });
   node.addEventListener('pointerleave', interceptOverlayPointerEnd, { capture: true, signal });
 
-  // Touch event interception for overlay touches or split gestures (pinch across container boundary).
-  // Once intercepted, stays intercepted until all fingers are lifted.
   let touchGestureIntercepted = false;
   const interceptOverlayTouchEvent = (event: Event) => {
+    if (options?.disabled) {
+      touchGestureIntercepted = true;
+      event.stopImmediatePropagation();
+      return;
+    }
+
     if (touchGestureIntercepted) {
       event.stopPropagation();
       return;
     }
+
     const { touches, targetTouches } = asTouchEvent(event);
     if (touches && targetTouches) {
       if (touches.length > targetTouches.length) {
@@ -97,9 +122,6 @@ export const zoomImageAction = (node: HTMLElement, options?: { zoomTarget?: HTML
   node.addEventListener('touchmove', interceptOverlayTouchEvent, { capture: true, signal });
   node.addEventListener('touchend', resetTouchGesture, { capture: true, signal });
 
-  // Wheel and dblclick interception on overlay elements.
-  // Dblclick also intercepted for all touch double-taps (Safari fires synthetic dblclick
-  // on double-tap, which conflicts with zoom-image's touch zoom handler).
   let lastPointerWasTouch = false;
   node.addEventListener('pointerdown', (event) => (lastPointerWasTouch = event.pointerType === 'touch'), {
     capture: true,
@@ -108,6 +130,11 @@ export const zoomImageAction = (node: HTMLElement, options?: { zoomTarget?: HTML
   node.addEventListener(
     'wheel',
     (event) => {
+      if (options?.disabled) {
+        event.stopImmediatePropagation();
+        return;
+      }
+
       if (isOverlayEvent(event)) {
         event.stopPropagation();
       }
@@ -130,7 +157,7 @@ export const zoomImageAction = (node: HTMLElement, options?: { zoomTarget?: HTML
   node.style.overflow = 'visible';
   node.style.touchAction = 'none';
   return {
-    update(newOptions?: { zoomTarget?: HTMLElement }) {
+    update(newOptions?: ZoomImageActionOptions) {
       options = newOptions;
       if (newOptions?.zoomTarget !== undefined) {
         zoomInstance.setState({ zoomTarget: newOptions.zoomTarget });

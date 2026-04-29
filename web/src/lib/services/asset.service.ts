@@ -48,6 +48,26 @@ import {
 import type { MessageFormatter } from 'svelte-i18n';
 import { get } from 'svelte/store';
 
+type EditorAvailabilityOptions = {
+  isOwner: boolean;
+  isSharedLink: boolean;
+};
+
+export const canOpenEditorForAsset = (asset: AssetResponseDto, { isOwner, isSharedLink }: EditorAvailabilityOptions) => {
+  const originalPath = asset.originalPath.toLowerCase();
+
+  return (
+    !isSharedLink &&
+    isOwner &&
+    asset.type === AssetTypeEnum.Image &&
+    !asset.livePhotoVideoId &&
+    asset.exifInfo?.projectionType !== ProjectionType.EQUIRECTANGULAR &&
+    !originalPath.endsWith('.insp') &&
+    !originalPath.endsWith('.gif') &&
+    !originalPath.endsWith('.svg')
+  );
+};
+
 export const getAssetBulkActions = ($t: MessageFormatter) => {
   const ownedAssets = assetMultiSelectManager.ownedAssets;
   const assetIds = ownedAssets.map((asset) => asset.id);
@@ -235,15 +255,7 @@ export const getAssetActions = ($t: MessageFormatter, asset: AssetResponseDto) =
   const Edit: ActionItem = {
     title: $t('editor'),
     icon: mdiTune,
-    $if: () =>
-      !sharedLink &&
-      isOwner &&
-      asset.type === AssetTypeEnum.Image &&
-      !asset.livePhotoVideoId &&
-      asset.exifInfo?.projectionType !== ProjectionType.EQUIRECTANGULAR &&
-      !asset.originalPath.toLowerCase().endsWith('.insp') &&
-      !asset.originalPath.toLowerCase().endsWith('.gif') &&
-      !asset.originalPath.toLowerCase().endsWith('.svg'),
+    $if: () => canOpenEditorForAsset(asset, { isOwner, isSharedLink: !!sharedLink }),
     onAction: () => assetViewerManager.openEditor(),
     shortcuts: [{ key: 'e' }],
   };

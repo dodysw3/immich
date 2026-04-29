@@ -1,6 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { focusTrap } from '$lib/actions/focus-trap';
+  import { shouldIgnoreEvent } from '$lib/actions/shortcut';
   import type { Action, OnAction, PreAction } from '$lib/components/asset-viewer/actions/action';
   import NextAssetAction from '$lib/components/asset-viewer/actions/next-asset-action.svelte';
   import PreviousAssetAction from '$lib/components/asset-viewer/actions/previous-asset-action.svelte';
@@ -13,7 +14,9 @@
   import { authManager } from '$lib/managers/auth-manager.svelte';
   import { editManager, EditToolType } from '$lib/managers/edit/edit-manager.svelte';
   import { eventManager } from '$lib/managers/event-manager.svelte';
-  import { getAssetActions } from '$lib/services/asset.service';
+  import FaceOverlayButton from '$lib/features/face-overlay/face-overlay-button.svelte';
+  import { faceOverlayStore } from '$lib/features/face-overlay/face-overlay.store.svelte';
+  import { canOpenEditorForAsset, getAssetActions } from '$lib/services/asset.service';
   import { ocrManager } from '$lib/stores/ocr.svelte';
   import { alwaysLoadOriginalVideo } from '$lib/stores/preferences.store';
   import { SlideshowNavigation, SlideshowState, slideshowStore } from '$lib/stores/slideshow.store';
@@ -105,6 +108,8 @@
   const asset = $derived(previewStackedAsset ?? cursor.current);
   const nextAsset = $derived(cursor.nextAsset);
   const previousAsset = $derived(cursor.previousAsset);
+  const isOwner = $derived(!!$user && asset.ownerId === $user.id);
+  let appearsInAlbums: AlbumResponseDto[] = $state([]);
   let sharedLink = getSharedLink();
   let fullscreenElement = $state<Element>();
 
@@ -359,11 +364,15 @@
   const refresh = async () => {
     await refreshStack();
     ocrManager.clear();
+    faceOverlayStore.clear();
     if (!sharedLink) {
       if (previewStackedAsset) {
         await ocrManager.getAssetOcr(previewStackedAsset.id);
       }
       await ocrManager.getAssetOcr(asset.id);
+    }
+    if (!sharedLink || sharedLink.showMetadata) {
+      faceOverlayStore.loadFromAsset(asset);
     }
   };
 
@@ -417,6 +426,14 @@
       !activityManager.isLoading,
   );
 
+  const showFaceButton = $derived(
+    $slideshowState === SlideshowState.None &&
+      asset.type === AssetTypeEnum.Image &&
+      !(asset.exifInfo?.projectionType === ProjectionType.EQUIRECTANGULAR) &&
+      !assetViewerManager.isShowEditor &&
+      faceOverlayStore.hasFaceData,
+  );
+
   const showOcrButton = $derived(
     $slideshowState === SlideshowState.None &&
       asset.type === AssetTypeEnum.Image &&
@@ -425,6 +442,47 @@
   );
 
   const { Tag, TagPeople } = $derived(getAssetActions($t, asset));
+
+  const canInstantRotate = $derived.by(
+    () =>
+      !editManager.isApplyingEdits &&
+      viewerKind === 'PhotoViewer' &&
+      !assetViewerManager.isShowEditor &&
+      $slideshowState === SlideshowState.None &&
+      canOpenEditorForAsset(asset, { isOwner, isSharedLink: !!sharedLink }),
+  );
+
+  const rotateAndSave = (angle: 90 | -90) => {
+    if (!canInstantRotate) {
+      return;
+    }
+
+    handlePromiseError(editManager.applyInstantRotate(asset, angle));
+  };
+
+  const onInstantRotateShortcut = (event: KeyboardEvent) => {
+    if (event.defaultPrevented || shouldIgnoreEvent(event) || event.repeat) {
+      return;
+    }
+
+    // Use keyboard "code" so physical Shift+[ / Shift+] works regardless of produced character.
+    const noExtraModifiers = !event.ctrlKey && !event.altKey && !event.metaKey;
+    const isRotateLeft = noExtraModifiers && event.shiftKey && event.code === 'BracketLeft';
+    const isRotateRight = noExtraModifiers && event.shiftKey && event.code === 'BracketRight';
+
+    if (!isRotateLeft && !isRotateRight) {
+      return;
+    }
+
+    if (!canInstantRotate) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    rotateAndSave(isRotateLeft ? -90 : 90);
+  };
   const showDetailPanel = $derived(
     asset.hasMetadata &&
       $slideshowState === SlideshowState.None &&
@@ -454,7 +512,7 @@
 <CommandPaletteDefaultProvider name={$t('assets')} actions={[Tag, TagPeople]} />
 <OnEvents {onAssetUpdate} />
 
-<svelte:document bind:fullscreenElement />
+<svelte:document bind:fullscreenElement onkeydown={onInstantRotateShortcut} />
 
 <section
   id="immich-asset-viewer"
@@ -562,8 +620,14 @@
       </div>
     {/if}
 
+    {#if showFaceButton}
+      <div class="absolute bottom-0 end-0 mb-6 me-6">
+        <FaceOverlayButton />
+      </div>
+    {/if}
+
     {#if showOcrButton}
-      <div class="absolute bottom-0 end-0 mb-6 me-6 drop-shadow-[0_0_1px_rgba(0,0,0,0.4)]">
+      <div class="absolute bottom-0 end-0 me-6" class:mb-20={showFaceButton} class:mb-6={!showFaceButton}>
         <OcrButton />
       </div>
     {/if}
@@ -580,7 +644,7 @@
       transition:fly={{ duration: 150 }}
       id="detail-panel"
       class={[
-        'row-start-1 row-span-4 overflow-y-auto transition-all dark:border-l dark:border-s-immich-dark-gray bg-light',
+        'relative row-start-1 row-span-4 overflow-y-auto overflow-x-hidden transition-all dark:border-l dark:border-s-immich-dark-gray bg-light',
         showDetailPanel ? 'w-90' : 'w-100',
       ]}
       translate="yes"
