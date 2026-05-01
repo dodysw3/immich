@@ -39,7 +39,7 @@
   import { getPeopleThumbnailUrl } from '$lib/utils';
   import { handleError } from '$lib/utils/handle-error';
   import { isExternalUrl } from '$lib/utils/navigation';
-  import { AssetVisibility, searchPerson, updatePerson, type PersonResponseDto } from '@immich/sdk';
+  import { searchPerson, updatePerson, type PersonResponseDto } from '@immich/sdk';
   import {
     ActionButton,
     CommandPaletteDefaultProvider,
@@ -63,7 +63,7 @@
 
   let timelineManager = $state<TimelineManager>() as TimelineManager;
   let numberOfAssets = $derived(timelineManager?.assetCount ?? data.statistics.assets);
-  const options = $derived({ visibility: AssetVisibility.Timeline, personId: data.person.id });
+  const options = $derived({ personId: data.person.id });
 
   let viewMode: PersonPageViewMode = $state(PersonPageViewMode.VIEW_ASSETS);
   let isEditingName = $state(false);

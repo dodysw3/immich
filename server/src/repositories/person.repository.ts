@@ -9,7 +9,7 @@ import { DB } from 'src/schema';
 import { AssetFaceTable } from 'src/schema/tables/asset-face.table';
 import { FaceSearchTable } from 'src/schema/tables/face-search.table';
 import { PersonTable } from 'src/schema/tables/person.table';
-import { removeUndefinedKeys, withFilePath } from 'src/utils/database';
+import { PEOPLE_ASSET_VISIBILITIES, removeUndefinedKeys, withFilePath } from 'src/utils/database';
 import { paginationHelper, PaginationOptions } from 'src/utils/pagination';
 
 export interface PersonSearchOptions {
@@ -166,7 +166,7 @@ export class PersonRepository {
       .innerJoin('asset', (join) =>
         join
           .onRef('asset_face.assetId', '=', 'asset.id')
-          .on('asset.visibility', '=', sql.lit(AssetVisibility.Timeline))
+          .on('asset.visibility', 'in', PEOPLE_ASSET_VISIBILITIES)
           .on('asset.deletedAt', 'is', null),
       )
       .where('person.ownerId', '=', userId)
@@ -350,7 +350,7 @@ export class PersonRepository {
       .leftJoin('asset', (join) =>
         join
           .onRef('asset.id', '=', 'asset_face.assetId')
-          .on('asset.visibility', '=', sql.lit(AssetVisibility.Timeline))
+          .on('asset.visibility', 'in', PEOPLE_ASSET_VISIBILITIES)
           .on('asset.deletedAt', 'is', null),
       )
       .select((eb) => eb.fn.count(eb.fn('distinct', ['asset.id'])).as('count'))
@@ -381,7 +381,7 @@ export class PersonRepository {
                 eb
                   .selectFrom('asset')
                   .whereRef('asset.id', '=', 'asset_face.assetId')
-                  .where('asset.visibility', '=', sql.lit(AssetVisibility.Timeline))
+                  .where('asset.visibility', 'in', PEOPLE_ASSET_VISIBILITIES)
                   .where('asset.deletedAt', 'is', null),
               ),
             ),
