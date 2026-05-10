@@ -32,6 +32,11 @@ export type ModelPayload = { imagePath: string } | { text: string };
 type ModelOptions = { modelName: string };
 
 export type FaceDetectionOptions = ModelOptions & { minScore: number };
+export type FaceDetectionTiledOptions = FaceDetectionOptions & {
+  tileSize: number;
+  tileOverlap: number;
+  maxTiles: number;
+};
 export type OcrOptions = ModelOptions & {
   minDetectionScore: number;
   minRecognitionScore: number;
@@ -195,6 +200,27 @@ export class MachineLearningRepository {
     const request = {
       [ModelTask.FACIAL_RECOGNITION]: {
         [ModelType.DETECTION]: { modelName, options: { minScore } },
+        [ModelType.RECOGNITION]: { modelName },
+      },
+    };
+    const response = await this.predict<FacialRecognitionResponse>({ imagePath }, request);
+    return {
+      imageHeight: response.imageHeight,
+      imageWidth: response.imageWidth,
+      faces: response[ModelTask.FACIAL_RECOGNITION],
+    };
+  }
+
+  async detectFacesTiled(
+    imagePath: string,
+    { modelName, minScore, tileSize, tileOverlap, maxTiles }: FaceDetectionTiledOptions,
+  ) {
+    const request = {
+      [ModelTask.FACIAL_RECOGNITION]: {
+        [ModelType.DETECTION]: {
+          modelName,
+          options: { minScore, tiled: true, tileSize, tileOverlap, maxTiles },
+        },
         [ModelType.RECOGNITION]: { modelName },
       },
     };

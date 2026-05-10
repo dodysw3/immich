@@ -1,6 +1,7 @@
 import { Selectable, ShallowDehydrateObject } from 'kysely';
 import { MapAsset } from 'src/dtos/asset-response.dto';
 import { AssetEditActionItem } from 'src/dtos/editing.dto';
+import { AssetFileType } from 'src/enum';
 import { ActivityTable } from 'src/schema/tables/activity.table';
 import { AssetTable } from 'src/schema/tables/asset.table';
 import { PartnerTable } from 'src/schema/tables/partner.table';
@@ -165,13 +166,20 @@ export const getForAssetFace = (face: ReturnType<AssetFaceFactory['build']>) => 
   person: face.person ? getDehydrated(face.person) : null,
 });
 
-export const getForDetectedFaces = (asset: ReturnType<AssetFactory['build']>) => ({
-  id: asset.id,
-  visibility: asset.visibility,
-  exifInfo: getDehydrated(asset.exifInfo),
-  faces: asset.faces.map((face) => getDehydrated(face)),
-  files: asset.files.map((file) => getDehydrated(file)),
-});
+export const getForDetectedFaces = (asset: ReturnType<AssetFactory['build']>) => {
+  const previewFile = asset.files.find((f) => f.type === AssetFileType.Preview);
+  const fullsizeFile = asset.files.find((f) => f.type === AssetFileType.FullSize);
+  return {
+    id: asset.id,
+    visibility: asset.visibility,
+    type: asset.type,
+    originalPath: asset.originalPath,
+    exifInfo: getDehydrated(asset.exifInfo),
+    faces: asset.faces.map((face) => getDehydrated(face)),
+    previewFile: previewFile?.path ?? null,
+    fullsizeFile: fullsizeFile?.path ?? null,
+  };
+};
 
 export const getForSidecarWrite = (asset: ReturnType<AssetFactory['build']>) => ({
   id: asset.id,

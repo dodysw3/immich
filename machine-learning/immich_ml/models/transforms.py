@@ -8,6 +8,13 @@ import orjson
 from numpy.typing import NDArray
 from PIL import Image
 
+try:
+    from pillow_heif import register_heif_opener
+
+    register_heif_opener()
+except ImportError:
+    pass
+
 _PIL_RESAMPLING_METHODS = {resampling.name.lower(): resampling for resampling in Image.Resampling}
 _PUNCTUATION_TRANS = str.maketrans("", "", string.punctuation)
 
