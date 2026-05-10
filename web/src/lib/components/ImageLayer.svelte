@@ -28,7 +28,13 @@
 </script>
 
 {#key adaptiveImageLoader}
-  <div class="absolute top-0 origin-top-left" style:width style:height style:transform>
+  <div
+    class="absolute top-0 origin-top-left"
+    style:width
+    style:height
+    style:transform
+    style:will-change={transform ? 'transform' : undefined}
+  >
     <Image
       {src}
       onStart={() => adaptiveImageLoader.onStart(quality)}
