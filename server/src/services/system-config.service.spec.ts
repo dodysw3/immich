@@ -105,6 +105,16 @@ const updatedConfig = Object.freeze<SystemConfig>({
       minScore: 0.7,
       maxDistance: 0.5,
       minFaces: 3,
+      tiling: {
+        enabled: false,
+        tileSize: 640,
+        tileOverlap: 0.25,
+        maxTiles: 64,
+        triggers: {
+          minPass1Faces: 8,
+          minDimWithFaces: { dim: 3000, faces: 3 },
+        },
+      },
     },
     ocr: {
       enabled: true,

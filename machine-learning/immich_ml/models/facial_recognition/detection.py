@@ -1,5 +1,6 @@
 from typing import Any
 
+import cv2
 import numpy as np
 from insightface.model_zoo import RetinaFace
 from numpy.typing import NDArray
@@ -15,6 +16,10 @@ class FaceDetector(InferenceModel):
 
     def __init__(self, model_name: str, min_score: float = 0.7, **model_kwargs: Any) -> None:
         self.min_score = model_kwargs.pop("minScore", min_score)
+        self._tiled = False
+        self._tile_size = 640
+        self._tile_overlap = 0.25
+        self._max_tiles = 64
         super().__init__(model_name, **model_kwargs)
 
     def _load(self) -> ModelSession:
@@ -27,7 +32,10 @@ class FaceDetector(InferenceModel):
     def _predict(self, inputs: NDArray[np.uint8] | bytes) -> FaceDetectionOutput:
         inputs = decode_cv2(inputs)
 
-        bboxes, landmarks = self._detect(inputs)
+        if self._tiled:
+            bboxes, landmarks = self._detect_tiled(inputs)
+        else:
+            bboxes, landmarks = self._detect(inputs)
         return {
             "boxes": bboxes[:, :4].round(),
             "scores": bboxes[:, 4],
@@ -37,5 +45,108 @@ class FaceDetector(InferenceModel):
     def _detect(self, inputs: NDArray[np.uint8] | bytes) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
         return self.model.detect(inputs)  # type: ignore
 
+    def _detect_tiled(self, image: NDArray[np.uint8]) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
+        h, w = image.shape[:2]
+        tile_size = self._tile_size
+        overlap = self._tile_overlap
+        max_tiles = self._max_tiles
+        stride = int(tile_size * (1 - overlap))
+
+        ys, xs = self._tile_positions(h, w, tile_size, stride)
+        total_tiles = len(ys) * len(xs)
+
+        if total_tiles > max_tiles:
+            scale = (max_tiles / total_tiles) ** 0.5
+            new_w = max(tile_size, int(w * scale))
+            new_h = max(tile_size, int(h * scale))
+            image = cv2.resize(image, (new_w, new_h))
+            h, w = new_h, new_w
+            ys, xs = self._tile_positions(h, w, tile_size, stride)
+
+        all_bboxes: list[NDArray[np.float32]] = []
+        all_landmarks: list[NDArray[np.float32]] = []
+
+        for y0 in ys:
+            for x0 in xs:
+                x1 = min(x0 + tile_size, w)
+                y1 = min(y0 + tile_size, h)
+                tile = image[y0:y1, x0:x1]
+
+                bboxes, landmarks = self._detect(tile)
+
+                if bboxes.shape[0] > 0:
+                    bboxes[:, 0] += x0
+                    bboxes[:, 1] += y0
+                    bboxes[:, 2] += x0
+                    bboxes[:, 3] += y0
+                    for i in range(landmarks.shape[1]):
+                        landmarks[:, i, 0] += x0
+                        landmarks[:, i, 1] += y0
+                    all_bboxes.append(bboxes)
+                    all_landmarks.append(landmarks)
+
+        if not all_bboxes:
+            return (
+                np.zeros((0, 5), dtype=np.float32),
+                np.zeros((0, 5, 2), dtype=np.float32),
+            )
+
+        merged_bboxes = np.concatenate(all_bboxes, axis=0)
+        merged_landmarks = np.concatenate(all_landmarks, axis=0)
+
+        keep = self._nms(merged_bboxes, iou_threshold=0.4)
+        return merged_bboxes[keep], merged_landmarks[keep]
+
+    def _tile_positions(self, h: int, w: int, tile_size: int, stride: int) -> tuple[list[int], list[int]]:
+        def positions(length: int) -> list[int]:
+            if length <= tile_size:
+                return [0]
+            pos = list(range(0, length - tile_size + 1, stride))
+            if pos[-1] + tile_size < length:
+                pos.append(length - tile_size)
+            return pos
+
+        return positions(h), positions(w)
+
+    def _nms(self, bboxes: NDArray[np.float32], iou_threshold: float = 0.4) -> list[int]:
+        if bboxes.shape[0] == 0:
+            return []
+
+        scores = bboxes[:, 4]
+        order = scores.argsort()[::-1]
+
+        keep: list[int] = []
+        suppressed: set[int] = set()
+
+        for i in order:
+            if i in suppressed:
+                continue
+            keep.append(int(i))
+            for j in order:
+                if j in suppressed or j == i:
+                    continue
+                if self._iou(bboxes[i], bboxes[j]) > iou_threshold:
+                    suppressed.add(int(j))
+
+        return keep
+
+    @staticmethod
+    def _iou(box1: NDArray[np.float32], box2: NDArray[np.float32]) -> float:
+        x1 = max(box1[0], box2[0])
+        y1 = max(box1[1], box2[1])
+        x2 = min(box1[2], box2[2])
+        y2 = min(box1[3], box2[3])
+
+        intersection = max(0, x2 - x1) * max(0, y2 - y1)
+        area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
+        area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
+        union = area1 + area2 - intersection
+
+        return float(intersection / union) if union > 0 else 0.0
+
     def configure(self, **kwargs: Any) -> None:
         self.model.det_thresh = kwargs.pop("minScore", self.model.det_thresh)
+        self._tiled = kwargs.pop("tiled", self._tiled)
+        self._tile_size = int(kwargs.pop("tileSize", self._tile_size))
+        self._tile_overlap = float(kwargs.pop("tileOverlap", self._tile_overlap))
+        self._max_tiles = int(kwargs.pop("maxTiles", self._max_tiles))

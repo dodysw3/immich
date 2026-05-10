@@ -233,7 +233,7 @@ export class AssetJobRepository {
   getForDetectFacesJob(id: string) {
     return this.db
       .selectFrom('asset')
-      .select(['asset.id', 'asset.visibility'])
+      .select(['asset.id', 'asset.visibility', 'asset.originalPath', 'asset.type'])
       .$call(withExifInner)
       .select((eb) => withFaces(eb, true, true))
       .select((eb) =>
@@ -244,6 +244,7 @@ export class AssetJobRepository {
           )
           .as('previewFile'),
       )
+      .select((eb) => withFilePath(eb, AssetFileType.FullSize, false).as('fullsizeFile'))
       .where('asset.id', '=', id)
       .executeTakeFirst();
   }

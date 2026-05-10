@@ -24,6 +24,7 @@ import {
 } from 'src/dtos/person.dto';
 import {
   AssetVisibility,
+  AssetType,
   CacheControl,
   JobName,
   JobStatus,
@@ -34,7 +35,7 @@ import {
   SystemMetadataKey,
   VectorIndex,
 } from 'src/enum';
-import { BoundingBox } from 'src/repositories/machine-learning.repository';
+import { BoundingBox, Face } from 'src/repositories/machine-learning.repository';
 import { UpdateFacesData } from 'src/repositories/person.repository';
 import { AssetFaceTable } from 'src/schema/tables/asset-face.table';
 import { FaceSearchTable } from 'src/schema/tables/face-search.table';
@@ -312,11 +313,57 @@ export class PersonService extends BaseService {
       return JobStatus.Skipped;
     }
 
-    const { imageHeight, imageWidth, faces } = await this.machineLearningRepository.detectFaces(
+    const pass1Start = Date.now();
+    const pass1 = await this.machineLearningRepository.detectFaces(
       asset.previewFile,
       machineLearning.facialRecognition,
     );
-    this.logger.debug(`${faces.length} faces detected in ${asset.previewFile}`);
+    const pass1Ms = Date.now() - pass1Start;
+    this.logger.debug(`Pass 1: ${pass1.faces.length} faces detected in ${pass1Ms}ms for asset ${id}`);
+
+    let faces = pass1.faces;
+    let imageHeight = pass1.imageHeight;
+    let imageWidth = pass1.imageWidth;
+
+    const tiling = machineLearning.facialRecognition.tiling;
+    if (tiling.enabled && this.shouldRunTiledPass(asset, pass1.faces.length, tiling.triggers)) {
+      const sourceFile = this.getTiledSourceFile(asset);
+      if (sourceFile) {
+        try {
+          const pass2Start = Date.now();
+          const pass2 = await this.machineLearningRepository.detectFacesTiled(sourceFile, {
+            modelName: machineLearning.facialRecognition.modelName,
+            minScore: machineLearning.facialRecognition.minScore,
+            tileSize: tiling.tileSize,
+            tileOverlap: tiling.tileOverlap,
+            maxTiles: tiling.maxTiles,
+          });
+          const pass2Ms = Date.now() - pass2Start;
+          this.logger.debug(
+            `Pass 2 (tiled): ${pass2.faces.length} faces from ${sourceFile} in ${pass2Ms}ms for asset ${id}`,
+          );
+
+          const sx = imageWidth / pass2.imageWidth;
+          const sy = imageHeight / pass2.imageHeight;
+          const scaledPass2 = pass2.faces.map((face) => ({
+            ...face,
+            boundingBox: {
+              x1: Math.round(face.boundingBox.x1 * sx),
+              y1: Math.round(face.boundingBox.y1 * sy),
+              x2: Math.round(face.boundingBox.x2 * sx),
+              y2: Math.round(face.boundingBox.y2 * sy),
+            },
+          }));
+
+          faces = this.mergeFaces([...pass1.faces, ...scaledPass2], 0.5);
+          this.logger.debug(
+            `Merged: ${faces.length} faces (pass1=${pass1.faces.length}, pass2=${pass2.faces.length}) for asset ${id}`,
+          );
+        } catch (error: Error | unknown) {
+          this.logger.warn(`Pass 2 (tiled) failed for asset ${id}, using pass 1 only: ${error}`);
+        }
+      }
+    }
 
     const facesToAdd: (Insertable<AssetFaceTable> & { id: string })[] = [];
     const embeddings: FaceSearchTable[] = [];
@@ -394,6 +441,89 @@ export class PersonService extends BaseService {
     const union = area1 + area2 - intersection;
 
     return intersection / union;
+  }
+
+  private shouldRunTiledPass(
+    asset: { type: AssetType; exifInfo?: { exifImageWidth?: number | null; exifImageHeight?: number | null } | null },
+    pass1FaceCount: number,
+    tiling: { minPass1Faces: number; minDimWithFaces: { dim: number; faces: number } },
+  ): boolean {
+    if (asset.type === AssetType.Video) {
+      return false;
+    }
+
+    const originalMaxDim = Math.max(
+      asset.exifInfo?.exifImageWidth ?? 0,
+      asset.exifInfo?.exifImageHeight ?? 0,
+    );
+    if (originalMaxDim <= 1440) {
+      return false;
+    }
+
+    if (pass1FaceCount >= tiling.minPass1Faces) {
+      return true;
+    }
+
+    if (originalMaxDim >= tiling.minDimWithFaces.dim && pass1FaceCount >= tiling.minDimWithFaces.faces) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private getTiledSourceFile(asset: {
+    originalPath: string;
+    fullsizeFile?: string | null;
+  }): string | null {
+    const decodableExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tiff', '.tif', '.heic', '.heif']);
+    const ext = asset.originalPath.toLowerCase().split('.').pop();
+    if (ext && decodableExtensions.has(`.${ext}`)) {
+      return asset.originalPath;
+    }
+
+    if (asset.fullsizeFile) {
+      return asset.fullsizeFile;
+    }
+
+    return null;
+  }
+
+  private mergeFaces(faces: Face[], iouThreshold: number): Face[] {
+    const sorted = [...faces].sort((a, b) => b.score - a.score);
+    const keep: Face[] = [];
+    const suppressed = new Set<number>();
+
+    for (let i = 0; i < sorted.length; i++) {
+      if (suppressed.has(i)) {
+        continue;
+      }
+      keep.push(sorted[i]);
+
+      for (let j = i + 1; j < sorted.length; j++) {
+        if (suppressed.has(j)) {
+          continue;
+        }
+        if (this.boundingBoxIou(sorted[i].boundingBox, sorted[j].boundingBox) > iouThreshold) {
+          suppressed.add(j);
+        }
+      }
+    }
+
+    return keep;
+  }
+
+  private boundingBoxIou(a: BoundingBox, b: BoundingBox): number {
+    const x1 = Math.max(a.x1, b.x1);
+    const y1 = Math.max(a.y1, b.y1);
+    const x2 = Math.min(a.x2, b.x2);
+    const y2 = Math.min(a.y2, b.y2);
+
+    const intersection = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+    const area1 = (a.x2 - a.x1) * (a.y2 - a.y1);
+    const area2 = (b.x2 - b.x1) * (b.y2 - b.y1);
+    const union = area1 + area2 - intersection;
+
+    return union > 0 ? intersection / union : 0;
   }
 
   @OnJob({ name: JobName.FacialRecognitionQueueAll, queue: QueueName.FacialRecognition })
