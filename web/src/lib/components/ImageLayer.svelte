@@ -1,7 +1,6 @@
 <script lang="ts">
   import Image from '$lib/components/Image.svelte';
   import type { AdaptiveImageLoader, ImageQuality } from '$lib/utils/adaptive-image-loader.svelte';
-  import type { Snippet } from 'svelte';
 
   type Props = {
     adaptiveImageLoader: AdaptiveImageLoader;
@@ -12,7 +11,7 @@
     ref?: HTMLImageElement;
     width: string;
     height: string;
-    overlays?: Snippet;
+    transform?: string;
   };
 
   let {
@@ -24,12 +23,12 @@
     ref = $bindable(),
     width,
     height,
-    overlays,
+    transform,
   }: Props = $props();
 </script>
 
 {#key adaptiveImageLoader}
-  <div class="absolute top-0" style:width style:height>
+  <div class="absolute top-0 origin-top-left" style:width style:height style:transform>
     <Image
       {src}
       onStart={() => adaptiveImageLoader.onStart(quality)}
@@ -42,6 +41,5 @@
       draggable={false}
       data-testid={quality}
     />
-    {@render overlays?.()}
   </div>
 {/key}

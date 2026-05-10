@@ -80,6 +80,9 @@ export function withDefaultVisibility<O>(qb: SelectQueryBuilder<DB, 'asset', O>)
   return qb.where('asset.visibility', 'in', [sql.lit(AssetVisibility.Archive), sql.lit(AssetVisibility.Timeline)]);
 }
 
+// [FORK] People album: include archived assets (upstream excludes them with visibility=timeline only)
+export const PEOPLE_ASSET_VISIBILITIES = [sql.lit(AssetVisibility.Archive), sql.lit(AssetVisibility.Timeline)];
+
 // TODO come up with a better query that only selects the fields we need
 export function withExif<O>(qb: SelectQueryBuilder<DB, 'asset', O>) {
   return qb
