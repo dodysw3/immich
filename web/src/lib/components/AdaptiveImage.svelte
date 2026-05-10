@@ -98,15 +98,32 @@
     return { width: 1, height: 1 };
   });
 
-  const { width, height, left, top } = $derived.by(() => {
+  const fittedImage = $derived.by(() => {
     const scaleFn = objectFit === 'cover' ? scaleToCover : scaleToFit;
     const { width, height } = scaleFn(imageDimensions, container);
+    return {
+      width,
+      height,
+      scale: width / imageDimensions.width,
+      naturalWidth: imageDimensions.width,
+      naturalHeight: imageDimensions.height,
+    };
+  });
+
+  const { width, height, left, top } = $derived.by(() => {
+    const { width, height } = fittedImage;
     return {
       width: width + 'px',
       height: height + 'px',
       left: (container.width - width) / 2 + 'px',
       top: (container.height - height) / 2 + 'px',
     };
+  });
+
+  const originalLayerStyle = $derived({
+    width: fittedImage.naturalWidth + 'px',
+    height: fittedImage.naturalHeight + 'px',
+    transform: `scale(${fittedImage.scale})`,
   });
 
   const { status } = $derived(adaptiveImageLoader);
@@ -188,7 +205,6 @@
         {alt}
         {width}
         {height}
-        {overlays}
         quality="preview"
         src={status.urls.preview}
         bind:ref={previewElement}
@@ -199,13 +215,17 @@
       <ImageLayer
         {adaptiveImageLoader}
         {alt}
-        {width}
-        {height}
-        {overlays}
+        width={originalLayerStyle.width}
+        height={originalLayerStyle.height}
+        transform={originalLayerStyle.transform}
         quality="original"
         src={status.urls.original}
         bind:ref={originalElement}
       />
+    {/if}
+
+    {#if (show.preview && status.quality.preview === 'success') || status.quality.original === 'success'}
+      {@render overlays?.()}
     {/if}
   </div>
 </div>
