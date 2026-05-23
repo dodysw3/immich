@@ -1,174 +1,95 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
-import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { createZodDto } from 'nestjs-zod';
+import z from 'zod';
 
 export const PDF_DOCUMENT_STATUSES = ['pending', 'processing', 'ready', 'failed'] as const;
 export type PdfDocumentStatus = (typeof PDF_DOCUMENT_STATUSES)[number];
 
-export class PdfDocumentQueryDto {
-  @ApiPropertyOptional({ type: 'integer', default: 1, minimum: 1 })
-  @IsOptional()
-  @Transform(({ value }) => Number(value))
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
+const PdfDocumentStatusSchema = z.enum(PDF_DOCUMENT_STATUSES);
 
-  @ApiPropertyOptional({ type: 'integer', default: 50, minimum: 1 })
-  @IsOptional()
-  @Transform(({ value }) => Number(value))
-  @IsInt()
-  @Min(1)
-  size?: number = 50;
+const PdfDocumentQuerySchema = z
+  .object({
+    page: z.coerce.number().int().min(1).default(1).describe('Page number'),
+    size: z.coerce.number().int().min(1).default(50).describe('Number of items per page'),
+    status: PdfDocumentStatusSchema.optional().describe('Filter documents by processing status'),
+  })
+  .meta({ id: 'PdfDocumentQueryDto' });
 
-  @ApiPropertyOptional({ enum: PDF_DOCUMENT_STATUSES, description: 'Filter documents by processing status' })
-  @IsOptional()
-  @IsString()
-  @IsIn(PDF_DOCUMENT_STATUSES)
-  status?: PdfDocumentStatus;
+const PdfDocumentSearchSchema = PdfDocumentQuerySchema.extend({
+  query: z.string().describe('Search phrase'),
+}).meta({ id: 'PdfDocumentSearchDto' });
+
+const PdfInDocumentSearchSchema = z
+  .object({
+    query: z.string().describe('Search phrase'),
+    size: z.coerce.number().int().min(1).max(500).default(100).describe('Max matched pages to return'),
+  })
+  .meta({ id: 'PdfInDocumentSearchDto' });
+
+const PdfDocumentParamsSchema = z
+  .object({
+    id: z.uuidv4().describe('PDF document asset ID'),
+  })
+  .meta({ id: 'PdfDocumentParamsDto' });
+
+const PdfDocumentPageParamsSchema = PdfDocumentParamsSchema.extend({
+  pageNumber: z.coerce.number().int().min(1).describe('Page number'),
+}).meta({ id: 'PdfDocumentPageParamsDto' });
+
+export class PdfDocumentQueryDto extends createZodDto(PdfDocumentQuerySchema) {}
+export class PdfDocumentSearchDto extends createZodDto(PdfDocumentSearchSchema) {}
+export class PdfInDocumentSearchDto extends createZodDto(PdfInDocumentSearchSchema) {}
+export class PdfDocumentParamsDto extends createZodDto(PdfDocumentParamsSchema) {}
+export class PdfDocumentPageParamsDto extends createZodDto(PdfDocumentPageParamsSchema) {}
+
+export interface PdfDocumentResponseDto {
+  assetId: string;
+  originalFileName: string;
+  pageCount: number;
+  title: string | null;
+  author: string | null;
+  processedAt: Date | null;
+  status: PdfDocumentStatus;
+  lastError: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-export class PdfDocumentSearchDto extends PdfDocumentQueryDto {
-  @ApiProperty({ description: 'Search phrase' })
-  @IsString()
-  @IsNotEmpty()
-  query!: string;
+export interface PdfPageResponseDto {
+  id: string;
+  assetId: string;
+  pageNumber: number;
+  text: string;
+  textSource: 'embedded' | 'ocr' | 'none';
+  width: number | null;
+  height: number | null;
 }
 
-export class PdfInDocumentSearchDto {
-  @ApiProperty({ description: 'Search phrase' })
-  @IsString()
-  @IsNotEmpty()
-  query!: string;
-
-  @ApiPropertyOptional({ type: 'integer', default: 100, minimum: 1, maximum: 500, description: 'Max matched pages to return' })
-  @IsOptional()
-  @Transform(({ value }) => Number(value))
-  @IsInt()
-  @Min(1)
-  @Max(500)
-  size?: number = 100;
+export interface PdfSearchResultDto extends PdfDocumentResponseDto {
+  matchingPages: number[];
 }
 
-export class PdfDocumentParamsDto {
-  @ApiProperty({ format: 'uuid' })
-  @IsUUID('4')
-  id!: string;
+export interface PdfDocumentStatusSummaryDto {
+  total: number;
+  pending: number;
+  processing: number;
+  ready: number;
+  failed: number;
 }
 
-export class PdfDocumentPageParamsDto extends PdfDocumentParamsDto {
-  @ApiProperty({ type: 'integer', minimum: 1 })
-  @Transform(({ value }) => Number(value))
-  @IsInt()
-  @Min(1)
-  pageNumber!: number;
+export interface PdfDocumentListResponseDto {
+  items: PdfDocumentResponseDto[];
+  nextPage: string | null;
+  summary: PdfDocumentStatusSummaryDto;
 }
 
-export class PdfDocumentResponseDto {
-  @ApiProperty({ format: 'uuid' })
-  assetId!: string;
-
-  @ApiProperty()
-  originalFileName!: string;
-
-  @ApiProperty({ type: 'integer' })
-  pageCount!: number;
-
-  @ApiPropertyOptional()
-  title!: string | null;
-
-  @ApiPropertyOptional()
-  author!: string | null;
-
-  @ApiPropertyOptional()
-  processedAt!: Date | null;
-
-  @ApiProperty({ enum: PDF_DOCUMENT_STATUSES })
-  status!: PdfDocumentStatus;
-
-  @ApiPropertyOptional()
-  lastError!: string | null;
-
-  @ApiProperty()
-  createdAt!: Date;
-
-  @ApiProperty()
-  updatedAt!: Date;
-}
-
-export class PdfPageResponseDto {
-  @ApiProperty({ format: 'uuid' })
-  id!: string;
-
-  @ApiProperty({ format: 'uuid' })
-  assetId!: string;
-
-  @ApiProperty({ type: 'integer' })
-  pageNumber!: number;
-
-  @ApiProperty()
-  text!: string;
-
-  @ApiProperty()
-  textSource!: 'embedded' | 'ocr' | 'none';
-
-  @ApiPropertyOptional()
-  width!: number | null;
-
-  @ApiPropertyOptional()
-  height!: number | null;
-}
-
-export class PdfSearchResultDto extends PdfDocumentResponseDto {
-  @ApiProperty({ type: 'integer', isArray: true })
-  matchingPages!: number[];
-}
-
-export class PdfDocumentStatusSummaryDto {
-  @ApiProperty({ type: 'integer' })
-  total!: number;
-
-  @ApiProperty({ type: 'integer' })
-  pending!: number;
-
-  @ApiProperty({ type: 'integer' })
-  processing!: number;
-
-  @ApiProperty({ type: 'integer' })
-  ready!: number;
-
-  @ApiProperty({ type: 'integer' })
-  failed!: number;
-}
-
-export class PdfDocumentListResponseDto {
-  @ApiProperty({ type: PdfDocumentResponseDto, isArray: true })
-  items!: PdfDocumentResponseDto[];
-
-  @ApiPropertyOptional({ description: 'Next page number as string', nullable: true })
-  nextPage!: string | null;
-
-  @ApiProperty({ type: PdfDocumentStatusSummaryDto })
-  summary!: PdfDocumentStatusSummaryDto;
-}
-
-export class PdfSearchResponseDto {
-  @ApiProperty({ type: PdfSearchResultDto, isArray: true })
-  items!: PdfSearchResultDto[];
-
-  @ApiPropertyOptional({ description: 'Next page number as string', nullable: true })
-  nextPage!: string | null;
-
-  @ApiPropertyOptional({ type: PdfDocumentStatusSummaryDto })
+export interface PdfSearchResponseDto {
+  items: PdfSearchResultDto[];
+  nextPage: string | null;
   summary?: PdfDocumentStatusSummaryDto;
 }
 
-export class PdfInDocumentSearchResultDto {
-  @ApiProperty({ type: 'integer' })
-  pageNumber!: number;
-
-  @ApiProperty()
-  snippet!: string;
-
-  @ApiProperty({ type: 'integer' })
-  matchIndex!: number;
+export interface PdfInDocumentSearchResultDto {
+  pageNumber: number;
+  snippet: string;
+  matchIndex: number;
 }

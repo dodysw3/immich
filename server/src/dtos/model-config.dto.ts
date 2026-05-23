@@ -22,23 +22,6 @@ export const DuplicateDetectionConfigSchema = TaskConfigSchema.extend({
     .describe('Maximum distance threshold for duplicate detection'),
 }).meta({ id: 'DuplicateDetectionConfig' });
 
-export const FacialRecognitionConfigSchema = ModelConfigSchema.extend({
-  minScore: z
-    .number()
-    .meta({ format: 'double' })
-    .min(0.1)
-    .max(1)
-    .describe('Minimum confidence score for face detection'),
-  maxDistance: z
-    .number()
-    .meta({ format: 'double' })
-    .min(0.1)
-    .max(2)
-    .describe('Maximum distance threshold for face recognition'),
-  minFaces: z.int().min(1).describe('Minimum number of faces required for recognition'),
-  tiling: FaceDetectionTilingConfigSchema,
-}).meta({ id: 'FacialRecognitionConfig' });
-
 const FaceDetectionTilingMinDimWithFacesConfigSchema = z
   .object({
     dim: z.int().min(1).describe('Minimum original image dimension to consider tiling'),
@@ -62,6 +45,23 @@ const FaceDetectionTilingConfigSchema = z
     triggers: FaceDetectionTilingTriggersConfigSchema,
   })
   .meta({ id: 'FaceDetectionTilingConfig' });
+
+export const FacialRecognitionConfigSchema = ModelConfigSchema.extend({
+  minScore: z
+    .number()
+    .meta({ format: 'double' })
+    .min(0.1)
+    .max(1)
+    .describe('Minimum confidence score for face detection'),
+  maxDistance: z
+    .number()
+    .meta({ format: 'double' })
+    .min(0.1)
+    .max(2)
+    .describe('Maximum distance threshold for face recognition'),
+  minFaces: z.int().min(1).describe('Minimum number of faces required for recognition'),
+  tiling: FaceDetectionTilingConfigSchema,
+}).meta({ id: 'FacialRecognitionConfig' });
 
 export const OcrConfigSchema = ModelConfigSchema.extend({
   maxResolution: z.int().min(1).describe('Maximum resolution for OCR processing'),

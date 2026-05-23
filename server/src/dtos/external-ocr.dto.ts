@@ -1,184 +1,56 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import {
-  ArrayMaxSize,
-  IsArray,
-  IsBoolean,
-  IsDateString,
-  IsIn,
-  IsInt,
-  IsNotEmpty,
-  IsNumber,
-  IsOptional,
-  IsString,
-  Max,
-  MaxLength,
-  Min,
-  ValidateNested,
-} from 'class-validator';
+import { createZodDto } from 'nestjs-zod';
+import z from 'zod';
 
 export const EXTERNAL_OCR_MODES = ['replace', 'merge'] as const;
 export type ExternalOcrMode = (typeof EXTERNAL_OCR_MODES)[number];
 
-export class ExternalOcrLineDto {
-  @ApiProperty({ type: 'number', format: 'double', minimum: 0, maximum: 1 })
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  @Max(1)
-  x1!: number;
+const ExternalOcrLineSchema = z
+  .object({
+    x1: z.number().min(0).max(1).describe('Bounding box x1'),
+    y1: z.number().min(0).max(1).describe('Bounding box y1'),
+    x2: z.number().min(0).max(1).describe('Bounding box x2'),
+    y2: z.number().min(0).max(1).describe('Bounding box y2'),
+    x3: z.number().min(0).max(1).describe('Bounding box x3'),
+    y3: z.number().min(0).max(1).describe('Bounding box y3'),
+    x4: z.number().min(0).max(1).describe('Bounding box x4'),
+    y4: z.number().min(0).max(1).describe('Bounding box y4'),
+    boxScore: z.number().min(0).max(1).describe('Detection confidence'),
+    textScore: z.number().min(0).max(1).describe('Text recognition confidence'),
+    text: z.string().max(4096).describe('Recognized text'),
+  })
+  .meta({ id: 'ExternalOcrLineDto' });
 
-  @ApiProperty({ type: 'number', format: 'double', minimum: 0, maximum: 1 })
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  @Max(1)
-  y1!: number;
+const ExternalOcrResultSchema = z
+  .object({
+    provider: z.string().max(128).describe('External OCR provider identifier'),
+    model: z.string().max(256).describe('Model family/name'),
+    modelRevision: z.string().max(128).describe('Model revision for reprocessing control'),
+    sourceChecksum: z.string().max(128).describe('SHA256 of original source bytes'),
+    language: z.string().max(64).optional().describe('Language hint'),
+    mode: z.enum(EXTERNAL_OCR_MODES).describe('OCR write mode'),
+    processedAt: z.string().describe('External OCR completion timestamp (ISO 8601)'),
+    lines: z.array(ExternalOcrLineSchema).max(10_000).describe('OCR result lines'),
+    searchText: z.string().max(1_000_000).optional().describe('Pre-tokenized search text'),
+  })
+  .meta({ id: 'ExternalOcrResultDto' });
 
-  @ApiProperty({ type: 'number', format: 'double', minimum: 0, maximum: 1 })
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  @Max(1)
-  x2!: number;
+const ExternalOcrFailureSchema = z
+  .object({
+    provider: z.string().max(128).describe('External OCR provider identifier'),
+    reason: z.string().max(1000).describe('Failure reason'),
+    retryCount: z.number().int().min(0).describe('Number of retries attempted'),
+    retriable: z.boolean().describe('Whether the failure is retriable'),
+  })
+  .meta({ id: 'ExternalOcrFailureDto' });
 
-  @ApiProperty({ type: 'number', format: 'double', minimum: 0, maximum: 1 })
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  @Max(1)
-  y2!: number;
+const ExternalOcrWriteResponseSchema = z
+  .object({
+    written: z.int().describe('Number of records written'),
+    searchTextLength: z.int().describe('Length of generated search text'),
+  })
+  .meta({ id: 'ExternalOcrWriteResponseDto' });
 
-  @ApiProperty({ type: 'number', format: 'double', minimum: 0, maximum: 1 })
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  @Max(1)
-  x3!: number;
-
-  @ApiProperty({ type: 'number', format: 'double', minimum: 0, maximum: 1 })
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  @Max(1)
-  y3!: number;
-
-  @ApiProperty({ type: 'number', format: 'double', minimum: 0, maximum: 1 })
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  @Max(1)
-  x4!: number;
-
-  @ApiProperty({ type: 'number', format: 'double', minimum: 0, maximum: 1 })
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  @Max(1)
-  y4!: number;
-
-  @ApiProperty({ type: 'number', format: 'double', minimum: 0, maximum: 1 })
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  @Max(1)
-  boxScore!: number;
-
-  @ApiProperty({ type: 'number', format: 'double', minimum: 0, maximum: 1 })
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  @Max(1)
-  textScore!: number;
-
-  @ApiProperty({ type: 'string', maxLength: 4096 })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(4096)
-  text!: string;
-}
-
-export class ExternalOcrResultDto {
-  @ApiProperty({ description: 'External OCR provider identifier', example: 'immich-ocr-gpu', maxLength: 128 })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(128)
-  provider!: string;
-
-  @ApiProperty({ description: 'Model family/name', example: 'paddleocr+trocr-base-printed', maxLength: 256 })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(256)
-  model!: string;
-
-  @ApiProperty({ description: 'Model revision for reprocessing control', example: 'v1.0.0', maxLength: 128 })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(128)
-  modelRevision!: string;
-
-  @ApiProperty({ description: 'SHA256 of original source bytes', example: 'abcdef1234', maxLength: 128 })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(128)
-  sourceChecksum!: string;
-
-  @ApiProperty({ description: 'Language hint', required: false, maxLength: 64 })
-  @IsOptional()
-  @IsString()
-  @MaxLength(64)
-  language?: string;
-
-  @ApiProperty({ enum: EXTERNAL_OCR_MODES })
-  @IsIn(EXTERNAL_OCR_MODES)
-  mode!: ExternalOcrMode;
-
-  @ApiProperty({ description: 'External OCR completion timestamp (ISO 8601)' })
-  @IsDateString()
-  processedAt!: string;
-
-  @ApiProperty({ type: ExternalOcrLineDto, isArray: true, maxItems: 10000 })
-  @IsArray()
-  @ArrayMaxSize(10_000)
-  @ValidateNested({ each: true })
-  @Type(() => ExternalOcrLineDto)
-  lines!: ExternalOcrLineDto[];
-
-  @ApiProperty({ required: false, description: 'Pre-tokenized search text', maxLength: 1000000 })
-  @IsOptional()
-  @IsString()
-  @MaxLength(1_000_000)
-  searchText?: string;
-}
-
-export class ExternalOcrFailureDto {
-  @ApiProperty({ description: 'External OCR provider identifier', example: 'immich-ocr-gpu', maxLength: 128 })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(128)
-  provider!: string;
-
-  @ApiProperty({ description: 'Failure reason', maxLength: 1000 })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(1000)
-  reason!: string;
-
-  @ApiProperty({ type: 'integer', minimum: 0 })
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  retryCount!: number;
-
-  @ApiProperty()
-  @IsBoolean()
-  retriable!: boolean;
-}
-
-export class ExternalOcrWriteResponseDto {
-  @ApiProperty({ type: 'integer' })
-  written!: number;
-
-  @ApiProperty({ type: 'integer' })
-  searchTextLength!: number;
-}
+export class ExternalOcrLineDto extends createZodDto(ExternalOcrLineSchema) {}
+export class ExternalOcrResultDto extends createZodDto(ExternalOcrResultSchema) {}
+export class ExternalOcrFailureDto extends createZodDto(ExternalOcrFailureSchema) {}
+export class ExternalOcrWriteResponseDto extends createZodDto(ExternalOcrWriteResponseSchema) {}
