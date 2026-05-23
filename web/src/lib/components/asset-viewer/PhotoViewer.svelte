@@ -6,9 +6,7 @@
   import Thumbhash from '$lib/components/Thumbhash.svelte';
   import OcrBoundingBox from '$lib/components/asset-viewer/OcrBoundingBox.svelte';
   import AssetViewerEvents from '$lib/components/AssetViewerEvents.svelte';
-  import FaceOverlayBox from '$lib/features/face-overlay/face-overlay-box.svelte';
   import { faceOverlayStore } from '$lib/features/face-overlay/face-overlay.store.svelte';
-  import type { FaceOverlayBoundingBox } from '$lib/features/face-overlay/face-overlay.utils';
   import { assetViewerManager, type Faces } from '$lib/managers/asset-viewer-manager.svelte';
   import { castManager } from '$lib/managers/cast-manager.svelte';
   import { faceManager } from '$lib/stores/face.svelte';
@@ -90,19 +88,45 @@
 
   const ocrBoxes = $derived(ocrManager.showOverlay ? getOcrBoundingBoxes(ocrManager.data, overlaySize) : []);
 
-  const faceBoxes = $derived.by((): FaceOverlayBoundingBox[] => {
-    if (!faceOverlayStore.showOverlay || assetViewerManager.isFaceEditMode || !visibleImageReady || !overlaySize.width) {
+  const boundingBoxes = $derived.by(() => {
+    if (assetViewerManager.isFaceEditMode || ocrManager.showOverlay) {
       return [];
     }
 
-    return faceOverlayStore.data.map((face) => {
-      const [box] = getBoundingBox([face], overlaySize);
-      return {
-        ...box!,
-        personId: face.personId,
-        personName: face.personName,
-      };
-    });
+    if (faceOverlayStore.showOverlay) {
+      const allFaces = faceManager.data.filter((face) => {
+        if (face.person?.isHidden && !assetViewerManager.isShowingHiddenPeople) {
+          return false;
+        }
+        return true;
+      });
+      const boxes = getBoundingBox(allFaces, overlaySize);
+      return boxes.map((box, index) => ({
+        ...box,
+        face: allFaces[index],
+        name: allFaces[index].person?.name ?? undefined,
+      }));
+    }
+
+    const knownBoxes = getBoundingBox(faces, overlaySize);
+    const result = knownBoxes.map((box, index) => ({
+      ...box,
+      face: faces[index],
+      name: faceToNameMap.get(faces[index]),
+    }));
+
+    if (assetViewerManager.highlightedFaces.length === 0) {
+      return result;
+    }
+
+    const knownIds = new Set(faces.map((f) => f.id));
+    const unassignedFaces = assetViewerManager.highlightedFaces.filter((f) => !knownIds.has(f.id));
+    const unassignedBoxes = getBoundingBox(unassignedFaces, overlaySize);
+    for (let i = 0; i < unassignedBoxes.length; i++) {
+      result.push({ ...unassignedBoxes[i], face: unassignedFaces[i], name: undefined });
+    }
+
+    return result;
   });
 
   const onCopy = async () => {
@@ -190,32 +214,6 @@
   });
 
   const faces = $derived(Array.from(faceToNameMap.keys()));
-
-  const boundingBoxes = $derived.by(() => {
-    if (assetViewerManager.isFaceEditMode || ocrManager.showOverlay) {
-      return [];
-    }
-
-    const knownBoxes = getBoundingBox(faces, overlaySize);
-    const result = knownBoxes.map((box, index) => ({
-      ...box,
-      face: faces[index],
-      name: faceToNameMap.get(faces[index]),
-    }));
-
-    if (assetViewerManager.highlightedFaces.length === 0) {
-      return result;
-    }
-
-    const knownIds = new Set(faces.map((f) => f.id));
-    const unassignedFaces = assetViewerManager.highlightedFaces.filter((f) => !knownIds.has(f.id));
-    const unassignedBoxes = getBoundingBox(unassignedFaces, overlaySize);
-    for (let i = 0; i < unassignedBoxes.length; i++) {
-      result.push({ ...unassignedBoxes[i], face: unassignedFaces[i], name: undefined });
-    }
-
-    return result;
-  });
 </script>
 
 <AssetViewerEvents {onCopy} {onZoom} {onFaceEditModeChange} />
@@ -285,9 +283,10 @@
       </div>
       {#each boundingBoxes as boundingbox (boundingbox.id)}
         {@const isActive = assetViewerManager.highlightedFaces.some((f) => f.id === boundingbox.id)}
+        {@const showPersistent = faceOverlayStore.showOverlay && !isActive}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
-          class="pointer-events-auto absolute rounded-lg {isActive && 'border-3 border-solid border-white'}"
+          class="pointer-events-auto absolute rounded-lg {isActive && 'border-3 border-solid border-white'} {showPersistent && 'border border-green-500'}"
           style="top: {boundingbox.top}px; left: {boundingbox.left}px; height: {boundingbox.height}px; width: {boundingbox.width}px;"
           onpointerenter={() => assetViewerManager.setHighlightedFaces([boundingbox.face])}
           onpointerleave={() => assetViewerManager.clearHighlightedFaces()}
@@ -300,16 +299,25 @@
             >
               {boundingbox.name}
             </div>
+          {:else if showPersistent}
+            <div
+              aria-hidden="true"
+              class="pointer-events-none absolute inset-x-0 flex justify-center overflow-hidden"
+              style="top: {boundingbox.height}px;"
+            >
+              <div
+                class="max-w-full flex-none truncate rounded-b bg-black/75 px-1 py-0.5 text-center text-xs break-all text-white"
+                style="width: {boundingbox.width}px;"
+              >
+                {boundingbox.name ?? '…'}
+              </div>
+            </div>
           {/if}
         </div>
       {/each}
 
       {#each ocrBoxes as ocrBox (ocrBox.id)}
         <OcrBoundingBox {ocrBox} />
-      {/each}
-
-      {#each faceBoxes as faceBox (faceBox.id)}
-        <FaceOverlayBox {faceBox} assetId={asset.id} />
       {/each}
     {/snippet}
   </AdaptiveImage>

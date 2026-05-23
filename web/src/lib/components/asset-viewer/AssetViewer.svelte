@@ -392,9 +392,6 @@
       await ocrManager.getAssetOcr(asset.id);
       await faceManager.getAssetFaces(asset.id);
     }
-    if (!sharedLink || sharedLink.showMetadata) {
-      faceOverlayStore.loadFromAsset(asset);
-    }
   };
 
   $effect(() => {
@@ -452,7 +449,7 @@
       asset.type === AssetTypeEnum.Image &&
       !(asset.exifInfo?.projectionType === ProjectionType.EQUIRECTANGULAR) &&
       !assetViewerManager.isShowEditor &&
-      faceOverlayStore.hasFaceData,
+      faceManager.data.length > 0,
   );
 
   const showOcrButton = $derived(
