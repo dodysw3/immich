@@ -4,7 +4,7 @@
   import PdfSearchBar from '$lib/components/pdf-viewer/PdfSearchBar.svelte';
   import PdfViewer from '$lib/components/pdf-viewer/PdfViewer.svelte';
   import { handleError } from '$lib/utils/handle-error';
-  import UserPageLayout from '$lib/components/layouts/user-page-layout.svelte';
+  import UserPageLayout from '$lib/components/layouts/UserPageLayout.svelte';
   import type { PageData } from './$types';
 
   interface Props {
