@@ -109,7 +109,7 @@
   const asset = $derived(previewStackedAsset ?? cursor.current);
   const nextAsset = $derived(cursor.nextAsset);
   const previousAsset = $derived(cursor.previousAsset);
-  const isOwner = $derived(!!$user && asset.ownerId === $user.id);
+  const isOwner = $derived(authManager.user?.id === asset.ownerId);
   let appearsInAlbums: AlbumResponseDto[] = $state([]);
   let sharedLink = getSharedLink();
   let fullscreenElement = $state<Element>();

@@ -1,7 +1,7 @@
 <script lang="ts">
   import PdfDocumentGrid from '$lib/components/pdf-viewer/PdfDocumentGrid.svelte';
   import PdfSearchBar from '$lib/components/pdf-viewer/PdfSearchBar.svelte';
-  import UserPageLayout from '$lib/components/layouts/user-page-layout.svelte';
+  import UserPageLayout from '$lib/components/layouts/UserPageLayout.svelte';
   import type { PageData } from './$types';
   import { goto } from '$app/navigation';
   import { Route } from '$lib/route';
