@@ -1,5 +1,5 @@
-import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
 import { createZoomImageWheel } from '@zoom-image/core';
+import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
 
 type ZoomImageActionOptions = {
   zoomTarget?: HTMLElement;
@@ -151,9 +151,6 @@ export const zoomImageAction = (node: HTMLElement, options?: ZoomImageActionOpti
     { capture: true, signal },
   );
 
-  if (options?.zoomTarget) {
-    options.zoomTarget.style.willChange = 'transform';
-  }
   node.style.overflow = 'visible';
   node.style.touchAction = 'none';
   return {
@@ -165,9 +162,6 @@ export const zoomImageAction = (node: HTMLElement, options?: ZoomImageActionOpti
     },
     destroy() {
       controller.abort();
-      if (options?.zoomTarget) {
-        options.zoomTarget.style.willChange = '';
-      }
       for (const unsubscribe of unsubscribes) {
         unsubscribe();
       }

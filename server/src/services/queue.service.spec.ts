@@ -46,7 +46,6 @@ describe(QueueService.name, () => {
         { name: JobName.MemoryCleanup },
         { name: JobName.SessionCleanup },
         { name: JobName.AuditTableCleanup },
-        { name: JobName.AuditLogCleanup },
         { name: JobName.MemoryGenerate },
         { name: JobName.UserSyncUsage },
         { name: JobName.AssetGenerateThumbnailsQueueAll, data: { force: false } },

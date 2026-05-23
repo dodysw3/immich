@@ -1,144 +1,82 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsNotEmpty, IsNumber, IsObject, IsString, Max, Min, ValidateNested } from 'class-validator';
-import { ValidateBoolean } from 'src/validation';
+import { createZodDto } from 'nestjs-zod';
+import z from 'zod';
 
-export class TaskConfig {
-  @ValidateBoolean({ description: 'Whether the task is enabled' })
-  enabled!: boolean;
-}
-
-export class ModelConfig extends TaskConfig {
-  @ApiProperty({ description: 'Name of the model to use' })
-  @IsString()
-  @IsNotEmpty()
-  modelName!: string;
-}
-
-export class CLIPConfig extends ModelConfig {}
-
-export class DuplicateDetectionConfig extends TaskConfig {
-  @IsNumber()
-  @Min(0.001)
-  @Max(0.1)
-  @Type(() => Number)
-  @ApiProperty({
-    type: 'number',
-    format: 'double',
-    description: 'Maximum distance threshold for duplicate detection',
+const TaskConfigSchema = z
+  .object({
+    enabled: z.boolean().describe('Whether the task is enabled'),
   })
-  maxDistance!: number;
-}
+  .meta({ id: 'TaskConfig' });
 
-export class FaceDetectionTilingMinDimWithFacesConfig {
-  @IsNumber()
-  @Min(1)
-  @Type(() => Number)
-  @ApiProperty({ type: 'integer', description: 'Minimum original image dimension to consider tiling' })
-  dim!: number;
+const ModelConfigSchema = TaskConfigSchema.extend({
+  modelName: z.string().describe('Name of the model to use'),
+});
 
-  @IsNumber()
-  @Min(1)
-  @Type(() => Number)
-  @ApiProperty({ type: 'integer', description: 'Minimum pass-1 face count when original dim threshold is met' })
-  faces!: number;
-}
+export const CLIPConfigSchema = ModelConfigSchema.meta({ id: 'CLIPConfig' });
 
-export class FaceDetectionTilingTriggersConfig {
-  @IsNumber()
-  @Min(1)
-  @Type(() => Number)
-  @ApiProperty({ type: 'integer', description: 'Minimum pass-1 face count to trigger tiling' })
-  minPass1Faces!: number;
+export const DuplicateDetectionConfigSchema = TaskConfigSchema.extend({
+  maxDistance: z
+    .number()
+    .meta({ format: 'double' })
+    .min(0.001)
+    .max(0.1)
+    .describe('Maximum distance threshold for duplicate detection'),
+}).meta({ id: 'DuplicateDetectionConfig' });
 
-  @Type(() => FaceDetectionTilingMinDimWithFacesConfig)
-  @ValidateNested()
-  @IsObject()
-  minDimWithFaces!: FaceDetectionTilingMinDimWithFacesConfig;
-}
+export const FacialRecognitionConfigSchema = ModelConfigSchema.extend({
+  minScore: z
+    .number()
+    .meta({ format: 'double' })
+    .min(0.1)
+    .max(1)
+    .describe('Minimum confidence score for face detection'),
+  maxDistance: z
+    .number()
+    .meta({ format: 'double' })
+    .min(0.1)
+    .max(2)
+    .describe('Maximum distance threshold for face recognition'),
+  minFaces: z.int().min(1).describe('Minimum number of faces required for recognition'),
+  tiling: FaceDetectionTilingConfigSchema,
+}).meta({ id: 'FacialRecognitionConfig' });
 
-export class FaceDetectionTilingConfig {
-  @ValidateBoolean({ description: 'Enable tiled face detection for large/group photos' })
-  enabled!: boolean;
-
-  @IsNumber()
-  @Min(128)
-  @Type(() => Number)
-  @ApiProperty({ type: 'integer', description: 'Tile size in pixels for tiled detection' })
-  tileSize!: number;
-
-  @IsNumber()
-  @Min(0)
-  @Max(0.9)
-  @Type(() => Number)
-  @ApiProperty({ type: 'number', format: 'double', description: 'Overlap ratio between adjacent tiles' })
-  tileOverlap!: number;
-
-  @IsNumber()
-  @Min(1)
-  @Type(() => Number)
-  @ApiProperty({ type: 'integer', description: 'Maximum number of tiles before downscaling' })
-  maxTiles!: number;
-
-  @Type(() => FaceDetectionTilingTriggersConfig)
-  @ValidateNested()
-  @IsObject()
-  triggers!: FaceDetectionTilingTriggersConfig;
-}
-
-export class FacialRecognitionConfig extends ModelConfig {
-  @IsNumber()
-  @Min(0.1)
-  @Max(1)
-  @Type(() => Number)
-  @ApiProperty({ type: 'number', format: 'double', description: 'Minimum confidence score for face detection' })
-  minScore!: number;
-
-  @IsNumber()
-  @Min(0.1)
-  @Max(2)
-  @Type(() => Number)
-  @ApiProperty({
-    type: 'number',
-    format: 'double',
-    description: 'Maximum distance threshold for face recognition',
+const FaceDetectionTilingMinDimWithFacesConfigSchema = z
+  .object({
+    dim: z.int().min(1).describe('Minimum original image dimension to consider tiling'),
+    faces: z.int().min(1).describe('Minimum pass-1 face count when original dim threshold is met'),
   })
-  maxDistance!: number;
+  .meta({ id: 'FaceDetectionTilingMinDimWithFacesConfig' });
 
-  @IsNumber()
-  @Min(1)
-  @Type(() => Number)
-  @ApiProperty({ type: 'integer', description: 'Minimum number of faces required for recognition' })
-  minFaces!: number;
-
-  @Type(() => FaceDetectionTilingConfig)
-  @ValidateNested()
-  @IsObject()
-  tiling!: FaceDetectionTilingConfig;
-}
-
-export class OcrConfig extends ModelConfig {
-  @IsNumber()
-  @Min(1)
-  @Type(() => Number)
-  @ApiProperty({ type: 'integer', description: 'Maximum resolution for OCR processing' })
-  maxResolution!: number;
-
-  @IsNumber()
-  @Min(0.1)
-  @Max(1)
-  @Type(() => Number)
-  @ApiProperty({ type: 'number', format: 'double', description: 'Minimum confidence score for text detection' })
-  minDetectionScore!: number;
-
-  @IsNumber()
-  @Min(0.1)
-  @Max(1)
-  @Type(() => Number)
-  @ApiProperty({
-    type: 'number',
-    format: 'double',
-    description: 'Minimum confidence score for text recognition',
+const FaceDetectionTilingTriggersConfigSchema = z
+  .object({
+    minPass1Faces: z.int().min(1).describe('Minimum pass-1 face count to trigger tiling'),
+    minDimWithFaces: FaceDetectionTilingMinDimWithFacesConfigSchema,
   })
-  minRecognitionScore!: number;
-}
+  .meta({ id: 'FaceDetectionTilingTriggersConfig' });
+
+const FaceDetectionTilingConfigSchema = z
+  .object({
+    enabled: z.boolean().describe('Enable tiled face detection for large/group photos'),
+    tileSize: z.int().min(128).describe('Tile size in pixels for tiled detection'),
+    tileOverlap: z.number().meta({ format: 'double' }).min(0).max(0.9).describe('Overlap ratio between adjacent tiles'),
+    maxTiles: z.int().min(1).describe('Maximum number of tiles before downscaling'),
+    triggers: FaceDetectionTilingTriggersConfigSchema,
+  })
+  .meta({ id: 'FaceDetectionTilingConfig' });
+
+export const OcrConfigSchema = ModelConfigSchema.extend({
+  maxResolution: z.int().min(1).describe('Maximum resolution for OCR processing'),
+  minDetectionScore: z
+    .number()
+    .meta({ format: 'double' })
+    .min(0.1)
+    .max(1)
+    .describe('Minimum confidence score for text detection'),
+  minRecognitionScore: z
+    .number()
+    .meta({ format: 'double' })
+    .min(0.1)
+    .max(1)
+    .describe('Minimum confidence score for text recognition'),
+}).meta({ id: 'OcrConfig' });
+
+export class CLIPConfig extends createZodDto(CLIPConfigSchema) {}

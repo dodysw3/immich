@@ -5,6 +5,7 @@ import { AssetFileType } from 'src/enum';
 import { ActivityTable } from 'src/schema/tables/activity.table';
 import { AssetTable } from 'src/schema/tables/asset.table';
 import { PartnerTable } from 'src/schema/tables/partner.table';
+import { AudioStreamInfo, VideoFormat, VideoStreamInfo } from 'src/types';
 import { AlbumFactory } from 'test/factories/album.factory';
 import { AssetFaceFactory } from 'test/factories/asset-face.factory';
 import { AssetFactory } from 'test/factories/asset.factory';
@@ -85,7 +86,6 @@ export const getForAlbum = (album: ReturnType<AlbumFactory['build']>) => ({
     createdAt: albumUser.createdAt.toISOString(),
     user: getDehydrated(albumUser.user),
   })),
-  owner: getDehydrated(album.owner),
   sharedLinks: album.sharedLinks.map((sharedLink) => getDehydrated(sharedLink)),
 });
 
@@ -128,8 +128,6 @@ export const getForMetadataExtraction = (asset: ReturnType<AssetFactory['build']
   id: asset.id,
   checksum: asset.checksum,
   checksumAlgorithm: asset.checksumAlgorithm,
-  deviceAssetId: asset.deviceAssetId,
-  deviceId: asset.deviceId,
   fileCreatedAt: asset.fileCreatedAt,
   fileModifiedAt: asset.fileModifiedAt,
   isExternal: asset.isExternal,
@@ -159,6 +157,9 @@ export const getForGenerateThumbnail = (asset: ReturnType<AssetFactory['build']>
   files: asset.files.map((file) => getDehydrated(file)),
   exifInfo: getDehydrated(asset.exifInfo),
   edits: asset.edits.map(({ action, parameters }) => ({ action, parameters })) as AssetEditActionItem[],
+  videoStream: null as (VideoStreamInfo & { timeBase: number }) | null,
+  audioStream: null as AudioStreamInfo | null,
+  format: null as VideoFormat | null,
 });
 
 export const getForAssetFace = (face: ReturnType<AssetFaceFactory['build']>) => ({
@@ -229,7 +230,6 @@ export const getForSharedLink = (sharedLink: ReturnType<SharedLinkFactory['build
   album: sharedLink.album
     ? {
         ...getDehydrated(sharedLink.album),
-        owner: getDehydrated(sharedLink.album.owner),
         assets: sharedLink.album.assets.map((asset) => getDehydrated(asset)),
       }
     : null,

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { preferences } from '$lib/stores/user.store';
+  import { authManager } from '$lib/managers/auth-manager.svelte';
   import { Icon, Modal, ModalBody } from '@immich/ui';
   import { mdiInformationOutline } from '@mdi/js';
   import { t } from 'svelte-i18n';
@@ -47,7 +47,7 @@
         { key: ['⇧', ']'], action: `${$t('editor_rotate_right')} + ${$t('save')}` },
         { key: ['Space'], action: $t('play_or_pause_video') },
         { key: ['Del'], action: $t('trash_delete_asset'), info: $t('shift_to_permanent_delete') },
-        ...($preferences?.ratings.enabled
+        ...(authManager.authenticated && authManager.preferences.ratings.enabled
           ? [{ key: ['1-5'], action: $t('rate_asset'), info: $t('zero_to_clear_rating') }]
           : []),
       ],
@@ -73,7 +73,7 @@
                     </p>
                   {/each}
                 </div>
-                <p class="mb-1 mt-1 flex">{shortcut.action}</p>
+                <p class="my-1 flex">{shortcut.action}</p>
               </div>
             {/each}
           </div>
@@ -95,7 +95,7 @@
                   {/each}
                 </div>
                 <div class="flex items-center gap-2">
-                  <p class="mb-1 mt-1 flex">{shortcut.action}</p>
+                  <p class="my-1 flex">{shortcut.action}</p>
                   {#if shortcut.info}
                     <Icon icon={mdiInformationOutline} title={shortcut.info} />
                   {/if}

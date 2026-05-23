@@ -5,27 +5,27 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/widgets.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:immich_mobile/domain/models/asset/base_asset.model.dart';
-import 'package:immich_mobile/domain/models/exif.model.dart';
-import 'package:immich_mobile/domain/models/store.model.dart';
-import 'package:immich_mobile/entities/asset.entity.dart' as asset_entity;
-import 'package:immich_mobile/entities/store.entity.dart';
 import 'package:immich_mobile/extensions/build_context_extensions.dart';
 import 'package:immich_mobile/extensions/platform_extensions.dart';
 import 'package:immich_mobile/extensions/response_extensions.dart';
+import 'package:immich_mobile/platform/native_sync_api.g.dart';
+import 'package:immich_mobile/providers/infrastructure/platform.provider.dart';
 import 'package:immich_mobile/repositories/asset_api.repository.dart';
-import 'package:immich_mobile/utils/hash.dart';
 import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:share_plus/share_plus.dart';
 
-final assetMediaRepositoryProvider = Provider((ref) => AssetMediaRepository(ref.watch(assetApiRepositoryProvider)));
+final assetMediaRepositoryProvider = Provider(
+  (ref) => AssetMediaRepository(ref.watch(assetApiRepositoryProvider), ref.watch(nativeSyncApiProvider)),
+);
 
 class AssetMediaRepository {
   final AssetApiRepository _assetApiRepository;
+  final NativeSyncApi _nativeSyncApi;
   static final Logger _log = Logger("AssetMediaRepository");
 
-  const AssetMediaRepository(this._assetApiRepository);
+  const AssetMediaRepository(this._assetApiRepository, this._nativeSyncApi);
 
   Future<bool> _androidSupportsTrash() async {
     if (Platform.isAndroid) {
@@ -50,39 +50,30 @@ class AssetMediaRepository {
     return PhotoManager.editor.deleteWithIds(ids);
   }
 
-  Future<asset_entity.Asset?> get(String id) async {
-    final entity = await AssetEntity.fromId(id);
-    return toAsset(entity);
+  Future<bool> _restoreFromTrashById(String mediaId, int type) async {
+    try {
+      return await _nativeSyncApi.restoreFromTrashById(mediaId, type);
+    } catch (e, s) {
+      _log.warning('Error restore file from trash by Id', e, s);
+      return false;
+    }
   }
 
-  static asset_entity.Asset? toAsset(AssetEntity? local) {
-    if (local == null) return null;
-
-    final asset_entity.Asset asset = asset_entity.Asset(
-      checksum: "",
-      localId: local.id,
-      ownerId: fastHash(Store.get(StoreKey.currentUser).id),
-      fileCreatedAt: local.createDateTime,
-      fileModifiedAt: local.modifiedDateTime,
-      updatedAt: local.modifiedDateTime,
-      durationInSeconds: local.duration,
-      type: asset_entity.AssetType.values[local.typeInt],
-      fileName: local.title!,
-      width: local.width,
-      height: local.height,
-      isFavorite: local.isFavorite,
-    );
-
-    if (asset.fileCreatedAt.year == 1970) {
-      asset.fileCreatedAt = asset.fileModifiedAt;
+  Future<List<String>> restoreAssetsFromTrash(Iterable<LocalAsset> assets) async {
+    final restoredIds = <String>[];
+    for (final asset in assets) {
+      _log.info("Restoring from trash, localId: ${asset.id}, checksum: ${asset.checksum}");
+      final result = await _restoreFromTrashById(asset.id, asset.type.index);
+      if (result) {
+        restoredIds.add(asset.id);
+      }
     }
+    return restoredIds;
+  }
 
-    if (local.latitude != null) {
-      asset.exifInfo = ExifInfo(latitude: local.latitude, longitude: local.longitude);
-    }
-
-    asset.local = local;
-    return asset;
+  Future<AssetEntity?> get(String id) async {
+    final entity = await AssetEntity.fromId(id);
+    return entity;
   }
 
   Future<String?> getOriginalFilename(String id) async {
