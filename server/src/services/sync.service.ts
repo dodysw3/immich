@@ -268,7 +268,7 @@ export class SyncService extends BaseService {
   }
 
   private syncAssetsV1(): Promise<void> {
-    return Promise.resolve();
+    throw new BadRequestException('SyncRequestType.AssetsV1 is deprecated, use SyncRequestType.AssetsV2 instead');
   }
 
   private async syncAssetsV2(options: SyncQueryOptions, response: Writable, checkpointMap: CheckpointMap) {
@@ -286,7 +286,9 @@ export class SyncService extends BaseService {
   }
 
   private syncPartnerAssetsV1(): Promise<void> {
-    return Promise.resolve();
+    throw new BadRequestException(
+      'SyncRequestType.PartnerAssetsV1 is deprecated, use SyncRequestType.PartnerAssetsV2 instead',
+    );
   }
 
   private async syncPartnerAssetsV2(
@@ -506,7 +508,9 @@ export class SyncService extends BaseService {
   }
 
   private syncAlbumAssetsV1(): Promise<void> {
-    return Promise.resolve();
+    throw new BadRequestException(
+      'SyncRequestType.AlbumAssetsV1 is deprecated, use SyncRequestType.AlbumAssetsV2 instead',
+    );
   }
 
   private async syncAlbumAssetsV2(
@@ -822,7 +826,9 @@ export class SyncService extends BaseService {
   }
 
   private syncAssetFacesV1(): Promise<void> {
-    return Promise.resolve();
+    throw new BadRequestException(
+      'SyncRequestType.AssetFacesV1 is deprecated, use SyncRequestType.AssetFacesV2 instead',
+    );
   }
 
   private async syncAssetFacesV2(options: SyncQueryOptions, response: Writable, checkpointMap: CheckpointMap) {
