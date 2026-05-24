@@ -31,7 +31,11 @@ export class SyncController {
     try {
       await this.service.stream(auth, res, dto);
     } catch (error: Error | any) {
-      res.setHeader('Content-Type', 'application/json');
+      if (!res.headersSent) {
+        res.setHeader('Content-Type', 'application/json');
+      } else {
+        res.end();
+      }
       this.errorService.handleError(res, error);
     }
   }

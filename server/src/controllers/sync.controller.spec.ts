@@ -42,6 +42,30 @@ describe(SyncController.name, () => {
       );
       expect(ctx.authenticate).toHaveBeenCalled();
     });
+
+    it('should handle errors after headers are sent', async () => {
+      syncService.stream.mockImplementation(async (_auth: any, res: any, _dto: any) => {
+        res.write('data\n');
+        throw new Error('stream error after headers sent');
+      });
+
+      const { status } = await request(ctx.getHttpServer())
+        .post('/sync/stream')
+        .set('Authorization', 'Bearer test')
+        .send({ types: ['AssetsV1'] })
+        .buffer(true)
+        .parse((res, callback) => {
+          const data: Buffer[] = [];
+          res.on('data', (chunk: Buffer) => data.push(chunk));
+          res.on('end', () => callback(null, Buffer.concat(data)));
+        });
+
+      expect(status).toBe(200);
+      expect(errorService.handleError).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ message: 'stream error after headers sent' }),
+      );
+    });
   });
 
   describe('GET /sync/ack', () => {
