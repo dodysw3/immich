@@ -24,15 +24,15 @@ class FaceManager {
   });
 
   readonly people = $derived.by(() => {
-    const people = new SvelteSet<PersonResponseDto>();
+    const people = new Map<string, PersonResponseDto>();
 
     for (const face of this.data) {
       if (face.person) {
-        people.add(face.person);
+        people.set(face.person.id, face.person);
       }
     }
 
-    return people;
+    return new SvelteSet(people.values());
   });
 
   readonly facesByPersonId = $derived.by(() => {
