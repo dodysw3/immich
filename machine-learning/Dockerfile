@@ -130,6 +130,7 @@ WORKDIR /usr/src
 ENV TRANSFORMERS_CACHE=/cache \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    PYTHONUTF8=1 \
     PATH="/opt/venv/bin:$PATH" \
     PYTHONPATH=/usr/src \
     DEVICE=${DEVICE} \

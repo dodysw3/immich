@@ -16,7 +16,7 @@ from immich_ml.models.constants import RKNN_COREMASK_SUPPORTED_SOCS, RKNN_SUPPOR
 
 def get_soc(device_tree_path: Path | str) -> str | None:
     try:
-        with Path(device_tree_path).open() as f:
+        with Path(device_tree_path).open(encoding="utf-8") as f:
             device_compatible_str = f.read()
             for soc in RKNN_SUPPORTED_SOCS:
                 if soc in device_compatible_str:
