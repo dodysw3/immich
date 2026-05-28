@@ -899,6 +899,130 @@ class TestFaceRecognition:
 
         assert recognizer.batch_size is None
 
+    def test_cpu_fallback_not_triggered_when_gpu_finds_faces(self, cv_image: cv2.Mat, mocker: MockerFixture) -> None:
+        mocker.patch.object(FaceDetector, "load")
+        face_detector = FaceDetector("buffalo_s", min_score=0.0, cache_dir="test_cache")
+
+        det_model = mock.Mock()
+        num_faces = 2
+        bbox = np.random.rand(num_faces, 4).astype(np.float32)
+        scores = np.array([[0.67]] * num_faces).astype(np.float32)
+        kpss = np.random.rand(num_faces, 5, 2).astype(np.float32)
+        det_model.detect.return_value = (np.concatenate([bbox, scores], axis=-1), kpss)
+        face_detector.model = det_model
+
+        mock_session = mock.Mock()
+        mock_session.session.get_providers.return_value = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+        face_detector.session = mock_session
+
+        detect_cpu_spy = mocker.spy(face_detector, "_detect_cpu")
+
+        faces = face_detector.predict(cv_image)
+
+        assert faces["boxes"].shape[0] == num_faces
+        detect_cpu_spy.assert_not_called()
+
+    def test_cpu_fallback_gpu_zero_cpu_zero_no_warning(
+        self, cv_image: cv2.Mat, mocker: MockerFixture
+    ) -> None:
+        mocker.patch.object(FaceDetector, "load")
+        face_detector = FaceDetector("buffalo_s", min_score=0.0, cache_dir="test_cache")
+
+        det_model = mock.Mock()
+        empty_bboxes = np.zeros((0, 5), dtype=np.float32)
+        empty_kpss = np.zeros((0, 5, 2), dtype=np.float32)
+        det_model.detect.return_value = (empty_bboxes, empty_kpss)
+        face_detector.model = det_model
+
+        mock_session = mock.Mock()
+        mock_session.session.get_providers.return_value = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+        face_detector.session = mock_session
+
+        cpu_model = mock.Mock()
+        cpu_model.detect.return_value = (empty_bboxes, empty_kpss)
+        mocker.patch.object(face_detector, "_ensure_cpu_model")
+        face_detector._cpu_model = cpu_model
+
+        mock_warn = mocker.patch("immich_ml.models.facial_recognition.detection.log.warning")
+
+        faces = face_detector.predict(cv_image)
+
+        assert faces["boxes"].shape[0] == 0
+        mock_warn.assert_not_called()
+
+    def test_cpu_fallback_gpu_zero_cpu_finds_faces(
+        self, cv_image: cv2.Mat, mocker: MockerFixture
+    ) -> None:
+        mocker.patch.object(FaceDetector, "load")
+        face_detector = FaceDetector("buffalo_s", min_score=0.0, cache_dir="test_cache")
+
+        det_model = mock.Mock()
+        empty_bboxes = np.zeros((0, 5), dtype=np.float32)
+        empty_kpss = np.zeros((0, 5, 2), dtype=np.float32)
+        det_model.detect.return_value = (empty_bboxes, empty_kpss)
+        face_detector.model = det_model
+
+        mock_session = mock.Mock()
+        mock_session.session.get_providers.return_value = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+        face_detector.session = mock_session
+
+        num_faces = 1
+        cpu_bbox = np.random.rand(num_faces, 4).astype(np.float32)
+        cpu_scores = np.array([[0.8]] * num_faces).astype(np.float32)
+        cpu_kpss = np.random.rand(num_faces, 5, 2).astype(np.float32)
+        cpu_model = mock.Mock()
+        cpu_model.detect.return_value = (np.concatenate([cpu_bbox, cpu_scores], axis=-1), cpu_kpss)
+        mocker.patch.object(face_detector, "_ensure_cpu_model")
+        face_detector._cpu_model = cpu_model
+
+        mock_warn = mocker.patch("immich_ml.models.facial_recognition.detection.log.warning")
+
+        faces = face_detector.predict(cv_image)
+
+        assert faces["boxes"].shape[0] == num_faces
+        np.testing.assert_array_equal(faces["boxes"], cpu_bbox.round())
+        mock_warn.assert_called_once()
+        assert "GPU may be unhealthy" in mock_warn.call_args[0][0]
+
+    def test_cpu_fallback_not_triggered_for_cpu_only_session(
+        self, cv_image: cv2.Mat, mocker: MockerFixture
+    ) -> None:
+        mocker.patch.object(FaceDetector, "load")
+        face_detector = FaceDetector("buffalo_s", min_score=0.0, cache_dir="test_cache")
+
+        det_model = mock.Mock()
+        empty_bboxes = np.zeros((0, 5), dtype=np.float32)
+        empty_kpss = np.zeros((0, 5, 2), dtype=np.float32)
+        det_model.detect.return_value = (empty_bboxes, empty_kpss)
+        face_detector.model = det_model
+
+        mock_session = mock.Mock()
+        mock_session.session.get_providers.return_value = ["CPUExecutionProvider"]
+        face_detector.session = mock_session
+
+        detect_cpu_spy = mocker.spy(face_detector, "_detect_cpu")
+
+        faces = face_detector.predict(cv_image)
+
+        assert faces["boxes"].shape[0] == 0
+        detect_cpu_spy.assert_not_called()
+
+    def test_configure_propagates_min_score_to_cpu_model(self, mocker: MockerFixture) -> None:
+        mocker.patch.object(FaceDetector, "load")
+        face_detector = FaceDetector("buffalo_s", min_score=0.7, cache_dir="test_cache")
+        face_detector.model = mock.Mock()
+        face_detector.model.det_thresh = 0.7
+
+        cpu_model = mock.Mock()
+        cpu_model.det_thresh = 0.7
+        face_detector._cpu_model = cpu_model
+
+        face_detector.configure(minScore=0.5)
+
+        assert face_detector.model.det_thresh == 0.5
+        assert face_detector.min_score == 0.5
+        assert cpu_model.det_thresh == 0.5
+
 
 class TestOcr:
     def test_set_det_min_score(self, path: mock.Mock) -> None:

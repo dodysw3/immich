@@ -5,9 +5,11 @@ import numpy as np
 from insightface.model_zoo import RetinaFace
 from numpy.typing import NDArray
 
+from immich_ml.config import log
 from immich_ml.models.base import InferenceModel
 from immich_ml.models.transforms import decode_cv2
 from immich_ml.schemas import FaceDetectionOutput, ModelSession, ModelTask, ModelType
+from immich_ml.sessions.ort import OrtSession
 
 
 class FaceDetector(InferenceModel):
@@ -20,6 +22,7 @@ class FaceDetector(InferenceModel):
         self._tile_size = 640
         self._tile_overlap = 0.25
         self._max_tiles = 64
+        self._cpu_model: RetinaFace | None = None
         super().__init__(model_name, **model_kwargs)
 
     def _load(self) -> ModelSession:
@@ -29,6 +32,24 @@ class FaceDetector(InferenceModel):
 
         return session
 
+    def _ensure_cpu_model(self) -> None:
+        if self._cpu_model is not None:
+            return
+        cpu_session = OrtSession(self.model_path, providers=["CPUExecutionProvider"])
+        self._cpu_model = RetinaFace(session=cpu_session)
+        self._cpu_model.prepare(ctx_id=-1, det_thresh=self.min_score, input_size=(640, 640))
+
+    def _detect_cpu(self, inputs: NDArray[np.uint8]) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
+        self._ensure_cpu_model()
+        return self._cpu_model.detect(inputs)
+
+    def _is_gpu_session(self) -> bool:
+        try:
+            providers = self.session.session.get_providers()
+            return "CUDAExecutionProvider" in providers
+        except (AttributeError, RuntimeError):
+            return False
+
     def _predict(self, inputs: NDArray[np.uint8] | bytes) -> FaceDetectionOutput:
         inputs = decode_cv2(inputs)
 
@@ -36,6 +57,16 @@ class FaceDetector(InferenceModel):
             bboxes, landmarks = self._detect_tiled(inputs)
         else:
             bboxes, landmarks = self._detect(inputs)
+
+        if bboxes.shape[0] == 0 and self._is_gpu_session():
+            bboxes_cpu, landmarks_cpu = self._detect_cpu(inputs)
+            if bboxes_cpu.shape[0] > 0:
+                log.warning(
+                    "GPU face detection returned 0 faces but CPU found %d — GPU may be unhealthy",
+                    bboxes_cpu.shape[0],
+                )
+                bboxes, landmarks = bboxes_cpu, landmarks_cpu
+
         return {
             "boxes": bboxes[:, :4].round(),
             "scores": bboxes[:, 4],
@@ -145,7 +176,12 @@ class FaceDetector(InferenceModel):
         return float(intersection / union) if union > 0 else 0.0
 
     def configure(self, **kwargs: Any) -> None:
-        self.model.det_thresh = kwargs.pop("minScore", self.model.det_thresh)
+        min_score = kwargs.pop("minScore", None)
+        if min_score is not None:
+            self.min_score = min_score
+            self.model.det_thresh = min_score
+            if self._cpu_model is not None:
+                self._cpu_model.det_thresh = min_score
         self._tiled = kwargs.pop("tiled", self._tiled)
         self._tile_size = int(kwargs.pop("tileSize", self._tile_size))
         self._tile_overlap = float(kwargs.pop("tileOverlap", self._tile_overlap))
