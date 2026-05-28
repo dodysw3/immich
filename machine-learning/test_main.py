@@ -735,6 +735,7 @@ class TestFaceRecognition:
         assert isinstance(faces.get("boxes", None), np.ndarray)
         assert isinstance(faces.get("landmarks", None), np.ndarray)
         assert isinstance(faces.get("scores", None), np.ndarray)
+        assert isinstance(faces.get("gpuFallback"), bool)
         assert np.equal(faces["boxes"], bbox.round()).all()
         assert np.equal(faces["landmarks"], kpss).all()
         assert np.equal(faces["scores"], scores).all()
@@ -920,6 +921,7 @@ class TestFaceRecognition:
         faces = face_detector.predict(cv_image)
 
         assert faces["boxes"].shape[0] == num_faces
+        assert faces["gpuFallback"] is False
         detect_cpu_spy.assert_not_called()
 
     def test_cpu_fallback_gpu_zero_cpu_zero_no_warning(
@@ -948,7 +950,9 @@ class TestFaceRecognition:
         faces = face_detector.predict(cv_image)
 
         assert faces["boxes"].shape[0] == 0
-        mock_warn.assert_not_called()
+        assert faces["gpuFallback"] is False
+        assert mock_warn.call_count == 1
+        assert "trying CPU fallback" in mock_warn.call_args_list[0][0][0]
 
     def test_cpu_fallback_gpu_zero_cpu_finds_faces(
         self, cv_image: cv2.Mat, mocker: MockerFixture
@@ -980,9 +984,11 @@ class TestFaceRecognition:
         faces = face_detector.predict(cv_image)
 
         assert faces["boxes"].shape[0] == num_faces
+        assert faces["gpuFallback"] is True
         np.testing.assert_array_equal(faces["boxes"], cpu_bbox.round())
-        mock_warn.assert_called_once()
-        assert "GPU may be unhealthy" in mock_warn.call_args[0][0]
+        assert mock_warn.call_count == 2
+        assert "trying CPU fallback" in mock_warn.call_args_list[0][0][0]
+        assert "GPU may be unhealthy" in mock_warn.call_args_list[1][0][0]
 
     def test_cpu_fallback_not_triggered_for_cpu_only_session(
         self, cv_image: cv2.Mat, mocker: MockerFixture
@@ -1005,6 +1011,7 @@ class TestFaceRecognition:
         faces = face_detector.predict(cv_image)
 
         assert faces["boxes"].shape[0] == 0
+        assert faces["gpuFallback"] is False
         detect_cpu_spy.assert_not_called()
 
     def test_configure_propagates_min_score_to_cpu_model(self, mocker: MockerFixture) -> None:

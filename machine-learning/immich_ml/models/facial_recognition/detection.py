@@ -9,7 +9,29 @@ from immich_ml.config import log
 from immich_ml.models.base import InferenceModel
 from immich_ml.models.transforms import decode_cv2
 from immich_ml.schemas import FaceDetectionOutput, ModelSession, ModelTask, ModelType
-from immich_ml.sessions.ort import OrtSession
+from immich_ml.sessions.ort import OrtSession, _gpu_lock
+
+
+class _ThreadSafeSession:
+    """Wrapper around onnxruntime.InferenceSession that serializes GPU access.
+
+    InsightFace uses the raw ORT session directly (bypassing our OrtSession),
+    so we need this wrapper to prevent concurrent CUDA calls from producing
+    garbage outputs.
+    """
+
+    def __init__(self, session: Any, use_lock: bool = True) -> None:
+        self._session = session
+        self._use_lock = use_lock
+
+    def run(self, *args: Any, **kwargs: Any) -> Any:
+        if self._use_lock:
+            with _gpu_lock:
+                return self._session.run(*args, **kwargs)
+        return self._session.run(*args, **kwargs)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._session, name)
 
 
 class FaceDetector(InferenceModel):
@@ -27,7 +49,8 @@ class FaceDetector(InferenceModel):
 
     def _load(self) -> ModelSession:
         session = self._make_session(self.model_path)
-        self.model = RetinaFace(session=session)
+        use_lock = any(p in ("CUDAExecutionProvider", "ROCMExecutionProvider") for p in session.providers)
+        self.model = RetinaFace(session=_ThreadSafeSession(session.session, use_lock=use_lock))
         self.model.prepare(ctx_id=0, det_thresh=self.min_score, input_size=(640, 640))
 
         return session
@@ -36,7 +59,7 @@ class FaceDetector(InferenceModel):
         if self._cpu_model is not None:
             return
         cpu_session = OrtSession(self.model_path, providers=["CPUExecutionProvider"])
-        self._cpu_model = RetinaFace(session=cpu_session)
+        self._cpu_model = RetinaFace(session=_ThreadSafeSession(cpu_session.session, use_lock=False))
         self._cpu_model.prepare(ctx_id=-1, det_thresh=self.min_score, input_size=(640, 640))
 
     def _detect_cpu(self, inputs: NDArray[np.uint8]) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
@@ -58,7 +81,14 @@ class FaceDetector(InferenceModel):
         else:
             bboxes, landmarks = self._detect(inputs)
 
+        gpu_fallback = False
         if bboxes.shape[0] == 0 and self._is_gpu_session():
+            log.warning(
+                "GPU returned 0 faces for %dx%d image (tiled=%s), trying CPU fallback",
+                inputs.shape[1],
+                inputs.shape[0],
+                self._tiled,
+            )
             bboxes_cpu, landmarks_cpu = self._detect_cpu(inputs)
             if bboxes_cpu.shape[0] > 0:
                 log.warning(
@@ -66,11 +96,13 @@ class FaceDetector(InferenceModel):
                     bboxes_cpu.shape[0],
                 )
                 bboxes, landmarks = bboxes_cpu, landmarks_cpu
+                gpu_fallback = True
 
         return {
             "boxes": bboxes[:, :4].round(),
             "scores": bboxes[:, 4],
             "landmarks": landmarks,
+            "gpuFallback": gpu_fallback,
         }
 
     def _detect(self, inputs: NDArray[np.uint8] | bytes) -> tuple[NDArray[np.float32], NDArray[np.float32]]:

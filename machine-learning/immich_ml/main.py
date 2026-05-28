@@ -208,6 +208,10 @@ async def run_inference(payload: Image | str, entries: InferenceEntries) -> Infe
     if isinstance(payload, Image):
         response["imageHeight"], response["imageWidth"] = payload.height, payload.width
 
+    det_output = outputs.get((ModelType.DETECTION, ModelTask.FACIAL_RECOGNITION))
+    if isinstance(det_output, dict):
+        response["gpuFallback"] = det_output.get("gpuFallback", False)
+
     return response
 
 

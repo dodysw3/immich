@@ -319,7 +319,8 @@ export class PersonService extends BaseService {
       machineLearning.facialRecognition,
     );
     const pass1Ms = Date.now() - pass1Start;
-    this.logger.debug(`Pass 1: ${pass1.faces.length} faces detected in ${pass1Ms}ms for asset ${id}`);
+    const gpuFallbackTag = pass1.gpuFallback ? ' (GPU fallback)' : '';
+    this.logger.debug(`Pass 1: ${pass1.faces.length} faces${gpuFallbackTag} detected in ${pass1Ms}ms for asset ${id}`);
 
     let faces = pass1.faces;
     let imageHeight = pass1.imageHeight;

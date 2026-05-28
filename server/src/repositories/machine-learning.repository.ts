@@ -77,7 +77,9 @@ export interface Face {
   score: number;
 }
 
-export type FacialRecognitionResponse = { [ModelTask.FACIAL_RECOGNITION]: Face[] } & VisualResponse;
+export type FacialRecognitionResponse = { [ModelTask.FACIAL_RECOGNITION]: Face[] } & VisualResponse & {
+    gpuFallback: boolean;
+  };
 export type DetectedFaces = { faces: Face[] } & VisualResponse;
 export type MachineLearningRequest = ClipVisualRequest | ClipTextualRequest | FacialRecognitionRequest | OcrRequest;
 export type TextEncodingOptions = ModelOptions & { language?: string };
@@ -208,6 +210,7 @@ export class MachineLearningRepository {
       imageHeight: response.imageHeight,
       imageWidth: response.imageWidth,
       faces: response[ModelTask.FACIAL_RECOGNITION],
+      gpuFallback: response.gpuFallback,
     };
   }
 

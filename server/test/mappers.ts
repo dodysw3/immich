@@ -51,6 +51,7 @@ export const getAsDetectedFace = (face: ReturnType<AssetFaceFactory['build']>) =
   ],
   imageHeight: face.imageHeight,
   imageWidth: face.imageWidth,
+  gpuFallback: false,
 });
 
 export const getForFacialRecognitionJob = (

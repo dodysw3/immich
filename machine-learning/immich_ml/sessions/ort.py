@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,10 @@ from immich_ml.models.constants import SUPPORTED_PROVIDERS
 from immich_ml.schemas import ModelPrecision, SessionNode
 
 from ..config import log, settings
+
+# Serialize GPU session access — ONNX Runtime CUDA EP is not thread-safe.
+# Without this, concurrent session.run() calls produce garbage outputs.
+_gpu_lock = threading.Lock()
 
 
 class OrtSession:
@@ -33,6 +38,10 @@ class OrtSession:
             provider_options=self.provider_options,
             sess_options=self.sess_options,
         )
+        self._use_gpu_lock = any(
+            p in ("CUDAExecutionProvider", "ROCMExecutionProvider", "TensorrtExecutionProvider")
+            for p in self.providers
+        )
 
     def get_inputs(self) -> list[SessionNode]:
         inputs: list[SessionNode] = self.session.get_inputs()
@@ -48,7 +57,11 @@ class OrtSession:
         input_feed: dict[str, NDArray[np.float32]] | dict[str, NDArray[np.int32]],
         run_options: Any = None,
     ) -> list[NDArray[np.float32]]:
-        outputs: list[NDArray[np.float32]] = self.session.run(output_names, input_feed, run_options)
+        if self._use_gpu_lock:
+            with _gpu_lock:
+                outputs: list[NDArray[np.float32]] = self.session.run(output_names, input_feed, run_options)
+        else:
+            outputs = self.session.run(output_names, input_feed, run_options)
         return outputs
 
     @property

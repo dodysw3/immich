@@ -83,6 +83,7 @@ class FaceDetectionOutput(TypedDict):
     boxes: npt.NDArray[np.float32]
     scores: npt.NDArray[np.float32]
     landmarks: npt.NDArray[np.float32]
+    gpuFallback: bool
 
 
 class DetectedFace(TypedDict):
@@ -112,7 +113,9 @@ class InferenceEntry(TypedDict):
 InferenceEntries = tuple[list[InferenceEntry], list[InferenceEntry]]
 
 
-InferenceResponse = dict[ModelTask | Literal["imageHeight"] | Literal["imageWidth"], Any]
+InferenceResponse = dict[
+    ModelTask | Literal["imageHeight"] | Literal["imageWidth"] | Literal["gpuFallback"], Any
+]
 
 
 def has_profiling(obj: Any) -> TypeGuard[HasProfiling]:

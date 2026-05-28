@@ -834,7 +834,7 @@ describe(PersonService.name, () => {
       const asset = AssetFactory.from().file({ type: AssetFileType.Preview }).exif().build();
       const previewFile = asset.files[0].path;
 
-      mocks.machineLearning.detectFaces.mockResolvedValue({ imageHeight: 500, imageWidth: 400, faces: [] });
+      mocks.machineLearning.detectFaces.mockResolvedValue({ imageHeight: 500, imageWidth: 400, faces: [], gpuFallback: false });
       mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
       await sut.handleDetectFaces({ id: asset.id });
       expect(mocks.machineLearning.detectFaces).toHaveBeenCalledWith(
@@ -878,7 +878,7 @@ describe(PersonService.name, () => {
 
     it('should delete an existing face not among the new detected faces', async () => {
       const asset = AssetFactory.from().face().file({ type: AssetFileType.Preview }).exif().build();
-      mocks.machineLearning.detectFaces.mockResolvedValue({ faces: [], imageHeight: 500, imageWidth: 400 });
+      mocks.machineLearning.detectFaces.mockResolvedValue({ faces: [], imageHeight: 500, imageWidth: 400, gpuFallback: false });
       mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
 
       await sut.handleDetectFaces({ id: asset.id });
