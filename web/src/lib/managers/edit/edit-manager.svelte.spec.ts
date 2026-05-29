@@ -104,7 +104,7 @@ describe('EditManager.applyInstantRotate', () => {
         ],
       },
     });
-    expect(mocks.waitForWebsocketEvent).toHaveBeenCalledWith('AssetEditReadyV1', expect.any(Function), 10_000);
+    expect(mocks.waitForWebsocketEvent).toHaveBeenCalledWith('AssetEditReadyV2', expect.any(Function), 10_000);
 
     const predicate = mocks.waitForWebsocketEvent.mock.calls[0][1] as (event: { asset: { id: string } }) => boolean;
     expect(predicate({ asset: { id: asset.id } })).toBe(true);

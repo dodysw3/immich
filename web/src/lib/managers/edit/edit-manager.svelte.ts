@@ -143,7 +143,7 @@ export class EditManager {
 
     try {
       // Setup the websocket listener before sending the edit request
-      const editCompleted = waitForWebsocketEvent('AssetEditReadyV1', (event) => event.asset.id === assetId, 10_000);
+      const editCompleted = waitForWebsocketEvent('AssetEditReadyV2', (event) => event.asset.id === assetId, 10_000);
 
       await (edits.length === 0
         ? removeAssetEdits({ id: assetId })
@@ -202,7 +202,7 @@ export class EditManager {
           ? editsWithoutRotate
           : [...editsWithoutRotate, { action: AssetEditAction.Rotate, parameters: { angle: nextRotation } }];
 
-      const editCompleted = waitForWebsocketEvent('AssetEditReadyV1', (event) => event.asset.id === assetId, 10_000);
+      const editCompleted = waitForWebsocketEvent('AssetEditReadyV2', (event) => event.asset.id === assetId, 10_000);
 
       await (edits.length === 0
         ? removeAssetEdits({ id: assetId })
