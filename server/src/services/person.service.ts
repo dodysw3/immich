@@ -4,6 +4,7 @@ import { JOBS_ASSET_PAGINATION_SIZE } from 'src/constants';
 import { Person } from 'src/database';
 import { Chunked, OnJob } from 'src/decorators';
 import { BulkIdErrorReason, BulkIdResponseDto, BulkIdsDto } from 'src/dtos/asset-ids.response.dto';
+import { mapAsset } from 'src/dtos/asset-response.dto';
 import { AuthDto } from 'src/dtos/auth.dto';
 import {
   AssetFaceCreateDto,
@@ -22,6 +23,7 @@ import {
   PersonStatisticsResponseDto,
   PersonUpdateDto,
 } from 'src/dtos/person.dto';
+import { PersonAssetsDto, PersonAssetsResponseDto } from 'src/dtos/person-assets.dto';
 import {
   AssetVisibility,
   AssetType,
@@ -42,6 +44,7 @@ import { FaceSearchTable } from 'src/schema/tables/face-search.table';
 import { BaseService } from 'src/services/base.service';
 import { JobItem, JobOf } from 'src/types';
 import { getDimensions } from 'src/utils/asset.util';
+import { asDateString } from 'src/utils/date';
 import { ImmichFileResponse } from 'src/utils/file';
 import { mimeTypes } from 'src/utils/mime-types';
 import { isFacialRecognitionEnabled } from 'src/utils/misc';
@@ -160,6 +163,31 @@ export class PersonService extends BaseService {
     return this.personRepository.getStatistics(id);
   }
 
+  async getPersonAssets(auth: AuthDto, id: string, dto: PersonAssetsDto): Promise<PersonAssetsResponseDto> {
+    await this.requireAccess({ auth, permission: Permission.PersonRead, ids: [id] });
+
+    const { items, total } = await this.personRepository.getPersonAssets(id, {
+      page: dto.page,
+      limit: dto.limit,
+      order: dto.order,
+    });
+
+    if (items.length === 0) {
+      return { assets: [], total: 0 };
+    }
+
+    const assets = await this.assetRepository.getByIdsWithAllRelationsButStacks(items.map((i) => i.id));
+    const recognizedAtMap = new Map(items.map((i) => [i.id, i.recognizedAt]));
+
+    return {
+      assets: assets.map((asset) => ({
+        ...mapAsset(asset, { auth }),
+        recognizedAt: asDateString(recognizedAtMap.get(asset.id)!),
+      })),
+      total,
+    };
+  }
+
   async getThumbnail(auth: AuthDto, id: string): Promise<ImmichFileResponse> {
     await this.requireAccess({ auth, permission: Permission.PersonRead, ids: [id] });
     const person = await this.personRepository.getById(id);
@@ -259,6 +287,13 @@ export class PersonService extends BaseService {
 
   @OnJob({ name: JobName.PersonCleanup, queue: QueueName.BackgroundTask })
   async handlePersonCleanup(): Promise<JobStatus> {
+    const { machineLearning } = await this.getConfig({ withCache: false });
+    const minFaceSize = machineLearning.facialRecognition.minFaceSize;
+    const deleted = await this.personRepository.deleteSmallFaces(minFaceSize);
+    if (deleted > 0) {
+      this.logger.log(`Deleted ${deleted} undersized faces (min dimension < ${minFaceSize})`);
+    }
+
     const people = await this.personRepository.getAllWithoutFaces();
     await this.removeAllPeople(people);
     return JobStatus.Success;
@@ -323,8 +358,8 @@ export class PersonService extends BaseService {
     this.logger.debug(`Pass 1: ${pass1.faces.length} faces${gpuFallbackTag} detected in ${pass1Ms}ms for asset ${id}`);
 
     let faces = pass1.faces;
-    let imageHeight = pass1.imageHeight;
-    let imageWidth = pass1.imageWidth;
+    const imageHeight = pass1.imageHeight;
+    const imageWidth = pass1.imageWidth;
 
     const tiling = machineLearning.facialRecognition.tiling;
     if (tiling.enabled && this.shouldRunTiledPass(asset, pass1.faces.length, tiling.triggers)) {
@@ -378,6 +413,17 @@ export class PersonService extends BaseService {
 
     const heightScale = imageHeight / (asset.faces[0]?.imageHeight || 1);
     const widthScale = imageWidth / (asset.faces[0]?.imageWidth || 1);
+
+    const minFaceSize = machineLearning.facialRecognition.minFaceSize;
+    const beforeFilter = faces.length;
+    faces = faces.filter(
+      ({ boundingBox }) => Math.min(boundingBox.x2 - boundingBox.x1, boundingBox.y2 - boundingBox.y1) >= minFaceSize,
+    );
+    const filteredCount = beforeFilter - faces.length;
+    if (filteredCount > 0) {
+      this.logger.log(`Filtered out ${filteredCount} undersized faces (min dimension < ${minFaceSize}) in asset ${id}`);
+    }
+
     for (const { boundingBox, embedding } of faces) {
       const scaledBox = {
         x1: boundingBox.x1 * widthScale,

@@ -60,6 +60,10 @@ export const FacialRecognitionConfigSchema = ModelConfigSchema.extend({
     .max(2)
     .describe('Maximum distance threshold for face recognition'),
   minFaces: z.int().min(1).describe('Minimum number of faces required for recognition'),
+  minFaceSize: z
+    .int()
+    .min(1)
+    .describe('Minimum bounding box pixel dimension for face recognition'),
   tiling: FaceDetectionTilingConfigSchema,
 }).meta({ id: 'FacialRecognitionConfig' });
 

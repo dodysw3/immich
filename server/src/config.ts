@@ -72,6 +72,7 @@ export type SystemConfig = {
       modelName: string;
       minScore: number;
       minFaces: number;
+      minFaceSize: number;
       maxDistance: number;
       tiling: {
         enabled: boolean;
@@ -278,6 +279,7 @@ export const defaults = Object.freeze<SystemConfig>({
       minScore: 0.7,
       maxDistance: 0.5,
       minFaces: 3,
+      minFaceSize: 22,
       tiling: {
         enabled: false,
         tileSize: 640,

@@ -4,7 +4,7 @@ import { jsonObjectFrom } from 'kysely/helpers/postgres';
 import { InjectKysely } from 'nestjs-kysely';
 import { AssetFace } from 'src/database';
 import { Chunked, ChunkedArray, DummyValue, GenerateSql } from 'src/decorators';
-import { AssetFileType, AssetVisibility, SourceType } from 'src/enum';
+import { AssetFileType, SourceType } from 'src/enum';
 import { DB } from 'src/schema';
 import { AssetFaceTable } from 'src/schema/tables/asset-face.table';
 import { FaceSearchTable } from 'src/schema/tables/face-search.table';
@@ -114,6 +114,21 @@ export class PersonRepository {
   }
 
   @GenerateSql({ params: [DummyValue.UUID, SourceType.MachineLearning] })
+  async deleteSmallFaces(minSize: number): Promise<number> {
+    const result = await this.db
+      .deleteFrom('asset_face')
+      .where((eb) =>
+        eb.or([
+          eb(sql`"asset_face"."boundingBoxX2" - "asset_face"."boundingBoxX1"`, '<', minSize),
+          eb(sql`"asset_face"."boundingBoxY2" - "asset_face"."boundingBoxY1"`, '<', minSize),
+        ]),
+      )
+      .where('asset_face.deletedAt', 'is', null)
+      .executeTakeFirst();
+
+    return Number(result.numDeletedRows ?? 0);
+  }
+
   async deleteFacesByAssetId(assetId: string, sourceType: SourceType): Promise<void> {
     await this.db
       .deleteFrom('asset_face')
@@ -585,5 +600,54 @@ export class PersonRepository {
       .where('asset_face.personId', '=', personId)
       .innerJoin('asset', (join) => join.onRef('asset.id', '=', 'asset_face.assetId').on('asset.isOffline', '=', false))
       .executeTakeFirst();
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID, { page: 1, limit: 20, order: 'desc' as const }] })
+  async getPersonAssets(
+    personId: string,
+    options: { page: number; limit: number; order: 'asc' | 'desc' },
+  ): Promise<{ items: { id: string; recognizedAt: Date }[]; total: number }> {
+    const { page, limit, order } = options;
+    const offset = (page - 1) * limit;
+
+    const countResult = await this.db
+      .selectFrom('asset_face')
+      .innerJoin('asset', (join) =>
+        join
+          .onRef('asset.id', '=', 'asset_face.assetId')
+          .on('asset.visibility', 'in', PEOPLE_ASSET_VISIBILITIES)
+          .on('asset.deletedAt', 'is', null),
+      )
+      .select((eb) => eb.fn.count(eb.fn('distinct', ['asset.id'])).as('count'))
+      .where('asset_face.personId', '=', personId)
+      .where('asset_face.deletedAt', 'is', null)
+      .where('asset_face.isVisible', 'is', true)
+      .executeTakeFirst();
+
+    const total = Number(countResult?.count ?? 0);
+
+    if (total === 0) {
+      return { items: [], total: 0 };
+    }
+
+    const items = await this.db
+      .selectFrom('asset_face')
+      .innerJoin('asset', (join) =>
+        join
+          .onRef('asset.id', '=', 'asset_face.assetId')
+          .on('asset.visibility', 'in', PEOPLE_ASSET_VISIBILITIES)
+          .on('asset.deletedAt', 'is', null),
+      )
+      .select(['asset.id', sql<Date>`max(asset_face."updatedAt")`.as('recognizedAt')])
+      .where('asset_face.personId', '=', personId)
+      .where('asset_face.deletedAt', 'is', null)
+      .where('asset_face.isVisible', 'is', true)
+      .groupBy('asset.id')
+      .orderBy(sql`max(asset_face."updatedAt")`, order)
+      .limit(limit)
+      .offset(offset)
+      .execute();
+
+    return { items, total };
   }
 }
