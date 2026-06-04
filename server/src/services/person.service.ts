@@ -325,10 +325,6 @@ export class PersonService extends BaseService {
 
     await this.jobRepository.queueAll(jobs);
 
-    if (force === undefined) {
-      await this.jobRepository.queue({ name: JobName.PersonCleanup });
-    }
-
     return JobStatus.Success;
   }
 

@@ -603,7 +603,7 @@ describe(PersonService.name, () => {
           data: { id: asset.id },
         },
       ]);
-      expect(mocks.job.queue).toHaveBeenCalledWith({ name: JobName.PersonCleanup });
+      expect(mocks.job.queue).not.toHaveBeenCalled();
     });
 
     it('should delete existing people and faces if forced', async () => {
