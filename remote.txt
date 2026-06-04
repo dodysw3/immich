@@ -1,0 +1,2 @@
+origin	https://x-access-token:ghu_g0ItsWOMmlfK7DLqgtDro1Nuhcv9i73uas0y@github.com/dodysw3/immich (fetch)
+origin	https://x-access-token:ghu_g0ItsWOMmlfK7DLqgtDro1Nuhcv9i73uas0y@github.com/dodysw3/immich (push)
