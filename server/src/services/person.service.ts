@@ -180,7 +180,7 @@ export class PersonService extends BaseService {
     return {
       assets: assets.map((asset) => ({
         ...mapAsset(asset, { auth }),
-        recognizedAt: asDateString(recognizedAtMap.get(asset.id)!),
+        recognizedAt: asDateString(recognizedAtMap.get(asset.id)!)!,
       })),
       total,
     };
