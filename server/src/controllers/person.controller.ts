@@ -28,6 +28,7 @@ import {
   PersonStatisticsResponseDto,
   PersonUpdateDto,
 } from 'src/dtos/person.dto';
+import { PersonAssetsDto, PersonAssetsResponseDto } from 'src/dtos/person-assets.dto';
 import { ApiTag, Permission } from 'src/enum';
 import { Auth, Authenticated, FileResponse } from 'src/middleware/auth.guard';
 import { LoggingRepository } from 'src/repositories/logging.repository';
@@ -137,6 +138,20 @@ export class PersonController {
   })
   getPersonStatistics(@Auth() auth: AuthDto, @Param() { id }: UUIDParamDto): Promise<PersonStatisticsResponseDto> {
     return this.service.getStatistics(auth, id);
+  }
+
+  @Get(':id/assets')
+  @Authenticated({ permission: Permission.PersonRead })
+  @Endpoint({
+    summary: 'Get person assets',
+    description: "Retrieve a paginated list of a person's assets sorted by face recognition time.",
+  })
+  getPersonAssets(
+    @Auth() auth: AuthDto,
+    @Param() { id }: UUIDParamDto,
+    @Query() dto: PersonAssetsDto,
+  ): Promise<PersonAssetsResponseDto> {
+    return this.service.getPersonAssets(auth, id, dto);
   }
 
   @Get(':id/thumbnail')

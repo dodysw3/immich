@@ -1497,6 +1497,72 @@ export type PersonStatisticsResponseDto = {
     /** Number of assets */
     assets: number;
 };
+export type PersonAssetsResponseDto = {
+    /** Assets sorted by recognition time */
+    assets: {
+        /** Base64 encoded SHA1 hash */
+        checksum: string;
+        /** The UTC timestamp when the asset was originally uploaded to Immich. */
+        createdAt: string;
+        /** Duplicate group ID */
+        duplicateId?: string | null;
+        /** Video/gif duration in milliseconds (null for static images) */
+        duration: number | null;
+        exifInfo?: ExifResponseDto;
+        /** The actual UTC timestamp when the file was created/captured, preserving timezone information. This is the authoritative timestamp for chronological sorting within timeline groups. Combined with timezone data, this can be used to determine the exact moment the photo was taken. */
+        fileCreatedAt: string;
+        /** The UTC timestamp when the file was last modified on the filesystem. This reflects the last time the physical file was changed, which may be different from when the photo was originally taken. */
+        fileModifiedAt: string;
+        /** Whether asset has metadata */
+        hasMetadata: boolean;
+        /** Asset height */
+        height: number | null;
+        /** Asset ID */
+        id: string;
+        /** Is archived */
+        isArchived: boolean;
+        /** Is edited */
+        isEdited: boolean;
+        /** Is favorite */
+        isFavorite: boolean;
+        /** Is offline */
+        isOffline: boolean;
+        /** Is trashed */
+        isTrashed: boolean;
+        /** Library ID */
+        libraryId?: string | null;
+        /** Live photo video ID */
+        livePhotoVideoId?: string | null;
+        /** The local date and time when the photo/video was taken, derived from EXIF metadata. This represents the photographer's local time regardless of timezone, stored as a timezone-agnostic timestamp. Used for timeline grouping by "local" days and months. */
+        localDateTime: string;
+        /** Original file name */
+        originalFileName: string;
+        /** Original MIME type */
+        originalMimeType?: string;
+        /** Original file path */
+        originalPath: string;
+        owner?: UserResponseDto;
+        /** Owner user ID */
+        ownerId: string;
+        people?: PersonResponseDto[];
+        /** When the face was matched to this person */
+        recognizedAt: string;
+        /** Is resized */
+        resized?: boolean;
+        stack?: (AssetStackResponseDto) | null;
+        tags?: TagResponseDto[];
+        /** Thumbhash for thumbnail generation (base64) also used as the c query param for thumbnail cache busting. */
+        thumbhash: string | null;
+        "type": AssetTypeEnum;
+        /** The UTC timestamp when the asset record was last updated in the database. This is automatically maintained by the database and reflects when any field in the asset was last modified. */
+        updatedAt: string;
+        visibility: AssetVisibility;
+        /** Asset width */
+        width: number | null;
+    }[];
+    /** Total number of assets */
+    total: number;
+};
 export type PluginMethodResponseDto = {
     /** Description */
     description: string;
@@ -5331,6 +5397,23 @@ export function updatePerson({ id, personUpdateDto }: {
         method: "PUT",
         body: personUpdateDto
     })));
+}
+export function getPersonAssets({ id, limit, order, page }: {
+    id: string;
+    limit?: number;
+    order?: "asc" | "desc";
+    page?: number;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: PersonAssetsResponseDto;
+    }>(`/people/${encodeURIComponent(id)}/assets${QS.query(QS.explode({
+        limit,
+        order,
+        page
+    }))}`, {
+        ...opts
+    }));
 }
 /**
  * Merge people
