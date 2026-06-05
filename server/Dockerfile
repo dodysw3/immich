@@ -77,8 +77,9 @@ RUN --mount=type=cache,id=pnpm-packages,target=/buildcache/pnpm-store \
   --mount=type=bind,source=package.json,target=package.json \
   --mount=type=bind,source=.pnpmfile.cjs,target=.pnpmfile.cjs \
   --mount=type=bind,source=pnpm-lock.yaml,target=pnpm-lock.yaml \
-  --mount=type=cache,id=mise-tools-${TARGETPLATFORM},target=/buildcache/mise \
-  mise //:plugins
+  pnpm --filter @immich/sdk --filter @immich/plugin-sdk --filter @immich/plugin-core install --no-frozen-lockfile && \
+  pnpm --filter @immich/sdk build && \
+  mise x -- pnpm --filter @immich/plugin-sdk --filter @immich/plugin-core build
 
 FROM ghcr.io/immich-app/base-server-prod:202606021219@sha256:6ef9ef5859492149af770a6c884b5e2ddbaeef99f8885ea5f2d9f73625a3d9ec
 
