@@ -22,10 +22,11 @@
   import { getJustifiedLayoutFromAssets } from '$lib/utils/layout-utils';
   import { navigate } from '$lib/utils/navigation';
   import { isTimelineAsset, toTimelineAsset } from '$lib/utils/timeline-util';
+  import { type PageMap, getLoadedAssets, getContainerHeight, findGhostPagesNearViewport } from '$lib/utils/page-map';
   import { TUNABLES } from '$lib/utils/tunables';
   import { AssetVisibility, type AssetResponseDto } from '@immich/sdk';
   import { modalManager } from '@immich/ui';
-  import { debounce } from 'lodash-es';
+  import { debounce, throttle } from 'lodash-es';
   import { t } from 'svelte-i18n';
 
   const {
@@ -46,6 +47,8 @@
     slidingWindowOffset?: number;
     arrowNavigation?: boolean;
     allowDeletion?: boolean;
+    pageMap?: PageMap | undefined;
+    reloadPage?: ((pageNum: number) => Promise<void>) | undefined;
   };
 
   let {
@@ -62,12 +65,16 @@
     pageHeaderOffset = 0,
     arrowNavigation = true,
     allowDeletion = true,
+    pageMap = undefined,
+    reloadPage = undefined,
   }: Props = $props();
 
-  const navigationAssets = $derived(viewerAssets ?? assets);
+  const resolvedAssets = $derived(pageMap ? getLoadedAssets(pageMap) : assets);
+
+  const navigationAssets = $derived(viewerAssets ?? resolvedAssets);
 
   const geometry = $derived(
-    getJustifiedLayoutFromAssets(assets, {
+    getJustifiedLayoutFromAssets(resolvedAssets, {
       spacing: 2,
       heightTolerance: 0.5,
       rowHeight: Math.floor(viewport.width) < 850 ? 100 : 235,
@@ -75,14 +82,136 @@
     }),
   );
 
-  const getStyle = (index: number) => {
-    return `top: ${geometry.getTop(index)}px; left: ${geometry.getLeft(index)}px; width: ${geometry.getWidth(index)}px; height: ${geometry.getHeight(index)}px;`;
+  const loadingHeightSum = $derived.by(() => {
+    if (!pageMap) {
+      return 0;
+    }
+    let sum = 0;
+    for (const state of Object.values(pageMap)) {
+      if (state.status === 'loading') {
+        sum += state.ghostHeight;
+      }
+    }
+    return sum;
+  });
+
+  $effect(() => {
+    if (!pageMap) {
+      return;
+    }
+    const sortedKeys = Object.keys(pageMap).map(Number).sort((a, b) => a - b);
+    for (const pageNum of sortedKeys) {
+      const state = pageMap[pageNum];
+      if (state.status === 'loaded') {
+        const range = pageAssetRanges.get(pageNum);
+        if (range) {
+          const height =
+            geometry.getTop(range.last) + geometry.getHeight(range.last) - geometry.getTop(range.first);
+          if (state.height !== height) {
+            pageMap[pageNum] = { ...state, height };
+          }
+        }
+      }
+    }
+  });
+
+  const effectiveContainerHeight = $derived(
+    pageMap ? getContainerHeight(pageMap) + loadingHeightSum : geometry.containerHeight,
+  );
+
+  const assetPositionOffsets = $derived.by(() => {
+    if (!pageMap) {
+      return [];
+    }
+    const offsets: number[] = [];
+    const sortedKeys = Object.keys(pageMap)
+      .map(Number)
+      .sort((a, b) => a - b);
+    let ghostAccum = 0;
+
+    for (const key of sortedKeys) {
+      const state = pageMap[key];
+      if (state.status === 'ghost') {
+        ghostAccum += state.height;
+      } else if (state.status === 'loaded') {
+        for (let j = 0; j < state.assets.length; j++) {
+          offsets.push(ghostAccum);
+        }
+      }
+    }
+
+    return offsets;
+  });
+
+  const pageAssetRanges = $derived.by(() => {
+    if (!pageMap) {
+      return new Map<number, { first: number; last: number }>();
+    }
+    const ranges = new Map<number, { first: number; last: number }>();
+    const sortedKeys = Object.keys(pageMap).map(Number).sort((a, b) => a - b);
+    let assetIndex = 0;
+
+    for (const pageNum of sortedKeys) {
+      const state = pageMap[pageNum];
+      if (state.status === 'loaded') {
+        const first = assetIndex;
+        assetIndex += state.assets.length;
+        ranges.set(pageNum, { first, last: assetIndex - 1 });
+      }
+    }
+
+    return ranges;
+  });
+
+  const visibleLoadingPages = $derived.by(() => {
+    if (!pageMap) {
+      return [];
+    }
+    const sortedKeys = Object.keys(pageMap).map(Number).sort((a, b) => a - b);
+    const result: { top: number; height: number }[] = [];
+    let accumulated = 0;
+    const windowBottom = slidingWindow.bottom;
+    const windowTop = slidingWindow.top - pageHeaderOffset;
+
+    for (const key of sortedKeys) {
+      const state = pageMap[key];
+      if (state.status === 'loading') {
+        const top = accumulated;
+        const height = state.ghostHeight || 0;
+        if (height > 0 && top + height > windowTop && top < windowBottom) {
+          result.push({ top, height });
+        }
+        accumulated += height;
+      } else if (state.status === 'loaded' || state.status === 'ghost') {
+        accumulated += state.height;
+      }
+    }
+    return result;
+  });
+
+  let lastViewportWidth = $state(viewport.width);
+  $effect(() => {
+    if (pageMap && lastViewportWidth > 0 && viewport.width !== lastViewportWidth) {
+      for (const pageNum of Object.keys(pageMap).map(Number).sort((a, b) => a - b)) {
+        const state = pageMap[pageNum];
+        if (state.status === 'ghost') {
+          pageMap[pageNum] = { status: 'unloaded' };
+        }
+      }
+    }
+    lastViewportWidth = viewport.width;
+  });
+
+  const getStyle = (i: number) => {
+    const offset = assetPositionOffsets[i] || 0;
+    return `top: ${geometry.getTop(i) + offset}px; left: ${geometry.getLeft(i)}px; width: ${geometry.getWidth(i)}px; height: ${geometry.getHeight(i)}px;`;
   };
 
-  const isInOrNearViewport = (index: number) => {
+  const isInOrNearViewport = (i: number) => {
     const window = slidingWindow;
-    const top = geometry.getTop(index);
-    return top + pageHeaderOffset < window.bottom && top + geometry.getHeight(index) > window.top;
+    const offset = assetPositionOffsets[i] || 0;
+    const top = geometry.getTop(i) + offset;
+    return top + pageHeaderOffset < window.bottom && top + geometry.getHeight(i) > window.top;
   };
 
   let shiftKeyIsDown = $state(false);
@@ -92,40 +221,135 @@
   let slidingWindow = $derived.by(() => {
     const top = (scrollTop || 0) - slidingWindowOffset - INTERSECTION_EXPAND_TOP;
     const bottom = top + viewport.height + slidingWindowOffset + INTERSECTION_EXPAND_BOTTOM;
-    return {
-      top,
-      bottom,
-    };
+    return { top, bottom };
   });
 
   const updateCurrentAsset = (asset: AssetResponseDto) => {
-    const index = assets.findIndex((oldAsset) => oldAsset.id === asset.id);
-    assets[index] = asset;
+    if (pageMap) {
+      for (const state of Object.values(pageMap)) {
+        if (state.status === 'loaded') {
+          const index = state.assets.findIndex((a) => a.id === asset.id);
+          if (index !== -1) {
+            state.assets[index] = asset;
+            return;
+          }
+        }
+      }
+    } else {
+      const index = assets.findIndex((oldAsset) => oldAsset.id === asset.id);
+      assets[index] = asset;
+    }
   };
 
-  const updateSlidingWindow = () => (scrollTop = document.scrollingElement?.scrollTop ?? 0);
+  const updateSlidingWindow = () => {
+    scrollTop = document.scrollingElement?.scrollTop ?? 0;
+    if (pageMap) {
+      runEviction();
+      triggerGhostReloads();
+    }
+  };
 
-  const debouncedOnEndReached = debounce(() => onEndReached?.(), 750, { maxWait: 100, leading: true });
-
-  let lastEndReachedHeight = 0;
-  $effect(() => {
-    if (geometry.containerHeight - slidingWindow.bottom <= viewport.height) {
-      const contentHeight = geometry.containerHeight;
-      if (lastEndReachedHeight !== contentHeight) {
-        debouncedOnEndReached();
-        lastEndReachedHeight = contentHeight;
+  const debouncedOnEndReached = debounce(() => {
+    if (pageMap) {
+      const loadingPages = Object.values(pageMap).filter((s) => s.status === 'loading');
+      if (loadingPages.length === 0) {
+        onEndReached?.();
       }
+    } else {
+      onEndReached?.();
+    }
+  }, 750, { maxWait: 100, leading: true });
+
+  const runEviction = throttle(
+    () => {
+      if (!pageMap || !reloadPage) {
+        return;
+      }
+      const threshold = 3;
+      const currentScroll = document.scrollingElement?.scrollTop ?? 0;
+      const viewportH = viewport.height || 800;
+      const rangeTop = currentScroll - threshold * viewportH;
+      const rangeBottom = currentScroll + viewportH + threshold * viewportH;
+
+      let accumulated = 0;
+      const sortedKeys = Object.keys(pageMap).map(Number).sort((a, b) => a - b);
+
+      for (const pageNum of sortedKeys) {
+        const state = pageMap[pageNum];
+        let pageHeight = 0;
+        if (state.status === 'loaded') {
+          const range = pageAssetRanges.get(pageNum);
+          if (range) {
+            pageHeight =
+              geometry.getTop(range.last) + geometry.getHeight(range.last) - geometry.getTop(range.first);
+          }
+        } else if (state.status === 'ghost') {
+          pageHeight = state.height;
+        }
+
+        const pageTop = accumulated;
+        const pageBottom = accumulated + pageHeight;
+
+        if (state.status === 'loaded' && pageHeight > 0 && (pageBottom <= rangeTop || pageTop >= rangeBottom)) {
+          pageMap[pageNum] = { status: 'ghost', height: pageHeight };
+        }
+
+        if (pageHeight > 0) {
+          accumulated += pageHeight;
+        }
+      }
+    },
+    200,
+    { trailing: true },
+  );
+
+  const triggerGhostReloads = throttle(
+    () => {
+      if (!pageMap || !reloadPage) {
+        return;
+      }
+      const currentScroll = document.scrollingElement?.scrollTop ?? 0;
+      const viewportH = viewport.height || 800;
+      const threshold = 2;
+
+      const nearbyGhosts = findGhostPagesNearViewport(pageMap, currentScroll, viewportH, threshold);
+
+      for (const pageNum of nearbyGhosts) {
+        const currentState = pageMap[pageNum];
+        if (currentState && currentState.status === 'ghost' && !loadingPagesSet.has(pageNum)) {
+          loadingPagesSet.add(pageNum);
+          pageMap[pageNum] = { status: 'loading', ghostHeight: currentState.height };
+          reloadPage(pageNum).finally(() => {
+            loadingPagesSet.delete(pageNum);
+          });
+        }
+      }
+    },
+    250,
+    { trailing: true },
+  );
+
+  const loadingPagesSet = new Set<number>();
+
+  let lastEndReachedBottom = 0;
+  $effect(() => {
+    if (effectiveContainerHeight - slidingWindow.bottom <= viewport.height) {
+      if (slidingWindow.bottom > lastEndReachedBottom || lastEndReachedBottom === 0) {
+        debouncedOnEndReached();
+        lastEndReachedBottom = slidingWindow.bottom;
+      }
+    } else {
+      lastEndReachedBottom = 0;
     }
   });
 
   const selectAllAssets = () => {
-    assetInteraction.selectAssets(assets.map((a) => toTimelineAsset(a)));
+    assetInteraction.selectAssets(resolvedAssets.map((a) => toTimelineAsset(a)));
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Shift') {
       event.preventDefault();
-
       shiftKeyIsDown = true;
     }
   };
@@ -143,7 +367,6 @@
     }
     const deselect = assetInteraction.hasSelectedAsset(asset.id);
 
-    // Select/deselect already loaded assets
     if (deselect) {
       for (const candidate of assetInteraction.candidates) {
         assetInteraction.removeAssetFromMultiselectGroup(candidate.id);
@@ -177,14 +400,14 @@
       return;
     }
 
-    let start = assets.findIndex((a) => a.id === startAsset.id);
-    let end = assets.findIndex((a) => a.id === endAsset.id);
+    let start = resolvedAssets.findIndex((a) => a.id === startAsset.id);
+    let end = resolvedAssets.findIndex((a) => a.id === endAsset.id);
 
     if (start > end) {
       [start, end] = [end, start];
     }
 
-    assetInteraction.setAssetSelectionCandidates(assets.slice(start, end + 1).map((a) => toTimelineAsset(a)));
+    assetInteraction.setAssetSelectionCandidates(resolvedAssets.slice(start, end + 1).map((a) => toTimelineAsset(a)));
   };
 
   const onSelectStart = (event: Event) => {
@@ -209,9 +432,21 @@
       }
     }
 
+    const removeFromData = (assetIds: string[]) => {
+      if (pageMap) {
+        for (const state of Object.values(pageMap)) {
+          if (state.status === 'loaded') {
+            state.assets = state.assets.filter((a) => !assetIds.includes(a.id));
+          }
+        }
+      } else {
+        assets = assets.filter((asset) => !assetIds.includes(asset.id));
+      }
+    };
+
     await deleteAssets(
       forceOrNoTrash,
-      (assetIds) => (assets = assets.filter((asset) => !assetIds.includes(asset.id))),
+      removeFromData,
       selectedAssets,
       onReload,
     );
@@ -225,7 +460,15 @@
       assetInteraction.isAllArchived ? AssetVisibility.Timeline : AssetVisibility.Archive,
     );
     if (ids) {
-      assets = assets.filter((asset) => !ids.includes(asset.id));
+      if (pageMap) {
+        for (const state of Object.values(pageMap)) {
+          if (state.status === 'loaded') {
+            state.assets = state.assets.filter((a) => !ids.includes(a.id));
+          }
+        }
+      } else {
+        assets = assets.filter((asset) => !ids.includes(asset.id));
+      }
       assetInteraction.clear();
     }
   };
@@ -304,11 +547,23 @@
       case AssetAction.DELETE:
       case AssetAction.TRASH: {
         const nextAsset = assetCursor.nextAsset ?? assetCursor.previousAsset;
-        assets.splice(
-          assets.findIndex((currentAsset) => currentAsset.id === action.asset.id),
-          1,
-        );
-        if (assets.length === 0) {
+        if (pageMap) {
+          for (const state of Object.values(pageMap)) {
+            if (state.status === 'loaded') {
+              const idx = state.assets.findIndex((a) => a.id === action.asset.id);
+              if (idx !== -1) {
+                state.assets.splice(idx, 1);
+                break;
+              }
+            }
+          }
+        } else {
+          assets.splice(
+            assets.findIndex((currentAsset) => currentAsset.id === action.asset.id),
+            1,
+          );
+        }
+        if (resolvedAssets.length === 0) {
           return await goto(Route.photos());
         }
         if (nextAsset) {
@@ -358,13 +613,13 @@
   onscroll={() => updateSlidingWindow()}
 />
 
-{#if assets.length > 0}
+{#if resolvedAssets.length > 0}
   <div
     style:position="relative"
-    style:height={geometry.containerHeight + 'px'}
+    style:height={effectiveContainerHeight + 'px'}
     style:width={geometry.containerWidth + 'px'}
   >
-    {#each assets as asset, index (asset.id + '-' + index)}
+    {#each resolvedAssets as asset, index (asset.id + '-' + index)}
       {#if isInOrNearViewport(index)}
         {@const currentAsset = toTimelineAsset(asset)}
         <div class="absolute" style:overflow="clip" style={getStyle(index)}>
@@ -396,6 +651,31 @@
           {/if}
         </div>
       {/if}
+    {/each}
+
+    {#each visibleLoadingPages as loadingPage (loadingPage.top)}
+      <div
+        class="absolute w-full"
+        style="top: {loadingPage.top}px; height: {loadingPage.height}px"
+      >
+        <div
+          class="flex size-full animate-pulse items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-700"
+        >
+          <svg
+            class="size-8 animate-spin text-gray-400 dark:text-gray-500"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+            />
+          </svg>
+        </div>
+      </div>
     {/each}
   </div>
 {/if}
