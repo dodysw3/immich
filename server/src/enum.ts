@@ -1,3 +1,4 @@
+import { WorkflowTrigger } from '@immich/plugin-sdk';
 import z from 'zod';
 
 export enum AuthType {
@@ -452,11 +453,7 @@ export enum VideoCodec {
 
 export const VideoCodecSchema = z.enum(VideoCodec).describe('Target video codec').meta({ id: 'VideoCodec' });
 
-export enum VideoSegmentCodec {
-  Av1 = 'av1',
-  Hevc = 'hevc',
-  H264 = 'h264',
-}
+export type VideoSegmentCodec = VideoCodec.Av1 | VideoCodec.Hevc | VideoCodec.H264;
 
 export enum AudioCodec {
   Mp3 = 'mp3',
@@ -827,6 +824,8 @@ export enum JobName {
   LibrarySyncFiles = 'LibrarySyncFiles',
   LibraryScanQueueAll = 'LibraryScanQueueAll',
 
+  HlsSessionCleanup = 'HlsSessionCleanup',
+
   MemoryCleanup = 'MemoryCleanup',
   MemoryGenerate = 'MemoryGenerate',
 
@@ -871,7 +870,7 @@ export enum JobName {
   PdfProcess = 'PdfProcess',
 
   // Workflow
-  WorkflowAssetCreate = 'WorkflowAssetCreate',
+  WorkflowAssetTrigger = 'WorkflowAssetTrigger',
 }
 
 export const JobNameSchema = z.enum(JobName).describe('Job name').meta({ id: 'JobName' });
@@ -924,6 +923,7 @@ export enum DatabaseLock {
   MaintenanceOperation = 621,
   MemoryCreation = 777,
   VersionCheck = 800,
+  HlsSessionCleanup = 850,
 }
 
 export enum MaintenanceAction {
@@ -957,6 +957,7 @@ export enum SyncRequestType {
   AssetExifsV1 = 'AssetExifsV1',
   AssetEditsV1 = 'AssetEditsV1',
   AssetMetadataV1 = 'AssetMetadataV1',
+  AssetOcrV1 = 'AssetOcrV1',
   AuthUsersV1 = 'AuthUsersV1',
   MemoriesV1 = 'MemoriesV1',
   MemoryToAssetsV1 = 'MemoryToAssetsV1',
@@ -995,6 +996,8 @@ export enum SyncEntityType {
   AssetEditDeleteV1 = 'AssetEditDeleteV1',
   AssetMetadataV1 = 'AssetMetadataV1',
   AssetMetadataDeleteV1 = 'AssetMetadataDeleteV1',
+  AssetOcrV1 = 'AssetOcrV1',
+  AssetOcrDeleteV1 = 'AssetOcrDeleteV1',
 
   PartnerV1 = 'PartnerV1',
   PartnerDeleteV1 = 'PartnerDeleteV1',
@@ -1170,11 +1173,6 @@ export enum PluginContext {
 
 export const PluginContextSchema = z.enum(PluginContext).describe('Plugin context').meta({ id: 'PluginContextType' });
 
-export enum WorkflowTrigger {
-  AssetCreate = 'AssetCreate',
-  PersonRecognized = 'PersonRecognized',
-}
-
 export const WorkflowTriggerSchema = z
   .enum(WorkflowTrigger)
   .describe('Plugin trigger type')
@@ -1186,3 +1184,8 @@ export enum WorkflowType {
 }
 
 export const WorkflowTypeSchema = z.enum(WorkflowType).describe('Workflow type').meta({ id: 'WorkflowType' });
+
+export enum CalendarHeatmapType {
+  Upload = 'Upload',
+  Taken = 'Taken',
+}

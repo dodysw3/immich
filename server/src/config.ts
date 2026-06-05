@@ -1,4 +1,5 @@
 import { CronExpression } from '@nestjs/schedule';
+import { ReleaseChannel } from 'src/dtos/system-config.dto';
 import {
   AudioCodec,
   Colorspace,
@@ -45,6 +46,9 @@ export type SystemConfig = {
     accel: TranscodeHardwareAcceleration;
     accelDecode: boolean;
     tonemap: ToneMapping;
+    realtime: {
+      enabled: boolean;
+    };
   };
   job: Record<ConcurrentQueueName, { concurrency: number }>;
   logging: {
@@ -146,6 +150,7 @@ export type SystemConfig = {
   };
   newVersionCheck: {
     enabled: boolean;
+    channel: ReleaseChannel;
   };
   nightlyTasks: {
     startTime: string;
@@ -235,6 +240,9 @@ export const defaults = Object.freeze<SystemConfig>({
     tonemap: ToneMapping.Hable,
     accel: TranscodeHardwareAcceleration.Disabled,
     accelDecode: true,
+    realtime: {
+      enabled: false,
+    },
   },
   job: {
     [QueueName.BackgroundTask]: { concurrency: 5 },
@@ -367,6 +375,7 @@ export const defaults = Object.freeze<SystemConfig>({
   },
   newVersionCheck: {
     enabled: true,
+    channel: ReleaseChannel.Stable,
   },
   nightlyTasks: {
     startTime: '00:00',

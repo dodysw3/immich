@@ -11,7 +11,6 @@
     ref?: HTMLImageElement;
     width: string;
     height: string;
-    transform?: string;
   };
 
   let {
@@ -23,7 +22,6 @@
     ref = $bindable(),
     width,
     height,
-    transform,
   }: Props = $props();
 </script>
 
@@ -32,8 +30,6 @@
     class="absolute top-0 origin-top-left"
     style:width
     style:height
-    style:transform
-    style:will-change={transform ? 'transform' : undefined}
   >
     <Image
       {src}
