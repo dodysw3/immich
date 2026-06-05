@@ -1,5 +1,5 @@
 [tasks.install]
-run = "pnpm install --frozen-lockfile"
+run = "pnpm install --no-frozen-lockfile"
 
 [tasks.build]
 depends = ["install"]
