@@ -104,7 +104,7 @@
   });
 
   const shouldPollDocuments = () =>
-    items.some((item) => item.status === 'pending' || item.status === 'processing') && !query && refreshFailures < MAX_REFRESH_FAILURES;
+    items.some((item: { status: string }) => item.status === 'pending' || item.status === 'processing') && !query && refreshFailures < MAX_REFRESH_FAILURES;
 
   const refreshDocuments = async () => {
     if (refreshing) {

@@ -2,6 +2,7 @@ import {
   AssetMediaSize,
   AssetTypeEnum,
   MemoryType,
+  QueueName,
   finishOAuth,
   getAssetOriginalPath,
   getAssetPlaybackPath,
@@ -190,6 +191,7 @@ export const getQueueName = derived(t, ($t) => {
       [QueueName.PdfProcessing]: 'PDF processing',
       [QueueName.Workflow]: $t('workflows'),
       [QueueName.Editor]: $t('editor'),
+      [QueueName.IntegrityCheck]: 'Integrity check',
     };
 
     return names[name];

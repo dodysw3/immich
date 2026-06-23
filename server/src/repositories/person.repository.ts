@@ -4,7 +4,7 @@ import { jsonObjectFrom } from 'kysely/helpers/postgres';
 import { InjectKysely } from 'nestjs-kysely';
 import { AssetFace } from 'src/database';
 import { Chunked, ChunkedArray, DummyValue, GenerateSql } from 'src/decorators';
-import { AssetFileType, AssetVisibility, SourceType, UserMetadataKey } from 'src/enum';
+import { AssetFileType, SourceType, UserMetadataKey } from 'src/enum';
 import { DB } from 'src/schema';
 import { AssetFaceTable } from 'src/schema/tables/asset-face.table';
 import { FaceSearchTable } from 'src/schema/tables/face-search.table';

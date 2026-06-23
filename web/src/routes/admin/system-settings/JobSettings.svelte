@@ -50,6 +50,7 @@
     [QueueName.Ocr]: $t('admin.machine_learning_ocr'),
     [QueueName.Workflow]: $t('workflows'),
     [QueueName.Editor]: $t('editor'),
+    [QueueName.PdfProcessing]: 'PDF processing',
     [QueueName.IntegrityCheck]: $t('integrity_checks'),
   });
 </script>

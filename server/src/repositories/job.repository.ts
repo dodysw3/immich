@@ -279,7 +279,7 @@ export class JobRepository {
         return {
           jobId: item.data.id,
           attempts: 3,
-          backoff: { type: 'exponential', delay: 5_000 },
+          backoff: { type: 'exponential', delay: 5000 },
         };
       }
       case JobName.PdfProcessQueueAll: {

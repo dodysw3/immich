@@ -44,9 +44,9 @@ describe(SyncController.name, () => {
     });
 
     it('should handle errors after headers are sent', async () => {
-      syncService.stream.mockImplementation(async (_auth: any, res: any, _dto: any) => {
+      syncService.stream.mockImplementation((_auth: any, res: any, _dto: any) => {
         res.write('data\n');
-        throw new Error('stream error after headers sent');
+        return Promise.reject(new Error('stream error after headers sent'));
       });
 
       const { status } = await request(ctx.getHttpServer())

@@ -166,6 +166,7 @@ describe(ExternalOcrService.name, () => {
           type: AssetType.Image,
           visibility: AssetVisibility.Timeline,
         } as any,
+        file: {} as any,
       });
 
       expect(mocks.asset.upsertJobStatus).toHaveBeenCalledWith({ assetId: 'asset-1', ocrAt: expect.any(Date) });
@@ -178,6 +179,7 @@ describe(ExternalOcrService.name, () => {
           type: AssetType.Image,
           visibility: AssetVisibility.Timeline,
         } as any,
+        file: {} as any,
       });
 
       expect(mocks.asset.upsertJobStatus).not.toHaveBeenCalled();
@@ -192,6 +194,7 @@ describe(ExternalOcrService.name, () => {
           type: AssetType.Video,
           visibility: AssetVisibility.Timeline,
         } as any,
+        file: {} as any,
       });
 
       await sut.handleAssetCreate({
@@ -200,6 +203,7 @@ describe(ExternalOcrService.name, () => {
           type: AssetType.Image,
           visibility: AssetVisibility.Hidden,
         } as any,
+        file: {} as any,
       });
 
       expect(mocks.asset.upsertJobStatus).not.toHaveBeenCalled();

@@ -37,7 +37,7 @@
       return pages;
     }
 
-    return pages.filter((page) => normalized(page.text).includes(needle));
+    return pages.filter((page: { text: string }) => normalized(page.text).includes(needle));
   });
 
   const handleSearch = async (query: string) => {

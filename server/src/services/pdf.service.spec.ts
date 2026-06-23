@@ -662,7 +662,7 @@ describe(PdfService.name, () => {
       { pageNumber: 2, text: 'This is a longer paragraph about quarterly revenue growth and forecasts.' },
     ]);
 
-    const result = await sut.searchInDocument({ user: { id: 'user-1' } } as any, 'asset-6', { query: 'revenue' });
+    const result = await sut.searchInDocument({ user: { id: 'user-1' } } as any, 'asset-6', { query: 'revenue', size: 100 });
 
     expect(mocks.pdf.searchPagesByOwner).toHaveBeenCalledWith('user-1', 'asset-6', 'revenue', 100);
     expect(result).toEqual([
@@ -688,7 +688,7 @@ describe(PdfService.name, () => {
       updatedAt: new Date('2026-02-06T00:00:00.000Z'),
     });
 
-    const result = await sut.searchInDocument({ user: { id: 'user-1' } } as any, 'asset-6', { query: '   ' });
+    const result = await sut.searchInDocument({ user: { id: 'user-1' } } as any, 'asset-6', { query: '   ', size: 100 });
 
     expect(result).toEqual([]);
     expect(mocks.pdf.searchPagesByOwner).not.toHaveBeenCalled();

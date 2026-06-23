@@ -50,7 +50,7 @@
 
     if (!faceBox.personId) {
       if (!assetViewerManager.isShowDetailPanel) {
-        assetViewerManager.openDetailPanel();
+        assetViewerManager.toggleDetailPanel();
       }
       showFacePanel.faceId = faceBox.id;
       showFacePanel.directCreate = true;

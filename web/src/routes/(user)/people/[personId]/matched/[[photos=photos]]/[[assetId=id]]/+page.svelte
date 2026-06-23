@@ -218,7 +218,7 @@
       assets={[]}
       {viewport}
       assetInteraction={assetMultiSelectManager}
-      onIntersected={hasMore ? loadMore : undefined}
+      onEndReached={hasMore ? loadMore : undefined}
       showArchiveIcon={true}
       {pageMap}
       {reloadPage}

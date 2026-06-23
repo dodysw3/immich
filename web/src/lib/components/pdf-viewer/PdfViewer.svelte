@@ -24,7 +24,7 @@
   }
 
   let { assetId, requestedPage = 1, onPageChange }: Props = $props();
-  let canvas: HTMLCanvasElement;
+  let canvas = $state<HTMLCanvasElement>();
   let pdf = $state<PdfDocument | null>(null);
   let totalPages = $state(0);
   let currentPage = $state(1);
@@ -205,7 +205,7 @@
       </div>
     {/if}
     <div class="h-[72vh] overflow-auto bg-gray-50 p-4 dark:bg-gray-900">
-      <canvas bind:this={canvas} class="mx-auto rounded-lg bg-white shadow-sm dark:bg-gray-800" />
+      <canvas bind:this={canvas} class="mx-auto rounded-lg bg-white shadow-sm dark:bg-gray-800"></canvas>
     </div>
   {/if}
 </div>
