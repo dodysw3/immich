@@ -11,6 +11,7 @@ import { DownloadController } from 'src/controllers/download.controller';
 import { DuplicateController } from 'src/controllers/duplicate.controller';
 import { ExternalOcrController } from 'src/controllers/external-ocr.controller';
 import { FaceController } from 'src/controllers/face.controller';
+import { IntegrityAdminController } from 'src/controllers/integrity-admin.controller';
 import { JobController } from 'src/controllers/job.controller';
 import { LibraryController } from 'src/controllers/library.controller';
 import { MaintenanceController } from 'src/controllers/maintenance.controller';
@@ -55,6 +56,7 @@ export const controllers = [
   DuplicateController,
   ExternalOcrController,
   FaceController,
+  IntegrityAdminController,
   JobController,
   LibraryController,
   MaintenanceController,

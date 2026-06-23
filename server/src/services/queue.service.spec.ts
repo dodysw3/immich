@@ -82,6 +82,7 @@ describe(QueueService.name, () => {
         [QueueName.BackupDatabase]: expected,
         [QueueName.Ocr]: expected,
         [QueueName.Workflow]: expected,
+        [QueueName.IntegrityCheck]: expected,
         [QueueName.Editor]: expected,
       });
     });

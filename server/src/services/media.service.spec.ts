@@ -2937,6 +2937,8 @@ describe(MediaService.name, () => {
             '7',
             '-global_quality:v',
             '23',
+            '-b:v',
+            '6897k',
             '-maxrate',
             '10000k',
             '-bufsize',
