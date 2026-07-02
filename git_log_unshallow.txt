@@ -1,0 +1,10 @@
+2026-02-07 14:31:28 +0700 - test(pdf): add PDF service tests
+2026-02-07 14:28:44 +0700 - test(pdf): add PDF controller tests
+2026-02-07 14:26:02 +0700 - fix(migration): rename PDF migration with timestamp prefix
+2026-02-07 14:24:55 +0700 - feat(pdf): complete PDF page to image conversion and thumbnail generation
+2026-02-07 14:01:05 +0700 - feat(pdf): add PDF plugin with OCR and full-text search support
+2026-02-07 12:19:11 +0700 - glm-3.7 pdf plan
+2026-02-07 06:16:10 +0700 - Merge branch 'main' into main-glm
+2026-02-06 16:32:50 -0500 - refactor: test factories (#25977)
+2026-02-06 08:56:46 -0500 - refactor: album service small tests (#25640)
+2026-02-06 08:21:56 -0500 - fix: revert "fix(web): Ensure profile picture is cropped to 1:1 ratio (#25892)" (#25956)
