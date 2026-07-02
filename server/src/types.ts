@@ -623,6 +623,9 @@ export type UserPreferences = {
   cast: {
     gCastEnabled: boolean;
   };
+  recentlyAdded: {
+    sidebarWeb: boolean;
+  };
 };
 
 export type UserMetadataItem<T extends keyof UserMetadata = UserMetadataKey> = {
