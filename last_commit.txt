@@ -1,0 +1,12 @@
+commit c9166f449a7361bba585d70a78a45252d425511b
+Author: Dody Suria Wijaya <dodysw@gmail.com>
+Date:   Sat Feb 7 14:31:28 2026 +0700
+
+    test(pdf): add PDF service tests
+    
+    - Add pdf.service.spec.ts with basic service method tests
+    - Test error handling for not found cases
+    - Test PDF validation logic
+    - Follow Immich service test patterns
+    
+    Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
