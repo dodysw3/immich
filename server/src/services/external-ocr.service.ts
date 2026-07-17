@@ -28,11 +28,17 @@ export class ExternalOcrService extends BaseService {
       return;
     }
 
-    if (asset.type !== AssetType.Image) {
+    // The AssetCreate payload only carries { id, ownerId }; fetch the full asset to inspect type/visibility.
+    const fullAsset = await this.assetRepository.getById(asset.id);
+    if (!fullAsset) {
       return;
     }
 
-    if (asset.visibility === AssetVisibility.Hidden) {
+    if (fullAsset.type !== AssetType.Image) {
+      return;
+    }
+
+    if (fullAsset.visibility === AssetVisibility.Hidden) {
       return;
     }
 
