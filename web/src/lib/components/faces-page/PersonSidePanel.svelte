@@ -10,6 +10,7 @@
   import { getPersonNameWithHiddenValue } from '$lib/utils/person';
   import {
     AssetTypeEnum,
+    createPerson,
     deleteFace,
     getFaces,
     reassignFacesById,
@@ -31,11 +32,13 @@
     assetType: AssetTypeEnum;
     onClose: () => void;
     onRefresh: () => void;
-    initialFaceID?: string;
-    initialDirectCreate?: boolean;
   }
 
-  let { assetId, assetType, onClose, onRefresh, initialFaceID, initialDirectCreate = false }: Props = $props();
+  let { assetId, assetType, onClose, onRefresh }: Props = $props();
+
+  // keep track of the changes
+  let peopleToCreate: string[] = [];
+  let assetFaceGenerated: string[] = [];
 
   // faces
   let peopleWithFaces: AssetFaceResponseDto[] = $state([]);
@@ -49,7 +52,6 @@
 
   // search people
   let showSelectedFaces = $state(false);
-  let assignPanelDirectCreate = $state(false);
 
   $effect(() => {
     faceOverlayStore.activeFaceId = showSelectedFaces && editedFace ? editedFace.id : undefined;
@@ -57,9 +59,9 @@
 
   // timers
   let loaderLoadingDoneTimeout: ReturnType<typeof setTimeout>;
+  let automaticRefreshTimeout: ReturnType<typeof setTimeout>;
 
   const thumbnailWidth = '90px';
-  let initialFaceHandled = false;
 
   async function loadPeople() {
     const timeout = setTimeout(() => (isShowLoadingPeople = true), timeBeforeShowLoadingSpinner);
@@ -71,36 +73,42 @@
       clearTimeout(timeout);
     }
     isShowLoadingPeople = false;
-
-    if (initialFaceID && !initialFaceHandled) {
-      const targetFace = peopleWithFaces.find((f) => f.id === initialFaceID);
-      if (targetFace) {
-        initialFaceHandled = true;
-        handleFacePicker(targetFace, initialDirectCreate);
-      }
-    }
   }
+
+  const onPersonThumbnailReady = ({ id }: { id: string }) => {
+    assetFaceGenerated.push(id);
+    if (
+      isEqual(assetFaceGenerated, peopleToCreate) &&
+      loaderLoadingDoneTimeout &&
+      automaticRefreshTimeout &&
+      Object.keys(selectedPersonToCreate).length === peopleToCreate.length
+    ) {
+      clearTimeout(loaderLoadingDoneTimeout);
+      clearTimeout(automaticRefreshTimeout);
+      onRefresh();
+    }
+  };
 
   onMount(() => {
     handlePromiseError(loadPeople());
   });
 
-  const onPersonThumbnailReady = ({ id }: { id: string }) => {
-    if (loaderLoadingDoneTimeout) {
-      clearTimeout(loaderLoadingDoneTimeout);
-      onRefresh();
-    }
+  const isEqual = (a: string[], b: string[]): boolean => {
+    return b.every((valueB) => a.includes(valueB));
   };
 
   const handleReset = (id: string) => {
-    if (selectedPersonToReassign[id]) {
+    if (Object.hasOwn(selectedPersonToReassign, id)) {
       delete selectedPersonToReassign[id];
+    }
+    if (Object.hasOwn(selectedPersonToCreate, id)) {
+      delete selectedPersonToCreate[id];
     }
   };
 
   const handleEditFaces = async () => {
     loaderLoadingDoneTimeout = setTimeout(() => (isShowLoadingDone = true), timeBeforeShowLoadingSpinner);
-    const numberOfChanges = Object.keys(selectedPersonToReassign).length;
+    const numberOfChanges = Object.keys(selectedPersonToCreate).length + Object.keys(selectedPersonToReassign).length;
 
     if (numberOfChanges > 0) {
       try {
@@ -110,6 +118,13 @@
           if (personId) {
             await reassignFacesById({
               id: personId,
+              faceDto: { id: personWithFace.id },
+            });
+          } else if (Object.hasOwn(selectedPersonToCreate, personWithFace.id)) {
+            const data = await createPerson({ personCreateDto: {} });
+            peopleToCreate.push(data.id);
+            await reassignFacesById({
+              id: data.id,
               faceDto: { id: personWithFace.id },
             });
           }
@@ -122,13 +137,19 @@
     }
 
     isShowLoadingDone = false;
-    clearTimeout(loaderLoadingDoneTimeout);
-    onRefresh();
+    if (peopleToCreate.length === 0) {
+      clearTimeout(loaderLoadingDoneTimeout);
+      onRefresh();
+    } else {
+      automaticRefreshTimeout = setTimeout(onRefresh, 15_000);
+    }
   };
 
-  const handleCreatePerson = (_person: PersonResponseDto) => {
+  const handleCreatePerson = (newFeaturePhoto: string | null) => {
+    if (newFeaturePhoto && editedFace) {
+      selectedPersonToCreate[editedFace.id] = newFeaturePhoto;
+    }
     showSelectedFaces = false;
-    handlePromiseError(handleEditFaces());
   };
 
   const handleReassignFace = (person: PersonResponseDto | null) => {
@@ -138,9 +159,8 @@
     showSelectedFaces = false;
   };
 
-  const handleFacePicker = (face: AssetFaceResponseDto, startInCreateMode = false) => {
+  const handleFacePicker = (face: AssetFaceResponseDto) => {
     editedFace = face;
-    assignPanelDirectCreate = startInCreateMode;
     showSelectedFaces = true;
   };
 
@@ -299,13 +319,15 @@
                 {/if}
               </div>
 
-              <p class="relative mt-1 truncate font-medium" title={personName}>
-                {#if selectedPersonToReassign[face.id]?.id}
-                  {selectedPersonToReassign[face.id]?.name}
-                {:else}
-                  <span class={personName === $t('face_unassigned') ? 'dark:text-gray-500' : ''}>{personName}</span>
-                {/if}
-              </p>
+              {#if !Object.hasOwn(selectedPersonToCreate, face.id)}
+                <p class="relative mt-1 truncate font-medium" title={personName}>
+                  {#if selectedPersonToReassign[face.id]?.id}
+                    {selectedPersonToReassign[face.id]?.name}
+                  {:else}
+                    <span class={personName === $t('face_unassigned') ? 'dark:text-gray-500' : ''}>{personName}</span>
+                  {/if}
+                </p>
+              {/if}
 
               <div class="absolute inset-e-[-3px] top-[-3px] size-5 rounded-full">
                 {#if selectedPersonToCreate[face.id] || selectedPersonToReassign[face.id]}
@@ -332,7 +354,7 @@
                 {/if}
               </div>
               <div class="absolute inset-e-8 top-[-3px] size-5 rounded-full">
-                {#if !selectedPersonToCreate[face.id] && !selectedPersonToReassign[face.id] && !face.person}
+                {#if !Object.hasOwn(selectedPersonToCreate, face.id) && !Object.hasOwn(selectedPersonToReassign, face.id) && !face.person}
                   <div
                     class="absolute inset-s-1/2 top-1/2 flex translate-[-50%] transform place-content-center place-items-center rounded-full bg-[#d3d3d3] p-1 transition-all"
                   >
@@ -366,7 +388,6 @@
     {editedFace}
     {assetId}
     {assetType}
-    startInCreateMode={assignPanelDirectCreate}
     onClose={() => (showSelectedFaces = false)}
     onCreatePerson={handleCreatePerson}
     onReassign={handleReassignFace}

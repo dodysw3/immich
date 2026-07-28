@@ -5,7 +5,6 @@
   import { Route } from '$lib/route';
   import { getFaceLabelCompensation, type FaceOverlayBoundingBox } from '$lib/features/face-overlay/face-overlay.utils';
   import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
-  import { showFacePanel } from '$lib/stores/face-panel.svelte';
   import { faceOverlayStore } from '$lib/features/face-overlay/face-overlay.store.svelte';
   import { LoadingSpinner } from '@immich/ui';
 
@@ -52,9 +51,6 @@
       if (!assetViewerManager.isShowDetailPanel) {
         assetViewerManager.toggleDetailPanel();
       }
-      showFacePanel.faceId = faceBox.id;
-      showFacePanel.directCreate = true;
-      showFacePanel.value = true;
       return;
     }
 
