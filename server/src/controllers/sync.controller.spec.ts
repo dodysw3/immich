@@ -56,7 +56,9 @@ describe(SyncController.name, () => {
         .buffer(true)
         .parse((res, callback) => {
           const data: Buffer[] = [];
-          res.on('data', (chunk: Buffer) => data.push(chunk));
+          res.on('data', (chunk: Buffer) => {
+            data.push(chunk);
+          });
           res.on('end', () => callback(null, Buffer.concat(data)));
         });
 

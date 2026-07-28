@@ -41,7 +41,7 @@ const AssetMediaBaseSchema = z.object({
   duration: z.preprocess(
     (val) => {
       if (typeof val === 'string' && /^\d{1,2}:\d{2}:\d{2}(?:\.\d+)?$/.test(val)) {
-        const [h, m, s] = val.split(':');
+        const [h, m, s] = val.split(':', 3);
         return (Number(h) * 3600 + Number(m) * 60 + Number(s)) * 1000;
       }
       return val;

@@ -167,7 +167,7 @@ export class PdfService extends BaseService {
 
     return {
       items: documentPage.items.map((item) => this.mapDocument(item)),
-      nextPage: documentPage.hasNextPage ? `${page + 1}` : null,
+      nextPage: documentPage.hasNextPage ? String(page + 1) : null,
       summary: summary ?? fallbackSummary,
     };
   }
@@ -241,15 +241,12 @@ export class PdfService extends BaseService {
       matchingByAsset.set(entry.assetId, pages);
     }
 
-    const results: PdfSearchResultDto[] = [];
-    for (const item of items) {
-      results.push({
+    const results: PdfSearchResultDto[] = Array.from(items, item => ({
         ...this.mapDocument(item),
         matchingPages: matchingByAsset.get(item.assetId) ?? [],
-      });
-    }
+      }));
 
-    return { items: results, nextPage: hasNextPage ? `${page + 1}` : null, summary: summary ?? fallbackSummary };
+    return { items: results, nextPage: hasNextPage ? String(page + 1) : null, summary: summary ?? fallbackSummary };
   }
 
   async searchInDocument(
@@ -363,7 +360,7 @@ export class PdfService extends BaseService {
 
   private extractPageDimensions(path: string, pageCount: number): Promise<Map<number, { width: number; height: number }>> {
     return new Promise((resolve) => {
-      const child = this.processRepository.spawn('pdfinfo', ['-f', '1', '-l', `${pageCount}`, path]);
+      const child = this.processRepository.spawn('pdfinfo', ['-f', '1', '-l', String(pageCount), path]);
       const lines: string[] = [];
       const rl = readline.createInterface({ input: child.stdout });
       let timedOut = false;
@@ -374,7 +371,9 @@ export class PdfService extends BaseService {
       timeout.unref?.();
       let stderr = '';
 
-      rl.on('line', (line) => lines.push(line));
+      rl.on('line', (line) => {
+        lines.push(line);
+      });
       child.stderr.on('data', (chunk) => {
         if (stderr.length >= PDF_PROCESS_STDERR_LIMIT) {
           return;
@@ -418,9 +417,9 @@ export class PdfService extends BaseService {
             continue;
           }
 
-          const pageNumber = Number.parseInt(match[1]!, 10);
-          const width = Number.parseFloat(match[2]!);
-          const height = Number.parseFloat(match[3]!);
+          const pageNumber = Number(match[1]!);
+          const width = Number(match[2]!);
+          const height = Number(match[3]!);
           if (Number.isFinite(pageNumber) && Number.isFinite(width) && Number.isFinite(height)) {
             dimensions.set(pageNumber, { width, height });
           }
@@ -440,9 +439,9 @@ export class PdfService extends BaseService {
         // eslint-disable-next-line unicorn/text-encoding-identifier-case
         'UTF-8',
         '-f',
-        `${pageNumber}`,
+        String(pageNumber),
         '-l',
-        `${pageNumber}`,
+        String(pageNumber),
         path,
         '-',
       ]);
@@ -456,7 +455,9 @@ export class PdfService extends BaseService {
       timeout.unref?.();
       let stderr = '';
 
-      rl.on('line', (line) => lines.push(line));
+      rl.on('line', (line) => {
+        lines.push(line);
+      });
       child.stderr.on('data', (chunk) => {
         if (stderr.length >= PDF_PROCESS_STDERR_LIMIT) {
           return;
@@ -542,9 +543,9 @@ export class PdfService extends BaseService {
     const success = await new Promise<boolean>((resolve) => {
       const child = this.processRepository.spawn('pdftoppm', [
         '-f',
-        `${pageNumber}`,
+        String(pageNumber),
         '-l',
-        `${pageNumber}`,
+        String(pageNumber),
         '-singlefile',
         '-png',
         inputPath,

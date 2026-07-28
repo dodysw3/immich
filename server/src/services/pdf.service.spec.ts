@@ -564,7 +564,7 @@ describe(PdfService.name, () => {
       failed: 0,
     });
 
-    const result = await sut.search({ user: { id: 'user-1' } } as any, { query: '   ', page: 1, size: 50 });
+    const result = await sut.search({ user: { id: 'user-1' } } as any, { query: ' '.repeat(3), page: 1, size: 50 });
 
     expect(result).toEqual({
       items: [],
@@ -688,7 +688,7 @@ describe(PdfService.name, () => {
       updatedAt: new Date('2026-02-06T00:00:00.000Z'),
     });
 
-    const result = await sut.searchInDocument({ user: { id: 'user-1' } } as any, 'asset-6', { query: '   ', size: 100 });
+    const result = await sut.searchInDocument({ user: { id: 'user-1' } } as any, 'asset-6', { query: ' '.repeat(3), size: 100 });
 
     expect(result).toEqual([]);
     expect(mocks.pdf.searchPagesByOwner).not.toHaveBeenCalled();
