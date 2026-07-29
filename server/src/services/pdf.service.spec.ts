@@ -63,7 +63,15 @@ describe(PdfService.name, () => {
   it('should skip queueing when PDF_ENABLE is false', async () => {
     mocks.config.getEnv.mockReturnValue(
       mockEnvData({
-        pdf: { enabled: false, ocrEnabled: true, maxPagesPerDoc: 250, maxFileSizeMb: null, minEmbeddedTextLength: 10 },
+        pdf: {
+          enabled: false,
+          ocrEnabled: true,
+          ocrProvider: 'immich',
+          maxPagesPerDoc: 250,
+          maxFileSizeMb: null,
+          minEmbeddedTextLength: 10,
+          unlimitedOcr: { timeoutMs: 120_000 },
+        },
       }),
     );
     mocks.pdf.getAssetForProcessing.mockResolvedValue({
@@ -257,7 +265,15 @@ describe(PdfService.name, () => {
   it('should skip OCR fallback when PDF_OCR_ENABLE is false', async () => {
     mocks.config.getEnv.mockReturnValue(
       mockEnvData({
-        pdf: { enabled: true, ocrEnabled: false, maxPagesPerDoc: 250, maxFileSizeMb: null, minEmbeddedTextLength: 10 },
+        pdf: {
+          enabled: true,
+          ocrEnabled: false,
+          ocrProvider: 'immich',
+          maxPagesPerDoc: 250,
+          maxFileSizeMb: null,
+          minEmbeddedTextLength: 10,
+          unlimitedOcr: { timeoutMs: 120_000 },
+        },
       }),
     );
     mocks.pdf.getAssetForProcessing.mockResolvedValue({
@@ -292,10 +308,63 @@ describe(PdfService.name, () => {
     );
   });
 
+  it('should use Unlimited-OCR for textless PDF pages when selected', async () => {
+    mocks.config.getEnv.mockReturnValue(
+      mockEnvData({
+        pdf: {
+          enabled: true,
+          ocrEnabled: true,
+          ocrProvider: 'unlimited-ocr',
+          maxPagesPerDoc: 250,
+          maxFileSizeMb: null,
+          minEmbeddedTextLength: 10,
+          unlimitedOcr: { url: 'http://unlimited-ocr:8000/ocr', apiKey: 'secret', timeoutMs: 30_000 },
+        },
+      }),
+    );
+    mocks.pdf.getAssetForProcessing.mockResolvedValue({
+      id: 'asset-unlimited',
+      ownerId: 'user-1',
+      originalPath: '/uploads/scan.pdf',
+      originalFileName: 'scan.pdf',
+      type: AssetType.Other,
+      deletedAt: null,
+    });
+    mocks.metadata.readTags.mockResolvedValue({ PageCount: 1, Title: 'Scan' } as any);
+    mocks.process.spawn.mockImplementation((command: string) => {
+      if (command === 'pdfinfo') {
+        return makeChildProcess('Page    1 size:      612 x 792 pts (letter)');
+      }
+      return makeChildProcess('');
+    });
+    mocks.machineLearning.unlimitedOcr.mockResolvedValue('text from Unlimited-OCR');
+
+    await sut.handlePdfProcess({ id: 'asset-unlimited' });
+
+    expect(mocks.machineLearning.unlimitedOcr).toHaveBeenCalledWith(expect.stringMatching(/page-1\.png$/), {
+      url: 'http://unlimited-ocr:8000/ocr',
+      apiKey: 'secret',
+      timeoutMs: 30_000,
+    });
+    expect(mocks.machineLearning.ocr).not.toHaveBeenCalled();
+    expect(mocks.pdf.replacePages).toHaveBeenCalledWith(
+      'asset-unlimited',
+      expect.arrayContaining([expect.objectContaining({ text: 'text from Unlimited-OCR', textSource: 'ocr' })]),
+    );
+  });
+
   it('should skip text extraction when page count exceeds PDF_MAX_PAGES_PER_DOC', async () => {
     mocks.config.getEnv.mockReturnValue(
       mockEnvData({
-        pdf: { enabled: true, ocrEnabled: true, maxPagesPerDoc: 1, maxFileSizeMb: null, minEmbeddedTextLength: 10 },
+        pdf: {
+          enabled: true,
+          ocrEnabled: true,
+          ocrProvider: 'immich',
+          maxPagesPerDoc: 1,
+          maxFileSizeMb: null,
+          minEmbeddedTextLength: 10,
+          unlimitedOcr: { timeoutMs: 120_000 },
+        },
       }),
     );
     mocks.pdf.getAssetForProcessing.mockResolvedValue({
@@ -363,7 +432,15 @@ describe(PdfService.name, () => {
   it('should use configured embedded text threshold to decide OCR fallback', async () => {
     mocks.config.getEnv.mockReturnValue(
       mockEnvData({
-        pdf: { enabled: true, ocrEnabled: true, maxPagesPerDoc: 250, maxFileSizeMb: null, minEmbeddedTextLength: 4 },
+        pdf: {
+          enabled: true,
+          ocrEnabled: true,
+          ocrProvider: 'immich',
+          maxPagesPerDoc: 250,
+          maxFileSizeMb: null,
+          minEmbeddedTextLength: 4,
+          unlimitedOcr: { timeoutMs: 120_000 },
+        },
       }),
     );
     mocks.pdf.getAssetForProcessing.mockResolvedValue({

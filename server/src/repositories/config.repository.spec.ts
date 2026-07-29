@@ -21,9 +21,13 @@ const resetEnv = () => {
     'IMMICH_TELEMETRY_EXCLUDE',
     'PDF_ENABLE',
     'PDF_OCR_ENABLE',
+    'PDF_OCR_PROVIDER',
     'PDF_MAX_PAGES_PER_DOC',
     'PDF_MAX_FILE_SIZE_MB',
     'PDF_MIN_EMBEDDED_TEXT_LENGTH',
+    'UNLIMITED_OCR_URL',
+    'UNLIMITED_OCR_API_KEY',
+    'UNLIMITED_OCR_TIMEOUT_MS',
 
     'DB_URL',
     'DB_HOSTNAME',
@@ -126,9 +130,11 @@ describe('getEnv', () => {
       expect(pdf).toEqual({
         enabled: true,
         ocrEnabled: true,
+        ocrProvider: 'immich',
         maxPagesPerDoc: 250,
         maxFileSizeMb: null,
         minEmbeddedTextLength: 10,
+        unlimitedOcr: { apiKey: undefined, timeoutMs: 120_000, url: undefined },
       });
     });
 
@@ -150,6 +156,23 @@ describe('getEnv', () => {
     it('should reject invalid PDF_ENABLE', () => {
       process.env.PDF_ENABLE = 'invalid';
       expect(() => getEnv()).toThrowError('PDF_ENABLE must be a boolean value');
+    });
+
+    it('should parse Unlimited-OCR provider config', () => {
+      process.env.PDF_OCR_PROVIDER = 'unlimited-ocr';
+      process.env.UNLIMITED_OCR_URL = 'http://unlimited-ocr:8000/ocr';
+      process.env.UNLIMITED_OCR_API_KEY = 'secret';
+      process.env.UNLIMITED_OCR_TIMEOUT_MS = '30000';
+
+      expect(getEnv().pdf).toMatchObject({
+        ocrProvider: 'unlimited-ocr',
+        unlimitedOcr: { url: 'http://unlimited-ocr:8000/ocr', apiKey: 'secret', timeoutMs: 30_000 },
+      });
+    });
+
+    it('should require an endpoint for Unlimited-OCR', () => {
+      process.env.PDF_OCR_PROVIDER = 'unlimited-ocr';
+      expect(() => getEnv()).toThrowError('UNLIMITED_OCR_URL is required when PDF_OCR_PROVIDER=unlimited-ocr');
     });
   });
 

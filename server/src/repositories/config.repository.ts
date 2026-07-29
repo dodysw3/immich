@@ -128,9 +128,15 @@ export interface EnvData {
   pdf: {
     enabled: boolean;
     ocrEnabled: boolean;
+    ocrProvider: 'immich' | 'unlimited-ocr';
     maxPagesPerDoc: number;
     maxFileSizeMb: number | null;
     minEmbeddedTextLength: number;
+    unlimitedOcr: {
+      url?: string;
+      apiKey?: string;
+      timeoutMs: number;
+    };
   };
 
   noColor: boolean;
@@ -386,9 +392,15 @@ const getEnv = (): EnvData => {
     pdf: {
       enabled: dto.PDF_ENABLE ?? true,
       ocrEnabled: dto.PDF_OCR_ENABLE ?? true,
+      ocrProvider: dto.PDF_OCR_PROVIDER || 'immich',
       maxPagesPerDoc: dto.PDF_MAX_PAGES_PER_DOC || 250,
       maxFileSizeMb: dto.PDF_MAX_FILE_SIZE_MB || null,
       minEmbeddedTextLength: dto.PDF_MIN_EMBEDDED_TEXT_LENGTH || 10,
+      unlimitedOcr: {
+        url: dto.UNLIMITED_OCR_URL,
+        apiKey: dto.UNLIMITED_OCR_API_KEY,
+        timeoutMs: dto.UNLIMITED_OCR_TIMEOUT_MS || 120_000,
+      },
     },
 
     noColor: !!dto.NO_COLOR,

@@ -83,6 +83,7 @@ export type FacialRecognitionResponse = { [ModelTask.FACIAL_RECOGNITION]: Face[]
 export type DetectedFaces = { faces: Face[] } & VisualResponse;
 export type MachineLearningRequest = ClipVisualRequest | ClipTextualRequest | FacialRecognitionRequest | OcrRequest;
 export type TextEncodingOptions = ModelOptions & { language?: string };
+export type UnlimitedOcrOptions = { url: string; apiKey?: string; timeoutMs: number };
 
 @Injectable()
 export class MachineLearningRepository {
@@ -256,6 +257,63 @@ export class MachineLearningRepository {
     };
     const response = await this.predict<OcrResponse>({ imagePath }, request);
     return response[ModelTask.OCR];
+  }
+
+  async unlimitedOcr(imagePath: string, { url, apiKey, timeoutMs }: UnlimitedOcrOptions): Promise<string> {
+    const fileBuffer = await readFile(imagePath);
+    const formData = new FormData();
+    formData.append('file', new Blob([new Uint8Array(fileBuffer)], { type: 'image/png' }), 'page.png');
+
+    const headers = apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined;
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+      headers,
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!response.ok) {
+      throw new Error(`Unlimited-OCR request failed with status ${response.status}`);
+    }
+
+    const contentLength = Number(response.headers.get('content-length'));
+    if (Number.isFinite(contentLength) && contentLength > 8 * 1024 * 1024) {
+      throw new Error('Unlimited-OCR response exceeds 8 MiB');
+    }
+
+    const body = await response.text();
+    if (Buffer.byteLength(body) > 8 * 1024 * 1024) {
+      throw new Error('Unlimited-OCR response exceeds 8 MiB');
+    }
+
+    let payload: unknown;
+    try {
+      payload = JSON.parse(body);
+    } catch {
+      throw new Error('Unlimited-OCR returned invalid JSON');
+    }
+
+    const text = this.getUnlimitedOcrText(payload).trim();
+    if (!text) {
+      throw new Error('Unlimited-OCR response did not contain text');
+    }
+    return text;
+  }
+
+  private getUnlimitedOcrText(payload: unknown): string {
+    if (!payload || typeof payload !== 'object') {
+      return '';
+    }
+
+    const value = payload as {
+      text?: unknown;
+      markdown?: unknown;
+      result?: { text?: unknown };
+      data?: { text?: unknown };
+      choices?: Array<{ message?: { content?: unknown } }>;
+    };
+    const text =
+      value.text ?? value.markdown ?? value.result?.text ?? value.data?.text ?? value.choices?.[0]?.message?.content;
+    return typeof text === 'string' ? text : '';
   }
 
   private async getFormData(payload: ModelPayload, config: MachineLearningRequest): Promise<FormData> {

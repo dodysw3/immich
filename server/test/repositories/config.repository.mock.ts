@@ -105,9 +105,11 @@ export const envData: EnvData = {
   pdf: {
     enabled: true,
     ocrEnabled: true,
+    ocrProvider: 'immich',
     maxPagesPerDoc: 250,
     maxFileSizeMb: null,
     minEmbeddedTextLength: 10,
+    unlimitedOcr: { timeoutMs: 120_000 },
   },
 
   noColor: false,

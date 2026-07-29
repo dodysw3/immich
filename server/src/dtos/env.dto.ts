@@ -71,9 +71,13 @@ export const EnvSchema = z
     IMMICH_WORKERS_EXCLUDE: z.string().optional(),
     PDF_ENABLE: stringBool.optional(),
     PDF_OCR_ENABLE: stringBool.optional(),
+    PDF_OCR_PROVIDER: z.enum(['immich', 'unlimited-ocr']).optional(),
     PDF_MAX_PAGES_PER_DOC: z.coerce.number().int().min(1).optional(),
     PDF_MAX_FILE_SIZE_MB: z.coerce.number().int().min(1).optional(),
     PDF_MIN_EMBEDDED_TEXT_LENGTH: z.coerce.number().int().min(1).optional(),
+    UNLIMITED_OCR_URL: z.string().url().optional(),
+    UNLIMITED_OCR_API_KEY: z.string().min(1).optional(),
+    UNLIMITED_OCR_TIMEOUT_MS: z.coerce.number().int().min(1).optional(),
     DB_DATABASE_NAME: z.string().optional(),
     DB_HOSTNAME: z.string().optional(),
     DB_PASSWORD: z.string().optional(),
@@ -91,5 +95,9 @@ export const EnvSchema = z
     REDIS_PASSWORD: z.string().optional(),
     REDIS_SOCKET: z.string().optional(),
     REDIS_URL: z.string().optional(),
+  })
+  .refine((env) => env.PDF_OCR_PROVIDER !== 'unlimited-ocr' || Boolean(env.UNLIMITED_OCR_URL), {
+    message: 'UNLIMITED_OCR_URL is required when PDF_OCR_PROVIDER=unlimited-ocr',
+    path: ['UNLIMITED_OCR_URL'],
   })
   .meta({ id: 'EnvDto' });
