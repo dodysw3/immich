@@ -517,8 +517,7 @@ export class PdfService extends BaseService {
       }
 
       try {
-        const response = await this.machineLearningRepository.ocr(renderedPath, ocrConfig);
-        const text = response.text.join(' ').trim();
+        const text = await this.ocrPdfPage(renderedPath, ocrConfig);
         if (text.length > 0) {
           page.text = text;
           page.textSource = 'ocr';
@@ -533,6 +532,26 @@ export class PdfService extends BaseService {
     }
 
     return updatedPages;
+  }
+
+  private async ocrPdfPage(
+    imagePath: string,
+    ocrConfig: Parameters<typeof this.machineLearningRepository.ocr>[1],
+  ): Promise<string> {
+    const { ocrProvider, unlimitedOcr } = this.configRepository.getEnv().pdf;
+    if (ocrProvider === 'unlimited-ocr') {
+      if (!unlimitedOcr.url) {
+        throw new Error('UNLIMITED_OCR_URL is required when PDF_OCR_PROVIDER=unlimited-ocr');
+      }
+      return this.machineLearningRepository.unlimitedOcr(imagePath, {
+        url: unlimitedOcr.url,
+        apiKey: unlimitedOcr.apiKey,
+        timeoutMs: unlimitedOcr.timeoutMs,
+      });
+    }
+
+    const response = await this.machineLearningRepository.ocr(imagePath, ocrConfig);
+    return response.text.join(' ').trim();
   }
 
   private async renderPdfPage(inputPath: string, pageNumber: number): Promise<string | null> {
