@@ -10,10 +10,12 @@ from PIL import UnidentifiedImageError
 from src.client import ImmichClient
 from src.config import Config
 from src.detect import PaddleDetector
+from src.engines import EngineRegistry
 from src.health import HealthState, start_health_server
 from src.listener import PgListener
 from src.model_policy import RecognizerRouter
 from src.observability import Metrics, configure_logging
+from src.ocr_server import start_ocr_server
 from src.pipeline import process_asset
 from src.reconcile import (
     Reconciler,
@@ -159,23 +161,35 @@ def main() -> None:
 
     default_api, owner_api = _build_clients(config)
 
-    surya_engine: SuryaEngine | None = None
-    detector: PaddleDetector | None = None
-    recognizer_router: RecognizerRouter | None = None
+    registry = EngineRegistry(config)
+    if config.ocr_api_enabled:
+        start_ocr_server(config.ocr_api_host, config.ocr_api_port, registry, config.ocr_max_resolution)
 
-    if config.ocr_engine == "surya":
-        surya_engine = SuryaEngine.create(
-            min_confidence=config.ocr_recognition_threshold,
-            recognition_batch_size=config.surya_recognition_batch_size,
-            detection_batch_size=config.surya_detection_batch_size,
-        )
-    else:
-        detector = PaddleDetector(
-            min_score=config.ocr_detection_threshold,
-            model_name=config.ocr_detector_model_name,
-            max_resolution=min(config.ocr_max_resolution, 736),
-        )
-        recognizer_router = RecognizerRouter(config)
+    # The bridge worker loads its own engine stack lazily on first use, so no
+    # model weights are held at startup. (Re)enabled via OCR_RECONCILE_INTERVAL /
+    # OCR_LISTENER_ENABLED / OCR_STARTUP_BACKFILL_ENABLED.
+    bridge_lock = threading.Lock()
+    bridge_state: dict = {"initialised": False, "surya": None, "detector": None, "recognizer": None}
+
+    def get_bridge_stack() -> tuple:
+        with bridge_lock:
+            if bridge_state["initialised"]:
+                return bridge_state["surya"], bridge_state["detector"], bridge_state["recognizer"]
+            if config.ocr_engine == "surya":
+                bridge_state["surya"] = SuryaEngine.create(
+                    min_confidence=config.ocr_recognition_threshold,
+                    recognition_batch_size=config.surya_recognition_batch_size,
+                    detection_batch_size=config.surya_detection_batch_size,
+                )
+            else:
+                bridge_state["detector"] = PaddleDetector(
+                    min_score=config.ocr_detection_threshold,
+                    model_name=config.ocr_detector_model_name,
+                    max_resolution=min(config.ocr_max_resolution, 736),
+                )
+                bridge_state["recognizer"] = RecognizerRouter(config)
+            bridge_state["initialised"] = True
+            return bridge_state["surya"], bridge_state["detector"], bridge_state["recognizer"]
 
     logger.info(
         "api_key_routing",
@@ -205,6 +219,7 @@ def main() -> None:
             logger.debug("asset_skipped_missing_default_api_key", extra={"assetId": asset_id, "ownerId": owner_id})
             return
 
+        surya_engine, detector, recognizer_router = get_bridge_stack()
         safe_process(api, config, detector, recognizer_router, metrics, asset_id, surya_engine=surya_engine)
 
     reconciler = Reconciler(config=config, process_asset_fn=process_one)

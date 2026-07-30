@@ -40,6 +40,12 @@ class Config:
     metrics_log_interval: int = 60
     health_host: str = "0.0.0.0"
     health_port: int = 8088
+    ocr_api_enabled: bool = True
+    ocr_api_host: str = "0.0.0.0"
+    ocr_api_port: int = 8000
+    ocr_device: str = "cuda:0"
+    unlimited_ocr_model: str = "baidu/Unlimited-OCR"
+    unlimited_ocr_max_length: int = 8192
     ocr_engine: str = "surya"
     surya_recognition_batch_size: int = 4
     surya_detection_batch_size: int = 2
@@ -82,6 +88,12 @@ class Config:
             metrics_log_interval=int(os.getenv("OCR_METRICS_LOG_INTERVAL", "60")),
             health_host=os.getenv("OCR_HEALTH_HOST", "0.0.0.0"),
             health_port=int(os.getenv("OCR_HEALTH_PORT", "8088")),
+            ocr_api_enabled=_as_bool(os.getenv("OCR_API_ENABLED", "true")),
+            ocr_api_host=os.getenv("OCR_API_HOST", "0.0.0.0"),
+            ocr_api_port=int(os.getenv("OCR_API_PORT", "8000")),
+            ocr_device=os.getenv("OCR_DEVICE", "cuda:0"),
+            unlimited_ocr_model=os.getenv("UNLIMITED_OCR_MODEL", "baidu/Unlimited-OCR"),
+            unlimited_ocr_max_length=int(os.getenv("UNLIMITED_OCR_MAX_LENGTH", "8192")),
             ocr_engine=os.getenv("OCR_ENGINE", "surya"),
             surya_recognition_batch_size=int(os.getenv("SURYA_RECOGNITION_BATCH_SIZE", "4")),
             surya_detection_batch_size=int(os.getenv("SURYA_DETECTION_BATCH_SIZE", "2")),
@@ -133,6 +145,12 @@ class Config:
 
         if self.health_port <= 0 or self.health_port > 65535:
             raise ValueError("OCR_HEALTH_PORT must be in range 1..65535")
+
+        if self.ocr_api_port <= 0 or self.ocr_api_port > 65535:
+            raise ValueError("OCR_API_PORT must be in range 1..65535")
+
+        if self.unlimited_ocr_max_length <= 0:
+            raise ValueError("UNLIMITED_OCR_MAX_LENGTH must be > 0")
 
         if self.ocr_engine not in {"surya", "paddle+trocr"}:
             raise ValueError("OCR_ENGINE must be one of: surya, paddle+trocr")

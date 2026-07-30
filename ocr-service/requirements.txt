@@ -8,4 +8,10 @@ opencv-python-headless>=4.8,<5
 numpy>=1.24,<2
 requests>=2.31,<3
 pypdfium2>=4.30,<5
-surya-ocr>=0.8,<1
+surya-ocr>=0.17,<0.18
+# baidu/Unlimited-OCR (transformers, trust_remote_code) runtime deps
+addict>=2.4,<3
+easydict>=1.13,<2
+einops>=0.8,<1
+matplotlib>=3.7,<4
+pymupdf>=1.24,<2
