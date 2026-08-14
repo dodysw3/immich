@@ -625,7 +625,7 @@ describe(PersonService.name, () => {
           data: { id: asset.id },
         },
       ]);
-      expect(mocks.job.queue).not.toHaveBeenCalled();
+      expect(mocks.job.queue).toHaveBeenCalledWith({ name: JobName.PersonCleanup });
     });
 
     it('should delete existing people and faces if forced', async () => {

@@ -226,6 +226,7 @@ export class BaseService {
       ctx.notificationRepository,
       ctx.oauthRepository,
       ctx.ocrRepository,
+      ctx.pdfRepository,
       ctx.partnerRepository,
       ctx.personRepository,
       ctx.pluginRepository,
