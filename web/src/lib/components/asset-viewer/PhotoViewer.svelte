@@ -17,7 +17,7 @@
   import { getNaturalSize, scaleToFit, type Size } from '$lib/utils/container-utils';
   import { handleError } from '$lib/utils/handle-error';
   import { getOcrBoundingBoxes } from '$lib/utils/ocr-utils';
-  import { getBoundingBox, type BoundingBox } from '$lib/utils/people-utils';
+  import { getBoundingBox, getFaceLabelStyle, type BoundingBox } from '$lib/utils/people-utils';
   import { type SharedLinkResponseDto } from '@immich/sdk';
   import { toastManager } from '@immich/ui';
   import { onDestroy, untrack } from 'svelte';
@@ -285,6 +285,7 @@
       {#each boundingBoxes as boundingbox (boundingbox.id)}
         {@const isActive = assetViewerManager.highlightedFaces.some((f) => f.id === boundingbox.id)}
         {@const showPersistent = faceOverlayStore.showOverlay && !isActive}
+        {@const label = getFaceLabelStyle(boundingbox.name, boundingbox, boundingBoxes)}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
           class="pointer-events-auto absolute rounded-lg {isActive && 'border-3 border-solid border-white'} {showPersistent && 'border border-green-500'}"
@@ -305,12 +306,12 @@
           {:else if showPersistent}
             <div
               aria-hidden="true"
-              class="pointer-events-none absolute inset-x-0 flex justify-center overflow-hidden"
+              class="pointer-events-none absolute inset-x-0 flex justify-center"
               style="top: {boundingbox.height}px;"
             >
               <div
-                class="max-w-full flex-none truncate rounded-b bg-black/75 px-1 py-0.5 text-center text-xs break-all text-white"
-                style="width: {boundingbox.width}px;"
+                class="flex-none max-w-full rounded-b bg-black/50 px-1 py-0.5 text-center text-white {label.wrap ? '' : 'whitespace-nowrap'}"
+                style="width: {boundingbox.width}px; font-size: {label.fontSize}px;"
               >
                 {boundingbox.name ?? '…'}
               </div>

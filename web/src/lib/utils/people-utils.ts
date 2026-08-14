@@ -21,6 +21,74 @@ export const getBoundingBox = (faces: Faces[], imageSize: Size): BoundingBox[] =
   return boxes;
 };
 
+let labelMeasureCtx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null = null;
+
+const getLabelMeasureContext = (): CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null => {
+  if (labelMeasureCtx) {
+    return labelMeasureCtx;
+  }
+  const canvas =
+    typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(1, 1) : document.createElement('canvas');
+  labelMeasureCtx = canvas.getContext('2d');
+  return labelMeasureCtx;
+};
+
+const measureAt = (
+  context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  text: string,
+  size: number,
+): number => {
+  context.font = `${size}px sans-serif`;
+  return context.measureText(text).width;
+};
+
+const fitSize = (measured: number, maxWidth: number, max: number, min: number): number =>
+  measured <= maxWidth ? max : Math.max(min, Math.floor((max * maxWidth) / measured));
+
+export type FaceLabelStyle = { fontSize: number; wrap: boolean };
+
+const LABEL_PAD_X = 8;
+const LABEL_MIN_FONT = 6;
+const LABEL_MAX_FONT = 9;
+const LABEL_WRAP_CLEARANCE = 40;
+
+const hasFaceBelow = (box: BoundingBox, allBoxes: BoundingBox[]): boolean => {
+  const bottom = box.top + box.height;
+  return allBoxes.some((other) => {
+    if (other.id === box.id || other.top < bottom || other.top > bottom + LABEL_WRAP_CLEARANCE) {
+      return false;
+    }
+    return other.left + other.width > box.left && other.left < box.left + box.width;
+  });
+};
+
+export const getFaceLabelStyle = (
+  name: string | undefined,
+  box: BoundingBox,
+  allBoxes: BoundingBox[],
+): FaceLabelStyle => {
+  const text = (name ?? '').trim();
+  const maxWidth = box.width - LABEL_PAD_X;
+  if (!text || maxWidth <= 0) {
+    return { fontSize: LABEL_MAX_FONT, wrap: false };
+  }
+  const context = getLabelMeasureContext();
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length > 1 && !hasFaceBelow(box, allBoxes)) {
+    let size = LABEL_MAX_FONT;
+    if (context) {
+      const widest = Math.max(...words.map((word) => measureAt(context, word, LABEL_MAX_FONT)));
+      size = fitSize(widest, maxWidth, LABEL_MAX_FONT, LABEL_MIN_FONT);
+    }
+    return { fontSize: size, wrap: true };
+  }
+  let size = LABEL_MAX_FONT;
+  if (context) {
+    size = fitSize(measureAt(context, text, LABEL_MAX_FONT), maxWidth, LABEL_MAX_FONT, LABEL_MIN_FONT);
+  }
+  return { fontSize: size, wrap: false };
+};
+
 export const zoomImageToBase64 = async (
   face: AssetFaceResponseDto,
   assetId: string,
