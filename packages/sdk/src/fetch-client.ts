@@ -540,7 +540,7 @@ export type CreateAlbumDto = {
     /** Initial asset IDs */
     assetIds?: string[];
     /** Album description */
-    description?: string;
+    description?: string | null;
 };
 export type AlbumsAddAssetsDto = {
     /** Album IDs */
@@ -567,7 +567,7 @@ export type UpdateAlbumDto = {
     /** Album thumbnail asset ID */
     albumThumbnailAssetId?: string;
     /** Album description */
-    description?: string;
+    description?: string | null;
     /** Enable activity feed */
     isActivityEnabled?: boolean;
     order?: AssetOrder;
@@ -2861,6 +2861,8 @@ export type WorkflowResponseDto = {
     enabled: boolean;
     /** Workflow ID */
     id: string;
+    /** Workflow logs run results */
+    logging: boolean;
     /** Workflow name */
     name: string | null;
     /** Workflow steps */
@@ -2875,6 +2877,8 @@ export type WorkflowCreateDto = {
     description?: string | null;
     /** Workflow enabled */
     enabled?: boolean;
+    /** Workflow logs run results */
+    logging?: boolean;
     /** Workflow name */
     name?: string | null;
     steps?: WorkflowStepDto[];
@@ -2892,11 +2896,29 @@ export type WorkflowUpdateDto = {
     description?: string | null;
     /** Workflow enabled */
     enabled?: boolean;
+    /** Workflow logs run results */
+    logging?: boolean;
     /** Workflow name */
     name?: string | null;
     steps?: WorkflowStepDto[];
     /** Workflow trigger type */
     trigger?: WorkflowTrigger;
+};
+export type WorkflowLogEntryDto = {
+    /** Workflow run date/time */
+    at: string;
+    /** Workflow log entry ID */
+    id: string;
+    /** Last step ran, if the workflow ended early */
+    lastStep?: {
+        /** Index of the step in the workflow */
+        index: number;
+        /** Method of the step */
+        method: string;
+    };
+    result: WorkflowResult;
+    /** Workflow trigger data ID */
+    triggerDataId?: string;
 };
 export type WorkflowShareStepDto = {
     /** Step configuration */
@@ -7064,10 +7086,11 @@ export function getUniqueOriginalPaths(opts?: Oazapfts.RequestOpts) {
 /**
  * List all workflows
  */
-export function searchWorkflows({ description, enabled, id, name, trigger }: {
+export function searchWorkflows({ description, enabled, id, logging, name, trigger }: {
     description?: string;
     enabled?: boolean;
     id?: string;
+    logging?: boolean;
     name?: string;
     trigger?: WorkflowTrigger;
 }, opts?: Oazapfts.RequestOpts) {
@@ -7078,6 +7101,7 @@ export function searchWorkflows({ description, enabled, id, name, trigger }: {
         description,
         enabled,
         id,
+        logging,
         name,
         trigger
     }))}`, {
@@ -7149,6 +7173,26 @@ export function updateWorkflow({ id, workflowUpdateDto }: {
         method: "PUT",
         body: workflowUpdateDto
     })));
+}
+/**
+ * Retrieve workflow logs
+ */
+export function getWorkflowLogs({ before, id, limit, result }: {
+    before?: string;
+    id: string;
+    limit?: number;
+    result?: WorkflowResult;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: WorkflowLogEntryDto[];
+    }>(`/workflows/${encodeURIComponent(id)}/logs${QS.query(QS.explode({
+        before,
+        limit,
+        result
+    }))}`, {
+        ...opts
+    }));
 }
 /**
  * Retrieve a workflow
@@ -7397,6 +7441,7 @@ export enum Permission {
     WorkflowRead = "workflow.read",
     WorkflowUpdate = "workflow.update",
     WorkflowDelete = "workflow.delete",
+    WorkflowLogs = "workflow.logs",
     AdminUserCreate = "adminUser.create",
     AdminUserRead = "adminUser.read",
     AdminUserUpdate = "adminUser.update",
@@ -7511,7 +7556,8 @@ export enum WorkflowType {
 }
 export enum WorkflowTrigger {
     AssetCreate = "AssetCreate",
-    AssetMetadataExtraction = "AssetMetadataExtraction"
+    AssetMetadataExtraction = "AssetMetadataExtraction",
+    AssetTagged = "AssetTagged"
 }
 export enum QueueJobStatus {
     Active = "active",
@@ -7773,6 +7819,11 @@ export enum OAuthTokenEndpointAuthMethod {
 export enum AssetOrderBy {
     TakenAt = "takenAt",
     CreatedAt = "createdAt"
+}
+export enum WorkflowResult {
+    Completed = "completed",
+    Halted = "halted",
+    Error = "error"
 }
 export enum ReleaseType {
     Major = "major",

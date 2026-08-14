@@ -7,6 +7,7 @@ import {
 } from 'src/schema/enums';
 import {
   album_user_after_insert,
+  album_user_delete,
   album_user_delete_audit,
   asset_delete_audit,
   asset_face_audit,
@@ -89,6 +90,7 @@ import {
   VideoStreamSessionTable,
   VideoStreamVariantTable,
 } from 'src/schema/tables/video-stream.table';
+import { WorkflowLogTable } from 'src/schema/tables/workflow-log.table';
 import { WorkflowStepTable } from 'src/schema/tables/workflow-step.table';
 import { WorkflowTable } from 'src/schema/tables/workflow.table';
 
@@ -180,6 +182,7 @@ export class ImmichDatabase {
     asset_metadata_audit,
     asset_face_audit,
     asset_ocr_delete_audit,
+    album_user_delete,
   ];
 
   enum = [album_user_role_enum, assets_status_enum, asset_face_source_type, asset_visibility_enum];
@@ -286,4 +289,5 @@ export interface DB {
 
   workflow: WorkflowTable;
   workflow_step: WorkflowStepTable;
+  workflow_log: WorkflowLogTable;
 }
