@@ -327,3 +327,16 @@ export const asset_ocr_delete_audit = registerFunction({
       RETURN NULL;
     END`,
 });
+
+export const notify_ocr_complete = registerFunction({
+  name: 'notify_ocr_complete',
+  returnType: 'TRIGGER',
+  language: 'PLPGSQL',
+  body: `
+    BEGIN
+      IF OLD."ocrAt" IS NULL AND NEW."ocrAt" IS NOT NULL THEN
+        PERFORM pg_notify('ocr_complete', NEW."assetId"::text);
+      END IF;
+      RETURN NEW;
+    END`,
+});
