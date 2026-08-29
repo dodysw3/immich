@@ -1,10 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Insertable } from 'kysely';
 import sanitize from 'sanitize-filename';
-import { SystemConfig } from 'src/config';
 import { SALT_ROUNDS } from 'src/constants';
 import { StorageCore } from 'src/cores/storage.core';
 import { UserAdmin } from 'src/database';
+import { SystemConfig } from 'src/dtos/config.dto';
 import { AccessRepository } from 'src/repositories/access.repository';
 import { ActivityRepository } from 'src/repositories/activity.repository';
 import { AlbumUserRepository } from 'src/repositories/album-user.repository';
@@ -12,8 +12,10 @@ import { AlbumRepository } from 'src/repositories/album.repository';
 import { ApiKeyRepository } from 'src/repositories/api-key.repository';
 import { AppRepository } from 'src/repositories/app.repository';
 import { AssetEditRepository } from 'src/repositories/asset-edit.repository';
+import { AssetFileRepository } from 'src/repositories/asset-file.repository';
 import { AssetJobRepository } from 'src/repositories/asset-job.repository';
 import { AssetRepository } from 'src/repositories/asset.repository';
+import { ClusterGroupRepository } from 'src/repositories/cluster-group.repository';
 import { ConfigRepository } from 'src/repositories/config.repository';
 import { CronRepository } from 'src/repositories/cron.repository';
 import { CryptoRepository } from 'src/repositories/crypto.repository';
@@ -74,7 +76,9 @@ export const BASE_SERVICE_DEPENDENCIES = [
   AppRepository,
   AssetRepository,
   AssetEditRepository,
+  AssetFileRepository,
   AssetJobRepository,
+  ClusterGroupRepository,
   ConfigRepository,
   CronRepository,
   CryptoRepository,
@@ -135,7 +139,9 @@ export class BaseService {
     protected appRepository: AppRepository,
     protected assetRepository: AssetRepository,
     protected assetEditRepository: AssetEditRepository,
+    protected assetFileRepository: AssetFileRepository,
     protected assetJobRepository: AssetJobRepository,
+    protected clusterGroupRepository: ClusterGroupRepository,
     protected configRepository: ConfigRepository,
     protected cronRepository: CronRepository,
     protected cryptoRepository: CryptoRepository,
@@ -205,7 +211,9 @@ export class BaseService {
       ctx.appRepository,
       ctx.assetRepository,
       ctx.assetEditRepository,
+      ctx.assetFileRepository,
       ctx.assetJobRepository,
+      ctx.clusterGroupRepository,
       ctx.configRepository,
       ctx.cronRepository,
       ctx.cryptoRepository,
@@ -296,7 +304,7 @@ export class BaseService {
     }
   }
 
-  async createUser(dto: Insertable<UserTable> & { email: string }): Promise<UserAdmin> {
+  async createUser(dto: Omit<Insertable<UserTable>, 'clusterGroupId'> & { email: string }): Promise<UserAdmin> {
     const exists = await this.userRepository.getByEmail(dto.email);
     if (exists) {
       this.logger.debug('User creation rejected: user already exists');
@@ -310,7 +318,7 @@ export class BaseService {
       }
     }
 
-    const payload: Insertable<UserTable> = { ...dto };
+    const payload: Omit<Insertable<UserTable>, 'clusterGroupId'> = { ...dto };
     if (payload.password) {
       payload.password = await this.cryptoRepository.hashBcrypt(payload.password, SALT_ROUNDS);
     }
@@ -318,7 +326,8 @@ export class BaseService {
       payload.storageLabel = sanitize(payload.storageLabel.replaceAll('.', ''));
     }
 
-    const user = await this.userRepository.create(payload);
+    const clusterGroup = await this.clusterGroupRepository.create();
+    const user = await this.userRepository.create({ ...payload, clusterGroupId: clusterGroup.id });
 
     await this.eventRepository.emit('UserCreate', user);
 
