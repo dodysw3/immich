@@ -123,7 +123,7 @@ describe(PersonService.name, () => {
       });
       ctx
         .getMock(MachineLearningRepository)
-        .detectFaces.mockResolvedValue({ imageHeight: 42, imageWidth: 69, faces: [] });
+        .detectFaces.mockResolvedValue({ imageHeight: 42, imageWidth: 69, faces: [], gpuFallback: false });
 
       await sut.handleDetectFaces({ id: asset.id });
 
