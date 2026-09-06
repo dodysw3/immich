@@ -186,7 +186,6 @@ export const getForAssetFace = (face: ReturnType<AssetFaceFactory['build']>) => 
 });
 
 export const getForDetectedFaces = (asset: ReturnType<AssetFactory['build']>) => {
-  const previewFile = asset.files.find((f) => f.type === AssetFileType.Preview);
   const fullsizeFile = asset.files.find((f) => f.type === AssetFileType.FullSize);
   return {
     id: asset.id,
@@ -195,7 +194,10 @@ export const getForDetectedFaces = (asset: ReturnType<AssetFactory['build']>) =>
     originalPath: asset.originalPath,
     exifInfo: getDehydrated(asset.exifInfo),
     faces: asset.faces.map((face) => getDehydrated(face)),
-    previewFile: previewFile?.path ?? null,
+    previewFile: asset.files
+      .filter((file) => file.type === AssetFileType.Preview)
+      .toSorted((a) => (a.isEdited ? -1 : 1))
+      .map((file) => getDehydrated(file))[0],
     fullsizeFile: fullsizeFile?.path ?? null,
   };
 };

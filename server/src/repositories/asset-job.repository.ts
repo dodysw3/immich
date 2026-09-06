@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Kysely, sql } from 'kysely';
-import { jsonArrayFrom } from 'kysely/helpers/postgres';
+import { jsonArrayFrom, jsonObjectFrom } from 'kysely/helpers/postgres';
 import { InjectKysely } from 'nestjs-kysely';
 import { columns } from 'src/database';
 import { DummyValue, GenerateSql } from 'src/decorators';
@@ -245,12 +245,15 @@ export class AssetJobRepository {
       .$call(withExifInner)
       .select((eb) => withFaces(eb, true, true))
       .select((eb) =>
-        eb.fn
-          .coalesce(
-            withFilePath(eb, AssetFileType.Preview, true),
-            withFilePath(eb, AssetFileType.Preview, false),
-          )
-          .as('previewFile'),
+        jsonObjectFrom(
+          eb
+            .selectFrom('asset_file')
+            .select(columns.assetFiles)
+            .whereRef('asset_file.assetId', '=', 'asset.id')
+            .where('asset_file.type', '=', sql.lit(AssetFileType.Preview))
+            .orderBy('asset_file.isEdited', 'desc')
+            .limit(sql.lit(1)),
+        ).as('previewFile'),
       )
       .select((eb) => withFilePath(eb, AssetFileType.FullSize, false).as('fullsizeFile'))
       .where('asset.id', '=', id)

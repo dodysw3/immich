@@ -438,13 +438,12 @@ select
         where
           "asset_file"."assetId" = "asset"."id"
           and "asset_file"."type" = $1
-          and "asset_file"."isEdited" = $2
       ) as agg
   ) as "files"
 from
   "asset"
 where
-  "asset"."id" = $3
+  "asset"."id" = $2
 
 -- AssetJobRepository.getForDetectFacesJob
 select
@@ -466,7 +465,7 @@ select
   ) as "faces",
   (
     select
-      coalesce(json_agg(agg), '[]')
+      to_json(obj)
     from
       (
         select
@@ -478,40 +477,31 @@ select
           "asset_file"
         where
           "asset_file"."assetId" = "asset"."id"
-          and "asset_file"."type" = $1
-          and "asset_file"."isEdited" = $2
-      ) as agg
-  ) as "files"
+          and "asset_file"."type" = 'preview'
+        order by
+          "asset_file"."isEdited" desc
+        limit
+          1
+      ) as obj
+  ) as "previewFile"
 from
   "asset"
   inner join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."id" = $3
+  "asset"."id" = $1
 
 -- AssetJobRepository.getForOcr
 select
   "asset"."visibility",
-  coalesce(
-    (
-      select
-        "asset_file"."path"
-      from
-        "asset_file"
-      where
-        "asset_file"."assetId" = "asset"."id"
-        and "asset_file"."type" = 'preview'
-        and "asset_file"."isEdited" = true
-    ),
-    (
-      select
-        "asset_file"."path"
-      from
-        "asset_file"
-      where
-        "asset_file"."assetId" = "asset"."id"
-        and "asset_file"."type" = 'preview'
-        and "asset_file"."isEdited" = false
-    )
+  (
+    select
+      "asset_file"."path"
+    from
+      "asset_file"
+    where
+      "asset_file"."assetId" = "asset"."id"
+      and "asset_file"."type" = 'preview'
+      and "asset_file"."isEdited" = false
   ) as "previewFile"
 from
   "asset"
