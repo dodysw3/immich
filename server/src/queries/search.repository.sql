@@ -355,6 +355,11 @@ from
 order by
   "asset_exif"."city"
 
+-- SearchRepository.deleteByAssetId
+delete from "smart_search"
+where
+  "assetId" = $1
+
 -- SearchRepository.getStates
 select distinct
   on ("state") "state"

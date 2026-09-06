@@ -61,6 +61,15 @@ where
       "user"."clusterGroupId" = "cluster_group"."id"
   )
 
+-- PersonRepository.deleteSmallFaces
+delete from "asset_face"
+where
+  (
+    "asset_face"."boundingBoxX2" - "asset_face"."boundingBoxX1" < $1
+    or "asset_face"."boundingBoxY2" - "asset_face"."boundingBoxY1" < $2
+  )
+  and "asset_face"."deletedAt" is null
+
 -- PersonRepository.getAllFaces
 select
   "asset_face".*
@@ -95,7 +104,7 @@ from
   inner join "asset_face" on "asset_face"."personGroupId" = "person"."personGroupId"
   inner join "asset" on "asset_face"."assetId" = "asset"."id"
   and "asset"."ownerId" = "person"."ownerId"
-  and "asset"."visibility" = 'timeline'
+  and "asset"."visibility" in ('archive', 'timeline')
   and "asset"."deletedAt" is null
 where
   "person"."ownerId" = $1
@@ -326,7 +335,7 @@ select
 from
   "asset_face"
   left join "asset" on "asset"."id" = "asset_face"."assetId"
-  and "asset"."visibility" = 'timeline'
+  and "asset"."visibility" in ('archive', 'timeline')
   and "asset"."deletedAt" is null
   and (
     "asset"."ownerId" = $1::uuid
@@ -375,7 +384,7 @@ where
           "asset"
         where
           "asset"."id" = "asset_face"."assetId"
-          and "asset"."visibility" = 'timeline'
+          and "asset"."visibility" in ('archive', 'timeline')
           and "asset"."deletedAt" is null
       )
   )
@@ -616,6 +625,19 @@ from
 where
   "asset_face"."assetId" = $2
   and "asset_face"."personGroupId" = $3
+
+-- PersonRepository.getPersonAssets
+select
+  count(distinct ("asset"."id")) as "count"
+from
+  "asset_face"
+  inner join "asset" on "asset"."id" = "asset_face"."assetId"
+  and "asset"."visibility" in ('archive', 'timeline')
+  and "asset"."deletedAt" is null
+where
+  "asset_face"."personGroupId" = $1
+  and "asset_face"."deletedAt" is null
+  and "asset_face"."isVisible" is true
 
 -- PersonRepository.getForMergePerson
 select

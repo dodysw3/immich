@@ -423,32 +423,39 @@ where
 select
   "asset"."id",
   "asset"."visibility",
-  (
-    select
-      coalesce(json_agg(agg), '[]')
-    from
-      (
-        select
-          "asset_file"."id",
-          "asset_file"."path",
-          "asset_file"."type",
-          "asset_file"."isEdited"
-        from
-          "asset_file"
-        where
-          "asset_file"."assetId" = "asset"."id"
-          and "asset_file"."type" = $1
-      ) as agg
-  ) as "files"
+  coalesce(
+    (
+      select
+        "asset_file"."path"
+      from
+        "asset_file"
+      where
+        "asset_file"."assetId" = "asset"."id"
+        and "asset_file"."type" = 'preview'
+        and "asset_file"."isEdited" = true
+    ),
+    (
+      select
+        "asset_file"."path"
+      from
+        "asset_file"
+      where
+        "asset_file"."assetId" = "asset"."id"
+        and "asset_file"."type" = 'preview'
+        and "asset_file"."isEdited" = false
+    )
+  ) as "previewFile"
 from
   "asset"
 where
-  "asset"."id" = $2
+  "asset"."id" = $1
 
 -- AssetJobRepository.getForDetectFacesJob
 select
   "asset"."id",
   "asset"."visibility",
+  "asset"."originalPath",
+  "asset"."type",
   to_json("asset_exif") as "exifInfo",
   (
     select
@@ -483,7 +490,17 @@ select
         limit
           1
       ) as obj
-  ) as "previewFile"
+  ) as "previewFile",
+  (
+    select
+      "asset_file"."path"
+    from
+      "asset_file"
+    where
+      "asset_file"."assetId" = "asset"."id"
+      and "asset_file"."type" = 'fullsize'
+      and "asset_file"."isEdited" = false
+  ) as "fullsizeFile"
 from
   "asset"
   inner join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
@@ -493,15 +510,27 @@ where
 -- AssetJobRepository.getForOcr
 select
   "asset"."visibility",
-  (
-    select
-      "asset_file"."path"
-    from
-      "asset_file"
-    where
-      "asset_file"."assetId" = "asset"."id"
-      and "asset_file"."type" = 'preview'
-      and "asset_file"."isEdited" = false
+  coalesce(
+    (
+      select
+        "asset_file"."path"
+      from
+        "asset_file"
+      where
+        "asset_file"."assetId" = "asset"."id"
+        and "asset_file"."type" = 'preview'
+        and "asset_file"."isEdited" = true
+    ),
+    (
+      select
+        "asset_file"."path"
+      from
+        "asset_file"
+      where
+        "asset_file"."assetId" = "asset"."id"
+        and "asset_file"."type" = 'preview'
+        and "asset_file"."isEdited" = false
+    )
   ) as "previewFile"
 from
   "asset"

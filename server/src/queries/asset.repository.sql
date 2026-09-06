@@ -629,6 +629,16 @@ select
           "asset_edit"."assetId" = "asset"."id"
       ) as agg
   ) as "edits",
+  exists (
+    select
+      "asset_file"."path"
+    from
+      "asset_file"
+    where
+      "asset_file"."assetId" = "asset"."id"
+      and "asset_file"."type" = $1
+      and "asset_file"."isEdited" = $2
+  ) as "hasEditedPreview",
   "asset_exif"."exifImageWidth",
   "asset_exif"."exifImageHeight",
   "asset_exif"."orientation"
@@ -636,7 +646,7 @@ from
   "asset"
   inner join "asset_exif" on "asset_exif"."assetId" = "asset"."id"
 where
-  "asset"."id" = $1
+  "asset"."id" = $3
 
 -- AssetRepository.getForEdit
 select
