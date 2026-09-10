@@ -1193,29 +1193,36 @@ class TestFaceRecognition:
     ) -> None:
         mocker.patch.object(FaceDetector, "load")
         face_detector = FaceDetector("buffalo_s", cache_dir="test_cache")
-        face_detector.configure(tiled=True)
 
         session = stub_session((1, 3, 640, 640), outputs=make_scrfd_heads([(10, 10, 0.9)]))
         session.providers = ["CPUExecutionProvider"]
         face_detector.session = session
 
         # 1280x640 with tile 640, overlap 0.25 (stride 480) -> x positions [0, 480, 640]
-        faces = face_detector.predict(Image.new("RGB", (1280, 640)), minScore=0.7)
+        faces = face_detector.predict(Image.new("RGB", (1280, 640)), minScore=0.7, tiled=True)
 
         assert session.run.call_count == 3
         assert faces["boxes"].shape[0] == 3
         assert faces["gpuFallback"] is False
 
-    def test_configure_sets_tiling_options(self, mocker: MockerFixture) -> None:
+    def test_tiled_options_are_per_request(
+        self, stub_session: Callable[..., mock.Mock], mocker: MockerFixture
+    ) -> None:
         mocker.patch.object(FaceDetector, "load")
         face_detector = FaceDetector("buffalo_s", cache_dir="test_cache")
 
-        face_detector.configure(tiled=True, tileSize=512, tileOverlap=0.5, maxTiles=16)
+        session = stub_session((1, 3, 640, 640), outputs=make_scrfd_heads([(10, 10, 0.9)]))
+        session.providers = ["CPUExecutionProvider"]
+        face_detector.session = session
 
-        assert face_detector._tiled is True
-        assert face_detector._tile_size == 512
-        assert face_detector._tile_overlap == 0.5
-        assert face_detector._max_tiles == 16
+        # tile 640, overlap 0.5 (stride 320) -> x positions [0, 320, 640]
+        face_detector.predict(Image.new("RGB", (1280, 640)), minScore=0.7, tiled=True, tileOverlap=0.5)
+        assert session.run.call_count == 3
+
+        # the request's tiling options must not leak into a request that omits them
+        session.run.reset_mock()
+        face_detector.predict(Image.new("RGB", (1280, 640)), minScore=0.7)
+        assert session.run.call_count == 1
 
 
 class TestOcr:

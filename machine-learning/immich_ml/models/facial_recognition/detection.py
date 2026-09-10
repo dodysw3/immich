@@ -19,18 +19,8 @@ class FaceDetector(InferenceModel):
     identity = (ModelType.DETECTION, ModelTask.FACIAL_RECOGNITION)
 
     def __init__(self, model_name: str, **model_kwargs: Any) -> None:
-        self._tiled = False
-        self._tile_size = 640
-        self._tile_overlap = 0.25
-        self._max_tiles = 64
         self._cpu_session: OrtSession | None = None
         super().__init__(model_name, **model_kwargs)
-
-    def configure(self, **kwargs: Any) -> None:
-        self._tiled = bool(kwargs.pop("tiled", self._tiled))
-        self._tile_size = int(kwargs.pop("tileSize", self._tile_size))
-        self._tile_overlap = float(kwargs.pop("tileOverlap", self._tile_overlap))
-        self._max_tiles = int(kwargs.pop("maxTiles", self._max_tiles))
 
     def _run_session(
         self, image: Image | NDArray[np.uint8], min_score: float, session: OrtSession
@@ -57,12 +47,20 @@ class FaceDetector(InferenceModel):
             self._cpu_session = OrtSession(self.model_path, providers=["CPUExecutionProvider"])
         return self._cpu_session
 
-    def _predict(self, inputs: NDArray[np.uint8] | bytes, minScore: float) -> FaceDetectionOutput:
+    def _predict(
+        self,
+        inputs: NDArray[np.uint8] | bytes,
+        minScore: float,
+        tiled: bool = False,
+        tileSize: int = 640,
+        tileOverlap: float = 0.25,
+        maxTiles: int = 64,
+    ) -> FaceDetectionOutput:
         image = decode_pil(inputs)
         gpu_fallback = False
 
-        if self._tiled:
-            scores, boxes, kps = self._detect_tiled(image, minScore)
+        if tiled:
+            scores, boxes, kps = self._detect_tiled(image, minScore, tileSize, tileOverlap, maxTiles)
         else:
             scores, boxes, kps = self._run_session(image, minScore, self.session)
 
@@ -71,7 +69,7 @@ class FaceDetector(InferenceModel):
                 "GPU returned 0 faces for %dx%d image (tiled=%s), trying CPU fallback",
                 image.width,
                 image.height,
-                self._tiled,
+                tiled,
             )
             cpu_scores, cpu_boxes, cpu_kps = self._run_session(image, minScore, self._ensure_cpu_session())
             if cpu_boxes.shape[0] > 0:
@@ -91,18 +89,22 @@ class FaceDetector(InferenceModel):
         }
 
     def _detect_tiled(
-        self, image: Image, min_score: float
+        self,
+        image: Image,
+        min_score: float,
+        tile_size: int,
+        tile_overlap: float,
+        max_tiles: int,
     ) -> tuple[NDArray[np.float32], NDArray[np.float32], NDArray[np.float32]]:
         img = np.asarray(image)
         h, w = img.shape[:2]
-        tile_size = self._tile_size
-        stride = int(tile_size * (1 - self._tile_overlap))
+        stride = int(tile_size * (1 - tile_overlap))
 
         ys, xs = self._tile_positions(h, w, tile_size, stride)
         total_tiles = len(ys) * len(xs)
 
-        if total_tiles > self._max_tiles:
-            scale = (self._max_tiles / total_tiles) ** 0.5
+        if total_tiles > max_tiles:
+            scale = (max_tiles / total_tiles) ** 0.5
             new_w = max(tile_size, int(w * scale))
             new_h = max(tile_size, int(h * scale))
             img = cv2.resize(img, (new_w, new_h))
