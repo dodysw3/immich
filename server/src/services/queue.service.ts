@@ -93,7 +93,12 @@ export class QueueService extends BaseService {
   private updateConcurrency(config: SystemConfig) {
     this.logger.debug(`Updating queue concurrency settings`);
     for (const queueName of Object.values(QueueName)) {
-      const concurrency = this.isConcurrentQueue(queueName) ? config.job[queueName].concurrency : 1;
+      const concurrency =
+        queueName === QueueName.ImageInterpretation
+          ? this.configRepository.getEnv().aiImageInterpretation.concurrency
+          : this.isConcurrentQueue(queueName)
+            ? config.job[queueName].concurrency
+            : 1;
       this.logger.debug(`Setting ${queueName} concurrency to ${concurrency}`);
       this.jobRepository.setConcurrency(queueName, concurrency);
     }

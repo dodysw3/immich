@@ -764,6 +764,14 @@ describe(AssetService.name, () => {
       ]);
     });
 
+    it('should run the image interpretation job', async () => {
+      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set(['asset-1']));
+
+      await sut.run(authStub.admin, { assetIds: ['asset-1'], name: AssetJobName.INTERPRET_IMAGE });
+
+      expect(mocks.job.queueAll).toHaveBeenCalledWith([{ name: JobName.AssetInterpretImage, data: { id: 'asset-1' } }]);
+    });
+
     it('should run the transcode video', async () => {
       mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set(['asset-1']));
 
@@ -774,6 +782,19 @@ describe(AssetService.name, () => {
   });
 
   describe('upsertMetadata', () => {
+    it('should reject the server-managed AI interpretation key', async () => {
+      const asset = AssetFactory.create();
+      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set([asset.id]));
+
+      await expect(
+        sut.upsertMetadata(authStub.admin, asset.id, {
+          items: [{ key: AssetMetadataKey.AiInterpretationV1, value: { schemaVersion: 1, runs: {} } }],
+        }),
+      ).rejects.toThrowError('server-managed');
+
+      expect(mocks.asset.upsertMetadata).not.toHaveBeenCalled();
+    });
+
     it('should throw a bad request exception if duplicate keys are sent', async () => {
       const asset = AssetFactory.create();
       const items = [
@@ -792,6 +813,21 @@ describe(AssetService.name, () => {
   });
 
   describe('upsertBulkMetadata', () => {
+    it('should reject the server-managed AI interpretation key', async () => {
+      const asset = AssetFactory.create();
+      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set([asset.id]));
+
+      await expect(
+        sut.upsertBulkMetadata(authStub.admin, {
+          items: [
+            { assetId: asset.id, key: AssetMetadataKey.AiInterpretationV1, value: { schemaVersion: 1, runs: {} } },
+          ],
+        }),
+      ).rejects.toThrowError('server-managed');
+
+      expect(mocks.asset.upsertBulkMetadata).not.toHaveBeenCalled();
+    });
+
     it('should throw a bad request exception if duplicate keys are sent', async () => {
       const asset = AssetFactory.create();
       const items = [
@@ -806,6 +842,34 @@ describe(AssetService.name, () => {
       );
 
       expect(mocks.asset.upsertBulkMetadata).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteMetadataByKey', () => {
+    it('should reject the server-managed AI interpretation key', async () => {
+      const asset = AssetFactory.create();
+      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set([asset.id]));
+
+      await expect(
+        sut.deleteMetadataByKey(authStub.admin, asset.id, AssetMetadataKey.AiInterpretationV1),
+      ).rejects.toThrowError('server-managed');
+
+      expect(mocks.asset.deleteMetadataByKey).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteBulkMetadata', () => {
+    it('should reject the server-managed AI interpretation key', async () => {
+      const asset = AssetFactory.create();
+      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set([asset.id]));
+
+      await expect(
+        sut.deleteBulkMetadata(authStub.admin, {
+          items: [{ assetId: asset.id, key: AssetMetadataKey.AiInterpretationV1 }],
+        }),
+      ).rejects.toThrowError('server-managed');
+
+      expect(mocks.asset.deleteBulkMetadata).not.toHaveBeenCalled();
     });
   });
 

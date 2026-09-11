@@ -139,6 +139,19 @@ export interface EnvData {
     };
   };
 
+  aiImageInterpretation: {
+    enabled: boolean;
+    url?: string;
+    apiKey?: string;
+    model: string;
+    quant: string;
+    promptVersion: string;
+    timeoutMs: number;
+    maxEdge: number;
+    maxPixels: number;
+    concurrency: number;
+  };
+
   noColor: boolean;
   nodeVersion?: string;
 }
@@ -401,6 +414,19 @@ const getEnv = (): EnvData => {
         apiKey: dto.UNLIMITED_OCR_API_KEY,
         timeoutMs: dto.UNLIMITED_OCR_TIMEOUT_MS || 120_000,
       },
+    },
+
+    aiImageInterpretation: {
+      enabled: dto.IMMICH_AI_IMAGE_INTERPRETATION_ENABLED ?? false,
+      url: dto.IMMICH_AI_IMAGE_INTERPRETATION_URL,
+      apiKey: dto.IMMICH_AI_IMAGE_INTERPRETATION_API_KEY,
+      model: dto.IMMICH_AI_IMAGE_INTERPRETATION_MODEL || 'unsloth/Muse-Glimmer-30B-GGUF',
+      quant: dto.IMMICH_AI_IMAGE_INTERPRETATION_QUANT || 'UD-Q3_K_XL',
+      promptVersion: dto.IMMICH_AI_IMAGE_INTERPRETATION_PROMPT_VERSION || 'image-interpretation-1.0.0',
+      timeoutMs: dto.IMMICH_AI_IMAGE_INTERPRETATION_TIMEOUT_MS || 15 * 60 * 1000,
+      maxEdge: dto.IMMICH_AI_IMAGE_INTERPRETATION_MAX_EDGE || 1600,
+      maxPixels: dto.IMMICH_AI_IMAGE_INTERPRETATION_MAX_PIXELS || 16_000_000,
+      concurrency: dto.IMMICH_AI_IMAGE_INTERPRETATION_CONCURRENCY || 1,
     },
 
     noColor: !!dto.NO_COLOR,

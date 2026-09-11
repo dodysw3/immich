@@ -255,6 +255,10 @@ export const asQueueItem = ($t: MessageFormatter, queue: { name: QueueName }): Q
       icon: mdiPencil,
       title: $t('editor'),
     },
+    [QueueName.ImageInterpretation]: {
+      icon: mdiImageSearch,
+      title: $t('admin.ai_image_interpretation'),
+    },
   };
 
   return items[queue.name];

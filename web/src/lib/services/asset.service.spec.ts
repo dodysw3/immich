@@ -1,4 +1,4 @@
-import { getAssetInfo } from '@immich/sdk';
+import { AssetJobName, AssetTypeEnum, getAssetInfo, runAssetJobs } from '@immich/sdk';
 import { toastManager } from '@immich/ui';
 import { vitest } from 'vitest';
 import { authManager } from '$lib/managers/auth-manager.svelte';
@@ -68,6 +68,25 @@ describe('AssetService', () => {
       setSharedLink(sharedLinkFactory.build({ allowDownload: true }));
       const assetActions = getAssetActions(() => '', asset);
       expect(assetActions.SharedLinkDownload.$if?.()).toStrictEqual(true);
+    });
+
+    it('should allow an owner to manually request image interpretation', async () => {
+      const ownerId = 'owner';
+      const user = userAdminFactory.build({ id: ownerId });
+      const asset = assetFactory.build({ ownerId, type: AssetTypeEnum.Image, isTrashed: false });
+      const formatter = vitest.fn().mockReturnValue('interpreting image');
+      authManager.setUser(user);
+      vitest.mocked(getFormatter).mockResolvedValue(formatter);
+
+      const assetActions = getAssetActions(() => '', asset);
+      expect(assetActions.InterpretImageJob.$if?.()).toStrictEqual(true);
+
+      await assetActions.InterpretImageJob.onAction(assetActions.InterpretImageJob);
+
+      expect(runAssetJobs).toHaveBeenCalledWith({
+        assetJobsDto: { name: AssetJobName.InterpretImage, assetIds: [asset.id] },
+      });
+      expect(toastManager.primary).toHaveBeenCalledWith('interpreting image');
     });
   });
 

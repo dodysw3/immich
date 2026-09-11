@@ -1744,6 +1744,7 @@ export type QueuesResponseLegacyDto = {
     backupDatabase: QueueResponseLegacyDto;
     duplicateDetection: QueueResponseLegacyDto;
     editor: QueueResponseLegacyDto;
+    imageInterpretation: QueueResponseLegacyDto;
     faceDetection: QueueResponseLegacyDto;
     facialRecognition: QueueResponseLegacyDto;
     integrityCheck: QueueResponseLegacyDto;
@@ -8183,6 +8184,7 @@ export enum AssetJobName {
     RefreshFaces = "refresh-faces",
     RefreshMetadata = "refresh-metadata",
     RegenerateThumbnail = "regenerate-thumbnail",
+    InterpretImage = "interpret-image",
     TranscodeVideo = "transcode-video"
 }
 export enum AssetTypeEnum {
@@ -8248,7 +8250,8 @@ export enum QueueName {
     PdfProcessing = "pdfProcessing",
     Workflow = "workflow",
     IntegrityCheck = "integrityCheck",
-    Editor = "editor"
+    Editor = "editor",
+    ImageInterpretation = "imageInterpretation"
 }
 export enum QueueCommand {
     Start = "start",
@@ -8301,6 +8304,8 @@ export enum JobName {
     AssetFileMigration = "AssetFileMigration",
     AssetGenerateThumbnailsQueueAll = "AssetGenerateThumbnailsQueueAll",
     AssetGenerateThumbnails = "AssetGenerateThumbnails",
+    AssetInterpretImage = "AssetInterpretImage",
+    AssetInterpretationReconcile = "AssetInterpretationReconcile",
     AuditTableCleanup = "AuditTableCleanup",
     DatabaseBackup = "DatabaseBackup",
     FacialRecognitionQueueAll = "FacialRecognitionQueueAll",

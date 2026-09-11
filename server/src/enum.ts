@@ -378,6 +378,7 @@ export const UserMetadataKeySchema = z
 
 export enum AssetMetadataKey {
   MobileApp = 'mobile-app',
+  AiInterpretationV1 = 'ai-interpretation-v1',
 }
 
 export enum UserAvatarColor {
@@ -830,6 +831,7 @@ export enum QueueName {
   Workflow = 'workflow',
   IntegrityCheck = 'integrityCheck',
   Editor = 'editor',
+  ImageInterpretation = 'imageInterpretation',
 }
 
 export const QueueNameSchema = z.enum(QueueName).describe('Queue name').meta({ id: 'QueueName' });
@@ -861,6 +863,8 @@ export enum JobName {
   AssetFileMigration = 'AssetFileMigration',
   AssetGenerateThumbnailsQueueAll = 'AssetGenerateThumbnailsQueueAll',
   AssetGenerateThumbnails = 'AssetGenerateThumbnails',
+  AssetInterpretImage = 'AssetInterpretImage',
+  AssetInterpretationReconcile = 'AssetInterpretationReconcile',
 
   AuditTableCleanup = 'AuditTableCleanup',
 

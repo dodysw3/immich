@@ -175,6 +175,11 @@ export class JobService extends BaseService {
           break;
         }
 
+        await this.eventRepository.emit('AssetThumbnailGenerated', {
+          assetId: asset.id,
+          source: item.data.source,
+        });
+
         const jobs: JobItem[] = [
           { name: JobName.SmartSearch, data: item.data },
           { name: JobName.AssetDetectFaces, data: item.data },

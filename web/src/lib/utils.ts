@@ -191,12 +191,12 @@ export const getQueueName = derived(t, ($t) => {
       [QueueName.Workflow]: $t('workflows'),
       [QueueName.Editor]: $t('editor'),
       [QueueName.IntegrityCheck]: 'Integrity check',
+      [QueueName.ImageInterpretation]: $t('admin.ai_image_interpretation'),
     };
 
     return names[name];
   };
 });
-
 
 let _sharedLink: SharedLinkResponseDto | undefined;
 

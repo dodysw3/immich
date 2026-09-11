@@ -112,6 +112,17 @@ export const envData: EnvData = {
     unlimitedOcr: { timeoutMs: 120_000 },
   },
 
+  aiImageInterpretation: {
+    enabled: false,
+    model: 'unsloth/Muse-Glimmer-30B-GGUF',
+    quant: 'UD-Q3_K_XL',
+    promptVersion: 'image-interpretation-1.0.0',
+    timeoutMs: 900_000,
+    maxEdge: 1600,
+    maxPixels: 16_000_000,
+    concurrency: 1,
+  },
+
   noColor: false,
 };
 

@@ -287,6 +287,12 @@ export class JobRepository {
       case JobName.PdfProcessQueueAll: {
         return { jobId: JobName.PdfProcessQueueAll };
       }
+      case JobName.AssetInterpretImage: {
+        return { jobId: item.data.runKey ? `${item.data.id}/${item.data.runKey}` : item.data.id };
+      }
+      case JobName.AssetInterpretationReconcile: {
+        return { deduplication: { id: JobName.AssetInterpretationReconcile } };
+      }
       default: {
         return null;
       }

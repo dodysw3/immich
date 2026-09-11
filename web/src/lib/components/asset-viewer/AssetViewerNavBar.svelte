@@ -190,6 +190,7 @@
           <ActionMenuItem action={Actions.RefreshFacesJob} />
           <ActionMenuItem action={Actions.RefreshMetadataJob} />
           <ActionMenuItem action={Actions.RegenerateThumbnailJob} />
+          <ActionMenuItem action={Actions.InterpretImageJob} />
           <ActionMenuItem action={Actions.TranscodeVideoJob} />
         {/if}
       </ButtonContextMenu>

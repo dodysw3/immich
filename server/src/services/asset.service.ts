@@ -24,6 +24,7 @@ import { AssetEditAction, AssetEditActionItem, AssetEditsCreateDto, AssetEditsRe
 import { AssetOcrResponseDto } from 'src/dtos/ocr.dto';
 import {
   AssetFileType,
+  AssetMetadataKey,
   AssetStatus,
   AssetType,
   AssetVisibility,
@@ -406,6 +407,10 @@ export class AssetService extends BaseService {
   async upsertBulkMetadata(auth: AuthDto, dto: AssetMetadataBulkUpsertDto): Promise<AssetMetadataBulkResponseDto[]> {
     await this.requireAccess({ auth, permission: Permission.AssetUpdate, ids: dto.items.map((item) => item.assetId) });
 
+    if (dto.items.some((item) => item.key === AssetMetadataKey.AiInterpretationV1)) {
+      throw new BadRequestException(`Metadata key "${AssetMetadataKey.AiInterpretationV1}" is server-managed`);
+    }
+
     const uniqueKeys = new Set<string>();
     for (const item of dto.items) {
       const key = `(${item.assetId}, ${item.key})`;
@@ -421,6 +426,10 @@ export class AssetService extends BaseService {
 
   async upsertMetadata(auth: AuthDto, id: string, dto: AssetMetadataUpsertDto): Promise<AssetMetadataResponseDto[]> {
     await this.requireAccess({ auth, permission: Permission.AssetUpdate, ids: [id] });
+
+    if (dto.items.some((item) => item.key === AssetMetadataKey.AiInterpretationV1)) {
+      throw new BadRequestException(`Metadata key "${AssetMetadataKey.AiInterpretationV1}" is server-managed`);
+    }
 
     const uniqueKeys = new Set<string>();
     for (const { key } of dto.items) {
@@ -446,11 +455,19 @@ export class AssetService extends BaseService {
 
   async deleteMetadataByKey(auth: AuthDto, id: string, key: string): Promise<void> {
     await this.requireAccess({ auth, permission: Permission.AssetUpdate, ids: [id] });
+
+    if (key === AssetMetadataKey.AiInterpretationV1) {
+      throw new BadRequestException(`Metadata key "${AssetMetadataKey.AiInterpretationV1}" is server-managed`);
+    }
     return this.assetRepository.deleteMetadataByKey(id, key);
   }
 
   async deleteBulkMetadata(auth: AuthDto, dto: AssetMetadataBulkDeleteDto) {
     await this.requireAccess({ auth, permission: Permission.AssetUpdate, ids: dto.items.map((item) => item.assetId) });
+
+    if (dto.items.some((item) => item.key === AssetMetadataKey.AiInterpretationV1)) {
+      throw new BadRequestException(`Metadata key "${AssetMetadataKey.AiInterpretationV1}" is server-managed`);
+    }
     await this.assetRepository.deleteBulkMetadata(dto.items);
   }
 
@@ -473,6 +490,11 @@ export class AssetService extends BaseService {
 
         case AssetJobName.REGENERATE_THUMBNAIL: {
           jobs.push({ name: JobName.AssetGenerateThumbnails, data: { id } });
+          break;
+        }
+
+        case AssetJobName.INTERPRET_IMAGE: {
+          jobs.push({ name: JobName.AssetInterpretImage, data: { id } });
           break;
         }
 

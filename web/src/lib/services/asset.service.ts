@@ -13,6 +13,7 @@ import { modalManager, toastManager, type ActionItem } from '@immich/ui';
 import {
   mdiAccountCircleOutline,
   mdiAlertOutline,
+  mdiBrain,
   mdiCogRefreshOutline,
   mdiCompare,
   mdiContentCopy,
@@ -60,7 +61,10 @@ type EditorAvailabilityOptions = {
   isSharedLink: boolean;
 };
 
-export const canOpenEditorForAsset = (asset: AssetResponseDto, { isOwner, isSharedLink }: EditorAvailabilityOptions) => {
+export const canOpenEditorForAsset = (
+  asset: AssetResponseDto,
+  { isOwner, isSharedLink }: EditorAvailabilityOptions,
+) => {
   const originalPath = asset.originalPath.toLowerCase();
 
   return (
@@ -302,6 +306,13 @@ export const getAssetActions = ($t: MessageFormatter, asset: AssetResponseDto & 
     onAction: () => handleRunAssetJob({ name: AssetJobName.RegenerateThumbnail, assetIds: [asset.id] }),
   };
 
+  const InterpretImageJob: ActionItem = {
+    title: $t('interpret_image'),
+    icon: mdiBrain,
+    $if: () => asset.type === AssetTypeEnum.Image && !asset.isTrashed,
+    onAction: () => handleRunAssetJob({ name: AssetJobName.InterpretImage, assetIds: [asset.id] }),
+  };
+
   const TranscodeVideoJob: ActionItem = {
     title: $t('refresh_encoded_videos'),
     icon: mdiCogRefreshOutline,
@@ -334,6 +345,7 @@ export const getAssetActions = ($t: MessageFormatter, asset: AssetResponseDto & 
     RefreshFacesJob,
     RefreshMetadataJob,
     RegenerateThumbnailJob,
+    InterpretImageJob,
     TranscodeVideoJob,
   };
 };
@@ -417,6 +429,7 @@ const getAssetJobMessage = ($t: MessageFormatter, job: AssetJobName) => {
     [AssetJobName.RefreshFaces]: $t('refreshing_faces'),
     [AssetJobName.RefreshMetadata]: $t('refreshing_metadata'),
     [AssetJobName.RegenerateThumbnail]: $t('regenerating_thumbnails'),
+    [AssetJobName.InterpretImage]: $t('interpreting_image'),
     [AssetJobName.TranscodeVideo]: $t('refreshing_encoded_video'),
   };
 

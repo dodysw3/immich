@@ -47,6 +47,7 @@
   import Thumbnail from '../assets/thumbnail/Thumbnail.svelte';
   import ActivityStatus from './ActivityStatus.svelte';
   import ActivityViewer from './ActivityViewer.svelte';
+  import AiInterpretationOverlay from './AiInterpretationOverlay.svelte';
   import DetailPanel from './DetailPanel.svelte';
   import EditorPanel from './editor/EditorPanel.svelte';
   import CropArea from './editor/transform-tool/CropArea.svelte';
@@ -465,7 +466,7 @@
   const showFaceButton = $derived(
     $slideshowState === SlideshowState.None &&
       asset.type === AssetTypeEnum.Image &&
-      !(asset.exifInfo?.projectionType === ProjectionType.EQUIRECTANGULAR) &&
+      asset.exifInfo?.projectionType !== ProjectionType.EQUIRECTANGULAR &&
       !assetViewerManager.isShowEditor &&
       faceManager.data.length > 0,
   );
@@ -476,6 +477,8 @@
       !assetViewerManager.isShowEditor &&
       ocrManager.hasOcrData,
   );
+
+  const aiInterpretationButtonBottom = $derived(24 + (showFaceButton ? 56 : 0) + (showOcrButton ? 56 : 0));
 
   const { Tag, TagPeople } = $derived(getAssetActions($t, asset));
 
@@ -670,6 +673,10 @@
       <div class="absolute bottom-0 end-0 me-6" class:mb-20={showFaceButton} class:mb-6={!showFaceButton}>
         <OcrButton />
       </div>
+    {/if}
+
+    {#if $slideshowState === SlideshowState.None && asset.type === AssetTypeEnum.Image && !assetViewerManager.isShowEditor}
+      <AiInterpretationOverlay {asset} buttonBottom={aiInterpretationButtonBottom} />
     {/if}
 
     {#if $slideshowState !== SlideshowState.None}

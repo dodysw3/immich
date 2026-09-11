@@ -200,6 +200,7 @@ export type ConcurrentQueueName = Exclude<
   | QueueName.FacialRecognition
   | QueueName.DuplicateDetection
   | QueueName.BackupDatabase
+  | QueueName.ImageInterpretation
 >;
 
 export type Jobs = { [K in JobItem['name']]: (JobItem & { name: K })['data'] };
@@ -325,6 +326,10 @@ export interface IFacialRecognitionQueueAll extends INightlyJob {
   clusterGroupId?: string;
 }
 
+export interface IAssetInterpretationJob extends IEntityJob {
+  runKey?: string;
+}
+
 export interface JobCounts {
   active: number;
   completed: number;
@@ -348,6 +353,8 @@ export type JobItem =
   // Thumbnails
   | { name: JobName.AssetGenerateThumbnailsQueueAll; data: IBaseJob }
   | { name: JobName.AssetGenerateThumbnails; data: IEntityJob }
+  | { name: JobName.AssetInterpretImage; data: IAssetInterpretationJob }
+  | { name: JobName.AssetInterpretationReconcile; data?: IBaseJob }
 
   // User
   | { name: JobName.UserDeleteCheck; data?: IBaseJob }

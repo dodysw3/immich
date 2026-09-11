@@ -52,6 +52,7 @@
     [QueueName.Editor]: $t('editor'),
     [QueueName.PdfProcessing]: 'PDF processing',
     [QueueName.IntegrityCheck]: $t('integrity_checks'),
+    [QueueName.ImageInterpretation]: $t('admin.ai_image_interpretation'),
   });
 </script>
 

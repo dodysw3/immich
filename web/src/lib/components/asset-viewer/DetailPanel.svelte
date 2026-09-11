@@ -3,6 +3,7 @@
   import DetailPanelDate from '$lib/components/asset-viewer/DetailPanelDate.svelte';
   import DetailPanelDescription from '$lib/components/asset-viewer/DetailPanelDescription.svelte';
   import DetailPanelLocation from '$lib/components/asset-viewer/DetailPanelLocation.svelte';
+  import DetailPanelAiInterpretation from '$lib/components/asset-viewer/DetailPanelAiInterpretation.svelte';
   import DetailPanelRating from '$lib/components/asset-viewer/DetailPanelStarRating.svelte';
   import DetailPanelTags from '$lib/components/asset-viewer/DetailPanelTags.svelte';
   import { timeToLoadTheMap } from '$lib/constants';
@@ -18,6 +19,7 @@
   import { getParentPath } from '$lib/utils/tree-utils';
   import {
     AssetMediaSize,
+    AssetTypeEnum,
     getAllAlbums,
     getAssetInfo,
     type AlbumResponseDto,
@@ -153,6 +155,9 @@
     <DetailPanelDescription {asset} {isOwner} />
     <DetailPanelRating {asset} {isOwner} />
     <DetailPanelPeople {asset} {isOwner} {previousRoute} />
+    {#if asset.type === AssetTypeEnum.Image}
+      <DetailPanelAiInterpretation {asset} />
+    {/if}
 
     <div class="p-4">
       {#if asset.exifInfo}

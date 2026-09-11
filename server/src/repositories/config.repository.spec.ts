@@ -28,6 +28,16 @@ const resetEnv = () => {
     'UNLIMITED_OCR_URL',
     'UNLIMITED_OCR_API_KEY',
     'UNLIMITED_OCR_TIMEOUT_MS',
+    'IMMICH_AI_IMAGE_INTERPRETATION_ENABLED',
+    'IMMICH_AI_IMAGE_INTERPRETATION_URL',
+    'IMMICH_AI_IMAGE_INTERPRETATION_API_KEY',
+    'IMMICH_AI_IMAGE_INTERPRETATION_MODEL',
+    'IMMICH_AI_IMAGE_INTERPRETATION_QUANT',
+    'IMMICH_AI_IMAGE_INTERPRETATION_PROMPT_VERSION',
+    'IMMICH_AI_IMAGE_INTERPRETATION_TIMEOUT_MS',
+    'IMMICH_AI_IMAGE_INTERPRETATION_MAX_EDGE',
+    'IMMICH_AI_IMAGE_INTERPRETATION_MAX_PIXELS',
+    'IMMICH_AI_IMAGE_INTERPRETATION_CONCURRENCY',
 
     'DB_URL',
     'DB_HOSTNAME',
@@ -173,6 +183,45 @@ describe('getEnv', () => {
     it('should require an endpoint for Unlimited-OCR', () => {
       process.env.PDF_OCR_PROVIDER = 'unlimited-ocr';
       expect(() => getEnv()).toThrowError('UNLIMITED_OCR_URL is required when PDF_OCR_PROVIDER=unlimited-ocr');
+    });
+  });
+
+  describe('ai image interpretation', () => {
+    it('should use safe defaults', () => {
+      expect(getEnv().aiImageInterpretation).toEqual({
+        enabled: false,
+        url: undefined,
+        apiKey: undefined,
+        model: 'unsloth/Muse-Glimmer-30B-GGUF',
+        quant: 'UD-Q3_K_XL',
+        promptVersion: 'image-interpretation-1.0.0',
+        timeoutMs: 900_000,
+        maxEdge: 1600,
+        maxPixels: 16_000_000,
+        concurrency: 1,
+      });
+    });
+
+    it('should parse the local endpoint settings', () => {
+      process.env.IMMICH_AI_IMAGE_INTERPRETATION_ENABLED = 'true';
+      // eslint-disable-next-line unicorn/prefer-https -- the local host-gateway endpoint is HTTP by design
+      process.env.IMMICH_AI_IMAGE_INTERPRETATION_URL = 'http://host.docker.internal:8888/v1';
+      process.env.IMMICH_AI_IMAGE_INTERPRETATION_API_KEY = 'secret';
+      process.env.IMMICH_AI_IMAGE_INTERPRETATION_TIMEOUT_MS = '30000';
+      process.env.IMMICH_AI_IMAGE_INTERPRETATION_MAX_EDGE = '1024';
+      process.env.IMMICH_AI_IMAGE_INTERPRETATION_MAX_PIXELS = '4000000';
+      process.env.IMMICH_AI_IMAGE_INTERPRETATION_CONCURRENCY = '2';
+
+      expect(getEnv().aiImageInterpretation).toMatchObject({
+        enabled: true,
+        // eslint-disable-next-line unicorn/prefer-https -- the local host-gateway endpoint is HTTP by design
+        url: 'http://host.docker.internal:8888/v1',
+        apiKey: 'secret',
+        timeoutMs: 30_000,
+        maxEdge: 1024,
+        maxPixels: 4_000_000,
+        concurrency: 2,
+      });
     });
   });
 
