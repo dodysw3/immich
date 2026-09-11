@@ -145,8 +145,12 @@ export class MaintenanceModule {
 }
 
 @Module({
-  imports: [...bullImports, ...commonImports],
-  providers: [...common, { provide: IWorker, useValue: ImmichWorker.Microservices }, SchedulerRegistry],
+  // ScheduleModule is required here so @Cron-decorated reconcile passes run in
+  // the microservices worker; without it the cron only registers in the API
+  // process, where the worker guard skips it (observed 2026-09-12: retry
+  // dispatches never fired until this was added).
+  imports: [...bullImports, ...commonImports, ScheduleModule.forRoot()],
+  providers: [...common, { provide: IWorker, useValue: ImmichWorker.Microservices }],
 })
 export class MicroservicesModule extends BaseModule {}
 

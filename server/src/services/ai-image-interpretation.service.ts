@@ -10,6 +10,7 @@ import { ConfigRepository } from 'src/repositories/config.repository';
 import { ArgOf } from 'src/repositories/event.repository';
 import { JobRepository } from 'src/repositories/job.repository';
 import { LoggingRepository } from 'src/repositories/logging.repository';
+import { AI_INTERPRETATION_QUEUED_STALE_MS } from 'src/utils/ai-image-interpretation';
 import {
   AiImageInterpretationClient,
   AiImageInterpretationClientError,
@@ -173,7 +174,11 @@ export class AiImageInterpretationService {
 
   private async reconcile() {
     const timeoutMs = this.configRepository.getEnv().aiImageInterpretation.timeoutMs;
-    const failed = await this.interpretationRepository.failStale(new Date(Date.now() - timeoutMs));
+    const now = Date.now();
+    const failed = await this.interpretationRepository.failStale(
+      new Date(now - timeoutMs),
+      new Date(now - AI_INTERPRETATION_QUEUED_STALE_MS),
+    );
     if (failed > 0) {
       this.logger.log(`Marked ${failed} stale AI interpretation run(s) as failed`);
     }

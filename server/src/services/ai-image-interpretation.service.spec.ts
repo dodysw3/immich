@@ -247,7 +247,10 @@ describe(AiImageInterpretationService.name, () => {
 
     await expect(service.handleReconcile()).resolves.toBe(JobStatus.Success);
 
-    expect(dependencies.interpretationRepository.failStale).toHaveBeenCalledWith(expect.any(Date));
+    expect(dependencies.interpretationRepository.failStale).toHaveBeenCalledWith(
+      expect.any(Date),
+      expect.any(Date),
+    );
     expect(dependencies.interpretationRepository.findDueRetries).toHaveBeenCalledWith(expect.any(Date));
     expect(dependencies.interpretationRepository.requeue).toHaveBeenCalledTimes(2);
     expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({

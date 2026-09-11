@@ -191,7 +191,11 @@ export class AiImageInterpretationRepository {
     return due;
   }
 
-  async failStale(cutoff: Date, finishedAt = new Date()): Promise<number> {
+  async failStale(
+    runningCutoff: Date,
+    queuedCutoff: Date = runningCutoff,
+    finishedAt = new Date(),
+  ): Promise<number> {
     const rows = await this.db
       .selectFrom('asset_metadata')
       .select(['assetId', 'value'])
@@ -202,8 +206,12 @@ export class AiImageInterpretationRepository {
     for (const row of rows) {
       const document = this.parseDocument(row.value);
       for (const [runKey, run] of Object.entries(document.runs)) {
-        const timestamp = run.startedAt ?? run.requestedAt;
-        if ((run.status === 'queued' || run.status === 'running') && new Date(timestamp) < cutoff) {
+        // Running runs hang only when the worker died mid-inference; queued
+        // runs legitimately wait behind a busy queue, so they get a much
+        // longer threshold before their (lost) job is declared gone.
+        const isRunning = run.status === 'running' && new Date(run.startedAt ?? run.requestedAt) < runningCutoff;
+        const isQueued = run.status === 'queued' && new Date(run.requestedAt) < queuedCutoff;
+        if (isRunning || isQueued) {
           const updated = await this.fail(
             row.assetId,
             runKey,
