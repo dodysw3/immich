@@ -11,11 +11,19 @@ import {
   AI_IMAGE_INTERPRETATION_PROMPT,
   AI_IMAGE_INTERPRETATION_SCHEMA_INSTRUCTION,
 } from 'src/utils/ai-image-interpretation';
+import { Agent, fetch as undiciFetch } from 'undici';
 
 type CompletionResponse = {
   choices?: Array<{ message?: { content?: string | Array<{ type?: string; text?: string }> } }>;
   usage?: { prompt_tokens?: number; completion_tokens?: number };
 };
+
+// The local VLM endpoint generates the entire completion before sending any
+// bytes, so undici's default 300s headers timeout kills long generations
+// mid-flight (observed 2026-09-12: network_error at ~300.3s when two
+// concurrent requests share the server at ~7 t/s). Disable the socket-level
+// timeouts; the AbortController per request remains the sole deadline.
+const interpretDispatcher = new Agent({ headersTimeout: 0, bodyTimeout: 0 });
 
 export class AiImageInterpretationClientError extends Error {
   constructor(
@@ -62,9 +70,10 @@ export class AiImageInterpretationClient {
     const startedAt = Date.now();
 
     try {
-      const response = await fetch(`${config.url.replace(/\/$/, '')}/chat/completions`, {
+      const response = await undiciFetch(`${config.url.replace(/\/$/, '')}/chat/completions`, {
         method: 'POST',
         signal: controller.signal,
+        dispatcher: interpretDispatcher,
         headers: {
           'Content-Type': 'application/json',
           ...(config.apiKey && { Authorization: `Bearer ${config.apiKey}` }),
@@ -138,7 +147,7 @@ export class AiImageInterpretationClient {
         throw error;
       }
 
-      if ((error as Error)?.name === 'AbortError') {
+      if ((error as Error)?.name === 'AbortError' || (error as { code?: string })?.code === 'ABORT_ERR') {
         throw new AiImageInterpretationClientError('timeout', 'AI interpretation request timed out');
       }
 
@@ -186,10 +195,7 @@ const fixTrailingCommas = (text: string) => text.replaceAll(/,\s*([}\]])/g, '$1'
 // single response in place instead of failing the run: no additional outbound
 // request is made, and content that is still unparseable fails as invalid_json
 // exactly as before. Schema validation downstream remains the safety net.
-const parseJsonContent = (
-  content: string,
-  usage?: { prompt_tokens?: number; completion_tokens?: number },
-): unknown => {
+const parseJsonContent = (content: string, usage?: { prompt_tokens?: number; completion_tokens?: number }): unknown => {
   const direct = tryParseJson(content);
   if (direct.parsed) {
     return direct.value;

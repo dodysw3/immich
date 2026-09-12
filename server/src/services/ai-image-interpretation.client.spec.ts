@@ -2,6 +2,10 @@ import { AiImageInterpretationClient } from 'src/services/ai-image-interpretatio
 import { newConfigRepositoryMock } from 'test/repositories/config.repository.mock';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const fetchMock = vi.hoisted(() => vi.fn());
+
+vi.mock('undici', () => ({ Agent: class {}, fetch: fetchMock }));
+
 const result = {
   title: 'A quiet room',
   literal_description: 'A room with a window and a table.',
@@ -23,6 +27,7 @@ describe(AiImageInterpretationClient.name, () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    fetchMock.mockReset();
     const env = configRepository.getEnv();
     configRepository.getEnv.mockReturnValue({
       ...env,
@@ -40,14 +45,13 @@ describe(AiImageInterpretationClient.name, () => {
   });
 
   it('sends the pinned model, prompt, JSON schema, and preview without metadata', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
+    fetchMock.mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue({
         choices: [{ message: { content: JSON.stringify(result) } }],
         usage: { prompt_tokens: 12, completion_tokens: 34 },
       }),
     });
-    vi.stubGlobal('fetch', fetchMock);
 
     await expect(client.interpret(Buffer.from('preview'))).resolves.toEqual({
       result,
@@ -75,13 +79,10 @@ describe(AiImageInterpretationClient.name, () => {
   });
 
   it('rejects output that does not match the pinned result contract', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue({ choices: [{ message: { content: '{}' } }] }),
-      }),
-    );
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ choices: [{ message: { content: '{}' } }] }),
+    });
 
     await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({
       code: 'invalid_output',
@@ -89,34 +90,30 @@ describe(AiImageInterpretationClient.name, () => {
   });
 
   it('sanitizes malformed JSON, endpoint, and timeout failures', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValueOnce({
-        ok: true,
-        json: vi.fn().mockRejectedValue(new SyntaxError('response body')),
-      }),
-    );
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockRejectedValue(new SyntaxError('response body')),
+    });
     await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'invalid_json' });
 
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 502, json: vi.fn() }));
+    fetchMock.mockReset().mockResolvedValue({ ok: false, status: 502, json: vi.fn() });
     await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'endpoint_error' });
     expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('502'));
 
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new DOMException('aborted', 'AbortError')));
+    fetchMock.mockReset().mockRejectedValue(new DOMException('aborted', 'AbortError'));
     await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'timeout' });
   });
 
   it('repairs a stray quote after the final bracket without another request', async () => {
     // Observed 2026-09-11: complete object, finish=stop, single extra `"` (`..."]"}`).
     const content = JSON.stringify(result).replaceAll(/\}$/g, '"}');
-    const fetchMock = vi.fn().mockResolvedValue({
+    fetchMock.mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue({
         choices: [{ message: { content } }],
         usage: { prompt_tokens: 12, completion_tokens: 34 },
       }),
     });
-    vi.stubGlobal('fetch', fetchMock);
 
     await expect(client.interpret(Buffer.from('preview'))).resolves.toEqual({
       result,
@@ -128,26 +125,20 @@ describe(AiImageInterpretationClient.name, () => {
 
   it('extracts JSON wrapped in prose and repairs trailing commas', async () => {
     const wrapped = `Here is the analysis:\n${JSON.stringify(result).replaceAll(']}', '] , }')} \nDone.`;
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue({ choices: [{ message: { content: wrapped } }] }),
-      }),
-    );
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ choices: [{ message: { content: wrapped } }] }),
+    });
 
     await expect(client.interpret(Buffer.from('preview'))).resolves.toMatchObject({ result });
   });
 
   it('still rejects content that no repair can parse', async () => {
     for (const content of ['not json at all', '{"title": "unterminated', ' '.repeat(3)]) {
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValue({
-          ok: true,
-          json: vi.fn().mockResolvedValue({ choices: [{ message: { content } }] }),
-        }),
-      );
+      fetchMock.mockReset().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ choices: [{ message: { content } }] }),
+      });
       await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'invalid_json' });
     }
   });
