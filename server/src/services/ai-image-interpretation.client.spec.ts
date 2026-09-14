@@ -81,12 +81,13 @@ describe(AiImageInterpretationClient.name, () => {
   it('rejects output that does not match the pinned result contract', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: vi.fn().mockResolvedValue({ choices: [{ message: { content: '{}' } }] }),
+      json: vi.fn().mockResolvedValue({ choices: [{ message: { content: '{}' }, finish_reason: 'stop' }] }),
     });
 
     await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({
       code: 'invalid_output',
     });
+    expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('schema validation'));
   });
 
   it('sanitizes malformed JSON, endpoint, and timeout failures', async () => {
@@ -133,13 +134,20 @@ describe(AiImageInterpretationClient.name, () => {
     await expect(client.interpret(Buffer.from('preview'))).resolves.toMatchObject({ result });
   });
 
-  it('still rejects content that no repair can parse', async () => {
+  it('still rejects content that no repair can parse, logging the defect for triage', async () => {
     for (const content of ['not json at all', '{"title": "unterminated', ' '.repeat(3)]) {
       fetchMock.mockReset().mockResolvedValue({
         ok: true,
-        json: vi.fn().mockResolvedValue({ choices: [{ message: { content } }] }),
+        json: vi.fn().mockResolvedValue({
+          choices: [{ message: { content }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 500, completion_tokens: 1000 },
+        }),
       });
       await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'invalid_json' });
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('unparseable content (finish_reason: stop, completion tokens: 1000'),
+      );
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining(JSON.stringify(content).slice(0, 40)));
     }
   });
 });

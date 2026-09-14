@@ -14,7 +14,7 @@ import {
 import { Agent, fetch as undiciFetch } from 'undici';
 
 type CompletionResponse = {
-  choices?: Array<{ message?: { content?: string | Array<{ type?: string; text?: string }> } }>;
+  choices?: Array<{ finish_reason?: string; message?: { content?: string | Array<{ type?: string; text?: string }> } }>;
   usage?: { prompt_tokens?: number; completion_tokens?: number };
 };
 
@@ -121,11 +121,29 @@ export class AiImageInterpretationClient {
       }
 
       const usage = payload.usage;
+      const finishReason = payload.choices?.[0]?.finish_reason;
       const content = getContent(payload);
-      const decoded = parseJsonContent(content, usage);
+
+      let decoded: unknown;
+      try {
+        decoded = parseJsonContent(content, usage);
+      } catch (error) {
+        if ((error as AiImageInterpretationClientError)?.code === 'invalid_json') {
+          this.logger.warn(
+            `AI interpretation returned unparseable content (finish_reason: ${finishReason ?? 'unknown'}, completion tokens: ${usage?.completion_tokens ?? 'unknown'}, ${content.length} chars): ${contentSnippet(content)}`,
+          );
+        }
+        throw error;
+      }
 
       const result = MuseInterpretationResultSchema.safeParse(decoded);
       if (!result.success) {
+        this.logger.debug(
+          `AI interpretation response failed schema validation (finish_reason: ${finishReason ?? 'unknown'}, completion tokens: ${usage?.completion_tokens ?? 'unknown'}): ${result.error.issues
+            .slice(0, 3)
+            .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+            .join('; ')}`,
+        );
         throw new AiImageInterpretationClientError(
           'invalid_output',
           'AI interpretation response failed schema validation',
@@ -187,6 +205,17 @@ const tryParseJson = (text: string): { parsed: true; value: unknown } | { parsed
 
 const fixStrayQuote = (text: string) => text.replace(/"\s*\}\s*$/, '}');
 const fixTrailingCommas = (text: string) => text.replaceAll(/,\s*([}\]])/g, '$1');
+
+// Emit the exact characters around the defect — JSON.stringify keeps escapes,
+// quotes, and whitespace verbatim — without flooding the log with a full ~8KB
+// completion: the head shows how the object opens, the tail shows where
+// generation stopped.
+const contentSnippet = (content: string): string => {
+  if (content.length <= 1400) {
+    return JSON.stringify(content);
+  }
+  return `${JSON.stringify(content.slice(0, 1000))} ...[${content.length - 1400} chars omitted]... ${JSON.stringify(content.slice(-400))}`;
+};
 
 // The local VLM occasionally emits a complete JSON object with a single
 // stray `"` after the final bracket (`..."]"}` instead of `..."]}`), which
