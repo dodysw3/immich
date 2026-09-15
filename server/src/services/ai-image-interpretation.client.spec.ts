@@ -97,12 +97,58 @@ describe(AiImageInterpretationClient.name, () => {
     });
     await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'invalid_json' });
 
+    // A body read that dies mid-stream is a network failure, not malformed JSON.
+    fetchMock.mockReset().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockRejectedValue(new TypeError('terminated')),
+    });
+    await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'network_error' });
+
     fetchMock.mockReset().mockResolvedValue({ ok: false, status: 502, json: vi.fn() });
     await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'endpoint_error' });
     expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('502'));
 
     fetchMock.mockReset().mockRejectedValue(new DOMException('aborted', 'AbortError'));
     await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'timeout' });
+
+    fetchMock.mockReset().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockRejectedValue(new DOMException('aborted', 'AbortError')),
+    });
+    await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'timeout' });
+  });
+
+  it('repairs a completion that stops before the final closing brace', async () => {
+    // Observed 2026-09-15: finish=stop, all required fields present, but the
+    // root object's final `}` missing (endpoint applies no grammar).
+    const content = JSON.stringify(result).replace(/\}$/, '');
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        choices: [{ message: { content }, finish_reason: 'stop' }],
+        usage: { prompt_tokens: 12, completion_tokens: 34 },
+      }),
+    });
+
+    await expect(client.interpret(Buffer.from('preview'))).resolves.toEqual({
+      result,
+      promptTokens: 12,
+      completionTokens: 34,
+    });
+  });
+
+  it('repairs a truncated completion closed mid-array', async () => {
+    // finish_reason=length style truncation: cut inside a nested array.
+    const full = JSON.stringify(result);
+    const cutAt = full.indexOf('"alternative_interpretations"') + 60;
+    const content = full.slice(0, cutAt);
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ choices: [{ message: { content }, finish_reason: 'length' }] }),
+    });
+
+    await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'invalid_output' });
+    expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('schema validation'));
   });
 
   it('repairs a stray quote after the final bracket without another request', async () => {
@@ -135,7 +181,7 @@ describe(AiImageInterpretationClient.name, () => {
   });
 
   it('still rejects content that no repair can parse, logging the defect for triage', async () => {
-    for (const content of ['not json at all', '{"title": "unterminated', ' '.repeat(3)]) {
+    for (const content of ['not json at all', ' '.repeat(3)]) {
       fetchMock.mockReset().mockResolvedValue({
         ok: true,
         json: vi.fn().mockResolvedValue({
@@ -149,5 +195,15 @@ describe(AiImageInterpretationClient.name, () => {
       );
       expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining(JSON.stringify(content).slice(0, 40)));
     }
+
+    // A truncation the closer can repair parses fine but then fails the
+    // required-field schema — an honest invalid_output, not invalid_json.
+    fetchMock.mockReset().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        choices: [{ message: { content: '{"title": "unterminated' }, finish_reason: 'length' }],
+      }),
+    });
+    await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'invalid_output' });
   });
 });

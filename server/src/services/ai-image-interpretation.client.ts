@@ -116,8 +116,20 @@ export class AiImageInterpretationClient {
       let payload: CompletionResponse;
       try {
         payload = (await response.json()) as CompletionResponse;
-      } catch {
-        throw new AiImageInterpretationClientError('invalid_json', 'AI interpretation endpoint returned invalid JSON');
+      } catch (error) {
+        // A rejected body read is not necessarily malformed JSON: a connection
+        // that dies mid-body rejects with TypeError, an abort with AbortError.
+        // Classify those honestly so the pattern analysis isn't poisoned.
+        if (error instanceof SyntaxError) {
+          throw new AiImageInterpretationClientError(
+            'invalid_json',
+            'AI interpretation endpoint returned invalid JSON',
+          );
+        }
+        if ((error as Error)?.name === 'AbortError' || (error as { code?: string })?.code === 'ABORT_ERR') {
+          throw new AiImageInterpretationClientError('timeout', 'AI interpretation request timed out');
+        }
+        throw new AiImageInterpretationClientError('network_error', 'AI interpretation response stream failed');
       }
 
       const usage = payload.usage;
@@ -206,6 +218,52 @@ const tryParseJson = (text: string): { parsed: true; value: unknown } | { parsed
 const fixStrayQuote = (text: string) => text.replace(/"\s*\}\s*$/, '}');
 const fixTrailingCommas = (text: string) => text.replaceAll(/,\s*([}\]])/g, '$1');
 
+// String-aware scan for delimiters still open at the end of the text; if a
+// string was left unterminated, close it too before the bracket closers.
+const closeOpenDelimiters = (text: string): string => {
+  const stack: string[] = [];
+  let inString = false;
+  let escaped = false;
+  for (const ch of text) {
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === '\\') {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    switch (ch) {
+      case '"': {
+        inString = true;
+        break;
+      }
+      case '{': {
+        stack.push('}');
+        break;
+      }
+      case '[': {
+        stack.push(']');
+        break;
+      }
+      case '}':
+      case ']': {
+        stack.pop();
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+  }
+  if (stack.length === 0 && !inString) {
+    return text;
+  }
+  return `${text}${inString ? '"' : ''}${stack.toReversed().join('')}`;
+};
+
 // Emit the exact characters around the defect — JSON.stringify keeps escapes,
 // quotes, and whitespace verbatim — without flooding the log with a full ~8KB
 // completion: the head shows how the object opens, the tail shows where
@@ -217,17 +275,39 @@ const contentSnippet = (content: string): string => {
   return `${JSON.stringify(content.slice(0, 1000))} ...[${content.length - 1400} chars omitted]... ${JSON.stringify(content.slice(-400))}`;
 };
 
-// The local VLM occasionally emits a complete JSON object with a single
-// stray `"` after the final bracket (`..."]"}` instead of `..."]}`), which
-// the requested json_schema grammar does not catch (observed 2026-09-11:
-// finish=stop, ~1200 completion tokens, well under max_tokens). Repair the
-// single response in place instead of failing the run: no additional outbound
-// request is made, and content that is still unparseable fails as invalid_json
-// exactly as before. Schema validation downstream remains the safety net.
+// The serving endpoint (an Unsloth llama.cpp fork running the local VLM)
+// ignores response_format entirely — verified 2026-09-15: json_schema and
+// json_object both return unconstrained prose — so completions arrive as
+// unguided JSON. Repair single-response defects in place instead of failing
+// the run: no additional outbound request is made, and content that is still
+// unparseable fails as invalid_json exactly as before (with a snippet logged
+// for pattern analysis). Schema validation downstream remains the safety net.
+//
+// Candidate order matters: repairs that preserve every field come first.
+// The brace-extraction candidates below can cut off trailing required fields
+// (the model sometimes stops one token early — observed 2026-09-15:
+// finish=stop with the root object's final `}` missing — in which case
+// closing the full content parses cleanly, while extraction would amputate
+// everything after the last inner `}` and fail the required-field schema).
 const parseJsonContent = (content: string, usage?: { prompt_tokens?: number; completion_tokens?: number }): unknown => {
   const direct = tryParseJson(content);
   if (direct.parsed) {
     return direct.value;
+  }
+
+  const closed = closeOpenDelimiters(content);
+  const candidates = [
+    closed,
+    fixTrailingCommas(content),
+    closeOpenDelimiters(fixTrailingCommas(content)),
+    fixStrayQuote(closed),
+  ];
+
+  for (const candidate of candidates) {
+    const attempt = tryParseJson(candidate);
+    if (attempt.parsed) {
+      return attempt.value;
+    }
   }
 
   const start = content.indexOf('{');
@@ -243,7 +323,7 @@ const parseJsonContent = (content: string, usage?: { prompt_tokens?: number; com
 
   const extracted = content.slice(start, end + 1);
   const dequoted = fixStrayQuote(extracted);
-  const candidates = [
+  const extractionCandidates = [
     extracted,
     // Stray quote before the final brace: the observed `..."]"}` defect.
     // End-anchored, so a legitimately terminated object is never altered
@@ -252,9 +332,11 @@ const parseJsonContent = (content: string, usage?: { prompt_tokens?: number; com
     // Trailing commas, the other common single-response LLM defect.
     fixTrailingCommas(extracted),
     fixTrailingCommas(dequoted),
+    closeOpenDelimiters(extracted),
+    closeOpenDelimiters(fixTrailingCommas(dequoted)),
   ];
 
-  for (const candidate of candidates) {
+  for (const candidate of extractionCandidates) {
     const attempt = tryParseJson(candidate);
     if (attempt.parsed) {
       return attempt.value;
