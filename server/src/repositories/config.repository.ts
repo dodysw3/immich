@@ -150,6 +150,10 @@ export interface EnvData {
     maxEdge: number;
     maxPixels: number;
     concurrency: number;
+    discord: {
+      webhookUrl?: string;
+      includeThumbnail: boolean;
+    };
   };
 
   noColor: boolean;
@@ -427,6 +431,10 @@ const getEnv = (): EnvData => {
       maxEdge: dto.IMMICH_AI_IMAGE_INTERPRETATION_MAX_EDGE || 1600,
       maxPixels: dto.IMMICH_AI_IMAGE_INTERPRETATION_MAX_PIXELS || 16_000_000,
       concurrency: dto.IMMICH_AI_IMAGE_INTERPRETATION_CONCURRENCY || 1,
+      discord: {
+        webhookUrl: dto.IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_WEBHOOK_URL,
+        includeThumbnail: dto.IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_INCLUDE_THUMBNAIL ?? true,
+      },
     },
 
     noColor: !!dto.NO_COLOR,

@@ -141,6 +141,26 @@ export class AssetJobRepository {
       .select((eb) => withVideoStream(eb).as('videoStream'))
       .select((eb) => withVideoFormat(eb).as('format'))
       .where('asset.id', '=', id)
+      .where('asset.deletedAt', 'is', null)
+      .executeTakeFirst();
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID] })
+  getForAiInterpretationDiscordAlert(id: string) {
+    return this.db
+      .selectFrom('asset')
+      .leftJoin('asset_exif', 'asset.id', 'asset_exif.assetId')
+      .select([
+        'asset.id',
+        'asset.ownerId',
+        'asset.originalFileName',
+        'asset.localDateTime',
+        'asset_exif.dateTimeOriginal',
+        'asset_exif.timeZone',
+      ])
+      .select((eb) => withFiles(eb, AssetFileType.Thumbnail))
+      .where('asset.id', '=', id)
+      .where('asset.deletedAt', 'is', null)
       .executeTakeFirst();
   }
 
@@ -227,10 +247,7 @@ export class AssetJobRepository {
         'asset.id' as const,
         'asset.visibility' as const,
         eb.fn
-          .coalesce(
-            withFilePath(eb, AssetFileType.Preview, true),
-            withFilePath(eb, AssetFileType.Preview, false),
-          )
+          .coalesce(withFilePath(eb, AssetFileType.Preview, true), withFilePath(eb, AssetFileType.Preview, false))
           .as('previewFile'),
       ])
       .where('asset.id', '=', id)
@@ -267,10 +284,7 @@ export class AssetJobRepository {
       .select((eb) => [
         'asset.visibility',
         eb.fn
-          .coalesce(
-            withFilePath(eb, AssetFileType.Preview, true),
-            withFilePath(eb, AssetFileType.Preview, false),
-          )
+          .coalesce(withFilePath(eb, AssetFileType.Preview, true), withFilePath(eb, AssetFileType.Preview, false))
           .as('previewFile'),
       ])
       .where('asset.id', '=', id)

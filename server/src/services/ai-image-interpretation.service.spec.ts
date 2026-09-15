@@ -29,11 +29,12 @@ const config = {
   maxEdge: 1600,
   maxPixels: 16_000_000,
   concurrency: 1,
+  discord: { webhookUrl: 'https://discord.com/api/webhooks/123/token', includeThumbnail: true },
 };
 
 const makeService = () => {
   const dependencies = {
-    logger: { setContext: vi.fn(), debug: vi.fn(), warn: vi.fn(), log: vi.fn() },
+    logger: { setContext: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn() },
     configRepository: { getEnv: vi.fn().mockReturnValue({ aiImageInterpretation: config }), getWorker: vi.fn() },
     assetJobRepository: { getForGenerateThumbnailJob: vi.fn() },
     jobRepository: { queue: vi.fn() },
@@ -181,6 +182,7 @@ describe(AiImageInterpretationService.name, () => {
       input: { source: 'preview', width: 100, height: 80, mimeType: 'image/jpeg' },
     });
     dependencies.client.interpret.mockResolvedValue({ result: {} as never });
+    dependencies.interpretationRepository.complete.mockResolvedValue(true);
 
     await expect(service.handleInterpretation({ id: asset.id } as never)).resolves.toBe(JobStatus.Success);
 
@@ -191,6 +193,67 @@ describe(AiImageInterpretationService.name, () => {
     });
     expect(dependencies.interpretationRepository.transitionToRunning).toHaveBeenCalledWith(asset.id, runKey);
     expect(dependencies.client.interpret).toHaveBeenCalledWith(Buffer.from('preview'), { model: config.model });
+    expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
+      name: JobName.SendAiInterpretationDiscordAlert,
+      data: { assetId: asset.id, runKey },
+    });
+  });
+
+  it('queues an alert only for a newly persisted completion with a configured webhook', async () => {
+    const { service, dependencies } = makeService();
+    dependencies.interpretationRepository.transitionToRunning.mockResolvedValue(true);
+    dependencies.interpretationRepository.get.mockResolvedValue({
+      schemaVersion: 1,
+      runs: { [runKey]: { model: config.model, quant: config.quant, promptVersion: config.promptVersion } },
+    } as AiInterpretationDocument);
+    dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue(
+      AssetFactory.create({ type: AssetType.Image, visibility: AssetVisibility.Timeline }),
+    );
+    const internals = service as never as { preparePreview: ReturnType<typeof vi.fn> };
+    internals.preparePreview = vi.fn().mockResolvedValue({
+      buffer: Buffer.from('preview'),
+      input: { source: 'preview', width: 100, height: 80, mimeType: 'image/jpeg' },
+    });
+    dependencies.client.interpret.mockResolvedValue({ result: {} as never });
+    dependencies.interpretationRepository.complete.mockResolvedValue(false);
+
+    await expect(service.handleInterpretation({ id: 'asset-1', runKey } as never)).resolves.toBe(JobStatus.Success);
+    expect(dependencies.jobRepository.queue).not.toHaveBeenCalled();
+
+    dependencies.interpretationRepository.complete.mockResolvedValue(true);
+    dependencies.configRepository.getEnv.mockReturnValue({
+      aiImageInterpretation: { ...config, discord: { includeThumbnail: true } },
+    });
+    await expect(service.handleInterpretation({ id: 'asset-1', runKey } as never)).resolves.toBe(JobStatus.Success);
+    expect(dependencies.jobRepository.queue).not.toHaveBeenCalled();
+  });
+
+  it('does not alter a completed interpretation when alert enqueueing fails', async () => {
+    const { service, dependencies } = makeService();
+    dependencies.interpretationRepository.transitionToRunning.mockResolvedValue(true);
+    dependencies.interpretationRepository.get.mockResolvedValue({
+      schemaVersion: 1,
+      runs: { [runKey]: { model: config.model, quant: config.quant, promptVersion: config.promptVersion } },
+    } as AiInterpretationDocument);
+    dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue(
+      AssetFactory.create({ type: AssetType.Image, visibility: AssetVisibility.Timeline }),
+    );
+    const internals = service as never as { preparePreview: ReturnType<typeof vi.fn> };
+    internals.preparePreview = vi.fn().mockResolvedValue({
+      buffer: Buffer.from('preview'),
+      input: { source: 'preview', width: 100, height: 80, mimeType: 'image/jpeg' },
+    });
+    dependencies.client.interpret.mockResolvedValue({ result: {} as never });
+    dependencies.interpretationRepository.complete.mockResolvedValue(true);
+    dependencies.jobRepository.queue.mockRejectedValue(new Error('queue unavailable'));
+
+    await expect(service.handleInterpretation({ id: 'asset-1', runKey } as never)).resolves.toBe(JobStatus.Success);
+
+    expect(dependencies.interpretationRepository.complete).toHaveBeenCalledTimes(1);
+    expect(dependencies.interpretationRepository.fail).not.toHaveBeenCalled();
+    expect(dependencies.logger.error).toHaveBeenCalledWith(
+      `Failed to queue Discord alert for AI interpretation asset-1/${runKey}`,
+    );
   });
 
   it('prepares an orientation-correct bounded JPEG and rejects oversized or missing previews', async () => {
@@ -247,10 +310,7 @@ describe(AiImageInterpretationService.name, () => {
 
     await expect(service.handleReconcile()).resolves.toBe(JobStatus.Success);
 
-    expect(dependencies.interpretationRepository.failStale).toHaveBeenCalledWith(
-      expect.any(Date),
-      expect.any(Date),
-    );
+    expect(dependencies.interpretationRepository.failStale).toHaveBeenCalledWith(expect.any(Date), expect.any(Date));
     expect(dependencies.interpretationRepository.findDueRetries).toHaveBeenCalledWith(expect.any(Date));
     expect(dependencies.interpretationRepository.requeue).toHaveBeenCalledTimes(2);
     expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({

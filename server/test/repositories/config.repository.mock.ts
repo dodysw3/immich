@@ -121,6 +121,7 @@ export const envData: EnvData = {
     maxEdge: 1600,
     maxPixels: 16_000_000,
     concurrency: 1,
+    discord: { includeThumbnail: true },
   },
 
   noColor: false,

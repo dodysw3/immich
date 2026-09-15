@@ -20,6 +20,21 @@ const absolutePath = z.string().regex(/^\//, 'Must be an absolute path').optiona
  */
 const stringBool = z.stringbool();
 
+const discordWebhookUrl = z
+  .string()
+  .url()
+  .refine((value) => {
+    const url = new URL(value);
+    return (
+      url.protocol === 'https:' &&
+      ['discord.com', 'canary.discord.com', 'ptb.discord.com'].includes(url.hostname) &&
+      /^\/api\/webhooks\/\d+\/[A-Za-z0-9_-]+\/?$/.test(url.pathname) &&
+      !url.username &&
+      !url.password &&
+      !url.hash
+    );
+  }, 'Must be an HTTPS Discord webhook URL');
+
 const trustedProxiesSchema = z
   .string()
   .optional()
@@ -88,6 +103,11 @@ export const EnvSchema = z
     IMMICH_AI_IMAGE_INTERPRETATION_MAX_EDGE: z.coerce.number().int().min(1).optional(),
     IMMICH_AI_IMAGE_INTERPRETATION_MAX_PIXELS: z.coerce.number().int().min(1).optional(),
     IMMICH_AI_IMAGE_INTERPRETATION_CONCURRENCY: z.coerce.number().int().min(1).optional(),
+    IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_WEBHOOK_URL: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      discordWebhookUrl.optional(),
+    ),
+    IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_INCLUDE_THUMBNAIL: stringBool.optional(),
     DB_DATABASE_NAME: z.string().optional(),
     DB_HOSTNAME: z.string().optional(),
     DB_PASSWORD: z.string().optional(),

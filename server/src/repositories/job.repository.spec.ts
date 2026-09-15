@@ -38,4 +38,27 @@ describe(JobRepository.name, () => {
       deduplication: { id: JobName.AssetInterpretationReconcile },
     });
   });
+
+  it('uses a deterministic Discord alert job id with bounded retries', () => {
+    const repository = new JobRepository(
+      undefined as never,
+      undefined as never,
+      undefined as never,
+      { setContext: vi.fn() } as never,
+    );
+    const getJobOptions = (repository as never as { getJobOptions: (item: unknown) => unknown }).getJobOptions.bind(
+      repository,
+    );
+
+    expect(
+      getJobOptions({
+        name: JobName.SendAiInterpretationDiscordAlert,
+        data: { assetId: 'asset-1', runKey: 'run-a' },
+      }),
+    ).toEqual({
+      jobId: 'discord/asset-1/run-a',
+      attempts: 5,
+      backoff: { type: 'exponential', delay: 5000 },
+    });
+  });
 });

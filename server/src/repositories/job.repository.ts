@@ -293,6 +293,13 @@ export class JobRepository {
       case JobName.AssetInterpretationReconcile: {
         return { deduplication: { id: JobName.AssetInterpretationReconcile } };
       }
+      case JobName.SendAiInterpretationDiscordAlert: {
+        return {
+          jobId: `discord/${item.data.assetId}/${item.data.runKey}`,
+          attempts: 5,
+          backoff: { type: 'exponential', delay: 5000 },
+        };
+      }
       default: {
         return null;
       }

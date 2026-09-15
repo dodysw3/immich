@@ -125,6 +125,7 @@ const updatedConfig = Object.freeze<SystemConfig>({
     },
     facialRecognition: {
       enabled: true,
+      importNamesFromOtherAccounts: false,
       modelName: 'buffalo_l',
       minScore: 0.7,
       maxDistance: 0.5,

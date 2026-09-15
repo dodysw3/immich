@@ -38,6 +38,8 @@ const resetEnv = () => {
     'IMMICH_AI_IMAGE_INTERPRETATION_MAX_EDGE',
     'IMMICH_AI_IMAGE_INTERPRETATION_MAX_PIXELS',
     'IMMICH_AI_IMAGE_INTERPRETATION_CONCURRENCY',
+    'IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_WEBHOOK_URL',
+    'IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_INCLUDE_THUMBNAIL',
 
     'DB_URL',
     'DB_HOSTNAME',
@@ -199,7 +201,14 @@ describe('getEnv', () => {
         maxEdge: 1600,
         maxPixels: 16_000_000,
         concurrency: 1,
+        discord: { webhookUrl: undefined, includeThumbnail: true },
       });
+    });
+
+    it('should treat an empty Discord webhook URL as disabled', () => {
+      process.env.IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_WEBHOOK_URL = '';
+
+      expect(getEnv().aiImageInterpretation.discord).toEqual({ includeThumbnail: true });
     });
 
     it('should parse the local endpoint settings', () => {
@@ -222,6 +231,28 @@ describe('getEnv', () => {
         maxPixels: 4_000_000,
         concurrency: 2,
       });
+    });
+
+    it('should parse Discord alert settings', () => {
+      process.env.IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_WEBHOOK_URL =
+        'https://discord.com/api/webhooks/123456789/valid_webhook-token';
+      process.env.IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_INCLUDE_THUMBNAIL = 'false';
+
+      expect(getEnv().aiImageInterpretation.discord).toEqual({
+        webhookUrl: 'https://discord.com/api/webhooks/123456789/valid_webhook-token',
+        includeThumbnail: false,
+      });
+    });
+
+    it.each([
+      // eslint-disable-next-line unicorn/prefer-https -- invalid HTTP is the behavior under test
+      'http://discord.com/api/webhooks/123/token',
+      'https://example.com/api/webhooks/123/token',
+      'https://discord.com/not-webhooks/123/token',
+      'https://discord.com/api/webhooks/not-a-number/token',
+    ])('should reject invalid Discord webhook URL %s', (value) => {
+      process.env.IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_WEBHOOK_URL = value;
+      expect(() => getEnv()).toThrowError('Must be an HTTPS Discord webhook URL');
     });
   });
 

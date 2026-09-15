@@ -1,4 +1,6 @@
 import { ActivityService } from 'src/services/activity.service';
+import { AiImageInterpretationDiscordClient } from 'src/services/ai-image-interpretation-discord.client';
+import { AiImageInterpretationDiscordService } from 'src/services/ai-image-interpretation-discord.service';
 import { AiImageInterpretationClient } from 'src/services/ai-image-interpretation.client';
 import { AiImageInterpretationService } from 'src/services/ai-image-interpretation.service';
 import { AlbumService } from 'src/services/album.service';
@@ -59,6 +61,8 @@ import { WorkflowService } from 'src/services/workflow.service';
 export const services = [
   ApiKeyService,
   AiImageInterpretationClient,
+  AiImageInterpretationDiscordClient,
+  AiImageInterpretationDiscordService,
   AiImageInterpretationService,
   ActivityService,
   AlbumService,

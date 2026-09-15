@@ -10,12 +10,12 @@ import { ConfigRepository } from 'src/repositories/config.repository';
 import { ArgOf } from 'src/repositories/event.repository';
 import { JobRepository } from 'src/repositories/job.repository';
 import { LoggingRepository } from 'src/repositories/logging.repository';
-import { AI_INTERPRETATION_QUEUED_STALE_MS } from 'src/utils/ai-image-interpretation';
 import {
   AiImageInterpretationClient,
   AiImageInterpretationClientError,
 } from 'src/services/ai-image-interpretation.client';
 import { JobOf } from 'src/types';
+import { AI_INTERPRETATION_QUEUED_STALE_MS } from 'src/utils/ai-image-interpretation';
 import { getAssetFile } from 'src/utils/asset.util';
 
 type PreparedPreview = {
@@ -95,6 +95,7 @@ export class AiImageInterpretationService {
     }
 
     let input: AiInterpretationInput | undefined;
+    let completed = false;
     try {
       if (!config.enabled) {
         throw new AiImageInterpretationClientError('feature_disabled', 'AI interpretation is disabled');
@@ -117,7 +118,7 @@ export class AiImageInterpretationService {
         model: run.model,
       });
 
-      await this.interpretationRepository.complete(assetId, runKey, input, response.result, {
+      completed = await this.interpretationRepository.complete(assetId, runKey, input, response.result, {
         durationMs: Date.now() - startedAt,
         promptTokens: response.promptTokens,
         completionTokens: response.completionTokens,
@@ -137,6 +138,17 @@ export class AiImageInterpretationService {
           updated?.nextAttemptAt ? ` (retry scheduled for ${updated.nextAttemptAt})` : ' (no retry scheduled)'
         }`,
       );
+    }
+
+    if (completed && config.discord.webhookUrl) {
+      try {
+        await this.jobRepository.queue({
+          name: JobName.SendAiInterpretationDiscordAlert,
+          data: { assetId, runKey },
+        });
+      } catch {
+        this.logger.error(`Failed to queue Discord alert for AI interpretation ${assetId}/${runKey}`);
+      }
     }
 
     return JobStatus.Success;

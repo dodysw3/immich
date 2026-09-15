@@ -330,6 +330,11 @@ export interface IAssetInterpretationJob extends IEntityJob {
   runKey?: string;
 }
 
+export interface IAiInterpretationDiscordAlertJob {
+  assetId: string;
+  runKey: string;
+}
+
 export interface JobCounts {
   active: number;
   completed: number;
@@ -429,6 +434,7 @@ export type JobItem =
 
   // Notification
   | { name: JobName.SendMail; data: IEmailJob }
+  | { name: JobName.SendAiInterpretationDiscordAlert; data: IAiInterpretationDiscordAlertJob }
   | { name: JobName.NotifyAlbumInvite; data: INotifyAlbumInviteJob }
   | { name: JobName.NotifyAlbumUpdate; data: INotifyAlbumUpdateJob }
   | { name: JobName.NotifyUserSignup; data: INotifySignupJob }
