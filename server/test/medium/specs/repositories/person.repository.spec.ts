@@ -178,6 +178,86 @@ describe(PersonRepository.name, () => {
     });
   });
 
+  describe('getNameImportCandidates', () => {
+    it('should filter candidates and order them by asset count then creation date', async () => {
+      const { ctx, sut } = setup();
+      const { user: target } = await ctx.newUser({ email: 'target@example.com' });
+      const { user: fewer } = await ctx.newUser({ email: 'fewer@example.com' });
+      const { user: laterTie } = await ctx.newUser({ email: 'later@example.com' });
+      const { user: earlierTie } = await ctx.newUser({ email: 'earlier@example.com' });
+      const { user: suffixed } = await ctx.newUser({ email: 'suffixed@example.com' });
+      const { user: unnamed } = await ctx.newUser({ email: 'unnamed@example.com' });
+      const group = await sut.createGroup(target.id);
+
+      await ctx.newPerson({ ownerId: target.id, personGroupId: group.id, name: 'Local name' });
+      await ctx.newPerson({
+        ownerId: fewer.id,
+        personGroupId: group.id,
+        name: 'Fewer photos',
+        createdAt: new Date('2020-01-01T00:00:00.000Z'),
+      });
+      await ctx.newPerson({
+        ownerId: laterTie.id,
+        personGroupId: group.id,
+        name: 'Later tie',
+        createdAt: new Date('2022-01-01T00:00:00.000Z'),
+      });
+      await ctx.newPerson({
+        ownerId: earlierTie.id,
+        personGroupId: group.id,
+        name: 'Earlier tie',
+        createdAt: new Date('2021-01-01T00:00:00.000Z'),
+      });
+      await ctx.newPerson({
+        ownerId: suffixed.id,
+        personGroupId: group.id,
+        name: 'Imported [[assigned from original@example.com]]',
+      });
+      await ctx.newPerson({ ownerId: unnamed.id, personGroupId: group.id, name: '' });
+
+      const addAssets = async (ownerId: string, count: number) => {
+        for (let index = 0; index < count; index++) {
+          const { asset } = await ctx.newAsset({ ownerId });
+          await ctx.newAssetFace({ assetId: asset.id, personGroupId: group.id });
+        }
+      };
+
+      await addAssets(target.id, 5);
+      await addAssets(fewer.id, 1);
+      await addAssets(laterTie.id, 2);
+      await addAssets(earlierTie.id, 2);
+      await addAssets(suffixed.id, 4);
+      await addAssets(unnamed.id, 4);
+
+      await expect(
+        sut.getNameImportCandidates({ personGroupId: group.id, excludeOwnerId: target.id }),
+      ).resolves.toEqual([
+        { name: 'Earlier tie', email: 'earlier@example.com', assetCount: 2 },
+        { name: 'Later tie', email: 'later@example.com', assetCount: 2 },
+        { name: 'Fewer photos', email: 'fewer@example.com', assetCount: 1 },
+      ]);
+    });
+  });
+
+  describe('updateNamesIfEmpty', () => {
+    it('should update only people whose names are still empty', async () => {
+      const { ctx, sut } = setup();
+      const { user } = await ctx.newUser();
+      const { person } = await ctx.newPerson({ ownerId: user.id, name: '' });
+
+      await sut.updateNamesIfEmpty([
+        { ownerId: person.ownerId, personGroupId: person.personGroupId, name: 'First imported name' },
+      ]);
+      await sut.updateNamesIfEmpty([
+        { ownerId: person.ownerId, personGroupId: person.personGroupId, name: 'Later imported name' },
+      ]);
+
+      await expect(sut.getByGroupId({ ownerId: person.ownerId, personGroupId: person.personGroupId })).resolves.toEqual(
+        expect.objectContaining({ name: 'First imported name' }),
+      );
+    });
+  });
+
   describe('getDataForThumbnailGenerationJob', () => {
     it('should not return the edited preview path', async () => {
       const { ctx, sut } = setup();

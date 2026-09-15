@@ -250,6 +250,9 @@ const AdminConfigSchemaWithVisibility = z
             .meta({ format: 'double' }),
         }).meta({ id: 'AdminConfigDuplicateDetectionDto' }),
         facialRecognition: AdminConfigMachineLearningModelSchema.extend({
+          importNamesFromOtherAccounts: z
+            .boolean()
+            .describe('Import person names from other accounts in the same recognition cluster'),
           minScore: z
             .number()
             .min(0.1)
@@ -662,6 +665,7 @@ export const defaults = Object.freeze<SystemConfig>({
     },
     facialRecognition: {
       enabled: true,
+      importNamesFromOtherAccounts: false,
       modelName: 'buffalo_l',
       minScore: 0.7,
       maxDistance: 0.5,

@@ -53,6 +53,58 @@ describe(QueueService.name, () => {
         { name: JobName.FacialRecognitionQueueAll, data: { force: false, nightly: true } },
       ]);
     });
+
+    it('should backfill imported names for unnamed people when enabled', async () => {
+      mocks.systemMetadata.get.mockResolvedValue({
+        machineLearning: { facialRecognition: { importNamesFromOtherAccounts: true } },
+      });
+      mocks.person.getNameImportBackfillCandidates.mockResolvedValue([
+        {
+          ownerId: '11111111-1111-4111-8111-111111111111',
+          personGroupId: '22222222-2222-4222-8222-222222222222',
+          name: 'John Doe',
+          email: 'source@example.com',
+        },
+      ]);
+
+      await sut.handleNightlyJobs();
+
+      expect(mocks.person.updateNamesIfEmpty).toHaveBeenCalledWith([
+        {
+          ownerId: '11111111-1111-4111-8111-111111111111',
+          personGroupId: '22222222-2222-4222-8222-222222222222',
+          name: 'John Doe [[assigned from source@example.com]]',
+        },
+      ]);
+    });
+
+    it('should be idempotent when nightly name backfill is rerun', async () => {
+      mocks.systemMetadata.get.mockResolvedValue({
+        machineLearning: { facialRecognition: { importNamesFromOtherAccounts: true } },
+      });
+      mocks.person.getNameImportBackfillCandidates
+        .mockResolvedValueOnce([
+          {
+            ownerId: '11111111-1111-4111-8111-111111111111',
+            personGroupId: '22222222-2222-4222-8222-222222222222',
+            name: 'John Doe',
+            email: 'source@example.com',
+          },
+        ])
+        .mockResolvedValueOnce([]);
+
+      await sut.handleNightlyJobs();
+      await sut.handleNightlyJobs();
+
+      expect(mocks.person.updateNamesIfEmpty).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not query name import candidates when nightly backfill is disabled', async () => {
+      await sut.handleNightlyJobs();
+
+      expect(mocks.person.getNameImportBackfillCandidates).not.toHaveBeenCalled();
+      expect(mocks.person.updateNamesIfEmpty).not.toHaveBeenCalled();
+    });
   });
 
   describe('getAllJobStatus', () => {

@@ -220,6 +220,8 @@ export type AdminConfigDuplicateDetectionDto = {
 export type AdminConfigFacialRecognitionDto = {
     /** Whether the task is enabled */
     enabled: boolean;
+    /** Import person names from other accounts in the same recognition cluster */
+    importNamesFromOtherAccounts: boolean;
     /** Maximum distance threshold for face recognition */
     maxDistance: number;
     /** Minimum number of faces required for recognition */

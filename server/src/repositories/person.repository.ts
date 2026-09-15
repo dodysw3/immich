@@ -27,6 +27,21 @@ export interface PersonNameResponse {
   name: string;
 }
 
+export interface PersonNameImportCandidate {
+  name: string;
+  email: string;
+  assetCount: number;
+}
+
+export interface PersonNameImportBackfillCandidate {
+  ownerId: string;
+  personGroupId: string;
+  name: string;
+  email: string;
+}
+
+export type PersonNameImport = Omit<PersonNameImportBackfillCandidate, 'email'>;
+
 export interface AssetFaceId {
   assetId: string;
   personGroupId: string;
@@ -427,6 +442,73 @@ export class PersonRepository {
       .executeTakeFirst();
   }
 
+  @GenerateSql({ params: [{ personGroupId: DummyValue.UUID, excludeOwnerId: DummyValue.UUID }] })
+  async getNameImportCandidates({
+    personGroupId,
+    excludeOwnerId,
+  }: {
+    personGroupId: string;
+    excludeOwnerId: string;
+  }): Promise<PersonNameImportCandidate[]> {
+    const candidates = await this.db
+      .selectFrom('person')
+      .innerJoin('user', 'user.id', 'person.ownerId')
+      .innerJoin('asset_face', 'asset_face.personGroupId', 'person.personGroupId')
+      .innerJoin('asset', (join) =>
+        join
+          .onRef('asset.id', '=', 'asset_face.assetId')
+          .onRef('asset.ownerId', '=', 'person.ownerId')
+          .on('asset.deletedAt', 'is', null),
+      )
+      .select(['person.name', 'user.email'])
+      .select((eb) => eb.fn.count(eb.fn('distinct', ['asset_face.assetId'])).as('assetCount'))
+      .where('person.personGroupId', '=', personGroupId)
+      .where('person.ownerId', '!=', excludeOwnerId)
+      .where('person.name', '!=', '')
+      .where('person.name', 'not like', '%[[assigned from %')
+      .groupBy(['person.ownerId', 'person.name', 'person.createdAt', 'user.email'])
+      .orderBy('assetCount', 'desc')
+      .orderBy('person.createdAt', 'asc')
+      .execute();
+
+    return candidates.map(({ assetCount, ...candidate }) => ({ ...candidate, assetCount: Number(assetCount) }));
+  }
+
+  @GenerateSql()
+  getNameImportBackfillCandidates(): Promise<PersonNameImportBackfillCandidate[]> {
+    return this.db
+      .selectFrom('person as target')
+      .innerJoin('person as source', (join) =>
+        join.onRef('source.personGroupId', '=', 'target.personGroupId').onRef('source.ownerId', '!=', 'target.ownerId'),
+      )
+      .innerJoin('user as source_user', 'source_user.id', 'source.ownerId')
+      .innerJoin('asset_face', 'asset_face.personGroupId', 'source.personGroupId')
+      .innerJoin('asset', (join) =>
+        join
+          .onRef('asset.id', '=', 'asset_face.assetId')
+          .onRef('asset.ownerId', '=', 'source.ownerId')
+          .on('asset.deletedAt', 'is', null),
+      )
+      .select(['target.ownerId', 'target.personGroupId', 'source.name', 'source_user.email'])
+      .distinctOn(['target.ownerId', 'target.personGroupId'])
+      .where('target.name', '=', '')
+      .where('source.name', '!=', '')
+      .where('source.name', 'not like', '%[[assigned from %')
+      .groupBy([
+        'target.ownerId',
+        'target.personGroupId',
+        'source.ownerId',
+        'source.name',
+        'source.createdAt',
+        'source_user.email',
+      ])
+      .orderBy('target.ownerId', 'asc')
+      .orderBy('target.personGroupId', 'asc')
+      .orderBy((eb) => eb.fn.count(eb.fn('distinct', ['asset_face.assetId'])), 'desc')
+      .orderBy('source.createdAt', 'asc')
+      .execute();
+  }
+
   @GenerateSql({ params: [DummyValue.UUID, DummyValue.STRING, { withHidden: true }] })
   getByName(userId: string, personName: string, { withHidden }: PersonNameSearchOptions) {
     return this.db
@@ -688,6 +770,24 @@ export class PersonRepository {
         ),
       )
       .execute();
+  }
+
+  async updateNamesIfEmpty(people: PersonNameImport[]): Promise<void> {
+    if (people.length === 0) {
+      return;
+    }
+
+    const values = people.map(
+      ({ ownerId, personGroupId, name }) => sql`(${ownerId}::uuid, ${personGroupId}::uuid, ${name}::text)`,
+    );
+    await sql`
+      update "person" as target
+      set "name" = source."name"
+      from (values ${sql.join(values)}) as source("ownerId", "personGroupId", "name")
+      where target."ownerId" = source."ownerId"
+        and target."personGroupId" = source."personGroupId"
+        and target."name" = ''
+    `.execute(this.db);
   }
 
   @GenerateSql({

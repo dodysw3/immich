@@ -18549,6 +18549,10 @@
             "description": "Whether the task is enabled",
             "type": "boolean"
           },
+          "importNamesFromOtherAccounts": {
+            "description": "Import person names from other accounts in the same recognition cluster",
+            "type": "boolean"
+          },
           "maxDistance": {
             "description": "Maximum distance threshold for face recognition",
             "format": "double",
@@ -18576,6 +18580,7 @@
         },
         "required": [
           "enabled",
+          "importNamesFromOtherAccounts",
           "maxDistance",
           "minFaces",
           "minScore",

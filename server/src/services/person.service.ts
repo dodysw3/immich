@@ -725,9 +725,21 @@ export class PersonService extends BaseService {
     if (personGroupId) {
       const person = await this.personRepository.getByGroupId({ ownerId, personGroupId });
       if (person) {
+        if (person.name === '') {
+          const importedName = await this.getImportedName(personGroupId, ownerId);
+          if (importedName) {
+            await this.personRepository.update({ ownerId, personGroupId, name: importedName });
+          }
+        }
         this.logger.debug(`Face ${id} matched person ${person.personGroupId}`);
       } else {
-        await this.personRepository.create({ ownerId, faceAssetId: face.id, personGroupId });
+        const importedName = await this.getImportedName(personGroupId, ownerId);
+        await this.personRepository.create({
+          ownerId,
+          faceAssetId: face.id,
+          personGroupId,
+          ...(importedName && { name: importedName }),
+        });
         this.logger.log(`Created person for face ${id} in group ${personGroupId}`);
         await this.jobRepository.queue({
           name: JobName.PersonGenerateThumbnail,
@@ -740,6 +752,16 @@ export class PersonService extends BaseService {
     }
 
     return JobStatus.Success;
+  }
+
+  private async getImportedName(personGroupId: string, excludeOwnerId: string): Promise<string | null> {
+    const { machineLearning } = await this.getConfig({ withCache: true });
+    if (!machineLearning.facialRecognition.importNamesFromOtherAccounts) {
+      return null;
+    }
+
+    const [candidate] = await this.personRepository.getNameImportCandidates({ personGroupId, excludeOwnerId });
+    return candidate ? `${candidate.name} [[assigned from ${candidate.email}]]` : null;
   }
 
   @OnJob({ name: JobName.PersonFileMigration, queue: QueueName.Migration })

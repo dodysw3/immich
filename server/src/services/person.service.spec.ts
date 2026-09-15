@@ -1226,6 +1226,128 @@ describe(PersonService.name, () => {
         faceIds: [noPerson.id],
         newPersonGroupId: otherOwnerFace.person!.personGroupId,
       });
+      expect(mocks.person.getNameImportCandidates).not.toHaveBeenCalled();
+    });
+
+    it('should create a person with a name imported from another account', async () => {
+      const asset = AssetFactory.create();
+      const [noPerson, otherOwnerFace] = [
+        AssetFaceFactory.create({ assetId: asset.id }),
+        AssetFaceFactory.from().person().build(),
+      ];
+      const person = PersonFactory.create({
+        ownerId: asset.ownerId,
+        personGroupId: otherOwnerFace.person!.personGroupId,
+      });
+
+      mocks.systemMetadata.get.mockResolvedValue({
+        machineLearning: { facialRecognition: { importNamesFromOtherAccounts: true, minFaces: 1 } },
+      });
+      mocks.search.searchFaces.mockResolvedValue([
+        getForFaceSearch(noPerson, 0),
+        getForFaceSearch(otherOwnerFace, 0.2),
+      ]);
+      mocks.person.getFaceForFacialRecognitionJob.mockResolvedValue(getForFacialRecognitionJob(noPerson, asset));
+      mocks.person.getNameImportCandidates.mockResolvedValue([
+        { name: 'John Doe', email: 'source@example.com', assetCount: 5 },
+      ]);
+      mocks.person.create.mockResolvedValue(person);
+
+      await sut.handleRecognizeFaces({ id: noPerson.id });
+
+      expect(mocks.person.getNameImportCandidates).toHaveBeenCalledWith({
+        personGroupId: otherOwnerFace.person!.personGroupId,
+        excludeOwnerId: asset.ownerId,
+      });
+      expect(mocks.person.create).toHaveBeenCalledWith({
+        ownerId: asset.ownerId,
+        faceAssetId: noPerson.id,
+        personGroupId: otherOwnerFace.person!.personGroupId,
+        name: 'John Doe [[assigned from source@example.com]]',
+      });
+    });
+
+    it('should import a name into an existing unnamed person', async () => {
+      const asset = AssetFactory.create();
+      const noPerson = AssetFaceFactory.create({ assetId: asset.id });
+      const personFace = AssetFaceFactory.from().person({ ownerId: asset.ownerId, name: '' }).build();
+
+      mocks.systemMetadata.get.mockResolvedValue({
+        machineLearning: { facialRecognition: { importNamesFromOtherAccounts: true, minFaces: 1 } },
+      });
+      mocks.search.searchFaces.mockResolvedValue([getForFaceSearch(noPerson, 0), getForFaceSearch(personFace, 0.2)]);
+      mocks.person.getFaceForFacialRecognitionJob.mockResolvedValue(getForFacialRecognitionJob(noPerson, asset));
+      mocks.person.getByGroupId.mockResolvedValue(personFace.person!);
+      mocks.person.getNameImportCandidates.mockResolvedValue([
+        { name: 'John Doe', email: 'source@example.com', assetCount: 5 },
+      ]);
+
+      await sut.handleRecognizeFaces({ id: noPerson.id });
+
+      expect(mocks.person.update).toHaveBeenCalledWith({
+        ownerId: asset.ownerId,
+        personGroupId: personFace.person!.personGroupId,
+        name: 'John Doe [[assigned from source@example.com]]',
+      });
+    });
+
+    it('should leave a new person unnamed when only suffixed name sources were filtered out', async () => {
+      const asset = AssetFactory.create();
+      const [noPerson, otherOwnerFace] = [
+        AssetFaceFactory.create({ assetId: asset.id }),
+        AssetFaceFactory.from().person().build(),
+      ];
+      const person = PersonFactory.create({
+        ownerId: asset.ownerId,
+        personGroupId: otherOwnerFace.person!.personGroupId,
+      });
+
+      mocks.systemMetadata.get.mockResolvedValue({
+        machineLearning: { facialRecognition: { importNamesFromOtherAccounts: true, minFaces: 1 } },
+      });
+      mocks.search.searchFaces.mockResolvedValue([
+        getForFaceSearch(noPerson, 0),
+        getForFaceSearch(otherOwnerFace, 0.2),
+      ]);
+      mocks.person.getFaceForFacialRecognitionJob.mockResolvedValue(getForFacialRecognitionJob(noPerson, asset));
+      mocks.person.getNameImportCandidates.mockResolvedValue([]);
+      mocks.person.create.mockResolvedValue(person);
+
+      await sut.handleRecognizeFaces({ id: noPerson.id });
+
+      expect(mocks.person.create).toHaveBeenCalledWith({
+        ownerId: asset.ownerId,
+        faceAssetId: noPerson.id,
+        personGroupId: otherOwnerFace.person!.personGroupId,
+      });
+    });
+
+    it('should use the first, highest-ranked name import candidate', async () => {
+      const asset = AssetFactory.create();
+      const [noPerson, otherOwnerFace] = [
+        AssetFaceFactory.create({ assetId: asset.id }),
+        AssetFaceFactory.from().person().build(),
+      ];
+
+      mocks.systemMetadata.get.mockResolvedValue({
+        machineLearning: { facialRecognition: { importNamesFromOtherAccounts: true, minFaces: 1 } },
+      });
+      mocks.search.searchFaces.mockResolvedValue([
+        getForFaceSearch(noPerson, 0),
+        getForFaceSearch(otherOwnerFace, 0.2),
+      ]);
+      mocks.person.getFaceForFacialRecognitionJob.mockResolvedValue(getForFacialRecognitionJob(noPerson, asset));
+      mocks.person.getNameImportCandidates.mockResolvedValue([
+        { name: 'Most Photos', email: 'winner@example.com', assetCount: 10 },
+        { name: 'Fewer Photos', email: 'other@example.com', assetCount: 2 },
+      ]);
+      mocks.person.create.mockResolvedValue(PersonFactory.create());
+
+      await sut.handleRecognizeFaces({ id: noPerson.id });
+
+      expect(mocks.person.create).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Most Photos [[assigned from winner@example.com]]' }),
+      );
     });
 
     it('should not queue face with no matches', async () => {

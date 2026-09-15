@@ -188,6 +188,17 @@
             disabled={disabled || !configToEdit.machineLearning.enabled}
           />
 
+          <SettingSwitch
+            title={$t('admin.machine_learning_import_person_names')}
+            subtitle={$t('admin.machine_learning_import_person_names_description')}
+            bind:checked={configToEdit.machineLearning.facialRecognition.importNamesFromOtherAccounts}
+            disabled={disabled ||
+              !configToEdit.machineLearning.enabled ||
+              !configToEdit.machineLearning.facialRecognition.enabled}
+            isEdited={configToEdit.machineLearning.facialRecognition.importNamesFromOtherAccounts !==
+              config.machineLearning.facialRecognition.importNamesFromOtherAccounts}
+          />
+
           <hr />
 
           <SettingSelect
