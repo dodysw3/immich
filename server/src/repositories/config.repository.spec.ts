@@ -167,7 +167,7 @@ describe('getEnv', () => {
 
     it('should reject invalid PDF_ENABLE', () => {
       process.env.PDF_ENABLE = 'invalid';
-      expect(() => getEnv()).toThrowError('PDF_ENABLE must be a boolean value');
+      expect(() => getEnv()).toThrowError('[PDF_ENABLE] Invalid option: expected one of');
     });
 
     it('should parse Unlimited-OCR provider config', () => {
