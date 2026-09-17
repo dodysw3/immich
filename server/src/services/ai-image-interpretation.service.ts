@@ -15,7 +15,7 @@ import {
   AiImageInterpretationClientError,
 } from 'src/services/ai-image-interpretation.client';
 import { JobOf } from 'src/types';
-import { AI_INTERPRETATION_QUEUED_STALE_MS } from 'src/utils/ai-image-interpretation';
+import { createAiInterpretationJobId } from 'src/utils/ai-image-interpretation';
 import { getAssetFile } from 'src/utils/asset.util';
 
 type PreparedPreview = {
@@ -126,13 +126,11 @@ export class AiImageInterpretationService {
     } catch (error) {
       const failure = this.asFailure(error);
       const metrics: AiInterpretationMetrics = { durationMs: Date.now() - startedAt };
-      // feature_disabled is a configuration state, not a transient endpoint
-      // failure: record it without scheduling an automatic retry. Everything
-      // else retries with exponentially increasing delays capped at one day
-      // (dispatched by the reconcile pass), with no attempt limit.
-      const updated = await this.interpretationRepository.fail(assetId, runKey, failure, metrics, input, new Date(), {
-        retry: failure.code !== 'feature_disabled',
-      });
+      // Every failure retries with exponentially increasing delays capped at
+      // one day (dispatched by the reconcile pass), with no attempt limit.
+      // feature_disabled retries too: a deployment window that starts with the
+      // feature off must not permanently strand already-queued runs.
+      const updated = await this.interpretationRepository.fail(assetId, runKey, failure, metrics, input, new Date());
       this.logger.warn(
         `AI interpretation failed for ${assetId}: ${failure.code}${
           updated?.nextAttemptAt ? ` (retry scheduled for ${updated.nextAttemptAt})` : ' (no retry scheduled)'
@@ -187,9 +185,10 @@ export class AiImageInterpretationService {
   private async reconcile() {
     const timeoutMs = this.configRepository.getEnv().aiImageInterpretation.timeoutMs;
     const now = Date.now();
-    const failed = await this.interpretationRepository.failStale(
-      new Date(now - timeoutMs),
-      new Date(now - AI_INTERPRETATION_QUEUED_STALE_MS),
+    // A queued run is only declared lost when its BullMQ job no longer exists
+    // (e.g. queue state wiped); waiting behind a long backlog is not loss.
+    const failed = await this.interpretationRepository.failStale(new Date(now - timeoutMs), (assetId, runKey) =>
+      this.jobRepository.jobExists(QueueName.ImageInterpretation, createAiInterpretationJobId(assetId, runKey)),
     );
     if (failed > 0) {
       this.logger.log(`Marked ${failed} stale AI interpretation run(s) as failed`);

@@ -30,11 +30,10 @@ export const createAiInterpretationRunKey = (model: string, quant: string, promp
 export const AI_INTERPRETATION_RETRY_BASE_MS = 2 * 60_000;
 export const AI_INTERPRETATION_RETRY_MAX_MS = 24 * 60 * 60_000;
 
-// A queued run is only stale when its job has been lost (e.g. queue state
-// wiped). This must comfortably exceed any realistic queue wait — a busy
-// worker at ~2 min per interpretation backs up 15 min for just ~7 waiting
-// jobs — otherwise busy periods prematurely reap and penalize queued runs.
-export const AI_INTERPRETATION_QUEUED_STALE_MS = 2 * 60 * 60_000;
+// BullMQ job id for a run's delivery: deterministic so concurrent queueing
+// collapses to a single job, and shared by the reconcile pass, which declares a
+// queued run lost only when no job with this id exists in the queue anymore.
+export const createAiInterpretationJobId = (assetId: string, runKey: string): string => `${assetId}/${runKey}`;
 
 export const interpretationRetryDelayMs = (attempts: number): number => {
   const exponent = Math.min(Math.max(Math.floor(attempts) - 1, 0), 13);

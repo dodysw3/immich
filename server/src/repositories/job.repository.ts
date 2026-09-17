@@ -10,6 +10,7 @@ import { ConfigRepository } from 'src/repositories/config.repository';
 import { EventRepository } from 'src/repositories/event.repository';
 import { LoggingRepository } from 'src/repositories/logging.repository';
 import { JobCounts, JobItem, JobOf } from 'src/types';
+import { createAiInterpretationJobId } from 'src/utils/ai-image-interpretation';
 import { getKeyByValue, getMethodNames, ImmichStartupError } from 'src/utils/misc';
 
 type JobMapItem = {
@@ -254,6 +255,10 @@ export class JobRepository {
     });
   }
 
+  async jobExists(queue: QueueName, jobId: string): Promise<boolean> {
+    return (await this.getQueue(queue).getJob(jobId)) !== undefined;
+  }
+
   private getJobOptions(item: JobItem): JobsOptions | null {
     switch (item.name) {
       case JobName.NotifyAlbumUpdate: {
@@ -288,7 +293,9 @@ export class JobRepository {
         return { jobId: JobName.PdfProcessQueueAll };
       }
       case JobName.AssetInterpretImage: {
-        return { jobId: item.data.runKey ? `${item.data.id}/${item.data.runKey}` : item.data.id };
+        return {
+          jobId: item.data.runKey ? createAiInterpretationJobId(item.data.id, item.data.runKey) : item.data.id,
+        };
       }
       case JobName.AssetInterpretationReconcile: {
         return { deduplication: { id: JobName.AssetInterpretationReconcile } };

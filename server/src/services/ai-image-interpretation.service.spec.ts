@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import { AiInterpretationDocument } from 'src/dtos/ai-image-interpretation.dto';
-import { AssetFileType, AssetType, AssetVisibility, JobName, JobStatus } from 'src/enum';
+import { AssetFileType, AssetType, AssetVisibility, JobName, JobStatus, QueueName } from 'src/enum';
 import { AiImageInterpretationRepository } from 'src/repositories/ai-image-interpretation.repository';
 import { AssetJobRepository } from 'src/repositories/asset-job.repository';
 import { ConfigRepository } from 'src/repositories/config.repository';
@@ -37,7 +37,7 @@ const makeService = () => {
     logger: { setContext: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn() },
     configRepository: { getEnv: vi.fn().mockReturnValue({ aiImageInterpretation: config }), getWorker: vi.fn() },
     assetJobRepository: { getForGenerateThumbnailJob: vi.fn() },
-    jobRepository: { queue: vi.fn() },
+    jobRepository: { queue: vi.fn(), jobExists: vi.fn() },
     interpretationRepository: {
       claim: vi.fn(),
       get: vi.fn(),
@@ -145,7 +145,6 @@ describe(AiImageInterpretationService.name, () => {
       expect.objectContaining({ durationMs: expect.any(Number) }),
       expect.objectContaining({ source: 'preview' }),
       expect.any(Date),
-      { retry: true },
     );
 
     dependencies.client.interpret.mockRejectedValue(
@@ -160,7 +159,6 @@ describe(AiImageInterpretationService.name, () => {
       expect.objectContaining({ durationMs: expect.any(Number) }),
       expect.objectContaining({ source: 'preview' }),
       expect.any(Date),
-      { retry: false },
     );
   });
 
@@ -310,7 +308,17 @@ describe(AiImageInterpretationService.name, () => {
 
     await expect(service.handleReconcile()).resolves.toBe(JobStatus.Success);
 
-    expect(dependencies.interpretationRepository.failStale).toHaveBeenCalledWith(expect.any(Date), expect.any(Date));
+    expect(dependencies.interpretationRepository.failStale).toHaveBeenCalledWith(
+      expect.any(Date),
+      expect.any(Function),
+    );
+    const [, hasPendingJob] = dependencies.interpretationRepository.failStale.mock.calls[0];
+    dependencies.jobRepository.jobExists.mockResolvedValueOnce(true);
+    await expect(hasPendingJob('asset-1', runKey)).resolves.toBe(true);
+    expect(dependencies.jobRepository.jobExists).toHaveBeenCalledWith(
+      QueueName.ImageInterpretation,
+      `asset-1/${runKey}`,
+    );
     expect(dependencies.interpretationRepository.findDueRetries).toHaveBeenCalledWith(expect.any(Date));
     expect(dependencies.interpretationRepository.requeue).toHaveBeenCalledTimes(2);
     expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({

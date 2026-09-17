@@ -129,7 +129,6 @@ export class AiImageInterpretationRepository {
     metrics?: AiInterpretationMetrics,
     input?: AiInterpretationInput,
     finishedAt = new Date(),
-    options: { retry?: boolean } = {},
   ): Promise<AiInterpretationRun | null> {
     return this.updateRun(assetId, runKey, (run) => {
       if (run.status === 'completed' || run.status === 'failed') {
@@ -146,10 +145,7 @@ export class AiImageInterpretationRepository {
         metrics,
         result: undefined,
         attempts,
-        nextAttemptAt:
-          options.retry === false
-            ? undefined
-            : new Date(finishedAt.getTime() + interpretationRetryDelayMs(attempts)).toISOString(),
+        nextAttemptAt: new Date(finishedAt.getTime() + interpretationRetryDelayMs(attempts)).toISOString(),
       };
     });
   }
@@ -193,7 +189,7 @@ export class AiImageInterpretationRepository {
 
   async failStale(
     runningCutoff: Date,
-    queuedCutoff: Date = runningCutoff,
+    hasPendingJob: (assetId: string, runKey: string) => Promise<boolean>,
     finishedAt = new Date(),
   ): Promise<number> {
     const rows = await this.db
@@ -206,16 +202,19 @@ export class AiImageInterpretationRepository {
     for (const row of rows) {
       const document = this.parseDocument(row.value);
       for (const [runKey, run] of Object.entries(document.runs)) {
-        // Running runs hang only when the worker died mid-inference; queued
-        // runs legitimately wait behind a busy queue, so they get a much
-        // longer threshold before their (lost) job is declared gone.
-        const isRunning = run.status === 'running' && new Date(run.startedAt ?? run.requestedAt) < runningCutoff;
-        const isQueued = run.status === 'queued' && new Date(run.requestedAt) < queuedCutoff;
-        if (isRunning || isQueued) {
+        // Running runs hang only when the worker died mid-inference. Queued
+        // runs legitimately wait behind a busy queue however long the backlog
+        // takes, so they are only failed once their BullMQ job is actually
+        // gone (e.g. queue state wiped) — nothing else would ever deliver them.
+        const isStale = run.status === 'running' && new Date(run.startedAt ?? run.requestedAt) < runningCutoff;
+        const isOrphaned = !isStale && run.status === 'queued' && !(await hasPendingJob(row.assetId, runKey));
+        if (isStale || isOrphaned) {
           const updated = await this.fail(
             row.assetId,
             runKey,
-            { code: 'stale_run', message: 'Interpretation run expired before completion' },
+            isStale
+              ? { code: 'stale_run', message: 'Interpretation run expired before completion' }
+              : { code: 'job_lost', message: 'Interpretation job was lost before delivery' },
             undefined,
             undefined,
             finishedAt,

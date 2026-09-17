@@ -2,6 +2,7 @@ import {
   AiInterpretationDocument,
   AiInterpretationInput,
   AiInterpretationMetrics,
+  AiInterpretationRun,
   MuseInterpretationResult,
 } from 'src/dtos/ai-image-interpretation.dto';
 import {
@@ -140,24 +141,6 @@ describe(AiImageInterpretationRepository.name, () => {
     );
   });
 
-  it('skips scheduling a retry when the failure is not retryable', async () => {
-    const { repository } = makeRepository();
-    const claim = await repository.claim('asset-1', identity);
-    await repository.transitionToRunning('asset-1', claim.runKey);
-
-    const failed = await repository.fail(
-      'asset-1',
-      claim.runKey,
-      { code: 'feature_disabled', message: 'AI interpretation is disabled' },
-      undefined,
-      undefined,
-      new Date('2026-09-11T00:10:00.000Z'),
-      { retry: false },
-    );
-
-    expect(failed).toEqual(expect.objectContaining({ status: 'failed', attempts: 1, nextAttemptAt: undefined }));
-  });
-
   it('keeps queued and completed runs single-delivery on claim and requeue', async () => {
     const { repository } = makeRepository();
     const claim = await repository.claim('asset-1', identity, new Date('2026-09-11T00:00:00.000Z'));
@@ -232,7 +215,10 @@ describe(AiImageInterpretationRepository.name, () => {
       nextAttemptAt,
     });
     const rows = [
-      { assetId: 'asset-due', value: { schemaVersion: 1, runs: { [runKey]: run('failed', '2026-09-11T01:00:00.000Z') } } },
+      {
+        assetId: 'asset-due',
+        value: { schemaVersion: 1, runs: { [runKey]: run('failed', '2026-09-11T01:00:00.000Z') } },
+      },
       {
         assetId: 'asset-future',
         value: { schemaVersion: 1, runs: { [runKey]: run('failed', '2026-09-11T03:00:00.000Z') } },
@@ -255,6 +241,78 @@ describe(AiImageInterpretationRepository.name, () => {
     await expect(repository.findDueRetries(new Date('2026-09-11T02:00:00.000Z'))).resolves.toEqual([
       { assetId: 'asset-due', runKey },
     ]);
+  });
+
+  it('fails stale running runs and orphaned queued runs, sparing queued runs with a live job', async () => {
+    const runKey = createAiInterpretationRunKey(identity.model, identity.quant, identity.promptVersion);
+    const run = (
+      status: AiInterpretationRun['status'],
+      overrides: Partial<AiInterpretationRun> = {},
+    ): AiInterpretationRun => ({
+      model: identity.model,
+      quant: identity.quant,
+      promptVersion: identity.promptVersion,
+      status,
+      trigger: 'upload',
+      requestedAt: '2026-09-11T00:00:00.000Z',
+      ...overrides,
+    });
+    const documents: Record<string, AiInterpretationDocument> = {
+      'asset-stale-running': {
+        schemaVersion: 1,
+        runs: { [runKey]: run('running', { startedAt: '2026-09-11T00:05:00.000Z' }) },
+      },
+      'asset-live-queued': { schemaVersion: 1, runs: { [runKey]: run('queued') } },
+      'asset-orphaned-queued': { schemaVersion: 1, runs: { [runKey]: run('queued') } },
+      'asset-fresh-running': {
+        schemaVersion: 1,
+        runs: { [runKey]: run('running', { startedAt: '2026-09-11T02:01:00.000Z' }) },
+      },
+    };
+    const rows = Object.entries(documents).map(([assetId, value]) => ({ assetId, value }));
+    const db = {
+      transaction: () => ({ execute: (callback: (transaction: unknown) => Promise<unknown>) => callback(db) }),
+      selectFrom: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        execute: vi.fn().mockResolvedValue(rows),
+      }),
+    };
+    const repository = new AiImageInterpretationRepository(db as never);
+    const internals = repository as never as { getLocked: ReturnType<typeof vi.fn>; save: ReturnType<typeof vi.fn> };
+    internals.getLocked = vi
+      .fn()
+      .mockImplementation((_transaction: unknown, assetId: string) => documents[assetId] ?? null);
+    internals.save = vi
+      .fn()
+      .mockImplementation((_transaction: unknown, assetId: string, document: AiInterpretationDocument) => {
+        documents[assetId] = document;
+      });
+    const hasPendingJob = vi.fn().mockImplementation((assetId: string) => assetId !== 'asset-orphaned-queued');
+
+    const failed = await repository.failStale(
+      new Date('2026-09-11T02:00:00.000Z'),
+      hasPendingJob,
+      new Date('2026-09-11T02:05:00.000Z'),
+    );
+
+    expect(failed).toBe(2);
+    expect(hasPendingJob).toHaveBeenCalledTimes(2);
+    expect(hasPendingJob).toHaveBeenCalledWith('asset-live-queued', runKey);
+    expect(hasPendingJob).toHaveBeenCalledWith('asset-orphaned-queued', runKey);
+    expect(documents['asset-stale-running']?.runs[runKey]).toMatchObject({
+      status: 'failed',
+      attempts: 1,
+      error: { code: 'stale_run' },
+    });
+    expect(documents['asset-orphaned-queued']?.runs[runKey]).toMatchObject({
+      status: 'failed',
+      attempts: 1,
+      nextAttemptAt: '2026-09-11T02:07:00.000Z',
+      error: { code: 'job_lost' },
+    });
+    expect(documents['asset-live-queued']?.runs[runKey]).toMatchObject({ status: 'queued' });
+    expect(documents['asset-fresh-running']?.runs[runKey]).toMatchObject({ status: 'running' });
   });
 
   it('rejects malformed stored documents before a claim can proceed', () => {
