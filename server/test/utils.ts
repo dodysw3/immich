@@ -91,7 +91,6 @@ import { newStorageRepositoryMock } from 'test/repositories/storage.repository.m
 import { newSystemMetadataRepositoryMock } from 'test/repositories/system-metadata.repository.mock.js';
 import { ITelemetryRepositoryMock, newTelemetryRepositoryMock } from 'test/repositories/telemetry.repository.mock.js';
 
-
 export type ControllerContext = {
   authenticate: Mock;
   requireSetupAvailable: Mock;

@@ -1,3 +1,4 @@
+import { describe, expect, it, vi } from 'vitest';
 import {
   AiInterpretationDocument,
   AiInterpretationInput,
@@ -10,7 +11,6 @@ import {
   AiInterpretationIdentity,
 } from 'src/repositories/ai-image-interpretation.repository.js';
 import { createAiInterpretationRunKey } from 'src/utils/ai-image-interpretation.js';
-import { describe, expect, it, vi } from 'vitest';
 
 const identity: AiInterpretationIdentity = {
   model: 'model-a',

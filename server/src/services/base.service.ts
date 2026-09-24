@@ -66,7 +66,6 @@ import { UserTable } from 'src/schema/tables/user.table.js';
 import { AccessRequest, checkAccess, requireAccess } from 'src/utils/access.js';
 import { getConfig, updateConfig } from 'src/utils/config.js';
 
-
 export const BASE_SERVICE_DEPENDENCIES = [
   LoggingRepository,
   AccessRepository,

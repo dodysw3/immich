@@ -1,20 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import sharp from 'sharp';
+import type { ArgOf } from 'src/repositories/event.repository.js';
+import type { JobOf } from 'src/types.js';
 import { OnEvent, OnJob } from 'src/decorators.js';
 import { AiInterpretationInput, AiInterpretationMetrics } from 'src/dtos/ai-image-interpretation.dto.js';
 import { AssetFileType, AssetType, AssetVisibility, ImmichWorker, JobName, JobStatus, QueueName } from 'src/enum.js';
 import { AiImageInterpretationRepository } from 'src/repositories/ai-image-interpretation.repository.js';
 import { AssetJobRepository } from 'src/repositories/asset-job.repository.js';
 import { ConfigRepository } from 'src/repositories/config.repository.js';
-import { ArgOf } from 'src/repositories/event.repository.js';
 import { JobRepository } from 'src/repositories/job.repository.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';
 import {
   AiImageInterpretationClient,
   AiImageInterpretationClientError,
 } from 'src/services/ai-image-interpretation.client.js';
-import { JobOf } from 'src/types.js';
 import { createAiInterpretationJobId } from 'src/utils/ai-image-interpretation.js';
 import { getAssetFile } from 'src/utils/asset.util.js';
 

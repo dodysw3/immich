@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Agent, fetch as undiciFetch } from 'undici';
 import {
   MUSE_RESULT_JSON_SCHEMA,
   MuseInterpretationResult,
@@ -11,7 +12,6 @@ import {
   AI_IMAGE_INTERPRETATION_PROMPT,
   AI_IMAGE_INTERPRETATION_SCHEMA_INSTRUCTION,
 } from 'src/utils/ai-image-interpretation.js';
-import { Agent, fetch as undiciFetch } from 'undici';
 
 type CompletionResponse = {
   choices?: Array<{ finish_reason?: string; message?: { content?: string | Array<{ type?: string; text?: string }> } }>;

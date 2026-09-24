@@ -1,8 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import readline from 'node:readline';
-import { tmpdir } from 'node:os';
+import type { ArgOf } from 'src/repositories/event.repository.js';
+import type { JobItem, JobOf } from 'src/types.js';
 import { JOBS_ASSET_PAGINATION_SIZE } from 'src/constants.js';
 import { OnEvent, OnJob } from 'src/decorators.js';
 import { AuthDto } from 'src/dtos/auth.dto.js';
@@ -10,17 +12,15 @@ import {
   PdfDocumentListResponseDto,
   PdfDocumentQueryDto,
   PdfDocumentResponseDto,
+  PdfDocumentSearchDto,
   PdfInDocumentSearchDto,
   PdfInDocumentSearchResultDto,
-  PdfSearchResponseDto,
-  PdfDocumentSearchDto,
   PdfPageResponseDto,
+  PdfSearchResponseDto,
   PdfSearchResultDto,
 } from 'src/dtos/pdf.dto.js';
 import { JobName, JobStatus, QueueName } from 'src/enum.js';
-import { ArgOf } from 'src/repositories/event.repository.js';
 import { BaseService } from 'src/services/base.service.js';
-import { JobItem, JobOf } from 'src/types.js';
 import { tokenizeForSearch } from 'src/utils/database.js';
 import { isOcrEnabled } from 'src/utils/misc.js';
 
@@ -70,10 +70,12 @@ export class PdfService extends BaseService {
 
     for await (const asset of assets) {
       jobs.push({ name: JobName.PdfProcess, data: { id: asset.id } });
-      if (jobs.length >= JOBS_ASSET_PAGINATION_SIZE) {
-        await this.jobRepository.queueAll(jobs);
-        jobs.length = 0;
+      if (!(jobs.length >= JOBS_ASSET_PAGINATION_SIZE)) {
+        continue;
       }
+
+      await this.jobRepository.queueAll(jobs);
+      jobs.length = 0;
     }
 
     await this.jobRepository.queueAll(jobs);
@@ -241,10 +243,10 @@ export class PdfService extends BaseService {
       matchingByAsset.set(entry.assetId, pages);
     }
 
-    const results: PdfSearchResultDto[] = Array.from(items, item => ({
-        ...this.mapDocument(item),
-        matchingPages: matchingByAsset.get(item.assetId) ?? [],
-      }));
+    const results: PdfSearchResultDto[] = Array.from(items, (item) => ({
+      ...this.mapDocument(item),
+      matchingPages: matchingByAsset.get(item.assetId) ?? [],
+    }));
 
     return { items: results, nextPage: hasNextPage ? String(page + 1) : null, summary: summary ?? fallbackSummary };
   }
@@ -358,7 +360,10 @@ export class PdfService extends BaseService {
     return rows;
   }
 
-  private extractPageDimensions(path: string, pageCount: number): Promise<Map<number, { width: number; height: number }>> {
+  private extractPageDimensions(
+    path: string,
+    pageCount: number,
+  ): Promise<Map<number, { width: number; height: number }>> {
     return new Promise((resolve) => {
       const child = this.processRepository.spawn('pdfinfo', ['-f', '1', '-l', String(pageCount), path]);
       const lines: string[] = [];
@@ -612,7 +617,9 @@ export class PdfService extends BaseService {
 
         if (code !== 0) {
           const detail = stderr ? `: ${stderr}` : '';
-          this.logger.warn(`pdftoppm exited with code ${code}${signal ? ` signal ${signal}` : ''} for page ${pageNumber}${detail}`);
+          this.logger.warn(
+            `pdftoppm exited with code ${code}${signal ? ` signal ${signal}` : ''} for page ${pageNumber}${detail}`,
+          );
           resolve(false);
           return;
         }

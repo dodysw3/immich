@@ -307,18 +307,20 @@ export class QueueService extends BaseService {
 
     await this.jobRepository.queueAll(jobs);
 
-    if (config.machineLearning.facialRecognition.importNamesFromOtherAccounts) {
-      const candidates = await this.personRepository.getNameImportBackfillCandidates();
-      const batchSize = 1000;
-      for (let index = 0; index < candidates.length; index += batchSize) {
-        await this.personRepository.updateNamesIfEmpty(
-          candidates.slice(index, index + batchSize).map(({ ownerId, personGroupId, name, email }) => ({
-            ownerId,
-            personGroupId,
-            name: `${name} [[assigned from ${email}]]`,
-          })),
-        );
-      }
+    if (!config.machineLearning.facialRecognition.importNamesFromOtherAccounts) {
+      return;
+    }
+
+    const candidates = await this.personRepository.getNameImportBackfillCandidates();
+    const batchSize = 1000;
+    for (let index = 0; index < candidates.length; index += batchSize) {
+      await this.personRepository.updateNamesIfEmpty(
+        candidates.slice(index, index + batchSize).map(({ ownerId, personGroupId, name, email }) => ({
+          ownerId,
+          personGroupId,
+          name: `${name} [[assigned from ${email}]]`,
+        })),
+      );
     }
   }
 }

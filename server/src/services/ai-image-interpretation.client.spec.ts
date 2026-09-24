@@ -1,6 +1,6 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiImageInterpretationClient } from 'src/services/ai-image-interpretation.client.js';
 import { newConfigRepositoryMock } from 'test/repositories/config.repository.mock.js';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const fetchMock = vi.hoisted(() => vi.fn());
 

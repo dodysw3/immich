@@ -1,9 +1,9 @@
+import { EventEmitter } from 'node:events';
+import { PassThrough } from 'node:stream';
 import { AssetType, ImmichWorker, JobName, JobStatus } from 'src/enum.js';
 import { PdfService } from 'src/services/pdf.service.js';
 import { mockEnvData } from 'test/repositories/config.repository.mock.js';
-import { makeStream, newTestService, ServiceMocks } from 'test/utils.js';
-import { EventEmitter } from 'node:events';
-import { PassThrough } from 'node:stream';
+import { ServiceMocks, makeStream, newTestService } from 'test/utils.js';
 
 const makeChildProcess = (output: string, code = 0) => {
   const child = new EventEmitter() as any;
@@ -540,7 +540,9 @@ describe(PdfService.name, () => {
     expect(secondResult).toBe(JobStatus.Success);
     expect(mocks.logger.warn).toHaveBeenCalledWith('pdfinfo is not available, skipping PDF page dimensions');
     expect(
-      mocks.logger.warn.mock.calls.filter((call) => call[0] === 'pdfinfo is not available, skipping PDF page dimensions'),
+      mocks.logger.warn.mock.calls.filter(
+        (call) => call[0] === 'pdfinfo is not available, skipping PDF page dimensions',
+      ),
     ).toHaveLength(1);
     expect(mocks.pdf.replacePages).toHaveBeenCalledWith(
       'asset-missing-pdfinfo-1',
@@ -739,7 +741,10 @@ describe(PdfService.name, () => {
       { pageNumber: 2, text: 'This is a longer paragraph about quarterly revenue growth and forecasts.' },
     ]);
 
-    const result = await sut.searchInDocument({ user: { id: 'user-1' } } as any, 'asset-6', { query: 'revenue', size: 100 });
+    const result = await sut.searchInDocument({ user: { id: 'user-1' } } as any, 'asset-6', {
+      query: 'revenue',
+      size: 100,
+    });
 
     expect(mocks.pdf.searchPagesByOwner).toHaveBeenCalledWith('user-1', 'asset-6', 'revenue', 100);
     expect(result).toEqual([
@@ -765,7 +770,10 @@ describe(PdfService.name, () => {
       updatedAt: new Date('2026-02-06T00:00:00.000Z'),
     });
 
-    const result = await sut.searchInDocument({ user: { id: 'user-1' } } as any, 'asset-6', { query: ' '.repeat(3), size: 100 });
+    const result = await sut.searchInDocument({ user: { id: 'user-1' } } as any, 'asset-6', {
+      query: ' '.repeat(3),
+      size: 100,
+    });
 
     expect(result).toEqual([]);
     expect(mocks.pdf.searchPagesByOwner).not.toHaveBeenCalled();

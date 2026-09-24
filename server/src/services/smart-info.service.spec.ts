@@ -189,7 +189,11 @@ describe(SmartInfoService.name, () => {
 
     it('should skip assets without a resize path', async () => {
       const asset = AssetFactory.create();
-      mocks.assetJob.getForClipEncoding.mockResolvedValue({ id: asset.id, visibility: asset.visibility, previewFile: null });
+      mocks.assetJob.getForClipEncoding.mockResolvedValue({
+        id: asset.id,
+        visibility: asset.visibility,
+        previewFile: null,
+      });
 
       expect(await sut.handleEncodeClip({ id: asset.id })).toEqual(JobStatus.Failed);
 

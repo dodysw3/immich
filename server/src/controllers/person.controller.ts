@@ -18,6 +18,7 @@ import type { NextFunction, Response } from 'express';
 import type { AuthDto } from 'src/dtos/auth.dto.js';
 import { Endpoint, HistoryBuilder } from 'src/decorators.js';
 import { BulkIdResponseDto, BulkIdsDto } from 'src/dtos/asset-ids.response.dto.js';
+import { PersonAssetsDto, PersonAssetsResponseDto } from 'src/dtos/person-assets.dto.js';
 import {
   AssetFaceUpdateDto,
   MergePersonDto,
@@ -29,7 +30,6 @@ import {
   PersonStatisticsResponseDto,
   PersonUpdateDto,
 } from 'src/dtos/person.dto.js';
-import { PersonAssetsDto, PersonAssetsResponseDto } from 'src/dtos/person-assets.dto.js';
 import { ApiTag, Permission } from 'src/enum.js';
 import { Auth, Authenticated, FileResponse } from 'src/middleware/auth.guard.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';

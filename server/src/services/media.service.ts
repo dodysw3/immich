@@ -431,7 +431,14 @@ export class MediaService extends BaseService {
     try {
       await new Promise<void>((resolve, reject) => {
         const child = this.processRepository.spawn('pdftoppm', [
-          '-f', '1', '-l', '1', '-singlefile', '-png', asset.originalPath, prefix,
+          '-f',
+          '1',
+          '-l',
+          '1',
+          '-singlefile',
+          '-png',
+          asset.originalPath,
+          prefix,
         ]);
         child.on('error', (error) => reject(error));
         child.on('close', (code) => (code === 0 ? resolve() : reject(new Error(`pdftoppm exited with code ${code}`))));
@@ -442,7 +449,12 @@ export class MediaService extends BaseService {
         processInvalidImages: false,
       });
 
-      const thumbnailOptions = { colorspace: Colorspace.Srgb, processInvalidImages: false, raw: info, edits: [] as never[] };
+      const thumbnailOptions = {
+        colorspace: Colorspace.Srgb,
+        processInvalidImages: false,
+        raw: info,
+        edits: [] as never[],
+      };
       const [thumbhash] = await Promise.all([
         this.mediaRepository.generateThumbhash(data, thumbnailOptions),
         this.mediaRepository.generateThumbnail(data, { ...image.thumbnail, ...thumbnailOptions }, thumbnailFile.path),

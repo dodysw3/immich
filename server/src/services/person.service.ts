@@ -7,6 +7,7 @@ import { Chunked, OnJob } from 'src/decorators.js';
 import { BulkIdErrorReason, BulkIdResponseDto, BulkIdsDto } from 'src/dtos/asset-ids.response.dto.js';
 import { mapAsset } from 'src/dtos/asset-response.dto.js';
 import { AuthDto } from 'src/dtos/auth.dto.js';
+import { PersonAssetsDto, PersonAssetsResponseDto } from 'src/dtos/person-assets.dto.js';
 import {
   AssetFaceCreateDto,
   AssetFaceDeleteDto,
@@ -24,10 +25,9 @@ import {
   mapFaces,
   mapPerson,
 } from 'src/dtos/person.dto.js';
-import { PersonAssetsDto, PersonAssetsResponseDto } from 'src/dtos/person-assets.dto.js';
 import {
-  AssetVisibility,
   AssetType,
+  AssetVisibility,
   CacheControl,
   JobName,
   JobStatus,
@@ -375,10 +375,7 @@ export class PersonService extends BaseService {
     }
 
     const pass1Start = Date.now();
-    const pass1 = await this.machineLearningRepository.detectFaces(
-      previewFile.path,
-      machineLearning.facialRecognition,
-    );
+    const pass1 = await this.machineLearningRepository.detectFaces(previewFile.path, machineLearning.facialRecognition);
     const pass1Ms = Date.now() - pass1Start;
     const gpuFallbackTag = pass1.gpuFallback ? ' (GPU fallback)' : '';
     this.logger.debug(`Pass 1: ${pass1.faces.length} faces${gpuFallbackTag} detected in ${pass1Ms}ms for asset ${id}`);
@@ -525,10 +522,7 @@ export class PersonService extends BaseService {
       return false;
     }
 
-    const originalMaxDim = Math.max(
-      asset.exifInfo?.exifImageWidth ?? 0,
-      asset.exifInfo?.exifImageHeight ?? 0,
-    );
+    const originalMaxDim = Math.max(asset.exifInfo?.exifImageWidth ?? 0, asset.exifInfo?.exifImageHeight ?? 0);
     if (originalMaxDim <= 1440) {
       return false;
     }
@@ -544,10 +538,7 @@ export class PersonService extends BaseService {
     return false;
   }
 
-  private getTiledSourceFile(asset: {
-    originalPath: string;
-    fullsizeFile?: string | null;
-  }): string | null {
+  private getTiledSourceFile(asset: { originalPath: string; fullsizeFile?: string | null }): string | null {
     const decodableExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tiff', '.tif', '.heic', '.heif']);
     const ext = asset.originalPath.toLowerCase().split('.').pop();
     if (ext && decodableExtensions.has(`.${ext}`)) {

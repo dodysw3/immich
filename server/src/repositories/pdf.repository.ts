@@ -1,12 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { Insertable, Kysely, Selectable, sql } from 'kysely';
+import { type Insertable, Kysely, type Selectable, sql } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { DummyValue, GenerateSql } from 'src/decorators.js';
 import { PdfDocumentStatus as PdfDocumentFilterStatus } from 'src/dtos/pdf.dto.js';
 import { AssetType } from 'src/enum.js';
 import { DB } from 'src/schema/index.js';
-import { PdfDocumentStatus } from 'src/schema/tables/pdf-document.table.js';
-import { PdfDocumentTable } from 'src/schema/tables/pdf-document.table.js';
+import { type PdfDocumentStatus, PdfDocumentTable } from 'src/schema/tables/pdf-document.table.js';
 import { PdfPageTable } from 'src/schema/tables/pdf-page.table.js';
 import { paginationHelper } from 'src/utils/pagination.js';
 
@@ -21,7 +20,14 @@ export class PdfRepository {
   getAssetForProcessing(id: string) {
     return this.db
       .selectFrom('asset')
-      .select(['asset.id', 'asset.ownerId', 'asset.originalPath', 'asset.originalFileName', 'asset.type', 'asset.deletedAt'])
+      .select([
+        'asset.id',
+        'asset.ownerId',
+        'asset.originalPath',
+        'asset.originalFileName',
+        'asset.type',
+        'asset.deletedAt',
+      ])
       .where('asset.id', '=', id)
       .executeTakeFirst();
   }
@@ -174,7 +180,9 @@ export class PdfRepository {
     ready: number;
     failed: number;
   }> {
-    const statusExpression = sql<'pending' | 'processing' | 'ready' | 'failed'>`coalesce("pdf_document"."status", 'pending')`;
+    const statusExpression = sql<
+      'pending' | 'processing' | 'ready' | 'failed'
+    >`coalesce("pdf_document"."status", 'pending')`;
     const rows = await this.db
       .selectFrom('asset')
       .leftJoin('pdf_document', 'pdf_document.assetId', 'asset.id')

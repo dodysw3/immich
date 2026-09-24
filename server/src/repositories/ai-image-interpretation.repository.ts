@@ -208,19 +208,20 @@ export class AiImageInterpretationRepository {
         // gone (e.g. queue state wiped) — nothing else would ever deliver them.
         const isStale = run.status === 'running' && new Date(run.startedAt ?? run.requestedAt) < runningCutoff;
         const isOrphaned = !isStale && run.status === 'queued' && !(await hasPendingJob(row.assetId, runKey));
-        if (isStale || isOrphaned) {
-          const updated = await this.fail(
-            row.assetId,
-            runKey,
-            isStale
-              ? { code: 'stale_run', message: 'Interpretation run expired before completion' }
-              : { code: 'job_lost', message: 'Interpretation job was lost before delivery' },
-            undefined,
-            undefined,
-            finishedAt,
-          );
-          count += updated ? 1 : 0;
+        if (!isStale && !isOrphaned) {
+          continue;
         }
+        const updated = await this.fail(
+          row.assetId,
+          runKey,
+          isStale
+            ? { code: 'stale_run', message: 'Interpretation run expired before completion' }
+            : { code: 'job_lost', message: 'Interpretation job was lost before delivery' },
+          undefined,
+          undefined,
+          finishedAt,
+        );
+        count += updated ? 1 : 0;
       }
     }
 

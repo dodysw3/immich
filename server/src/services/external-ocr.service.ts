@@ -1,14 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Insertable } from 'kysely';
+import type { ArgOf } from 'src/repositories/event.repository.js';
 import { OnEvent } from 'src/decorators.js';
 import { AuthDto } from 'src/dtos/auth.dto.js';
-import {
-  ExternalOcrFailureDto,
-  ExternalOcrResultDto,
-  ExternalOcrWriteResponseDto,
-} from 'src/dtos/external-ocr.dto.js';
+import { ExternalOcrFailureDto, ExternalOcrResultDto, ExternalOcrWriteResponseDto } from 'src/dtos/external-ocr.dto.js';
 import { AssetType, AssetVisibility, Permission } from 'src/enum.js';
-import { ArgOf } from 'src/repositories/event.repository.js';
 import { AssetOcrTable } from 'src/schema/tables/asset-ocr.table.js';
 import { BaseService } from 'src/services/base.service.js';
 import { tokenizeForSearch } from 'src/utils/database.js';

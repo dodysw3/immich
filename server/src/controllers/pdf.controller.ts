@@ -1,18 +1,18 @@
 import { Controller, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import type { AuthDto } from 'src/dtos/auth.dto.js';
 import { Endpoint, HistoryBuilder } from 'src/decorators.js';
-import { AuthDto } from 'src/dtos/auth.dto.js';
 import {
   PdfDocumentListResponseDto,
-  PdfInDocumentSearchDto,
-  PdfInDocumentSearchResultDto,
   PdfDocumentPageParamsDto,
   PdfDocumentParamsDto,
   PdfDocumentQueryDto,
   PdfDocumentResponseDto,
-  PdfSearchResponseDto,
   PdfDocumentSearchDto,
+  PdfInDocumentSearchDto,
+  PdfInDocumentSearchResultDto,
   PdfPageResponseDto,
+  PdfSearchResponseDto,
 } from 'src/dtos/pdf.dto.js';
 import { ApiTag, Permission } from 'src/enum.js';
 import { Auth, Authenticated } from 'src/middleware/auth.guard.js';
@@ -101,10 +101,7 @@ export class PdfController {
     description: 'Get one indexed page for a PDF document.',
     history: new HistoryBuilder().added('v2.5.6').alpha('v2.5.6'),
   })
-  getPage(
-    @Auth() auth: AuthDto,
-    @Param() { id, pageNumber }: PdfDocumentPageParamsDto,
-  ): Promise<PdfPageResponseDto> {
+  getPage(@Auth() auth: AuthDto, @Param() { id, pageNumber }: PdfDocumentPageParamsDto): Promise<PdfPageResponseDto> {
     return this.service.getPage(auth, id, pageNumber);
   }
 }

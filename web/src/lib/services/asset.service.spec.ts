@@ -81,7 +81,10 @@ describe('AssetService', () => {
       const assetActions = getAssetActions(() => '', asset);
       expect(assetActions.InterpretImageJob.$if?.()).toStrictEqual(true);
 
-      await assetActions.InterpretImageJob.onAction(assetActions.InterpretImageJob);
+      await assetActions.InterpretImageJob.onAction({
+        action: assetActions.InterpretImageJob,
+        event: new MouseEvent('click'),
+      });
 
       expect(runAssetJobs).toHaveBeenCalledWith({
         assetJobsDto: { name: AssetJobName.InterpretImage, assetIds: [asset.id] },

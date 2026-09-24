@@ -1,5 +1,13 @@
+import {
+  Column,
+  CreateDateColumn,
+  ForeignKeyColumn,
+  type Generated,
+  Table,
+  type Timestamp,
+  UpdateDateColumn,
+} from '@immich/sql-tools';
 import { AssetTable } from 'src/schema/tables/asset.table.js';
-import { Column, CreateDateColumn, ForeignKeyColumn, Generated, Table, Timestamp, UpdateDateColumn } from '@immich/sql-tools';
 
 export type PdfDocumentStatus = 'pending' | 'processing' | 'ready' | 'failed';
 

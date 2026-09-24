@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
+import { describe, expect, it, vi } from 'vitest';
 import { AiInterpretationDocument } from 'src/dtos/ai-image-interpretation.dto.js';
 import { AssetFileType, AssetType, AssetVisibility, JobName, JobStatus, QueueName } from 'src/enum.js';
 import { AiImageInterpretationRepository } from 'src/repositories/ai-image-interpretation.repository.js';
@@ -15,7 +16,6 @@ import {
 } from 'src/services/ai-image-interpretation.client.js';
 import { AiImageInterpretationService } from 'src/services/ai-image-interpretation.service.js';
 import { AssetFactory } from 'test/factories/asset.factory.js';
-import { describe, expect, it, vi } from 'vitest';
 
 const runKey = 'a'.repeat(64);
 const config = {

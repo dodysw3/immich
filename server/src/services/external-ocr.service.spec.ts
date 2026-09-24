@@ -3,7 +3,7 @@ import { AssetType, AssetVisibility } from 'src/enum.js';
 import { ExternalOcrService } from 'src/services/external-ocr.service.js';
 import { authStub } from 'test/fixtures/auth.stub.js';
 import { systemConfigStub } from 'test/fixtures/system-config.stub.js';
-import { newTestService, ServiceMocks } from 'test/utils.js';
+import { ServiceMocks, newTestService } from 'test/utils.js';
 
 describe(ExternalOcrService.name, () => {
   let sut: ExternalOcrService;
