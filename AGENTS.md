@@ -81,6 +81,7 @@ Make package mapping: `server`=`immich`, `web`=`immich-web`, `cli`=`@immich/cli`
 - **NestJS module**: `server/src/app.module.ts` wires all controllers, services, repositories.
 - **Path aliases**: `src/*` and `test/*` (tsconfig paths). Imports use `src/...` not relative paths.
 - **ESLint rule**: Relative imports (`../`, `./`) are **banned** in `server/`. Always use `src/...` paths.
+- **`.js` import suffixes**: All `src/*`/`test/*` imports in `server/` must end in `.js` (e.g. `from 'src/enum.js'`; bare `src/schema` is written `src/schema/index.js`). New upstream convention (2026-09). Pure types used in decorated signatures (`AuthDto`, `JobOf`, `ArgOf`, kysely's `Generated`/`Insertable`, ...) must use `import type` / inline `type` — TS1272 otherwise (`isolatedModules` + `emitDecoratorMetadata`).
 - **ORM**: Kysely (not TypeORM). Schema defined in `server/src/schema/tables/*.table.ts`. Migrations in `server/src/schema/migrations/`.
 - **SQL queries**: Generated/synced to `server/src/queries/*.repository.sql` via `pnpm sync:sql`.
 - **Migrations**: Use `sql-tools` CLI (`pnpm migrations:generate`, `pnpm migrations:run`, etc.). Requires running Postgres + `DB_URL`.
