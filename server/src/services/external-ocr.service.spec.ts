@@ -1,9 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
-import { AssetType, AssetVisibility } from 'src/enum';
-import { ExternalOcrService } from 'src/services/external-ocr.service';
-import { authStub } from 'test/fixtures/auth.stub';
-import { systemConfigStub } from 'test/fixtures/system-config.stub';
-import { newTestService, ServiceMocks } from 'test/utils';
+import { AssetType, AssetVisibility } from 'src/enum.js';
+import { ExternalOcrService } from 'src/services/external-ocr.service.js';
+import { authStub } from 'test/fixtures/auth.stub.js';
+import { systemConfigStub } from 'test/fixtures/system-config.stub.js';
+import { newTestService, ServiceMocks } from 'test/utils.js';
 
 describe(ExternalOcrService.name, () => {
   let sut: ExternalOcrService;

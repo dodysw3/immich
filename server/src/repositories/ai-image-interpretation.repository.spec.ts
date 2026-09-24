@@ -4,12 +4,12 @@ import {
   AiInterpretationMetrics,
   AiInterpretationRun,
   MuseInterpretationResult,
-} from 'src/dtos/ai-image-interpretation.dto';
+} from 'src/dtos/ai-image-interpretation.dto.js';
 import {
   AiImageInterpretationRepository,
   AiInterpretationIdentity,
-} from 'src/repositories/ai-image-interpretation.repository';
-import { createAiInterpretationRunKey } from 'src/utils/ai-image-interpretation';
+} from 'src/repositories/ai-image-interpretation.repository.js';
+import { createAiInterpretationRunKey } from 'src/utils/ai-image-interpretation.js';
 import { describe, expect, it, vi } from 'vitest';
 
 const identity: AiInterpretationIdentity = {

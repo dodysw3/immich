@@ -1,18 +1,18 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Insertable } from 'kysely';
-import { OnEvent } from 'src/decorators';
-import { AuthDto } from 'src/dtos/auth.dto';
+import { OnEvent } from 'src/decorators.js';
+import { AuthDto } from 'src/dtos/auth.dto.js';
 import {
   ExternalOcrFailureDto,
   ExternalOcrResultDto,
   ExternalOcrWriteResponseDto,
-} from 'src/dtos/external-ocr.dto';
-import { AssetType, AssetVisibility, Permission } from 'src/enum';
-import { ArgOf } from 'src/repositories/event.repository';
-import { AssetOcrTable } from 'src/schema/tables/asset-ocr.table';
-import { BaseService } from 'src/services/base.service';
-import { tokenizeForSearch } from 'src/utils/database';
-import { isOcrEnabled } from 'src/utils/misc';
+} from 'src/dtos/external-ocr.dto.js';
+import { AssetType, AssetVisibility, Permission } from 'src/enum.js';
+import { ArgOf } from 'src/repositories/event.repository.js';
+import { AssetOcrTable } from 'src/schema/tables/asset-ocr.table.js';
+import { BaseService } from 'src/services/base.service.js';
+import { tokenizeForSearch } from 'src/utils/database.js';
+import { isOcrEnabled } from 'src/utils/misc.js';
 
 const EXTERNAL_OCR_PROVENANCE_KEY = 'external.ocr.v1';
 const EXTERNAL_OCR_STATUS_KEY = 'external.ocr.status';

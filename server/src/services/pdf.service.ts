@@ -3,9 +3,9 @@ import { mkdtemp } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import readline from 'node:readline';
 import { tmpdir } from 'node:os';
-import { JOBS_ASSET_PAGINATION_SIZE } from 'src/constants';
-import { OnEvent, OnJob } from 'src/decorators';
-import { AuthDto } from 'src/dtos/auth.dto';
+import { JOBS_ASSET_PAGINATION_SIZE } from 'src/constants.js';
+import { OnEvent, OnJob } from 'src/decorators.js';
+import { AuthDto } from 'src/dtos/auth.dto.js';
 import {
   PdfDocumentListResponseDto,
   PdfDocumentQueryDto,
@@ -16,13 +16,13 @@ import {
   PdfDocumentSearchDto,
   PdfPageResponseDto,
   PdfSearchResultDto,
-} from 'src/dtos/pdf.dto';
-import { JobName, JobStatus, QueueName } from 'src/enum';
-import { ArgOf } from 'src/repositories/event.repository';
-import { BaseService } from 'src/services/base.service';
-import { JobItem, JobOf } from 'src/types';
-import { tokenizeForSearch } from 'src/utils/database';
-import { isOcrEnabled } from 'src/utils/misc';
+} from 'src/dtos/pdf.dto.js';
+import { JobName, JobStatus, QueueName } from 'src/enum.js';
+import { ArgOf } from 'src/repositories/event.repository.js';
+import { BaseService } from 'src/services/base.service.js';
+import { JobItem, JobOf } from 'src/types.js';
+import { tokenizeForSearch } from 'src/utils/database.js';
+import { isOcrEnabled } from 'src/utils/misc.js';
 
 const DEFAULT_PDF_TEXT_EXTRACTION_PAGE_LIMIT = 250;
 const PDF_PROCESS_TIMEOUT_MS = 120_000;

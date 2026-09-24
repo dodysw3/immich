@@ -1,4 +1,4 @@
-import { AssetTable } from 'src/schema/tables/asset.table';
+import { AssetTable } from 'src/schema/tables/asset.table.js';
 import { Column, CreateDateColumn, ForeignKeyColumn, Generated, Table, Timestamp, UpdateDateColumn } from '@immich/sql-tools';
 
 export type PdfDocumentStatus = 'pending' | 'processing' | 'ready' | 'failed';

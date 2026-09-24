@@ -1,16 +1,16 @@
 import { Body, Controller, HttpCode, HttpStatus, Param, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { Endpoint, HistoryBuilder } from 'src/decorators';
+import { Endpoint, HistoryBuilder } from 'src/decorators.js';
 import {
   ExternalOcrFailureDto,
   ExternalOcrResultDto,
   ExternalOcrWriteResponseDto,
-} from 'src/dtos/external-ocr.dto';
-import { AuthDto } from 'src/dtos/auth.dto';
-import { ApiTag, Permission } from 'src/enum';
-import { Auth, Authenticated } from 'src/middleware/auth.guard';
-import { ExternalOcrService } from 'src/services/external-ocr.service';
-import { UUIDParamDto } from 'src/validation';
+} from 'src/dtos/external-ocr.dto.js';
+import { AuthDto } from 'src/dtos/auth.dto.js';
+import { ApiTag, Permission } from 'src/enum.js';
+import { Auth, Authenticated } from 'src/middleware/auth.guard.js';
+import { ExternalOcrService } from 'src/services/external-ocr.service.js';
+import { UUIDParamDto } from 'src/validation.js';
 
 @ApiTags(ApiTag.Assets)
 @Controller('external-ocr')

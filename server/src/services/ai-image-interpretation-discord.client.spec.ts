@@ -1,11 +1,11 @@
-import { MuseInterpretationResult } from 'src/dtos/ai-image-interpretation.dto';
-import { ConfigRepository } from 'src/repositories/config.repository';
+import { MuseInterpretationResult } from 'src/dtos/ai-image-interpretation.dto.js';
+import { ConfigRepository } from 'src/repositories/config.repository.js';
 import {
   AiImageInterpretationDiscordClient,
   AiInterpretationDiscordAlert,
   AiInterpretationDiscordAlertError,
   buildAiInterpretationDiscordPayload,
-} from 'src/services/ai-image-interpretation-discord.client';
+} from 'src/services/ai-image-interpretation-discord.client.js';
 
 const webhookUrl = 'https://discord.com/api/webhooks/123456789/test_webhook-token';
 const result: MuseInterpretationResult = {

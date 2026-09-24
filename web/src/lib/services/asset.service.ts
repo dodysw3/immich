@@ -4,8 +4,10 @@ import {
   AssetTypeEnum,
   AssetVisibility,
   getAssetInfo,
+  removeAssetFromAlbum,
   runAssetJobs,
   updateAsset,
+  type AlbumResponseDto,
   type AssetJobsDto,
   type AssetResponseDto,
 } from '@immich/sdk';
@@ -25,6 +27,7 @@ import {
   mdiHeart,
   mdiHeartOutline,
   mdiImageRefreshOutline,
+  mdiImageRemoveOutline,
   mdiImageSearch,
   mdiInformationOutline,
   mdiMagnifyMinusOutline,
@@ -79,8 +82,9 @@ export const canOpenEditorForAsset = (
   );
 };
 
-export const getAssetBulkActions = ($t: MessageFormatter) => {
+export const getAssetBulkActions = ($t: MessageFormatter, album?: AlbumResponseDto) => {
   const ownedAssets = assetMultiSelectManager.ownedAssets;
+  const isAlbumOwner = album?.albumUsers[0].user.id === authManager.user.id;
 
   const onAction = async (name: AssetJobName) => {
     await handleRunAssetJob({ name, assetIds: ownedAssets.map(({ id }) => id) });
@@ -93,6 +97,17 @@ export const getAssetBulkActions = ($t: MessageFormatter) => {
     shortcuts: [{ key: 'l' }],
     onAction: () =>
       modalManager.show(AssetAddToAlbumModal, { assetIds: assetMultiSelectManager.assets.map((asset) => asset.id) }),
+  };
+
+  const RemoveFromAlbum: ActionItem = {
+    title: $t('remove_from_album'),
+    icon: mdiImageRemoveOutline,
+    $if: () => !!album && (isAlbumOwner || assetMultiSelectManager.isAllUserOwned),
+    onAction: () =>
+      handleBulkRemoveAssetsFromAlbum(
+        assetMultiSelectManager.assets.map((asset) => asset.id),
+        album!,
+      ),
   };
 
   const RefreshFacesJob: ActionItem = {
@@ -120,13 +135,25 @@ export const getAssetBulkActions = ($t: MessageFormatter) => {
     $if: () => ownedAssets.every((asset) => asset.isVideo),
   };
 
-  return { AddToAlbum, RefreshFacesJob, RefreshMetadataJob, RegenerateThumbnailJob, TranscodeVideoJob };
+  return {
+    AddToAlbum,
+    RemoveFromAlbum,
+    RefreshFacesJob,
+    RefreshMetadataJob,
+    RegenerateThumbnailJob,
+    TranscodeVideoJob,
+  };
 };
 
-export const getAssetActions = ($t: MessageFormatter, asset: AssetResponseDto & { stackPrimaryAssetId?: string }) => {
+export const getAssetActions = (
+  $t: MessageFormatter,
+  asset: AssetResponseDto & { stackPrimaryAssetId?: string },
+  album?: AlbumResponseDto,
+) => {
   const sharedLink = getSharedLink();
   const authUser = authManager.authenticated ? authManager.user : undefined;
   const isOwner = !!(authUser && authUser.id === asset.ownerId);
+  const isAlbumOwner = !!(authUser && authUser.id === album?.albumUsers[0].user.id);
   const smartSearchEnabled = featureFlagsManager.value.smartSearch;
 
   const Share: ActionItem = {
@@ -203,6 +230,13 @@ export const getAssetActions = ($t: MessageFormatter, asset: AssetResponseDto & 
     shortcuts: [{ key: 'l' }],
     $if: () => asset.visibility !== AssetVisibility.Locked && !asset.isTrashed,
     onAction: () => modalManager.show(AssetAddToAlbumModal, { assetIds: [asset.id] }),
+  };
+
+  const RemoveFromAlbum: ActionItem = {
+    title: $t('remove_from_album'),
+    icon: mdiImageRemoveOutline,
+    $if: () => !!album && (isOwner || isAlbumOwner),
+    onAction: () => handleRemoveAssetsFromAlbum([asset.id], album!),
   };
 
   const Offline: ActionItem = {
@@ -333,6 +367,7 @@ export const getAssetActions = ($t: MessageFormatter, asset: AssetResponseDto & 
     StopMotionPhoto,
     PlaySlideshow,
     AddToAlbum,
+    RemoveFromAlbum,
     ZoomIn,
     ZoomOut,
     Copy,
@@ -421,6 +456,39 @@ const handleUnfavorite = async (asset: AssetResponseDto) => {
     eventManager.emit('AssetUpdate', response);
   } catch (error) {
     handleError(error, $t('errors.unable_to_add_remove_favorites', { values: { favorite: asset.isFavorite } }));
+  }
+};
+
+const handleBulkRemoveAssetsFromAlbum = async (assetIds: string[], album: AlbumResponseDto) => {
+  const $t = await getFormatter();
+
+  const isConfirmed = await modalManager.showDialog({
+    prompt: $t('remove_assets_album_confirmation', { values: { count: assetIds.length } }),
+  });
+
+  if (!isConfirmed) {
+    return;
+  }
+
+  await handleRemoveAssetsFromAlbum(assetIds, album);
+  assetMultiSelectManager.clear();
+};
+
+const handleRemoveAssetsFromAlbum = async (assetIds: string[], album: AlbumResponseDto) => {
+  const $t = await getFormatter();
+
+  try {
+    const results = await removeAssetFromAlbum({
+      id: album.id,
+      bulkIdsDto: { ids: assetIds },
+    });
+
+    const count = results.filter(({ success }) => success).length;
+
+    toastManager.primary($t('assets_removed_count', { values: { count } }));
+    eventManager.emit('AlbumRemoveAssets', { assetIds, albumIds: [album.id] });
+  } catch (error) {
+    handleError(error, $t('errors.error_removing_assets_from_album'));
   }
 };
 

@@ -9,10 +9,10 @@ import {
   AiInterpretationMetrics,
   AiInterpretationRun,
   MuseInterpretationResult,
-} from 'src/dtos/ai-image-interpretation.dto';
-import { AssetMetadataKey } from 'src/enum';
-import { DB } from 'src/schema';
-import { createAiInterpretationRunKey, interpretationRetryDelayMs } from 'src/utils/ai-image-interpretation';
+} from 'src/dtos/ai-image-interpretation.dto.js';
+import { AssetMetadataKey } from 'src/enum.js';
+import { DB } from 'src/schema/index.js';
+import { createAiInterpretationRunKey, interpretationRetryDelayMs } from 'src/utils/ai-image-interpretation.js';
 
 export type AiInterpretationIdentity = {
   model: string;

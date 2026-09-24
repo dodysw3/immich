@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { AiInterpretationDocumentSchema } from 'src/dtos/ai-image-interpretation.dto';
+import { AiInterpretationDocumentSchema } from 'src/dtos/ai-image-interpretation.dto.js';
 
 export const AI_IMAGE_INTERPRETATION_PROMPT_VERSION = 'image-interpretation-1.0.0';
 export const AI_IMAGE_INTERPRETATION_MODEL = 'unsloth/Muse-Glimmer-30B-GGUF';

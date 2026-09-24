@@ -1,7 +1,7 @@
-import { AssetType, ImmichWorker, JobName, JobStatus } from 'src/enum';
-import { PdfService } from 'src/services/pdf.service';
-import { mockEnvData } from 'test/repositories/config.repository.mock';
-import { makeStream, newTestService, ServiceMocks } from 'test/utils';
+import { AssetType, ImmichWorker, JobName, JobStatus } from 'src/enum.js';
+import { PdfService } from 'src/services/pdf.service.js';
+import { mockEnvData } from 'test/repositories/config.repository.mock.js';
+import { makeStream, newTestService, ServiceMocks } from 'test/utils.js';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
 

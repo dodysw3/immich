@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { MuseInterpretationResult } from 'src/dtos/ai-image-interpretation.dto';
-import { ConfigRepository } from 'src/repositories/config.repository';
+import { MuseInterpretationResult } from 'src/dtos/ai-image-interpretation.dto.js';
+import { ConfigRepository } from 'src/repositories/config.repository.js';
 
 const DISCORD_TITLE_LIMIT = 256;
 const DISCORD_DESCRIPTION_LIMIT = 4096;

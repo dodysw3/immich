@@ -1,5 +1,5 @@
-import { JobName } from 'src/enum';
-import { JobRepository } from 'src/repositories/job.repository';
+import { JobName } from 'src/enum.js';
+import { JobRepository } from 'src/repositories/job.repository.js';
 import { describe, expect, it, vi } from 'vitest';
 
 describe(JobRepository.name, () => {

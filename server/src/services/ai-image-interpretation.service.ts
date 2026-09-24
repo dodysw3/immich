@@ -1,22 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import sharp from 'sharp';
-import { OnEvent, OnJob } from 'src/decorators';
-import { AiInterpretationInput, AiInterpretationMetrics } from 'src/dtos/ai-image-interpretation.dto';
-import { AssetFileType, AssetType, AssetVisibility, ImmichWorker, JobName, JobStatus, QueueName } from 'src/enum';
-import { AiImageInterpretationRepository } from 'src/repositories/ai-image-interpretation.repository';
-import { AssetJobRepository } from 'src/repositories/asset-job.repository';
-import { ConfigRepository } from 'src/repositories/config.repository';
-import { ArgOf } from 'src/repositories/event.repository';
-import { JobRepository } from 'src/repositories/job.repository';
-import { LoggingRepository } from 'src/repositories/logging.repository';
+import { OnEvent, OnJob } from 'src/decorators.js';
+import { AiInterpretationInput, AiInterpretationMetrics } from 'src/dtos/ai-image-interpretation.dto.js';
+import { AssetFileType, AssetType, AssetVisibility, ImmichWorker, JobName, JobStatus, QueueName } from 'src/enum.js';
+import { AiImageInterpretationRepository } from 'src/repositories/ai-image-interpretation.repository.js';
+import { AssetJobRepository } from 'src/repositories/asset-job.repository.js';
+import { ConfigRepository } from 'src/repositories/config.repository.js';
+import { ArgOf } from 'src/repositories/event.repository.js';
+import { JobRepository } from 'src/repositories/job.repository.js';
+import { LoggingRepository } from 'src/repositories/logging.repository.js';
 import {
   AiImageInterpretationClient,
   AiImageInterpretationClientError,
-} from 'src/services/ai-image-interpretation.client';
-import { JobOf } from 'src/types';
-import { createAiInterpretationJobId } from 'src/utils/ai-image-interpretation';
-import { getAssetFile } from 'src/utils/asset.util';
+} from 'src/services/ai-image-interpretation.client.js';
+import { JobOf } from 'src/types.js';
+import { createAiInterpretationJobId } from 'src/utils/ai-image-interpretation.js';
+import { getAssetFile } from 'src/utils/asset.util.js';
 
 type PreparedPreview = {
   buffer: Buffer;

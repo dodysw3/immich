@@ -1,7 +1,7 @@
 import { Controller, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { Endpoint, HistoryBuilder } from 'src/decorators';
-import { AuthDto } from 'src/dtos/auth.dto';
+import { Endpoint, HistoryBuilder } from 'src/decorators.js';
+import { AuthDto } from 'src/dtos/auth.dto.js';
 import {
   PdfDocumentListResponseDto,
   PdfInDocumentSearchDto,
@@ -13,10 +13,10 @@ import {
   PdfSearchResponseDto,
   PdfDocumentSearchDto,
   PdfPageResponseDto,
-} from 'src/dtos/pdf.dto';
-import { ApiTag, Permission } from 'src/enum';
-import { Auth, Authenticated } from 'src/middleware/auth.guard';
-import { PdfService } from 'src/services/pdf.service';
+} from 'src/dtos/pdf.dto.js';
+import { ApiTag, Permission } from 'src/enum.js';
+import { Auth, Authenticated } from 'src/middleware/auth.guard.js';
+import { PdfService } from 'src/services/pdf.service.js';
 
 @ApiTags(ApiTag.Documents)
 @Controller('documents')

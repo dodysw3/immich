@@ -1,19 +1,19 @@
 import { UnrecoverableError } from 'bullmq';
-import { AiInterpretationDocument, MuseInterpretationResult } from 'src/dtos/ai-image-interpretation.dto';
-import { AssetFileType, JobStatus, QueueName } from 'src/enum';
-import { AiImageInterpretationRepository } from 'src/repositories/ai-image-interpretation.repository';
-import { AssetJobRepository } from 'src/repositories/asset-job.repository';
-import { ConfigRepository } from 'src/repositories/config.repository';
-import { JobRepository } from 'src/repositories/job.repository';
-import { LoggingRepository } from 'src/repositories/logging.repository';
-import { StorageRepository } from 'src/repositories/storage.repository';
-import { SystemMetadataRepository } from 'src/repositories/system-metadata.repository';
-import { UserRepository } from 'src/repositories/user.repository';
+import { AiInterpretationDocument, MuseInterpretationResult } from 'src/dtos/ai-image-interpretation.dto.js';
+import { AssetFileType, JobStatus, QueueName } from 'src/enum.js';
+import { AiImageInterpretationRepository } from 'src/repositories/ai-image-interpretation.repository.js';
+import { AssetJobRepository } from 'src/repositories/asset-job.repository.js';
+import { ConfigRepository } from 'src/repositories/config.repository.js';
+import { JobRepository } from 'src/repositories/job.repository.js';
+import { LoggingRepository } from 'src/repositories/logging.repository.js';
+import { StorageRepository } from 'src/repositories/storage.repository.js';
+import { SystemMetadataRepository } from 'src/repositories/system-metadata.repository.js';
+import { UserRepository } from 'src/repositories/user.repository.js';
 import {
   AiImageInterpretationDiscordClient,
   AiInterpretationDiscordAlertError,
-} from 'src/services/ai-image-interpretation-discord.client';
-import { AiImageInterpretationDiscordService } from 'src/services/ai-image-interpretation-discord.service';
+} from 'src/services/ai-image-interpretation-discord.client.js';
+import { AiImageInterpretationDiscordService } from 'src/services/ai-image-interpretation-discord.service.js';
 
 const runKey = 'a'.repeat(64);
 const result: MuseInterpretationResult = {

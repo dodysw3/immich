@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { Insertable, Kysely, Selectable, sql } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
-import { DummyValue, GenerateSql } from 'src/decorators';
-import { PdfDocumentStatus as PdfDocumentFilterStatus } from 'src/dtos/pdf.dto';
-import { AssetType } from 'src/enum';
-import { DB } from 'src/schema';
-import { PdfDocumentStatus } from 'src/schema/tables/pdf-document.table';
-import { PdfDocumentTable } from 'src/schema/tables/pdf-document.table';
-import { PdfPageTable } from 'src/schema/tables/pdf-page.table';
-import { paginationHelper } from 'src/utils/pagination';
+import { DummyValue, GenerateSql } from 'src/decorators.js';
+import { PdfDocumentStatus as PdfDocumentFilterStatus } from 'src/dtos/pdf.dto.js';
+import { AssetType } from 'src/enum.js';
+import { DB } from 'src/schema/index.js';
+import { PdfDocumentStatus } from 'src/schema/tables/pdf-document.table.js';
+import { PdfDocumentTable } from 'src/schema/tables/pdf-document.table.js';
+import { PdfPageTable } from 'src/schema/tables/pdf-page.table.js';
+import { paginationHelper } from 'src/utils/pagination.js';
 
 type PdfDocumentRow = Selectable<PdfDocumentTable>;
 type PdfPageRow = Selectable<PdfPageTable>;

@@ -1,4 +1,4 @@
-import { AssetTable } from 'src/schema/tables/asset.table';
+import { AssetTable } from 'src/schema/tables/asset.table.js';
 import { Column, ForeignKeyColumn, Index, Table } from '@immich/sql-tools';
 
 @Table('pdf_search')

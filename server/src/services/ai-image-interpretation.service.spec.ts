@@ -2,19 +2,19 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
-import { AiInterpretationDocument } from 'src/dtos/ai-image-interpretation.dto';
-import { AssetFileType, AssetType, AssetVisibility, JobName, JobStatus, QueueName } from 'src/enum';
-import { AiImageInterpretationRepository } from 'src/repositories/ai-image-interpretation.repository';
-import { AssetJobRepository } from 'src/repositories/asset-job.repository';
-import { ConfigRepository } from 'src/repositories/config.repository';
-import { JobRepository } from 'src/repositories/job.repository';
-import { LoggingRepository } from 'src/repositories/logging.repository';
+import { AiInterpretationDocument } from 'src/dtos/ai-image-interpretation.dto.js';
+import { AssetFileType, AssetType, AssetVisibility, JobName, JobStatus, QueueName } from 'src/enum.js';
+import { AiImageInterpretationRepository } from 'src/repositories/ai-image-interpretation.repository.js';
+import { AssetJobRepository } from 'src/repositories/asset-job.repository.js';
+import { ConfigRepository } from 'src/repositories/config.repository.js';
+import { JobRepository } from 'src/repositories/job.repository.js';
+import { LoggingRepository } from 'src/repositories/logging.repository.js';
 import {
   AiImageInterpretationClient,
   AiImageInterpretationClientError,
-} from 'src/services/ai-image-interpretation.client';
-import { AiImageInterpretationService } from 'src/services/ai-image-interpretation.service';
-import { AssetFactory } from 'test/factories/asset.factory';
+} from 'src/services/ai-image-interpretation.client.js';
+import { AiImageInterpretationService } from 'src/services/ai-image-interpretation.service.js';
+import { AssetFactory } from 'test/factories/asset.factory.js';
 import { describe, expect, it, vi } from 'vitest';
 
 const runKey = 'a'.repeat(64);

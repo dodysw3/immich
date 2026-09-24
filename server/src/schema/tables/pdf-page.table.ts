@@ -1,4 +1,4 @@
-import { PdfDocumentTable } from 'src/schema/tables/pdf-document.table';
+import { PdfDocumentTable } from 'src/schema/tables/pdf-document.table.js';
 import { Column, ForeignKeyColumn, Generated, Index, PrimaryGeneratedColumn, Table } from '@immich/sql-tools';
 
 export type PdfTextSource = 'embedded' | 'ocr' | 'none';

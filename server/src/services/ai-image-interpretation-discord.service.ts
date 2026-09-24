@@ -2,27 +2,27 @@ import { Injectable } from '@nestjs/common';
 import { UnrecoverableError } from 'bullmq';
 import { DateTime } from 'luxon';
 import { setTimeout } from 'node:timers/promises';
-import { AssetFile } from 'src/database';
-import { OnJob } from 'src/decorators';
-import { AssetFileType, JobName, JobStatus, QueueName } from 'src/enum';
-import { AiImageInterpretationRepository } from 'src/repositories/ai-image-interpretation.repository';
-import { AssetJobRepository } from 'src/repositories/asset-job.repository';
-import { ConfigRepository } from 'src/repositories/config.repository';
-import { JobRepository } from 'src/repositories/job.repository';
-import { LoggingRepository } from 'src/repositories/logging.repository';
-import { StorageRepository } from 'src/repositories/storage.repository';
-import { SystemMetadataRepository } from 'src/repositories/system-metadata.repository';
-import { UserRepository } from 'src/repositories/user.repository';
+import { AssetFile } from 'src/database.js';
+import { OnJob } from 'src/decorators.js';
+import { AssetFileType, JobName, JobStatus, QueueName } from 'src/enum.js';
+import { AiImageInterpretationRepository } from 'src/repositories/ai-image-interpretation.repository.js';
+import { AssetJobRepository } from 'src/repositories/asset-job.repository.js';
+import { ConfigRepository } from 'src/repositories/config.repository.js';
+import { JobRepository } from 'src/repositories/job.repository.js';
+import { LoggingRepository } from 'src/repositories/logging.repository.js';
+import { StorageRepository } from 'src/repositories/storage.repository.js';
+import { SystemMetadataRepository } from 'src/repositories/system-metadata.repository.js';
+import { UserRepository } from 'src/repositories/user.repository.js';
 import {
   AiImageInterpretationDiscordClient,
   AiInterpretationDiscordAlertError,
   AiInterpretationDiscordThumbnail,
-} from 'src/services/ai-image-interpretation-discord.client';
-import { JobOf } from 'src/types';
-import { getAssetFile } from 'src/utils/asset.util';
-import { getConfig } from 'src/utils/config';
-import { getFilenameExtension } from 'src/utils/file';
-import { mimeTypes } from 'src/utils/mime-types';
+} from 'src/services/ai-image-interpretation-discord.client.js';
+import { JobOf } from 'src/types.js';
+import { getAssetFile } from 'src/utils/asset.util.js';
+import { getConfig } from 'src/utils/config.js';
+import { getFilenameExtension } from 'src/utils/file.js';
+import { mimeTypes } from 'src/utils/mime-types.js';
 
 const SUPPORTED_THUMBNAIL_TYPES = new Set<AiInterpretationDiscordThumbnail['contentType']>([
   'image/gif',

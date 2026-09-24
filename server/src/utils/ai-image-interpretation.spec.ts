@@ -7,7 +7,7 @@ import {
   AI_INTERPRETATION_RETRY_MAX_MS,
   createAiInterpretationRunKey,
   interpretationRetryDelayMs,
-} from 'src/utils/ai-image-interpretation';
+} from 'src/utils/ai-image-interpretation.js';
 
 describe('AI image interpretation contract', () => {
   it('derives a stable run key from the exact tuple', () => {

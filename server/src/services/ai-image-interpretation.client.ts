@@ -3,14 +3,14 @@ import {
   MUSE_RESULT_JSON_SCHEMA,
   MuseInterpretationResult,
   MuseInterpretationResultSchema,
-} from 'src/dtos/ai-image-interpretation.dto';
-import { ConfigRepository } from 'src/repositories/config.repository';
-import { LoggingRepository } from 'src/repositories/logging.repository';
+} from 'src/dtos/ai-image-interpretation.dto.js';
+import { ConfigRepository } from 'src/repositories/config.repository.js';
+import { LoggingRepository } from 'src/repositories/logging.repository.js';
 import {
   AI_IMAGE_INTERPRETATION_MAX_OUTPUT_TOKENS,
   AI_IMAGE_INTERPRETATION_PROMPT,
   AI_IMAGE_INTERPRETATION_SCHEMA_INSTRUCTION,
-} from 'src/utils/ai-image-interpretation';
+} from 'src/utils/ai-image-interpretation.js';
 import { Agent, fetch as undiciFetch } from 'undici';
 
 type CompletionResponse = {
