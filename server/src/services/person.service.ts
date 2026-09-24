@@ -187,6 +187,7 @@ export class PersonService extends BaseService {
       page: dto.page,
       limit: dto.limit,
       order: dto.order,
+      ownerId: auth.user.id,
     });
 
     if (items.length === 0) {

@@ -67,7 +67,7 @@
   let thumbnailData = $derived(getPeopleThumbnailUrl(person));
 
   let timelineManager = $state<TimelineManager>() as TimelineManager;
-  const options = $derived({ personId: data.person.id, withPartners: true });
+  const options = $derived({ personId: data.person.id });
 
   let viewMode: PersonPageViewMode = $state(PersonPageViewMode.VIEW_ASSETS);
   let isEditingName = $state(false);

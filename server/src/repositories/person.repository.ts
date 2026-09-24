@@ -941,12 +941,12 @@ export class PersonRepository {
       .executeTakeFirst();
   }
 
-  @GenerateSql({ params: [DummyValue.UUID, { page: 1, limit: 20, order: 'desc' as const }] })
+  @GenerateSql({ params: [DummyValue.UUID, { page: 1, limit: 20, order: 'desc' as const, ownerId: DummyValue.UUID }] })
   async getPersonAssets(
     personGroupId: string,
-    options: { page: number; limit: number; order: 'asc' | 'desc' },
+    options: { page: number; limit: number; order: 'asc' | 'desc'; ownerId: string },
   ): Promise<{ items: { id: string; recognizedAt: Date }[]; total: number }> {
-    const { page, limit, order } = options;
+    const { page, limit, order, ownerId } = options;
     const offset = (page - 1) * limit;
 
     const countResult = await this.db
@@ -961,6 +961,7 @@ export class PersonRepository {
       .where('asset_face.personGroupId', '=', personGroupId)
       .where('asset_face.deletedAt', 'is', null)
       .where('asset_face.isVisible', 'is', true)
+      .where('asset.ownerId', '=', ownerId)
       .executeTakeFirst();
 
     const total = Number(countResult?.count ?? 0);
@@ -981,6 +982,7 @@ export class PersonRepository {
       .where('asset_face.personGroupId', '=', personGroupId)
       .where('asset_face.deletedAt', 'is', null)
       .where('asset_face.isVisible', 'is', true)
+      .where('asset.ownerId', '=', ownerId)
       .groupBy('asset.id')
       .orderBy(sql`max(asset_face."updatedAt")`, order)
       .limit(limit)
