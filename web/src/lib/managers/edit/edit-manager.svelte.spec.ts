@@ -97,7 +97,7 @@ describe('EditManager.applyInstantRotate', () => {
     expect(mocks.getAssetEdits).toHaveBeenCalledWith({ id: asset.id });
     expect(mocks.editAsset).toHaveBeenCalledWith({
       id: asset.id,
-      assetEditActionListDto: {
+      assetEditsCreateDto: {
         edits: [
           { action: 'crop', parameters: { x: 0, y: 0, width: 100, height: 100 } },
           { action: 'rotate', parameters: { angle: 270 } },
@@ -144,7 +144,7 @@ describe('EditManager.applyInstantRotate', () => {
     expect(result).toBe(true);
     expect(mocks.editAsset).toHaveBeenCalledWith({
       id: asset.id,
-      assetEditActionListDto: {
+      assetEditsCreateDto: {
         edits: [{ action: 'rotate', parameters: { angle: 180 } }],
       },
     });

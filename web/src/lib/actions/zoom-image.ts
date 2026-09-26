@@ -39,6 +39,7 @@ export const zoomImageAction = (node: HTMLElement, options?: ZoomImageActionOpti
   const { signal } = controller;
 
   node.addEventListener('pointerdown', () => assetViewerManager.cancelZoomAnimation(), { capture: true, signal });
+  node.addEventListener('touchstart', () => assetViewerManager.cancelZoomAnimation(), { capture: true, signal, passive: true });
 
   const isOverlayEvent = (event: Event) =>
     !!(event.target as HTMLElement).closest('[data-overlay-interactive]') || matchesIgnoreSelector(event.target, options);

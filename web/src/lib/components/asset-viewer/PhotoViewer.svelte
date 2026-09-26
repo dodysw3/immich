@@ -96,12 +96,9 @@
     const referenceLabels = faceManager.faceReferenceLabels;
 
     if (faceOverlayStore.showOverlay) {
-      const allFaces = faceManager.data.filter((face) => {
-        if (face.person?.isHidden && !assetViewerManager.isShowingHiddenPeople) {
-          return false;
-        }
-        return true;
-      });
+      const allFaces = faceManager.data.filter(
+        (face) => !face.person?.isHidden || assetViewerManager.isShowingHiddenPeople,
+      );
       const boxes = getBoundingBox(allFaces, overlaySize);
       return boxes.map((box, index) => ({
         ...box,
@@ -322,7 +319,7 @@
               style="top: {boundingbox.height}px;"
             >
               <div
-                class="flex-none max-w-full rounded-b bg-black/50 px-1 py-0.5 text-center text-white {label.wrap ? '' : 'whitespace-nowrap'}"
+                class="max-w-full flex-none rounded-b bg-black/50 px-1 py-0.5 text-center text-white {label.wrap ? '' : 'whitespace-nowrap'}"
                 style="width: {boundingbox.width}px; font-size: {label.fontSize}px;"
               >
                 {displayLabel ?? '…'}
