@@ -1,7 +1,51 @@
 import { Matrix, applyToPoint, compose, flipX, flipY, identity, rotate, scale, translate } from 'transformation-matrix';
 import type { ImageDimensions } from 'src/types.js';
-import { AssetEditAction, AssetEditActionItem } from 'src/dtos/editing.dto.js';
+import { AssetEditAction, AssetEditActionItem, MirrorAxis } from 'src/dtos/editing.dto.js';
 import { AssetOcrResponseDto } from 'src/dtos/ocr.dto.js';
+
+/**
+ * Edit chain that maps coordinates from the raw stored image (as decoded by the ML service,
+ * which ignores EXIF orientation) into the oriented image, using the same operations as the
+ * thumbnail pipeline's ORIENTATION_TO_SHARP_ROTATION table. Note the fork's mirror convention:
+ * axis 'horizontal' mirrors left-right (flop), axis 'vertical' mirrors top-bottom (flip).
+ */
+export const exifOrientationToEdits = (orientation: number | null | undefined): AssetEditActionItem[] => {
+  switch (orientation) {
+    case 2: {
+      return [{ action: AssetEditAction.Mirror, parameters: { axis: MirrorAxis.Horizontal } }];
+    }
+    case 3: {
+      return [{ action: AssetEditAction.Rotate, parameters: { angle: 180 } }];
+    }
+    case 4: {
+      return [
+        { action: AssetEditAction.Rotate, parameters: { angle: 180 } },
+        { action: AssetEditAction.Mirror, parameters: { axis: MirrorAxis.Horizontal } },
+      ];
+    }
+    case 5: {
+      return [
+        { action: AssetEditAction.Rotate, parameters: { angle: 270 } },
+        { action: AssetEditAction.Mirror, parameters: { axis: MirrorAxis.Vertical } },
+      ];
+    }
+    case 6: {
+      return [{ action: AssetEditAction.Rotate, parameters: { angle: 90 } }];
+    }
+    case 7: {
+      return [
+        { action: AssetEditAction.Rotate, parameters: { angle: 90 } },
+        { action: AssetEditAction.Mirror, parameters: { axis: MirrorAxis.Vertical } },
+      ];
+    }
+    case 8: {
+      return [{ action: AssetEditAction.Rotate, parameters: { angle: 270 } }];
+    }
+    default: {
+      return [];
+    }
+  }
+};
 
 export const getOutputDimensions = (
   edits: AssetEditActionItem[],

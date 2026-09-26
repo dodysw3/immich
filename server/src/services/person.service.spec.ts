@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { BulkIdErrorReason } from 'src/dtos/asset-ids.response.dto.js';
+import { AssetEditAction, MirrorAxis } from 'src/dtos/editing.dto.js';
 import { mapFaces, mapPerson } from 'src/dtos/person.dto.js';
 import { AssetFileType, CacheControl, JobName, JobStatus, SourceType, SystemMetadataKey } from 'src/enum.js';
 import { PersonService } from 'src/services/person.service.js';
@@ -910,6 +911,304 @@ describe(PersonService.name, () => {
       mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
       await sut.handleDetectFaces({ id: asset.id });
       expect(mocks.machineLearning.detectFaces).not.toHaveBeenCalled();
+    });
+
+    it('should run the tiled pass and merge duplicate detections', async () => {
+      mocks.systemMetadata.get.mockResolvedValue({
+        machineLearning: { facialRecognition: { tiling: { enabled: true, triggers: { minPass1Faces: 1 } } } },
+      });
+      const asset = AssetFactory.from()
+        .file({ type: AssetFileType.Preview })
+        .exif({ exifImageWidth: 4000, exifImageHeight: 3000 })
+        .build();
+      const face = AssetFaceFactory.create({ assetId: asset.id });
+      mocks.crypto.randomUUID.mockReturnValue(face.id);
+      mocks.machineLearning.detectFaces.mockResolvedValue({
+        imageHeight: 300,
+        imageWidth: 400,
+        gpuFallback: false,
+        faces: [{ boundingBox: { x1: 100, y1: 100, x2: 200, y2: 200 }, embedding: '[1, 2, 3, 4]', score: 0.9 }],
+      });
+      // same face as pass 1, scaled to the tiled source resolution
+      mocks.machineLearning.detectFacesTiled.mockResolvedValue({
+        imageHeight: 1500,
+        imageWidth: 2000,
+        faces: [{ boundingBox: { x1: 500, y1: 500, x2: 1000, y2: 1000 }, embedding: '[1, 2, 3, 4]', score: 0.8 }],
+      });
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
+      mocks.person.refreshFaces.mockResolvedValue();
+
+      await sut.handleDetectFaces({ id: asset.id });
+
+      expect(mocks.machineLearning.detectFacesTiled).toHaveBeenCalledWith(
+        asset.originalPath,
+        expect.objectContaining({ minScore: 0.7, modelName: 'buffalo_l' }),
+      );
+      expect(mocks.person.refreshFaces).toHaveBeenCalledWith(
+        [expect.objectContaining({ id: face.id, assetId: asset.id })],
+        [],
+        [{ faceId: face.id, embedding: '[1, 2, 3, 4]' }],
+      );
+    });
+
+    it('should map tiled detections through rotate edits and merge duplicates', async () => {
+      mocks.systemMetadata.get.mockResolvedValue({
+        machineLearning: { facialRecognition: { tiling: { enabled: true, triggers: { minPass1Faces: 1 } } } },
+      });
+      const asset = AssetFactory.from()
+        .file({ type: AssetFileType.Preview })
+        .exif({ exifImageWidth: 1600, exifImageHeight: 2400 })
+        .edit({ action: AssetEditAction.Rotate, parameters: { angle: 90 } })
+        .build();
+      const face = AssetFaceFactory.create({ assetId: asset.id });
+      mocks.crypto.randomUUID.mockReturnValue(face.id);
+      // pass 1 runs on the edited (rotated) preview
+      mocks.machineLearning.detectFaces.mockResolvedValue({
+        imageHeight: 1600,
+        imageWidth: 2400,
+        gpuFallback: false,
+        faces: [{ boundingBox: { x1: 500, y1: 200, x2: 800, y2: 400 }, embedding: '[1, 2, 3, 4]', score: 0.9 }],
+      });
+      // pass 2 runs on the raw portrait original; the same face in raw coordinates
+      mocks.machineLearning.detectFacesTiled.mockResolvedValue({
+        imageHeight: 2400,
+        imageWidth: 1600,
+        faces: [{ boundingBox: { x1: 200, y1: 1600, x2: 400, y2: 1900 }, embedding: '[1, 2, 3, 4]', score: 0.8 }],
+      });
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
+      mocks.person.refreshFaces.mockResolvedValue();
+
+      await sut.handleDetectFaces({ id: asset.id });
+
+      expect(mocks.machineLearning.detectFacesTiled).toHaveBeenCalledWith(
+        asset.originalPath,
+        expect.objectContaining({ minScore: 0.7, modelName: 'buffalo_l' }),
+      );
+      // both passes found the same face, so it must be merged into one
+      expect(mocks.person.refreshFaces).toHaveBeenCalledWith(
+        [expect.objectContaining({ id: face.id, assetId: asset.id })],
+        [],
+        [{ faceId: face.id, embedding: '[1, 2, 3, 4]' }],
+      );
+    });
+
+    it('should map tiled detections through mirror edits and merge duplicates', async () => {
+      mocks.systemMetadata.get.mockResolvedValue({
+        machineLearning: { facialRecognition: { tiling: { enabled: true, triggers: { minPass1Faces: 1 } } } },
+      });
+      const asset = AssetFactory.from()
+        .file({ type: AssetFileType.Preview })
+        .exif({ exifImageWidth: 2400, exifImageHeight: 1600 })
+        .edit({ action: AssetEditAction.Mirror, parameters: { axis: MirrorAxis.Horizontal } })
+        .build();
+      const face = AssetFaceFactory.create({ assetId: asset.id });
+      mocks.crypto.randomUUID.mockReturnValue(face.id);
+      mocks.machineLearning.detectFaces.mockResolvedValue({
+        imageHeight: 1600,
+        imageWidth: 2400,
+        gpuFallback: false,
+        faces: [{ boundingBox: { x1: 600, y1: 200, x2: 900, y2: 500 }, embedding: '[1, 2, 3, 4]', score: 0.9 }],
+      });
+      mocks.machineLearning.detectFacesTiled.mockResolvedValue({
+        imageHeight: 1600,
+        imageWidth: 2400,
+        faces: [{ boundingBox: { x1: 1500, y1: 200, x2: 1800, y2: 500 }, embedding: '[1, 2, 3, 4]', score: 0.8 }],
+      });
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
+      mocks.person.refreshFaces.mockResolvedValue();
+
+      await sut.handleDetectFaces({ id: asset.id });
+
+      expect(mocks.person.refreshFaces).toHaveBeenCalledWith(
+        [expect.objectContaining({ id: face.id, assetId: asset.id })],
+        [],
+        [{ faceId: face.id, embedding: '[1, 2, 3, 4]' }],
+      );
+    });
+
+    it('should apply exif orientation to tiled detections of unedited rotated photos', async () => {
+      mocks.systemMetadata.get.mockResolvedValue({
+        machineLearning: { facialRecognition: { tiling: { enabled: true, triggers: { minPass1Faces: 1 } } } },
+      });
+      const asset = AssetFactory.from()
+        .file({ type: AssetFileType.Preview })
+        .exif({ exifImageWidth: 2400, exifImageHeight: 1600, orientation: '6' })
+        .build();
+      const face = AssetFaceFactory.create({ assetId: asset.id });
+      mocks.crypto.randomUUID.mockReturnValue(face.id);
+      // the preview is rendered orientation-applied (portrait)
+      mocks.machineLearning.detectFaces.mockResolvedValue({
+        imageHeight: 2400,
+        imageWidth: 1600,
+        gpuFallback: false,
+        faces: [{ boundingBox: { x1: 1100, y1: 1900, x2: 1400, y2: 2200 }, embedding: '[1, 2, 3, 4]', score: 0.9 }],
+      });
+      // pass 2 decodes the raw landscape pixels
+      mocks.machineLearning.detectFacesTiled.mockResolvedValue({
+        imageHeight: 1600,
+        imageWidth: 2400,
+        faces: [{ boundingBox: { x1: 1900, y1: 200, x2: 2200, y2: 500 }, embedding: '[1, 2, 3, 4]', score: 0.8 }],
+      });
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
+      mocks.person.refreshFaces.mockResolvedValue();
+
+      await sut.handleDetectFaces({ id: asset.id });
+
+      expect(mocks.person.refreshFaces).toHaveBeenCalledWith(
+        [expect.objectContaining({ id: face.id, assetId: asset.id })],
+        [],
+        [{ faceId: face.id, embedding: '[1, 2, 3, 4]' }],
+      );
+    });
+
+    it('should run the tiled pass on the fullsize file of non-decodable edited assets', async () => {
+      mocks.systemMetadata.get.mockResolvedValue({
+        machineLearning: { facialRecognition: { tiling: { enabled: true, triggers: { minPass1Faces: 1 } } } },
+      });
+      const asset = AssetFactory.from({ originalFileName: 'IMG_1.nef' })
+        .file({ type: AssetFileType.Preview })
+        .file({ type: AssetFileType.FullSize })
+        .exif({ exifImageWidth: 1600, exifImageHeight: 2400 })
+        .edit({ action: AssetEditAction.Rotate, parameters: { angle: 90 } })
+        .build();
+      const face = AssetFaceFactory.create({ assetId: asset.id });
+      mocks.crypto.randomUUID.mockReturnValue(face.id);
+      const fullsizePath = asset.files.find((file) => file.type === AssetFileType.FullSize)!.path;
+      mocks.machineLearning.detectFaces.mockResolvedValue({
+        imageHeight: 1600,
+        imageWidth: 2400,
+        gpuFallback: false,
+        faces: [{ boundingBox: { x1: 500, y1: 200, x2: 800, y2: 400 }, embedding: '[1, 2, 3, 4]', score: 0.9 }],
+      });
+      mocks.machineLearning.detectFacesTiled.mockResolvedValue({
+        imageHeight: 2400,
+        imageWidth: 1600,
+        faces: [{ boundingBox: { x1: 200, y1: 1600, x2: 400, y2: 1900 }, embedding: '[1, 2, 3, 4]', score: 0.8 }],
+      });
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
+      mocks.person.refreshFaces.mockResolvedValue();
+
+      await sut.handleDetectFaces({ id: asset.id });
+
+      expect(mocks.machineLearning.detectFacesTiled).toHaveBeenCalledWith(
+        fullsizePath,
+        expect.objectContaining({ minScore: 0.7, modelName: 'buffalo_l' }),
+      );
+      expect(mocks.person.refreshFaces).toHaveBeenCalledWith(
+        [expect.objectContaining({ id: face.id, assetId: asset.id })],
+        [],
+        [{ faceId: face.id, embedding: '[1, 2, 3, 4]' }],
+      );
+    });
+
+    it('should prefer the edited fullsize render for edited assets', async () => {
+      mocks.systemMetadata.get.mockResolvedValue({
+        machineLearning: { facialRecognition: { tiling: { enabled: true, triggers: { minPass1Faces: 1 } } } },
+      });
+      const asset = AssetFactory.from()
+        .file({ type: AssetFileType.Preview })
+        .file({ type: AssetFileType.FullSize, isEdited: true })
+        .exif({ exifImageWidth: 1600, exifImageHeight: 2400 })
+        .edit({ action: AssetEditAction.Rotate, parameters: { angle: 90 } })
+        .build();
+      const face = AssetFaceFactory.create({ assetId: asset.id });
+      mocks.crypto.randomUUID.mockReturnValue(face.id);
+      const editedFullsizePath = asset.files.find((file) => file.type === AssetFileType.FullSize)!.path;
+      mocks.machineLearning.detectFaces.mockResolvedValue({
+        imageHeight: 1600,
+        imageWidth: 2400,
+        gpuFallback: false,
+        faces: [{ boundingBox: { x1: 500, y1: 200, x2: 800, y2: 400 }, embedding: '[1, 2, 3, 4]', score: 0.9 }],
+      });
+      // the edited fullsize render is upright and at twice the preview resolution
+      mocks.machineLearning.detectFacesTiled.mockResolvedValue({
+        imageHeight: 3200,
+        imageWidth: 4800,
+        faces: [{ boundingBox: { x1: 1000, y1: 400, x2: 1600, y2: 800 }, embedding: '[1, 2, 3, 4]', score: 0.8 }],
+      });
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
+      mocks.person.refreshFaces.mockResolvedValue();
+
+      await sut.handleDetectFaces({ id: asset.id });
+
+      expect(mocks.machineLearning.detectFacesTiled).toHaveBeenCalledWith(
+        editedFullsizePath,
+        expect.objectContaining({ minScore: 0.7, modelName: 'buffalo_l' }),
+      );
+      expect(mocks.person.refreshFaces).toHaveBeenCalledWith(
+        [expect.objectContaining({ id: face.id, assetId: asset.id })],
+        [],
+        [{ faceId: face.id, embedding: '[1, 2, 3, 4]' }],
+      );
+    });
+
+    it('should store detected faces in original-image space for edited assets', async () => {
+      const asset = AssetFactory.from()
+        .file({ type: AssetFileType.Preview })
+        .exif({ exifImageWidth: 1600, exifImageHeight: 2400 })
+        .edit({ action: AssetEditAction.Rotate, parameters: { angle: 90 } })
+        .build();
+      const face = AssetFaceFactory.create({ assetId: asset.id });
+      mocks.crypto.randomUUID.mockReturnValue(face.id);
+      mocks.machineLearning.detectFaces.mockResolvedValue({
+        imageHeight: 1600,
+        imageWidth: 2400,
+        gpuFallback: false,
+        faces: [{ boundingBox: { x1: 500, y1: 200, x2: 800, y2: 400 }, embedding: '[1, 2, 3, 4]', score: 0.9 }],
+      });
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
+      mocks.person.refreshFaces.mockResolvedValue();
+
+      await sut.handleDetectFaces({ id: asset.id });
+
+      expect(mocks.person.refreshFaces).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({
+            id: face.id,
+            assetId: asset.id,
+            boundingBoxX1: 200,
+            boundingBoxY1: 1600,
+            boundingBoxX2: 400,
+            boundingBoxY2: 1900,
+            imageWidth: 1600,
+            imageHeight: 2400,
+          }),
+        ],
+        [],
+        [{ faceId: face.id, embedding: '[1, 2, 3, 4]' }],
+      );
+    });
+
+    it('should match faces stored in original-image space across runs', async () => {
+      const asset = AssetFactory.from()
+        .file({ type: AssetFileType.Preview })
+        .exif({ exifImageWidth: 1600, exifImageHeight: 2400 })
+        .edit({ action: AssetEditAction.Rotate, parameters: { angle: 90 } })
+        .face({
+          boundingBoxX1: 200,
+          boundingBoxY1: 1600,
+          boundingBoxX2: 400,
+          boundingBoxY2: 1900,
+          imageWidth: 1600,
+          imageHeight: 2400,
+        })
+        .build();
+      // stored by a previous run: same face, but in original-image space
+      const face = asset.faces[0];
+      mocks.machineLearning.detectFaces.mockResolvedValue({
+        imageHeight: 1600,
+        imageWidth: 2400,
+        gpuFallback: false,
+        faces: [{ boundingBox: { x1: 500, y1: 200, x2: 800, y2: 400 }, embedding: '[1, 2, 3, 4]', score: 0.9 }],
+      });
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
+      mocks.person.refreshFaces.mockResolvedValue();
+
+      await sut.handleDetectFaces({ id: asset.id });
+
+      // the face is matched and kept untouched: no adds, no removals, no re-embedding
+      expect(mocks.person.refreshFaces).not.toHaveBeenCalled();
+      expect(face.id).toBeDefined();
     });
 
     it('should handle no results', async () => {

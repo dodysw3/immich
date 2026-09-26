@@ -7,6 +7,7 @@ import { Chunked, OnJob } from 'src/decorators.js';
 import { BulkIdErrorReason, BulkIdResponseDto, BulkIdsDto } from 'src/dtos/asset-ids.response.dto.js';
 import { mapAsset } from 'src/dtos/asset-response.dto.js';
 import { AuthDto } from 'src/dtos/auth.dto.js';
+import { AssetEditActionItem } from 'src/dtos/editing.dto.js';
 import { PersonAssetsDto, PersonAssetsResponseDto } from 'src/dtos/person-assets.dto.js';
 import {
   AssetFaceCreateDto,
@@ -50,7 +51,13 @@ import { asDateString } from 'src/utils/date.js';
 import { ImmichFileResponse } from 'src/utils/file.js';
 import { mimeTypes } from 'src/utils/mime-types.js';
 import { batched, findOrFail, isFacialRecognitionEnabled } from 'src/utils/misc.js';
-import { Point, transformPoints } from 'src/utils/transform.js';
+import {
+  Point,
+  exifOrientationToEdits,
+  getOutputDimensions,
+  transformFaceBoundingBox,
+  transformPoints,
+} from 'src/utils/transform.js';
 
 const personKey = ({ ownerId, personGroupId }: PersonId) => `${ownerId}/${personGroupId}`;
 
@@ -391,7 +398,7 @@ export class PersonService extends BaseService {
       if (sourceFile) {
         try {
           const pass2Start = Date.now();
-          const pass2 = await this.machineLearningRepository.detectFacesTiled(sourceFile, {
+          const pass2 = await this.machineLearningRepository.detectFacesTiled(sourceFile.path, {
             modelName: machineLearning.facialRecognition.modelName,
             minScore: machineLearning.facialRecognition.minScore,
             tileSize: tiling.tileSize,
@@ -400,20 +407,13 @@ export class PersonService extends BaseService {
           });
           const pass2Ms = Date.now() - pass2Start;
           this.logger.debug(
-            `Pass 2 (tiled): ${pass2.faces.length} faces from ${sourceFile} in ${pass2Ms}ms for asset ${id}`,
+            `Pass 2 (tiled): ${pass2.faces.length} faces from ${sourceFile.path} in ${pass2Ms}ms for asset ${id}`,
           );
 
-          const sx = imageWidth / pass2.imageWidth;
-          const sy = imageHeight / pass2.imageHeight;
-          const scaledPass2 = pass2.faces.map((face) => ({
-            ...face,
-            boundingBox: {
-              x1: Math.round(face.boundingBox.x1 * sx),
-              y1: Math.round(face.boundingBox.y1 * sy),
-              x2: Math.round(face.boundingBox.x2 * sx),
-              y2: Math.round(face.boundingBox.y2 * sy),
-            },
-          }));
+          const scaledPass2 = this.mapTiledFaces(pass2.faces, pass2, asset, sourceFile.kind, {
+            imageWidth,
+            imageHeight,
+          });
 
           faces = this.mergeFaces([...pass1.faces, ...scaledPass2], 0.5);
           this.logger.debug(
@@ -435,9 +435,6 @@ export class PersonService extends BaseService {
       }
     }
 
-    const heightScale = imageHeight / (asset.faces[0]?.imageHeight || 1);
-    const widthScale = imageWidth / (asset.faces[0]?.imageWidth || 1);
-
     const minFaceSize = machineLearning.facialRecognition.minFaceSize;
     const beforeFilter = faces.length;
     faces = faces.filter(
@@ -448,14 +445,33 @@ export class PersonService extends BaseService {
       this.logger.log(`Filtered out ${filteredCount} undersized faces (min dimension < ${minFaceSize}) in asset ${id}`);
     }
 
-    for (const { boundingBox, embedding } of faces) {
-      const scaledBox = {
-        x1: boundingBox.x1 * widthScale,
-        y1: boundingBox.y1 * heightScale,
-        x2: boundingBox.x2 * widthScale,
-        y2: boundingBox.y2 * heightScale,
-      };
-      const match = asset.faces.find((face) => this.iou(face, scaledBox) > 0.5);
+    // convert detected boxes from detection (edited preview) space into storage space
+    // (original-image space) before matching and storing
+    const { faces: storedFaces, dimensions: storageDims } = this.toStorageSpace(
+      faces,
+      { imageWidth, imageHeight },
+      asset,
+    );
+
+    for (const { boundingBox, embedding } of storedFaces) {
+      // compare in normalized coordinates: legacy rows may be stored in an older rescaling
+      // of the same geometry
+      const match = asset.faces.find((face) => {
+        const faceWidth = face.imageWidth || storageDims.width;
+        const faceHeight = face.imageHeight || storageDims.height;
+        return (
+          this.iou(
+            {
+              ...face,
+              boundingBoxX1: (face.boundingBoxX1 * storageDims.width) / faceWidth,
+              boundingBoxY1: (face.boundingBoxY1 * storageDims.height) / faceHeight,
+              boundingBoxX2: (face.boundingBoxX2 * storageDims.width) / faceWidth,
+              boundingBoxY2: (face.boundingBoxY2 * storageDims.height) / faceHeight,
+            },
+            boundingBox,
+          ) > 0.5
+        );
+      });
 
       if (match && !mlFaceIds.delete(match.id)) {
         embeddings.push({ faceId: match.id, embedding });
@@ -464,8 +480,8 @@ export class PersonService extends BaseService {
         facesToAdd.push({
           id: faceId,
           assetId: asset.id,
-          imageHeight,
-          imageWidth,
+          imageWidth: storageDims.width,
+          imageHeight: storageDims.height,
           boundingBoxX1: boundingBox.x1,
           boundingBoxY1: boundingBox.y1,
           boundingBoxX2: boundingBox.x2,
@@ -514,6 +530,154 @@ export class PersonService extends BaseService {
     return intersection / union;
   }
 
+  /**
+   * Maps tiled pass-2 detections from the tiled source file's coordinate space into the
+   * edited preview space that pass 1 (and the stored faces) use, so that mergeFaces can
+   * dedupe a face found by both passes.
+   */
+  private mapTiledFaces(
+    faces: Face[],
+    tiled: { imageWidth: number; imageHeight: number },
+    asset: {
+      edits: AssetEditActionItem[];
+      exifInfo?: {
+        orientation?: string | null;
+        exifImageWidth?: number | null;
+        exifImageHeight?: number | null;
+      } | null;
+    },
+    source: 'edited-fullsize' | 'original' | 'fullsize',
+    preview: { imageWidth: number; imageHeight: number },
+  ): Face[] {
+    // boxes on the raw original still need EXIF orientation applied (the ML service decodes
+    // with PIL, which ignores it); a server-rendered fullsize file is already oriented, and
+    // the edited fullsize render needs nothing at all
+    const exif = {
+      orientation: asset.exifInfo?.orientation ?? null,
+      exifImageWidth: asset.exifInfo?.exifImageWidth ?? null,
+      exifImageHeight: asset.exifInfo?.exifImageHeight ?? null,
+    };
+    const chain =
+      source === 'original'
+        ? [...exifOrientationToEdits(Number(exif.orientation)), ...asset.edits]
+        : source === 'fullsize'
+          ? [...asset.edits]
+          : [];
+
+    if (chain.length === 0) {
+      const sx = preview.imageWidth / tiled.imageWidth;
+      const sy = preview.imageHeight / tiled.imageHeight;
+      return faces.map((face) => ({
+        ...face,
+        boundingBox: {
+          x1: Math.round(face.boundingBox.x1 * sx),
+          y1: Math.round(face.boundingBox.y1 * sy),
+          x2: Math.round(face.boundingBox.x2 * sx),
+          y2: Math.round(face.boundingBox.y2 * sy),
+        },
+      }));
+    }
+
+    // space the chain is defined in: raw stored dimensions for the original,
+    // oriented dimensions for a rendered fullsize file
+    const baseDimensions =
+      source === 'original'
+        ? { width: exif.exifImageWidth ?? 0, height: exif.exifImageHeight ?? 0 }
+        : getDimensions(exif);
+
+    if (baseDimensions.width <= 0 || baseDimensions.height <= 0) {
+      this.logger.warn('Cannot map tiled face detections without valid asset dimensions, skipping them');
+      return [];
+    }
+
+    return faces.map((face) => {
+      const mapped = transformFaceBoundingBox(
+        {
+          boundingBoxX1: face.boundingBox.x1,
+          boundingBoxY1: face.boundingBox.y1,
+          boundingBoxX2: face.boundingBox.x2,
+          boundingBoxY2: face.boundingBox.y2,
+          imageWidth: tiled.imageWidth,
+          imageHeight: tiled.imageHeight,
+        },
+        chain,
+        baseDimensions,
+      );
+      const sx = preview.imageWidth / mapped.imageWidth;
+      const sy = preview.imageHeight / mapped.imageHeight;
+      return {
+        ...face,
+        boundingBox: {
+          x1: Math.round(mapped.boundingBoxX1 * sx),
+          y1: Math.round(mapped.boundingBoxY1 * sy),
+          x2: Math.round(mapped.boundingBoxX2 * sx),
+          y2: Math.round(mapped.boundingBoxY2 * sy),
+        },
+      };
+    });
+  }
+
+  /**
+   * Converts detected boxes from detection (edited preview) space into storage space:
+   * original-image space, matching manual faces and the edit chain that API responses
+   * (forward transform) and person thumbnail crops (from the original file) apply to
+   * stored boxes.
+   */
+  private toStorageSpace(
+    faces: Face[],
+    detection: { imageWidth: number; imageHeight: number },
+    asset: {
+      edits: AssetEditActionItem[];
+      exifInfo?: {
+        orientation?: string | null;
+        exifImageWidth?: number | null;
+        exifImageHeight?: number | null;
+      } | null;
+    },
+  ): { faces: Face[]; dimensions: { width: number; height: number } } {
+    const exif = {
+      orientation: asset.exifInfo?.orientation ?? null,
+      exifImageWidth: asset.exifInfo?.exifImageWidth ?? null,
+      exifImageHeight: asset.exifInfo?.exifImageHeight ?? null,
+    };
+    const originalDimensions = getDimensions(exif);
+    if (originalDimensions.width <= 0 || originalDimensions.height <= 0) {
+      // no usable exif dimensions: keep boxes in detection space
+      return { faces, dimensions: { width: detection.imageWidth, height: detection.imageHeight } };
+    }
+
+    const editedDimensions = getOutputDimensions(asset.edits, originalDimensions);
+    const storedFaces = faces.map((face) => {
+      const { points } = transformPoints(
+        [
+          {
+            x: (face.boundingBox.x1 * editedDimensions.width) / detection.imageWidth,
+            y: (face.boundingBox.y1 * editedDimensions.height) / detection.imageHeight,
+          },
+          {
+            x: (face.boundingBox.x2 * editedDimensions.width) / detection.imageWidth,
+            y: (face.boundingBox.y2 * editedDimensions.height) / detection.imageHeight,
+          },
+        ],
+        asset.edits,
+        editedDimensions,
+        { inverse: true },
+      );
+      const [topLeft, bottomRight] = points;
+      return {
+        ...face,
+        boundingBox: {
+          x1: Math.round(Math.min(topLeft.x, bottomRight.x)),
+          y1: Math.round(Math.min(topLeft.y, bottomRight.y)),
+          x2: Math.round(Math.max(topLeft.x, bottomRight.x)),
+          y2: Math.round(Math.max(topLeft.y, bottomRight.y)),
+        },
+      };
+    });
+
+    return { faces: storedFaces, dimensions: originalDimensions };
+  }
+
   private shouldRunTiledPass(
     asset: { type: AssetType; exifInfo?: { exifImageWidth?: number | null; exifImageHeight?: number | null } | null },
     pass1FaceCount: number,
@@ -539,15 +703,30 @@ export class PersonService extends BaseService {
     return false;
   }
 
-  private getTiledSourceFile(asset: { originalPath: string; fullsizeFile?: string | null }): string | null {
+  private getTiledSourceFile(asset: {
+    originalPath: string;
+    fullsizeFile?: string | null;
+    editedFullsizeFile?: string | null;
+    edits?: AssetEditActionItem[] | null;
+  }): { path: string; kind: 'edited-fullsize' | 'original' | 'fullsize' } | null {
+    if (asset.edits?.length && asset.editedFullsizeFile) {
+      // full-resolution render of the edited image: faces are upright here (detectors trained
+      // on upright faces lose recall on rotated ones) and the coordinate space already matches
+      // the edited preview pass 1 runs on
+      return { path: asset.editedFullsizeFile, kind: 'edited-fullsize' };
+    }
+
     const decodableExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tiff', '.tif', '.heic', '.heif']);
     const ext = asset.originalPath.toLowerCase().split('.').pop();
     if (ext && decodableExtensions.has(`.${ext}`)) {
-      return asset.originalPath;
+      // the ML service decodes the original with PIL, which ignores EXIF orientation,
+      // so tiled boxes from this source still need the orientation applied
+      return { path: asset.originalPath, kind: 'original' };
     }
 
     if (asset.fullsizeFile) {
-      return asset.fullsizeFile;
+      // a server-rendered file: already EXIF-oriented, but never edited
+      return { path: asset.fullsizeFile, kind: 'fullsize' };
     }
 
     return null;

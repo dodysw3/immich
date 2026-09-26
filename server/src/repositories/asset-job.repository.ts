@@ -260,6 +260,7 @@ export class AssetJobRepository {
       .selectFrom('asset')
       .select(['asset.id', 'asset.visibility', 'asset.originalPath', 'asset.type'])
       .$call(withExifInner)
+      .select(withEdits)
       .select((eb) => withFaces(eb, true, true))
       .select((eb) =>
         jsonObjectFrom(
@@ -273,6 +274,7 @@ export class AssetJobRepository {
         ).as('previewFile'),
       )
       .select((eb) => withFilePath(eb, AssetFileType.FullSize, false).as('fullsizeFile'))
+      .select((eb) => withFilePath(eb, AssetFileType.FullSize, true).as('editedFullsizeFile'))
       .where('asset.id', '=', id)
       .executeTakeFirst();
   }
