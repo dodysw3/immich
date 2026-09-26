@@ -93,6 +93,8 @@
       return [];
     }
 
+    const referenceLabels = faceManager.faceReferenceLabels;
+
     if (faceOverlayStore.showOverlay) {
       const allFaces = faceManager.data.filter((face) => {
         if (face.person?.isHidden && !assetViewerManager.isShowingHiddenPeople) {
@@ -105,6 +107,7 @@
         ...box,
         face: allFaces[index],
         name: allFaces[index].person?.name ?? undefined,
+        referenceLabel: referenceLabels.get(allFaces[index].id),
       }));
     }
 
@@ -113,6 +116,7 @@
       ...box,
       face: faces[index],
       name: faceToNameMap.get(faces[index]),
+      referenceLabel: referenceLabels.get(faces[index].id),
     }));
 
     if (assetViewerManager.highlightedFaces.length === 0) {
@@ -123,7 +127,12 @@
     const unassignedFaces = assetViewerManager.highlightedFaces.filter((f) => !knownIds.has(f.id));
     const unassignedBoxes = getBoundingBox(unassignedFaces, overlaySize);
     for (let i = 0; i < unassignedBoxes.length; i++) {
-      result.push({ ...unassignedBoxes[i], face: unassignedFaces[i], name: undefined });
+      result.push({
+        ...unassignedBoxes[i],
+        face: unassignedFaces[i],
+        name: undefined,
+        referenceLabel: referenceLabels.get(unassignedFaces[i].id),
+      });
     }
 
     return result;
@@ -285,7 +294,8 @@
       {#each boundingBoxes as boundingbox (boundingbox.id)}
         {@const isActive = assetViewerManager.highlightedFaces.some((f) => f.id === boundingbox.id)}
         {@const showPersistent = faceOverlayStore.showOverlay && !isActive}
-        {@const label = getFaceLabelStyle(boundingbox.name, boundingbox, boundingBoxes)}
+        {@const displayLabel = boundingbox.referenceLabel ?? boundingbox.name}
+        {@const label = getFaceLabelStyle(displayLabel, boundingbox, boundingBoxes)}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
           class="pointer-events-auto absolute rounded-lg {isActive && 'border-3 border-solid border-white'} {showPersistent && 'border border-green-500'}"
@@ -293,7 +303,7 @@
           onpointerenter={() => assetViewerManager.setHighlightedFaces([boundingbox.face])}
           onpointerleave={() => assetViewerManager.clearHighlightedFaces()}
         >
-          {#if isActive && boundingbox.name}
+          {#if isActive && displayLabel}
             <div
               aria-hidden="true"
               class="absolute rounded-sm bg-white/90 px-2 py-1 text-sm font-medium whitespace-nowrap text-black shadow-lg"
@@ -303,7 +313,7 @@
                   : `left: ${-boundingbox.left}px;`
                 : ''}"
             >
-              {boundingbox.name}
+              {displayLabel}
             </div>
           {:else if showPersistent}
             <div
@@ -315,7 +325,7 @@
                 class="flex-none max-w-full rounded-b bg-black/50 px-1 py-0.5 text-center text-white {label.wrap ? '' : 'whitespace-nowrap'}"
                 style="width: {boundingbox.width}px; font-size: {label.fontSize}px;"
               >
-                {boundingbox.name ?? '…'}
+                {displayLabel ?? '…'}
               </div>
             </div>
           {/if}

@@ -3,6 +3,7 @@ import { SvelteMap } from 'svelte/reactivity';
 import { assetCacheManager } from '$lib/managers/AssetCacheManager.svelte';
 import type { Faces } from '$lib/managers/asset-viewer-manager.svelte';
 import { CancellableTask } from '$lib/utils/cancellable-task';
+import { getFaceReferenceLabels } from '$lib/utils/people-utils';
 
 class FaceManager {
   #data = $state<AssetFaceResponseDto[]>([]);
@@ -34,6 +35,10 @@ class FaceManager {
     }
 
     return Array.from(people.values());
+  });
+
+  readonly faceReferenceLabels = $derived.by(() => {
+    return getFaceReferenceLabels(this.data);
   });
 
   readonly facesByPersonId = $derived.by(() => {

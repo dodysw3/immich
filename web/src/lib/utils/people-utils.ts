@@ -27,8 +27,7 @@ const getLabelMeasureContext = (): CanvasRenderingContext2D | OffscreenCanvasRen
   if (labelMeasureCtx) {
     return labelMeasureCtx;
   }
-  const canvas =
-    typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(1, 1) : document.createElement('canvas');
+  const canvas = typeof OffscreenCanvas === 'undefined' ? document.createElement('canvas') : new OffscreenCanvas(1, 1);
   labelMeasureCtx = canvas.getContext('2d');
   return labelMeasureCtx;
 };
@@ -60,6 +59,52 @@ const hasFaceBelow = (box: BoundingBox, allBoxes: BoundingBox[]): boolean => {
     }
     return other.left + other.width > box.left && other.left < box.left + box.width;
   });
+};
+
+export type FaceWithName = Faces & { person?: { name: string } | null | undefined };
+
+export const facePositionOrder = (a: Faces, b: Faces): number =>
+  a.boundingBoxX1 - b.boundingBoxX1 || a.boundingBoxY1 - b.boundingBoxY1;
+
+const PLACEHOLDER_FACE_NAMES = new Set(['', '...', '…']);
+
+export const isPlaceholderFaceName = (name: string | undefined): boolean =>
+  PLACEHOLDER_FACE_NAMES.has(name?.trim() ?? '');
+
+/**
+ * Reference labels ([1], [2*], …) for faces without a usable name: faces with
+ * no person and persons named "..." get [n], faces of unnamed persons get [n*].
+ * Numbers come from a single pool per asset ordered by face position, so they
+ * are stable across reloads and match between the viewer overlay and the
+ * people panel.
+ */
+export const getFaceReferenceLabels = (faces: FaceWithName[]): Map<string, string> => {
+  const labels = new Map<string, string>();
+  const numbered = faces
+    .filter((face) => !face.person || isPlaceholderFaceName(face.person.name))
+    .sort(facePositionOrder);
+  let counter = 0;
+  for (const face of numbered) {
+    counter += 1;
+    const suffix = face.person && face.person.name.trim() === '' ? '*' : '';
+    labels.set(face.id, `[${counter}${suffix}]`);
+  }
+  return labels;
+};
+
+export const getPersonDisplayName = (
+  person: { name: string },
+  faces: FaceWithName[],
+  referenceLabels: Map<string, string>,
+): string => {
+  if (!isPlaceholderFaceName(person.name)) {
+    return person.name;
+  }
+  return [...faces]
+    .sort(facePositionOrder)
+    .map((face) => referenceLabels.get(face.id))
+    .filter((label): label is string => label !== undefined)
+    .join(' ');
 };
 
 export const getFaceLabelStyle = (

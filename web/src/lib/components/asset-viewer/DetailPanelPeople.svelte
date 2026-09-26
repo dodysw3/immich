@@ -6,6 +6,7 @@
   import { faceManager } from '$lib/stores/face.svelte';
   import { locale } from '$lib/stores/preferences.store';
   import { getPeopleThumbnailUrl } from '$lib/utils';
+  import { getPersonDisplayName } from '$lib/utils/people-utils';
   import { type AssetResponseDto } from '@immich/sdk';
   import { IconButton, Text } from '@immich/ui';
   import { mdiEye, mdiEyeOff, mdiPencil, mdiPlus } from '@mdi/js';
@@ -104,6 +105,7 @@
     <div class="mt-2 grid {visiblePeople.length <= 6 ? 'grid-cols-3 gap-3' : 'grid-cols-4 gap-2'}">
       {#each visiblePeople as person (person.id)}
         {@const personFaces = faceManager.facesByPersonId.get(person.id) ?? []}
+        {@const displayName = getPersonDisplayName(person, personFaces, faceManager.faceReferenceLabels)}
         {@const isHighlighted = personFaces.some((f) => assetViewerManager.highlightedFaces.some((b) => b.id === f.id))}
         <a
           class="group outline-none"
@@ -124,7 +126,7 @@
             highlighted={isHighlighted}
             class="outline-offset-2 outline-immich-primary group-focus-visible:outline-2 dark:outline-immich-dark-primary"
           />
-          <p class="mt-1 truncate font-medium" title={person.name}>{person.name}</p>
+          <p class="mt-1 truncate font-medium" title={displayName}>{displayName}</p>
           {#if person.birthDate && person.formattedAge}
             <p class="font-light {visiblePeople.length > 6 ? 'text-xs' : ''}" title={person.formattedBirthDate!}>
               {person.formattedAge}
