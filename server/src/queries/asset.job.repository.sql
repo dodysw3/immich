@@ -303,6 +303,39 @@ from
   left join "asset_video" on "asset_video"."assetId" = "asset"."id"
 where
   "asset"."id" = $4
+  and "asset"."deletedAt" is null
+
+-- AssetJobRepository.getForAiInterpretationDiscordAlert
+select
+  "asset"."id",
+  "asset"."ownerId",
+  "asset"."originalFileName",
+  "asset"."localDateTime",
+  "asset_exif"."dateTimeOriginal",
+  "asset_exif"."timeZone",
+  (
+    select
+      coalesce(json_agg(agg), '[]')
+    from
+      (
+        select
+          "asset_file"."id",
+          "asset_file"."path",
+          "asset_file"."type",
+          "asset_file"."isEdited"
+        from
+          "asset_file"
+        where
+          "asset_file"."assetId" = "asset"."id"
+          and "asset_file"."type" = $1
+      ) as agg
+  ) as "files"
+from
+  "asset"
+  left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
+where
+  "asset"."id" = $2
+  and "asset"."deletedAt" is null
 
 -- AssetJobRepository.getForMetadataExtraction
 select
@@ -463,6 +496,20 @@ select
     from
       (
         select
+          "asset_edit"."action",
+          "asset_edit"."parameters"
+        from
+          "asset_edit"
+        where
+          "asset_edit"."assetId" = "asset"."id"
+      ) as agg
+  ) as "edits",
+  (
+    select
+      coalesce(json_agg(agg), '[]')
+    from
+      (
+        select
           "asset_face".*
         from
           "asset_face"
@@ -500,7 +547,17 @@ select
       "asset_file"."assetId" = "asset"."id"
       and "asset_file"."type" = 'fullsize'
       and "asset_file"."isEdited" = false
-  ) as "fullsizeFile"
+  ) as "fullsizeFile",
+  (
+    select
+      "asset_file"."path"
+    from
+      "asset_file"
+    where
+      "asset_file"."assetId" = "asset"."id"
+      and "asset_file"."type" = 'fullsize'
+      and "asset_file"."isEdited" = true
+  ) as "editedFullsizeFile"
 from
   "asset"
   inner join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
