@@ -143,7 +143,7 @@ class FaceDetectionOptions(Options):
     tiled: bool = False
     tile_size: Annotated[int, Field(alias="tileSize")] = 640
     tile_overlap: Annotated[float, Field(alias="tileOverlap")] = 0.25
-    max_tiles: Annotated[int, Field(alias="maxTiles")] = 64
+    max_tiles: Annotated[int, Field(alias="maxTiles")] = 500
 
 
 @dataclass(frozen=True)

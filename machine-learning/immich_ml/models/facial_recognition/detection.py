@@ -110,6 +110,19 @@ class FaceDetector(InferenceModel[FaceDetectionOptions]):
             scale = (max_tiles / total_tiles) ** 0.5
             new_w = max(tile_size, int(w * scale))
             new_h = max(tile_size, int(h * scale))
+            log.warning(
+                "Tiled face detection needs %d tiles for %dx%d image (tileSize=%d, tileOverlap=%.2f)"
+                " but maxTiles=%d; pre-shrinking image to %dx%d (scale %.3f), small faces may be lost",
+                total_tiles,
+                orig_w,
+                orig_h,
+                tile_size,
+                tile_overlap,
+                max_tiles,
+                new_w,
+                new_h,
+                scale,
+            )
             img = cv2.resize(img, (new_w, new_h))
             h, w = new_h, new_w
             ys, xs = self._tile_positions(h, w, tile_size, stride)
