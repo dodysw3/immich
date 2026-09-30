@@ -4,6 +4,7 @@ import {
   asset_face_source_type,
   asset_visibility_enum,
   assets_status_enum,
+  person_user_role_enum,
 } from 'src/schema/enums.js';
 import {
   album_user_after_insert,
@@ -72,6 +73,7 @@ import { PdfSearchTable } from 'src/schema/tables/pdf-search.table.js';
 import { PersonAuditTable } from 'src/schema/tables/person-audit.table.js';
 import { PersonGroupAuditTable } from 'src/schema/tables/person-group-audit.table.js';
 import { PersonGroupTable } from 'src/schema/tables/person-group.table.js';
+import { PersonUserTable } from 'src/schema/tables/person-user.table.js';
 import { PersonTable } from 'src/schema/tables/person.table.js';
 import { PluginMethodTable } from 'src/schema/tables/plugin-method.table.js';
 import { PluginTable } from 'src/schema/tables/plugin.table.js';
@@ -147,6 +149,7 @@ export class ImmichDatabase {
     PartnerTable,
     PersonTable,
     PersonAuditTable,
+    PersonUserTable,
     PersonGroupTable,
     PersonGroupAuditTable,
     SessionTable,
@@ -197,7 +200,13 @@ export class ImmichDatabase {
     album_user_delete,
   ];
 
-  enum = [album_user_role_enum, assets_status_enum, asset_face_source_type, asset_visibility_enum];
+  enum = [
+    album_user_role_enum,
+    assets_status_enum,
+    asset_face_source_type,
+    asset_visibility_enum,
+    person_user_role_enum,
+  ];
 }
 
 export interface Migrations {
@@ -269,6 +278,7 @@ export interface DB {
 
   person: PersonTable;
   person_audit: PersonAuditTable;
+  person_user: PersonUserTable;
   person_group: PersonGroupTable;
   person_group_audit: PersonGroupAuditTable;
 

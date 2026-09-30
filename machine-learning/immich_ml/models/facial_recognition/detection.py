@@ -2,21 +2,25 @@ from typing import Any
 
 import cv2
 import numpy as np
+from immich_model.constants import FACE_DETECTION_SIZE as DET_SIZE
 from numpy.typing import NDArray
 from PIL.Image import Image
 
 from immich_ml.config import log
 from immich_ml.models.base import InferenceModel
-from immich_ml.models.transforms import decode_pil, letterbox, normalize
-from immich_ml.schemas import FaceDetectionOutput, ModelTask, ModelType
+from immich_ml.models.transforms import decode_pil, letterbox, normalize, widen
+from immich_ml.schemas import FaceDetectionOptions, FaceDetectionOutput, ModelSource, ModelTask, ModelType, Shape
 from immich_ml.sessions.ort import OrtSession
+from immich_ml.sessions.policy import ShapePolicy
 
-from ._ops import DET_SIZE, decode_scrfd, nms
+from ._ops import decode_scrfd, nms
 
 
-class FaceDetector(InferenceModel):
+class FaceDetector(InferenceModel[FaceDetectionOptions]):
     depends = []
     identity = (ModelType.DETECTION, ModelTask.FACIAL_RECOGNITION)
+    sources = (ModelSource.INSIGHTFACE,)
+    shape_policy = ShapePolicy(dims=(Shape(batch=1, height=DET_SIZE, width=DET_SIZE),))
 
     def __init__(self, model_name: str, **model_kwargs: Any) -> None:
         self._cpu_session: OrtSession | None = None
@@ -25,11 +29,15 @@ class FaceDetector(InferenceModel):
     def _run_session(
         self, image: Image | NDArray[np.uint8], min_score: float, session: OrtSession
     ) -> tuple[NDArray[np.float32], NDArray[np.float32], NDArray[np.float32]]:
+        graph = session.for_shape(self.shape_policy.dims[0])
         canvas, scale = letterbox(image, DET_SIZE)
-        blob = normalize(canvas.astype(np.float32), mean=127.5, std=128).transpose(2, 0, 1)[None]
+        blob: NDArray[np.float32] | NDArray[np.uint8] = (
+            canvas[None]
+            if graph.normalizes_input
+            else normalize(canvas.astype(np.float32), 127.5, 128).transpose(2, 0, 1)[None]
+        )
 
-        input_name = session.get_inputs()[0].name
-        heads = session.run(None, {input_name: blob})
+        heads = [widen(head) for head in graph.run(None, {graph.get_inputs()[0].name: blob})]
         scores, boxes, kps = decode_scrfd(heads, DET_SIZE)
 
         candidates = scores >= min_score
@@ -44,34 +52,28 @@ class FaceDetector(InferenceModel):
 
     def _ensure_cpu_session(self) -> OrtSession:
         if self._cpu_session is None:
-            self._cpu_session = OrtSession(self.model_path, providers=["CPUExecutionProvider"])
+            self._cpu_session = OrtSession(self.model_path, self.shape_policy, providers=["CPUExecutionProvider"])
         return self._cpu_session
 
-    def _predict(
-        self,
-        inputs: NDArray[np.uint8] | bytes,
-        minScore: float,
-        tiled: bool = False,
-        tileSize: int = 640,
-        tileOverlap: float = 0.25,
-        maxTiles: int = 64,
-    ) -> FaceDetectionOutput:
+    def _predict(self, inputs: NDArray[np.uint8] | bytes, options: FaceDetectionOptions) -> FaceDetectionOutput:
         image = decode_pil(inputs)
         gpu_fallback = False
 
-        if tiled:
-            scores, boxes, kps = self._detect_tiled(image, minScore, tileSize, tileOverlap, maxTiles)
+        if options.tiled:
+            scores, boxes, kps = self._detect_tiled(
+                image, options.min_score, options.tile_size, options.tile_overlap, options.max_tiles
+            )
         else:
-            scores, boxes, kps = self._run_session(image, minScore, self.session)
+            scores, boxes, kps = self._run_session(image, options.min_score, self.session)
 
         if boxes.shape[0] == 0 and self._is_gpu_session():
             log.warning(
                 "GPU returned 0 faces for %dx%d image (tiled=%s), trying CPU fallback",
                 image.width,
                 image.height,
-                tiled,
+                options.tiled,
             )
-            cpu_scores, cpu_boxes, cpu_kps = self._run_session(image, minScore, self._ensure_cpu_session())
+            cpu_scores, cpu_boxes, cpu_kps = self._run_session(image, options.min_score, self._ensure_cpu_session())
             if cpu_boxes.shape[0] > 0:
                 log.warning(
                     "GPU face detection returned 0 faces but CPU found %d — GPU may be unhealthy",
