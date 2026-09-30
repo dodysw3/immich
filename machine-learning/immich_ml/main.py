@@ -32,6 +32,8 @@ from .schemas import (
     InferenceResponse,
     ModelFormat,
     ModelIdentity,
+    ModelTask,
+    ModelType,
     Options,
     TextDetectionOptions,
     TextRecognitionOptions,
@@ -198,15 +200,16 @@ async def run_inference(payload: Image | str, entries: list[InferenceEntry[Any]]
     for output in outputs:
         if isinstance(output, BaseException):
             raise output
+    outputs_by_identity: dict[ModelIdentity, Any] = dict(zip(runs, outputs))
     response: InferenceResponse = {  # a task answers with the output no other model of it reads
-        entry.model.identity[1].value: output
-        for entry, output in zip(entries, outputs)
+        entry.model.identity[1].value: outputs_by_identity[entry.model.identity]
+        for entry in entries
         if entry.model.identity not in read
     }
     if isinstance(payload, Image):
         response["imageHeight"], response["imageWidth"] = payload.height, payload.width
 
-    det_output = outputs.get((ModelType.DETECTION, ModelTask.FACIAL_RECOGNITION))
+    det_output = outputs_by_identity.get((ModelType.DETECTION, ModelTask.FACIAL_RECOGNITION))
     if isinstance(det_output, dict):
         response["gpuFallback"] = det_output.get("gpuFallback", False)
 
