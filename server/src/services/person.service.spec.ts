@@ -1129,6 +1129,63 @@ describe(PersonService.name, () => {
       );
     });
 
+    it('should apply minFaceSize in each pass own pixel space', async () => {
+      mocks.systemMetadata.get.mockResolvedValue({
+        machineLearning: { facialRecognition: { tiling: { enabled: true, triggers: { minPass1Faces: 1 } } } },
+      });
+      const asset = AssetFactory.from()
+        .file({ type: AssetFileType.Preview })
+        .exif({ exifImageWidth: 4000, exifImageHeight: 3000 })
+        .build();
+      mocks.crypto.randomUUID.mockReturnValueOnce(newUuid()).mockReturnValueOnce(newUuid());
+      // preview space: the 20px face is below the floor, the 100px face is kept
+      mocks.machineLearning.detectFaces.mockResolvedValue({
+        imageHeight: 300,
+        imageWidth: 400,
+        gpuFallback: false,
+        faces: [
+          { boundingBox: { x1: 100, y1: 100, x2: 200, y2: 200 }, embedding: '[1, 2, 3, 4]', score: 0.9 },
+          { boundingBox: { x1: 0, y1: 0, x2: 20, y2: 20 }, embedding: '[2, 3, 4, 5]', score: 0.85 },
+        ],
+      });
+      // tiled source space: the 30px face is kept even though it maps to only 6 preview px;
+      // the 20px face is below the floor in tiled space
+      mocks.machineLearning.detectFacesTiled.mockResolvedValue({
+        imageHeight: 1500,
+        imageWidth: 2000,
+        faces: [
+          { boundingBox: { x1: 500, y1: 500, x2: 530, y2: 530 }, embedding: '[3, 4, 5, 6]', score: 0.8 },
+          { boundingBox: { x1: 1000, y1: 1000, x2: 1020, y2: 1020 }, embedding: '[4, 5, 6, 7]', score: 0.75 },
+        ],
+      });
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
+      mocks.person.refreshFaces.mockResolvedValue();
+
+      await sut.handleDetectFaces({ id: asset.id });
+
+      expect(mocks.person.refreshFaces).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({
+            boundingBoxX1: 1000,
+            boundingBoxY1: 1000,
+            boundingBoxX2: 2000,
+            boundingBoxY2: 2000,
+          }),
+          expect.objectContaining({
+            boundingBoxX1: 1000,
+            boundingBoxY1: 1000,
+            boundingBoxX2: 1060,
+            boundingBoxY2: 1060,
+          }),
+        ],
+        [],
+        [
+          { faceId: expect.any(String), embedding: '[1, 2, 3, 4]' },
+          { faceId: expect.any(String), embedding: '[3, 4, 5, 6]' },
+        ],
+      );
+    });
+
     it('should map tiled detections through rotate edits and merge duplicates', async () => {
       mocks.systemMetadata.get.mockResolvedValue({
         machineLearning: { facialRecognition: { tiling: { enabled: true, triggers: { minPass1Faces: 1 } } } },

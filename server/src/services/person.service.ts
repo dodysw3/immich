@@ -455,7 +455,11 @@ export class PersonService extends BaseService {
     const gpuFallbackTag = pass1.gpuFallback ? ' (GPU fallback)' : '';
     this.logger.debug(`Pass 1: ${pass1.faces.length} faces${gpuFallbackTag} detected in ${pass1Ms}ms for asset ${id}`);
 
-    let faces = pass1.faces;
+    // minFaceSize is measured in the pixel space of the image each pass actually ran on:
+    // pass 1 on the preview file, pass 2 on the tiled source file. It must be applied before
+    // pass-2 boxes are mapped into preview space, whose scale differs from the tiled source.
+    const minFaceSize = machineLearning.facialRecognition.minFaceSize;
+    let faces = this.filterSmallFaces(pass1.faces, minFaceSize, 'pass 1 (preview)', id);
     const imageHeight = pass1.imageHeight;
     const imageWidth = pass1.imageWidth;
 
@@ -477,12 +481,13 @@ export class PersonService extends BaseService {
             `Pass 2 (tiled): ${pass2.faces.length} faces from ${sourceFile.path} in ${pass2Ms}ms for asset ${id}`,
           );
 
-          const scaledPass2 = this.mapTiledFaces(pass2.faces, pass2, asset, sourceFile.kind, {
+          const pass2Faces = this.filterSmallFaces(pass2.faces, minFaceSize, 'pass 2 (tiled source)', id);
+          const scaledPass2 = this.mapTiledFaces(pass2Faces, pass2, asset, sourceFile.kind, {
             imageWidth,
             imageHeight,
           });
 
-          faces = this.mergeFaces([...pass1.faces, ...scaledPass2], 0.5);
+          faces = this.mergeFaces([...faces, ...scaledPass2], 0.5);
           this.logger.debug(
             `Merged: ${faces.length} faces (pass1=${pass1.faces.length}, pass2=${pass2.faces.length}) for asset ${id}`,
           );
@@ -500,16 +505,6 @@ export class PersonService extends BaseService {
       if (face.sourceType === SourceType.MachineLearning) {
         mlFaceIds.add(face.id);
       }
-    }
-
-    const minFaceSize = machineLearning.facialRecognition.minFaceSize;
-    const beforeFilter = faces.length;
-    faces = faces.filter(
-      ({ boundingBox }) => Math.min(boundingBox.x2 - boundingBox.x1, boundingBox.y2 - boundingBox.y1) >= minFaceSize,
-    );
-    const filteredCount = beforeFilter - faces.length;
-    if (filteredCount > 0) {
-      this.logger.log(`Filtered out ${filteredCount} undersized faces (min dimension < ${minFaceSize}) in asset ${id}`);
     }
 
     // convert detected boxes from detection (edited preview) space into storage space
@@ -797,6 +792,19 @@ export class PersonService extends BaseService {
     }
 
     return null;
+  }
+
+  private filterSmallFaces(faces: Face[], minFaceSize: number, pass: string, assetId: string): Face[] {
+    const filtered = faces.filter(
+      ({ boundingBox }) => Math.min(boundingBox.x2 - boundingBox.x1, boundingBox.y2 - boundingBox.y1) >= minFaceSize,
+    );
+    const removed = faces.length - filtered.length;
+    if (removed > 0) {
+      this.logger.log(
+        `Filtered out ${removed} undersized ${pass} faces (min dimension < ${minFaceSize}) in asset ${assetId}`,
+      );
+    }
+    return filtered;
   }
 
   private mergeFaces(faces: Face[], iouThreshold: number): Face[] {
