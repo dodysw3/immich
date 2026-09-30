@@ -99,7 +99,8 @@ class FaceDetector(InferenceModel[FaceDetectionOptions]):
         max_tiles: int,
     ) -> tuple[NDArray[np.float32], NDArray[np.float32], NDArray[np.float32]]:
         img = np.asarray(image)
-        h, w = img.shape[:2]
+        orig_h, orig_w = img.shape[:2]
+        h, w = orig_h, orig_w
         stride = int(tile_size * (1 - tile_overlap))
 
         ys, xs = self._tile_positions(h, w, tile_size, stride)
@@ -135,7 +136,15 @@ class FaceDetector(InferenceModel[FaceDetectionOptions]):
             empty_scores = np.zeros(0, dtype=np.float32)
             return empty_scores, np.zeros((0, 4), dtype=np.float32), np.zeros((0, 10), dtype=np.float32)
 
-        return np.concatenate(all_scores), np.concatenate(all_boxes), np.concatenate(all_kps)
+        boxes = np.concatenate(all_boxes)
+        kps = np.concatenate(all_kps)
+        # honoring max_tiles may have run the tiles on a downscaled copy of the image;
+        # detections are in that copy's pixel space while callers expect the original's
+        boxes[:, 0::2] *= orig_w / w
+        boxes[:, 1::2] *= orig_h / h
+        kps[:, 0::2] *= orig_w / w
+        kps[:, 1::2] *= orig_h / h
+        return np.concatenate(all_scores), boxes, kps
 
     @staticmethod
     def _tile_positions(h: int, w: int, tile_size: int, stride: int) -> tuple[list[int], list[int]]:
