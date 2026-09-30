@@ -8,7 +8,7 @@
 
   let queryType = $derived(searchManager.filter.queryType);
 
-  const setType = (type: 'smart' | 'metadata' | 'description' | 'fullPath' | 'ocr') => {
+  const setType = (type: 'smart' | 'metadata' | 'description' | 'fullPath' | 'ocr' | 'ai') => {
     searchManager.filter.queryType = type;
   };
 </script>
@@ -20,6 +20,11 @@
       {#if featureFlagsManager.value.smartSearch}
         <SearchButton checked active={queryType === 'smart'} onclick={() => setType('smart')}>
           {$t('context')}
+        </SearchButton>
+      {/if}
+      {#if featureFlagsManager.value.aiInterpretSearch}
+        <SearchButton checked active={queryType === 'ai'} onclick={() => setType('ai')}>
+          {$t('ai')}
         </SearchButton>
       {/if}
       <SearchButton checked active={queryType === 'metadata'} onclick={() => setType('metadata')}>

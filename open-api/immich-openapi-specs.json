@@ -17956,6 +17956,58 @@
         ],
         "x-immich-permission": "workflow.read"
       }
+    },
+    "/search/ai-interpret": {
+      "post": {
+        "description": "Search assets by the AI interpretation of their contents. Results are fused from a dense semantic branch and a lexical keyword branch.",
+        "operationId": "searchAiInterpret",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiInterpretSearchDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiInterpretSearchResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "AI interpretation search",
+        "tags": [
+          "Search"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v3.2.0",
+            "state": "Added"
+          }
+        ],
+        "x-immich-permission": "asset.read",
+        "x-immich-state": "Stable"
+      }
     }
   },
   "info": {
@@ -27327,6 +27379,10 @@
           "trash": {
             "description": "Whether trash feature is enabled",
             "type": "boolean"
+          },
+          "aiInterpretSearch": {
+            "description": "Whether AI interpretation search is enabled",
+            "type": "boolean"
           }
         },
         "required": [
@@ -33373,6 +33429,93 @@
             "description": "Workflow trigger type"
           }
         },
+        "type": "object"
+      },
+      "AiInterpretSearchDto": {
+        "properties": {
+          "q": {
+            "description": "Natural language query against AI interpretations",
+            "minLength": 1,
+            "type": "string"
+          },
+          "page": {
+            "description": "Page number",
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "size": {
+            "default": 100,
+            "description": "Number of results to return",
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/AssetVisibility"
+          }
+        },
+        "type": "object"
+      },
+      "AiInterpretSearchItemDto": {
+        "properties": {
+          "asset": {
+            "$ref": "#/components/schemas/AssetResponseDto"
+          },
+          "branch": {
+            "description": "Search branch that contributed the best rank for this result",
+            "enum": [
+              "dense",
+              "lexical"
+            ],
+            "type": "string"
+          },
+          "score": {
+            "description": "Reciprocal rank fusion score of this result",
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "asset",
+          "branch",
+          "score"
+        ],
+        "type": "object"
+      },
+      "AiInterpretSearchResponseDto": {
+        "properties": {
+          "count": {
+            "description": "Number of results on this page",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "items": {
+            "description": "",
+            "items": {
+              "$ref": "#/components/schemas/AiInterpretSearchItemDto"
+            },
+            "type": "array"
+          },
+          "nextPage": {
+            "description": "Next page number, if more results are available",
+            "nullable": true,
+            "type": "string"
+          },
+          "total": {
+            "description": "Total number of fused results in the current window",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count",
+          "items",
+          "nextPage",
+          "total"
+        ],
         "type": "object"
       }
     }

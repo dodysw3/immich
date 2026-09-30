@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import { createHash } from 'node:crypto';
 import { AiInterpretationDocumentSchema } from 'src/dtos/ai-image-interpretation.dto.js';
 
@@ -41,3 +42,43 @@ export const interpretationRetryDelayMs = (attempts: number): number => {
 };
 
 export const isAiInterpretationDocument = (value: unknown) => AiInterpretationDocumentSchema.safeParse(value).success;
+
+// The completion-rate window used for queue ETA estimates: the average of the
+// last N minutes of completed interpretations (aggregated across workers via
+// Redis) is divided into the remaining queue depth.
+export const AI_INTERPRETATION_RATE_WINDOW_MINUTES = 5;
+export const AI_INTERPRETATION_RATE_WINDOW_MS = AI_INTERPRETATION_RATE_WINDOW_MINUTES * 60_000;
+
+const formatEtaDuration = (minutes: number): string => {
+  if (minutes < 1) {
+    return '<1m';
+  }
+
+  const total = Math.round(minutes);
+  const days = Math.floor(total / 1440);
+  const hours = Math.floor((total % 1440) / 60);
+  const mins = total % 60;
+  const parts = [days > 0 ? `${days}d` : '', hours > 0 ? `${hours}h` : '', mins > 0 ? `${mins}m` : ''];
+  return parts.filter(Boolean).join(' ') || '<1m';
+};
+
+export const formatAiInterpretationQueueEta = (
+  remainingCount: number,
+  completionsPerMinute: number,
+  now: DateTime = DateTime.now(),
+): string => {
+  if (remainingCount <= 0) {
+    return 'queue drained';
+  }
+
+  if (completionsPerMinute <= 0) {
+    return `unknown (no completions in the last ${AI_INTERPRETATION_RATE_WINDOW_MINUTES} minutes)`;
+  }
+
+  const minutes = remainingCount / completionsPerMinute;
+  const finishAt = now.plus({ minutes });
+  const duration = formatEtaDuration(minutes);
+  return `${duration.startsWith('<') ? '' : '~'}${duration} (around ${finishAt.toFormat('LLL d, h:mm a')} ${
+    finishAt.offsetNameShort || finishAt.toFormat('ZZ')
+  })`;
+};

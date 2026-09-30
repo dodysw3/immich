@@ -124,6 +124,13 @@ export const envData: EnvData = {
     discord: { includeThumbnail: true },
   },
 
+  aiInterpretSearch: {
+    enabled: false,
+    model: 'bge-m3-Q8_0',
+    timeoutMs: 30_000,
+    minScore: 0.4,
+  },
+
   noColor: false,
 };
 

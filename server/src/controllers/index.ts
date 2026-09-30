@@ -1,4 +1,5 @@
 import { ActivityController } from 'src/controllers/activity.controller.js';
+import { AiInterpretSearchController } from 'src/controllers/ai-interpret-search.controller.js';
 import { AlbumController } from 'src/controllers/album.controller.js';
 import { ApiKeyController } from 'src/controllers/api-key.controller.js';
 import { AppController } from 'src/controllers/app.controller.js';
@@ -81,6 +82,7 @@ export const controllers = [
   PluginController,
   QueueController,
   SearchController,
+  AiInterpretSearchController,
   ServerController,
   SessionController,
   SharedLinkController,

@@ -1,11 +1,14 @@
+import { DateTime } from 'luxon';
 import { describe, expect, it } from 'vitest';
 import {
   AI_IMAGE_INTERPRETATION_MODEL,
   AI_IMAGE_INTERPRETATION_PROMPT,
   AI_IMAGE_INTERPRETATION_PROMPT_VERSION,
   AI_IMAGE_INTERPRETATION_QUANT,
+  AI_INTERPRETATION_RATE_WINDOW_MS,
   AI_INTERPRETATION_RETRY_MAX_MS,
   createAiInterpretationRunKey,
+  formatAiInterpretationQueueEta,
   interpretationRetryDelayMs,
 } from 'src/utils/ai-image-interpretation.js';
 
@@ -56,5 +59,30 @@ describe('AI image interpretation contract', () => {
     expect(interpretationRetryDelayMs(11)).toBe(AI_INTERPRETATION_RETRY_MAX_MS);
     expect(interpretationRetryDelayMs(25)).toBe(AI_INTERPRETATION_RETRY_MAX_MS);
     expect(AI_INTERPRETATION_RETRY_MAX_MS).toBe(24 * 60 * 60_000);
+  });
+
+  describe('formatAiInterpretationQueueEta', () => {
+    // Fixed clock in a named zone so the "around" timestamp is deterministic
+    // regardless of the test runner's TZ (vitest runs with TZ=UTC).
+    const now = DateTime.fromISO('2026-09-26T23:00:00', { zone: 'Asia/Jakarta' });
+
+    it('reports a drained queue without consulting the rate', () => {
+      expect(formatAiInterpretationQueueEta(0, 3.4, now)).toBe('queue drained');
+      expect(formatAiInterpretationQueueEta(-5, 0, now)).toBe('queue drained');
+    });
+
+    it('reports an unknown ETA when the window has no completions', () => {
+      expect(formatAiInterpretationQueueEta(37, 0, now)).toBe('unknown (no completions in the last 5 minutes)');
+    });
+
+    it('divides the remaining count by the per-minute completion rate', () => {
+      expect(formatAiInterpretationQueueEta(37, 3.4, now)).toBe('~11m (around Sep 26, 11:10 PM GMT+7)');
+      expect(formatAiInterpretationQueueEta(3010, 1, now)).toBe('~2d 2h 10m (around Sep 29, 1:10 AM GMT+7)');
+      expect(formatAiInterpretationQueueEta(1, 120, now)).toBe('<1m (around Sep 26, 11:00 PM GMT+7)');
+    });
+  });
+
+  it('uses a five-minute completion-rate window', () => {
+    expect(AI_INTERPRETATION_RATE_WINDOW_MS).toBe(5 * 60_000);
   });
 });

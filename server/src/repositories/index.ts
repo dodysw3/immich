@@ -1,6 +1,7 @@
 import { AccessRepository } from 'src/repositories/access.repository.js';
 import { ActivityRepository } from 'src/repositories/activity.repository.js';
 import { AiImageInterpretationRepository } from 'src/repositories/ai-image-interpretation.repository.js';
+import { AiInterpretSearchRepository } from 'src/repositories/ai-interpret-search.repository.js';
 import { AlbumUserRepository } from 'src/repositories/album-user.repository.js';
 import { AlbumRepository } from 'src/repositories/album.repository.js';
 import { ApiKeyRepository } from 'src/repositories/api-key.repository.js';
@@ -59,6 +60,7 @@ import { WorkflowRepository } from 'src/repositories/workflow.repository.js';
 export const repositories = [
   AccessRepository,
   AiImageInterpretationRepository,
+  AiInterpretSearchRepository,
   ActivityRepository,
   AlbumRepository,
   AlbumUserRepository,

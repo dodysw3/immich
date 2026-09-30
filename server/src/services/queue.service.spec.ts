@@ -137,6 +137,7 @@ describe(QueueService.name, () => {
         [QueueName.IntegrityCheck]: expected,
         [QueueName.Editor]: expected,
         [QueueName.ImageInterpretation]: expected,
+        [QueueName.AiInterpretSearch]: expected,
       });
     });
   });

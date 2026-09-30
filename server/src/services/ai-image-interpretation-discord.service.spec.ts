@@ -82,6 +82,7 @@ const makeService = () => {
         waiting: 37,
         paused: 0,
       }),
+      getAiInterpretationCompletionRate: vi.fn().mockResolvedValue(3.4),
     },
     discordClient: { send: vi.fn().mockResolvedValue(undefined) },
   };
@@ -110,6 +111,7 @@ describe(AiImageInterpretationDiscordService.name, () => {
     expect(dependencies.assetJobRepository.getForAiInterpretationDiscordAlert).toHaveBeenCalledWith('asset-1');
     expect(dependencies.userRepository.get).toHaveBeenCalledWith('owner-1', { withDeleted: false });
     expect(dependencies.jobRepository.getJobCounts).toHaveBeenCalledWith(QueueName.ImageInterpretation);
+    expect(dependencies.jobRepository.getAiInterpretationCompletionRate).toHaveBeenCalled();
     expect(dependencies.storageRepository.readFile).toHaveBeenCalledWith('/data/thumbs/photo.webp');
     expect(dependencies.discordClient.send).toHaveBeenCalledWith({
       accountName: 'Cangka',
@@ -118,6 +120,7 @@ describe(AiImageInterpretationDiscordService.name, () => {
       originalFileName: 'IMG_1234.JPG',
       photoDate: '2026-09-13T05:10:59.000Z',
       result,
+      eta: expect.stringMatching(/^~11m \(around /),
       thumbnail: {
         buffer: Buffer.from('thumbnail'),
         contentType: 'image/webp',
@@ -125,6 +128,36 @@ describe(AiImageInterpretationDiscordService.name, () => {
       },
       waitingCount: 37,
     });
+    expect(dependencies.logger.log).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /Sent AI interpretation Discord alert for asset-1\/[a-f0-9]+ \(remaining in queue: 37, ETA: ~11m \(around /,
+      ),
+    );
+  });
+
+  it('reports an unknown ETA when the completion window is empty and a drained queue when nothing waits', async () => {
+    const { service, dependencies } = makeService();
+    dependencies.jobRepository.getAiInterpretationCompletionRate.mockResolvedValue(0);
+
+    await service.handleAlert({ assetId: 'asset-1', runKey });
+
+    expect(dependencies.discordClient.send).toHaveBeenCalledWith(
+      expect.objectContaining({ eta: 'unknown (no completions in the last 5 minutes)', waitingCount: 37 }),
+    );
+
+    dependencies.jobRepository.getJobCounts.mockResolvedValue({
+      active: 0,
+      completed: 0,
+      failed: 0,
+      delayed: 0,
+      waiting: 0,
+      paused: 0,
+    });
+    await service.handleAlert({ assetId: 'asset-1', runKey });
+
+    expect(dependencies.discordClient.send).toHaveBeenCalledWith(
+      expect.objectContaining({ eta: 'queue drained', waitingCount: 0 }),
+    );
   });
 
   it('uses the recorded capture instant when the photo has an explicit EXIF timezone', async () => {

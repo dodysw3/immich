@@ -201,6 +201,7 @@ export type ConcurrentQueueName = Exclude<
   | QueueName.DuplicateDetection
   | QueueName.BackupDatabase
   | QueueName.ImageInterpretation
+  | QueueName.AiInterpretSearch
 >;
 
 export type Jobs = { [K in JobItem['name']]: (JobItem & { name: K })['data'] };
@@ -360,6 +361,8 @@ export type JobItem =
   | { name: JobName.AssetGenerateThumbnails; data: IEntityJob }
   | { name: JobName.AssetInterpretImage; data: IAssetInterpretationJob }
   | { name: JobName.AssetInterpretationReconcile; data?: IBaseJob }
+  | { name: JobName.AiInterpretSearchSync; data: IEntityJob }
+  | { name: JobName.AiInterpretSearchReconcile; data?: IBaseJob }
 
   // User
   | { name: JobName.UserDeleteCheck; data?: IBaseJob }

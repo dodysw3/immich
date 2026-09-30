@@ -19,6 +19,7 @@ import {
   AiInterpretationDiscordAlertError,
   AiInterpretationDiscordThumbnail,
 } from 'src/services/ai-image-interpretation-discord.client.js';
+import { formatAiInterpretationQueueEta } from 'src/utils/ai-image-interpretation.js';
 import { getAssetFile } from 'src/utils/asset.util.js';
 import { getConfig } from 'src/utils/config.js';
 import { getFilenameExtension } from 'src/utils/file.js';
@@ -97,6 +98,8 @@ export class AiImageInterpretationDiscordService {
     const thumbnail = discordConfig.includeThumbnail ? await this.loadThumbnail(assetId, asset.files) : undefined;
     const externalDomain = await this.getExternalDomain();
     const { waiting: waitingCount } = await this.jobRepository.getJobCounts(QueueName.ImageInterpretation);
+    const completionsPerMinute = await this.jobRepository.getAiInterpretationCompletionRate();
+    const eta = formatAiInterpretationQueueEta(waitingCount, completionsPerMinute);
 
     try {
       await this.discordClient.send({
@@ -108,6 +111,7 @@ export class AiImageInterpretationDiscordService {
         result: run.result,
         thumbnail,
         waitingCount,
+        eta,
       });
     } catch (error) {
       if (error instanceof AiInterpretationDiscordAlertError) {
@@ -122,7 +126,9 @@ export class AiImageInterpretationDiscordService {
       throw error;
     }
 
-    this.logger.log(`Sent AI interpretation Discord alert for ${assetId}/${runKey}`);
+    this.logger.log(
+      `Sent AI interpretation Discord alert for ${assetId}/${runKey} (remaining in queue: ${waitingCount}, ETA: ${eta})`,
+    );
     return JobStatus.Success;
   }
 

@@ -80,6 +80,9 @@ export const getSearchTypeTitle = (type: string) => {
     case 'metadata': {
       return $t('file_name_text');
     }
+    case 'ai': {
+      return $t('ai');
+    }
     case 'description': {
       return $t('description');
     }
@@ -109,6 +112,9 @@ export const getSearchTypePlaceholder = (type: string) => {
     }
     case 'ocr': {
       return $t('search_by_ocr_example');
+    }
+    case 'ai': {
+      return $t('search_by_ai_example');
     }
     case 'smart': {
       return $t('search_by_context_example');

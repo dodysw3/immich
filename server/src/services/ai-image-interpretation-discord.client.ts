@@ -20,6 +20,7 @@ export type AiInterpretationDiscordAlert = {
   originalFileName: string;
   photoDate: string;
   waitingCount: number;
+  eta: string;
   result: MuseInterpretationResult;
   thumbnail?: AiInterpretationDiscordThumbnail;
 };
@@ -76,6 +77,7 @@ export const buildAiInterpretationDiscordPayload = ({
   result,
   thumbnail,
   waitingCount,
+  eta,
 }: AiInterpretationDiscordAlert): DiscordWebhookPayload => {
   const title = truncate(result.title, DISCORD_TITLE_LIMIT) || 'AI interpretation complete';
   const summary = truncate(result.archive_summary || result.interpretation, DISCORD_DESCRIPTION_LIMIT);
@@ -96,6 +98,11 @@ export const buildAiInterpretationDiscordPayload = ({
       {
         name: 'AI interpretations waiting',
         value: String(waitingCount),
+        inline: true,
+      },
+      {
+        name: 'Queue ETA',
+        value: truncate(eta, DISCORD_FIELD_VALUE_LIMIT) || 'Unknown',
         inline: true,
       },
     ],

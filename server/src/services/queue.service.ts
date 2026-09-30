@@ -270,6 +270,8 @@ export class QueueService extends BaseService {
       QueueName.StorageTemplateMigration,
       QueueName.DuplicateDetection,
       QueueName.BackupDatabase,
+      QueueName.ImageInterpretation,
+      QueueName.AiInterpretSearch,
     ].includes(name);
   }
 

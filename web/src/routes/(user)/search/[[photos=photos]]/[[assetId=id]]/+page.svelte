@@ -39,6 +39,7 @@
     getPerson,
     getTagById,
     type MetadataSearchDto,
+    searchAiInterpret,
     searchAssets,
     searchSmart,
     type SmartSearchDto,
@@ -63,7 +64,7 @@
   let scrollY = $state(0);
   let scrollYHistory = 0;
 
-  type SearchTerms = MetadataSearchDto & Pick<SmartSearchDto, 'query' | 'queryAssetId'>;
+  type SearchTerms = MetadataSearchDto & Pick<SmartSearchDto, 'query' | 'queryAssetId'> & { ai?: string };
   let searchQuery = $derived(page.url.searchParams.get(QueryParameter.QUERY));
   let smartSearchEnabled = $derived(featureFlagsManager.value.smartSearch);
   let terms = $derived<SearchTerms>(searchQuery ? JSON.parse(searchQuery) : {});
@@ -141,12 +142,26 @@
     };
 
     try {
-      const { albums, assets } =
-        ('query' in searchDto || 'queryAssetId' in searchDto) && smartSearchEnabled
-          ? await searchSmart({
-              smartSearchDto: { visibility: AssetVisibility.Timeline, ...searchDto, language: $lang },
-            })
-          : await searchAssets({ metadataSearchDto: { visibility: AssetVisibility.Timeline, ...searchDto } });
+      const { albums, assets } = await (async () => {
+        if (searchDto.ai && !('query' in searchDto || 'queryAssetId' in searchDto)) {
+          // AI interpretation search has a dedicated endpoint and result shape
+          const response = await searchAiInterpret({
+            aiInterpretSearchDto: {
+              visibility: AssetVisibility.Timeline,
+              q: searchDto.ai,
+              size: 100,
+              page: searchDto.page,
+            },
+          });
+          return { albums: { items: [] as AlbumResponseDto[] }, assets: { ...response, items: response.items.map((item) => item.asset) } };
+        }
+        if (('query' in searchDto || 'queryAssetId' in searchDto) && smartSearchEnabled) {
+          return await searchSmart({
+            smartSearchDto: { visibility: AssetVisibility.Timeline, ...searchDto, language: $lang },
+          });
+        }
+        return await searchAssets({ metadataSearchDto: { visibility: AssetVisibility.Timeline, ...searchDto } });
+      })();
 
       searchResultAlbums.push(...albums.items);
       searchResultAssets.push(...assets.items);
@@ -193,6 +208,7 @@
       description: $t('description'),
       queryAssetId: $t('query_asset_id'),
       ocr: $t('ocr'),
+      ai: $t('ai'),
     };
     return keyMap[key] || key;
   }
@@ -328,7 +344,11 @@
         <div class="flex flex-col content-center items-center text-center">
           <Icon icon={mdiImageOffOutline} size="3.5em" />
           <p class="mt-5 text-3xl font-medium">{$t('no_results')}</p>
-          <p class="text-base font-normal">{$t('no_results_description')}</p>
+          {#if terms.ai}
+            <p class="text-base font-normal">{$t('ai_search_no_results_hint')}</p>
+          {:else}
+            <p class="text-base font-normal">{$t('no_results_description')}</p>
+          {/if}
         </div>
       </div>
     {/if}

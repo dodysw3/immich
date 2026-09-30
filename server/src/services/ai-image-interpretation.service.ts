@@ -138,14 +138,36 @@ export class AiImageInterpretationService {
       );
     }
 
-    if (completed && config.discord.webhookUrl) {
+    if (completed) {
       try {
-        await this.jobRepository.queue({
-          name: JobName.SendAiInterpretationDiscordAlert,
-          data: { assetId, runKey },
-        });
-      } catch {
-        this.logger.error(`Failed to queue Discord alert for AI interpretation ${assetId}/${runKey}`);
+        await this.jobRepository.recordAiInterpretationCompletion(assetId, runKey);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to record AI interpretation completion sample for ${assetId}/${runKey}: ${
+            error instanceof Error ? error.message : error
+          }`,
+        );
+      }
+
+      if (config.discord.webhookUrl) {
+        try {
+          await this.jobRepository.queue({
+            name: JobName.SendAiInterpretationDiscordAlert,
+            data: { assetId, runKey },
+          });
+        } catch {
+          this.logger.error(`Failed to queue Discord alert for AI interpretation ${assetId}/${runKey}`);
+        }
+      }
+
+      // Embedding failure never fails interpretation: the sync job retries via
+      // BullMQ backoff and the reconcile sweep re-covers gaps (design D5).
+      if (this.configRepository.getEnv().aiInterpretSearch.enabled) {
+        try {
+          await this.jobRepository.queue({ name: JobName.AiInterpretSearchSync, data: { id: assetId } });
+        } catch {
+          this.logger.error(`Failed to queue AI interpret search sync for ${assetId}/${runKey}`);
+        }
       }
     }
 

@@ -488,3 +488,35 @@ const SearchExploreResponseSchema = z
   .meta({ id: 'SearchExploreResponseDto' });
 
 export class SearchExploreResponseDto extends createZodDto(SearchExploreResponseSchema) {}
+
+const AiInterpretSearchSchema = z
+  .object({
+    q: z.string().trim().min(1).describe('Natural language query against AI interpretations'),
+    page: z.int().min(1).optional().describe('Page number'),
+    size: z.int().min(1).max(1000).default(100).describe('Number of results to return'),
+    visibility: AssetVisibilitySchema.optional().describe('Filter by visibility'),
+  })
+  .meta({ id: 'AiInterpretSearchDto' });
+
+export class AiInterpretSearchDto extends createZodDto(AiInterpretSearchSchema) {}
+
+const AiInterpretSearchItemSchema = z
+  .object({
+    asset: AssetResponseSchema,
+    score: z.number().describe('Reciprocal rank fusion score of this result'),
+    branch: z.enum(['dense', 'lexical']).describe('Search branch that contributed the best rank for this result'),
+  })
+  .meta({ id: 'AiInterpretSearchItemDto' });
+
+export class AiInterpretSearchItemDto extends createZodDto(AiInterpretSearchItemSchema) {}
+
+const AiInterpretSearchResponseSchema = z
+  .object({
+    total: z.int().min(0).describe('Total number of fused results in the current window'),
+    count: z.int().min(0).describe('Number of results on this page'),
+    items: z.array(AiInterpretSearchItemSchema),
+    nextPage: z.string().nullable().describe('Next page number, if more results are available'),
+  })
+  .meta({ id: 'AiInterpretSearchResponseDto' });
+
+export class AiInterpretSearchResponseDto extends createZodDto(AiInterpretSearchResponseSchema) {}

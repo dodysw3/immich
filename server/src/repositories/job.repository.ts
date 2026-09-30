@@ -2,6 +2,7 @@ import { getQueueToken } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { ModuleRef, Reflector } from '@nestjs/core';
 import { JobsOptions, Queue, Worker } from 'bullmq';
+import { Redis } from 'ioredis';
 import { setTimeout } from 'node:timers/promises';
 import type { JobCounts, JobItem, JobOf } from 'src/types.js';
 import { JobConfig } from 'src/decorators.js';
@@ -10,7 +11,11 @@ import { ImmichWorker, JobName, JobStatus, MetadataKey, QueueCleanType, QueueJob
 import { ConfigRepository } from 'src/repositories/config.repository.js';
 import { EventRepository } from 'src/repositories/event.repository.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';
-import { createAiInterpretationJobId } from 'src/utils/ai-image-interpretation.js';
+import {
+  AI_INTERPRETATION_RATE_WINDOW_MINUTES,
+  AI_INTERPRETATION_RATE_WINDOW_MS,
+  createAiInterpretationJobId,
+} from 'src/utils/ai-image-interpretation.js';
 import { ImmichStartupError, getKeyByValue, getMethodNames } from 'src/utils/misc.js';
 
 type JobMapItem = {
@@ -21,6 +26,10 @@ type JobMapItem = {
 };
 
 const WORKER_WATCH_INTERVAL_MS = 30_000;
+// Sorted set of AI interpretation completion timestamps (score = epoch ms),
+// shared through Redis so the rate reflects aggregate throughput of every
+// worker, not just the process reading it.
+const AI_INTERPRETATION_COMPLETIONS_KEY = 'immich:ai-interpretation:completions';
 
 @Injectable()
 export class JobRepository {
@@ -192,6 +201,31 @@ export class JobRepository {
     ) as unknown as Promise<JobCounts>;
   }
 
+  async recordAiInterpretationCompletion(assetId: string, runKey: string, completedAt = new Date()): Promise<void> {
+    const client = await this.getRedisClient();
+    await client.zadd(
+      AI_INTERPRETATION_COMPLETIONS_KEY,
+      completedAt.getTime(),
+      `${completedAt.getTime()}:${assetId}:${runKey}`,
+    );
+    await client.pexpire(AI_INTERPRETATION_COMPLETIONS_KEY, AI_INTERPRETATION_RATE_WINDOW_MS * 2);
+  }
+
+  /** Completions per minute over the trailing rate window. */
+  async getAiInterpretationCompletionRate(now = new Date()): Promise<number> {
+    const client = await this.getRedisClient();
+    const windowStart = now.getTime() - AI_INTERPRETATION_RATE_WINDOW_MS;
+    await client.zremrangebyscore(AI_INTERPRETATION_COMPLETIONS_KEY, '-inf', `(${windowStart}`);
+    const count = await client.zcount(AI_INTERPRETATION_COMPLETIONS_KEY, windowStart, '+inf');
+    return count / AI_INTERPRETATION_RATE_WINDOW_MINUTES;
+  }
+
+  // BullMQ's queue client is the shared ioredis connection; commands BullMQ
+  // itself does not use (zadd, zcount, ...) are forwarded to it unchanged.
+  private getRedisClient(): Promise<Redis> {
+    return this.getQueue(QueueName.ImageInterpretation).client as unknown as Promise<Redis>;
+  }
+
   private getQueueName(name: JobName) {
     return (this.handlers[name] as JobMapItem).queueName;
   }
@@ -306,6 +340,17 @@ export class JobRepository {
           attempts: 5,
           backoff: { type: 'exponential', delay: 5000 },
         };
+      }
+      case JobName.AiInterpretSearchSync: {
+        // Embedding endpoint outages retry with backoff; once attempts are
+        // exhausted the reconcile sweep re-covers the missing row anyway.
+        return {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 10_000 },
+        };
+      }
+      case JobName.AiInterpretSearchReconcile: {
+        return { deduplication: { id: JobName.AiInterpretSearchReconcile } };
       }
       default: {
         return null;

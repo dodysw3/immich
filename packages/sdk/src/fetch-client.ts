@@ -2590,6 +2590,32 @@ export type RandomSearchDto = {
     /** Include stacked assets */
     withStacked?: boolean;
 };
+export type AiInterpretSearchDto = {
+    /** Page number */
+    page?: number;
+    /** Natural language query against AI interpretations */
+    q: string;
+    /** Number of results to return */
+    size?: number;
+    visibility?: AssetVisibility;
+};
+export type AiInterpretSearchItemDto = {
+    asset: AssetResponseDto;
+    /** Search branch that contributed the best rank for this result */
+    branch: AiInterpretSearchBranch;
+    /** Reciprocal rank fusion score of this result */
+    score: number;
+};
+export type AiInterpretSearchBranch = "dense" | "lexical";
+export type AiInterpretSearchResponseDto = {
+    /** Number of results on this page */
+    count: number;
+    items: AiInterpretSearchItemDto[];
+    /** Next page number, if more results are available */
+    nextPage: string | null;
+    /** Total number of fused results in the current window */
+    total: number;
+};
 export type SmartSearchDto = {
     /** Filter by album IDs */
     albumIds?: string[];
@@ -2803,6 +2829,8 @@ export type ServerConfigDto = {
     userDeleteDelay: number;
 };
 export type ServerFeaturesDto = {
+    /** Whether AI interpretation search is enabled */
+    aiInterpretSearch: boolean;
     /** Whether config file is available */
     configFile: boolean;
     /** Whether duplicate detection is enabled */
@@ -6623,6 +6651,21 @@ export function searchSmart({ smartSearchDto }: {
         ...opts,
         method: "POST",
         body: smartSearchDto
+    })));
+}
+/**
+ * AI interpretation search
+ */
+export function searchAiInterpret({ aiInterpretSearchDto }: {
+    aiInterpretSearchDto: AiInterpretSearchDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: AiInterpretSearchResponseDto;
+    }>("/search/ai-interpret", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: aiInterpretSearchDto
     })));
 }
 /**

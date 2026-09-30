@@ -156,6 +156,15 @@ export interface EnvData {
     };
   };
 
+  aiInterpretSearch: {
+    enabled: boolean;
+    url?: string;
+    apiKey?: string;
+    model: string;
+    timeoutMs: number;
+    minScore: number;
+  };
+
   noColor: boolean;
   nodeVersion?: string;
 }
@@ -431,6 +440,15 @@ const getEnv = (): EnvData => {
         webhookUrl: dto.IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_WEBHOOK_URL,
         includeThumbnail: dto.IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_INCLUDE_THUMBNAIL ?? true,
       },
+    },
+
+    aiInterpretSearch: {
+      enabled: dto.IMMICH_AI_INTERPRET_SEARCH_ENABLED ?? false,
+      url: dto.IMMICH_AI_INTERPRET_SEARCH_URL,
+      apiKey: dto.IMMICH_AI_INTERPRET_SEARCH_API_KEY,
+      model: dto.IMMICH_AI_INTERPRET_SEARCH_MODEL || 'bge-m3-Q8_0',
+      timeoutMs: dto.IMMICH_AI_INTERPRET_SEARCH_TIMEOUT_MS || 30_000,
+      minScore: dto.IMMICH_AI_INTERPRET_SEARCH_MIN_SCORE ?? 0.4,
     },
 
     noColor: !!dto.NO_COLOR,

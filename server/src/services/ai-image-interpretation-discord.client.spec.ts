@@ -29,6 +29,7 @@ const makeAlert = (overrides: Partial<AiInterpretationDiscordAlert> = {}): AiInt
   originalFileName: 'IMG_1234.JPG',
   photoDate: '2020-04-05T06:07:08.000Z',
   waitingCount: 42,
+  eta: '~11m (around Sep 26, 11:11 PM GMT+7)',
   result,
   ...overrides,
 });
@@ -81,6 +82,7 @@ describe(AiImageInterpretationDiscordClient.name, () => {
         { name: 'Immich account', value: 'Cangka', inline: true },
         { name: 'Filename', value: 'IMG_1234.JPG', inline: true },
         { name: 'AI interpretations waiting', value: '42', inline: true },
+        { name: 'Queue ETA', value: '~11m (around Sep 26, 11:11 PM GMT+7)', inline: true },
       ],
     });
   });

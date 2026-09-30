@@ -3,6 +3,8 @@ import { AiImageInterpretationDiscordClient } from 'src/services/ai-image-interp
 import { AiImageInterpretationDiscordService } from 'src/services/ai-image-interpretation-discord.service.js';
 import { AiImageInterpretationClient } from 'src/services/ai-image-interpretation.client.js';
 import { AiImageInterpretationService } from 'src/services/ai-image-interpretation.service.js';
+import { AiInterpretSearchClient } from 'src/services/ai-interpret-search.client.js';
+import { AiInterpretSearchService } from 'src/services/ai-interpret-search.service.js';
 import { AlbumService } from 'src/services/album.service.js';
 import { ApiKeyService } from 'src/services/api-key.service.js';
 import { ApiService } from 'src/services/api.service.js';
@@ -64,6 +66,8 @@ export const services = [
   AiImageInterpretationDiscordClient,
   AiImageInterpretationDiscordService,
   AiImageInterpretationService,
+  AiInterpretSearchClient,
+  AiInterpretSearchService,
   ActivityService,
   AlbumService,
   ApiService,

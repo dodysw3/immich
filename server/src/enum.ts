@@ -835,6 +835,7 @@ export enum QueueName {
   IntegrityCheck = 'integrityCheck',
   Editor = 'editor',
   ImageInterpretation = 'imageInterpretation',
+  AiInterpretSearch = 'aiInterpretSearch',
 }
 
 export const QueueNameSchema = z.enum(QueueName).describe('Queue name').meta({ id: 'QueueName' });
@@ -868,6 +869,8 @@ export enum JobName {
   AssetGenerateThumbnails = 'AssetGenerateThumbnails',
   AssetInterpretImage = 'AssetInterpretImage',
   AssetInterpretationReconcile = 'AssetInterpretationReconcile',
+  AiInterpretSearchSync = 'AiInterpretSearchSync',
+  AiInterpretSearchReconcile = 'AiInterpretSearchReconcile',
 
   AuditTableCleanup = 'AuditTableCleanup',
 
@@ -982,6 +985,7 @@ export enum QueueCleanType {
 export enum VectorIndex {
   Clip = 'clip_index',
   Face = 'face_index',
+  AiInterpret = 'ai_interpret_index',
 }
 
 export enum DatabaseLock {

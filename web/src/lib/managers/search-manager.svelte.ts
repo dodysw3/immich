@@ -7,6 +7,8 @@ import { Route } from '$lib/route';
 import type { SearchFilter } from '$lib/types';
 import { asLocalTimeISO, parseUtcDate } from '$lib/utils/date-time';
 
+type SearchQuery = MetadataSearchDto & SmartSearchDto & { ai?: string };
+
 class SearchManager {
   #filter = $state<SearchFilter>(this.#fromQuery({}));
 
@@ -18,7 +20,7 @@ class SearchManager {
     this.#filter = this.#fromQuery({});
   }
 
-  setQuery(query: MetadataSearchDto | SmartSearchDto) {
+  setQuery(query: SearchQuery) {
     this.#filter = this.#fromQuery(query);
   }
 
@@ -26,7 +28,7 @@ class SearchManager {
     await goto(Route.search(this.#toQuery()));
   }
 
-  #fromQuery(searchQuery: MetadataSearchDto | SmartSearchDto): SearchFilter {
+  #fromQuery(searchQuery: SearchQuery): SearchFilter {
     let query = 'query' in searchQuery && searchQuery.query ? searchQuery.query : '';
     let queryType = query ? QueryType.SMART : this.#defaultQueryType();
 
@@ -50,9 +52,15 @@ class SearchManager {
       queryType = QueryType.OCR;
     }
 
+    if ('ai' in searchQuery && searchQuery.ai) {
+      query = searchQuery.ai;
+      queryType = QueryType.AI;
+    }
+
     return {
       query,
       ocr: searchQuery.ocr,
+      ai: 'ai' in searchQuery ? searchQuery.ai : undefined,
       queryType,
       queryAssetId: 'queryAssetId' in searchQuery ? searchQuery.queryAssetId : undefined,
       personIds: new SvelteSet('personIds' in searchQuery ? searchQuery.personIds : []),
@@ -91,7 +99,7 @@ class SearchManager {
     };
   }
 
-  #toQuery(): MetadataSearchDto | SmartSearchDto {
+  #toQuery(): SearchQuery {
     let type: AssetTypeEnum | undefined = undefined;
     if (this.filter.mediaType === MediaType.Image) {
       type = AssetTypeEnum.Image;
@@ -105,6 +113,7 @@ class SearchManager {
       query: this.filter.queryType === 'smart' ? query : undefined,
       queryAssetId: this.filter.queryAssetId || undefined,
       ocr: this.filter.queryType === 'ocr' ? query : undefined,
+      ai: this.filter.queryType === 'ai' ? query : undefined,
       originalFileName: this.filter.queryType === 'metadata' ? query : undefined,
       description: this.filter.queryType === 'description' ? query : undefined,
       originalPath: this.filter.queryType === 'fullPath' ? this.filter.query.trim() || undefined : undefined,
