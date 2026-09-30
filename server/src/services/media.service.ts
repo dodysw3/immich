@@ -454,10 +454,15 @@ export class MediaService extends BaseService {
         raw: info,
         edits: [] as never[],
       };
+      const decoded = { data, info };
       const [thumbhash] = await Promise.all([
-        this.mediaRepository.generateThumbhash(data, thumbnailOptions),
-        this.mediaRepository.generateThumbnail(data, { ...image.thumbnail, ...thumbnailOptions }, thumbnailFile.path),
-        this.mediaRepository.generateThumbnail(data, { ...image.preview, ...thumbnailOptions }, previewFile.path),
+        this.mediaRepository.generateThumbhash(decoded, thumbnailOptions),
+        this.mediaRepository.generateThumbnail(
+          decoded,
+          { ...image.thumbnail, ...thumbnailOptions },
+          thumbnailFile.path,
+        ),
+        this.mediaRepository.generateThumbnail(decoded, { ...image.preview, ...thumbnailOptions }, previewFile.path),
       ]);
 
       return {

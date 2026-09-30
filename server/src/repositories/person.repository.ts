@@ -23,7 +23,14 @@ import { AssetFaceTable } from 'src/schema/tables/asset-face.table.js';
 import { FaceSearchTable } from 'src/schema/tables/face-search.table.js';
 import { PersonGroupTable } from 'src/schema/tables/person-group.table.js';
 import { PersonTable } from 'src/schema/tables/person.table.js';
-import { PEOPLE_ASSET_VISIBILITIES, anyUuid, dummy, inSharedAlbum, removeUndefinedKeys, withFilePath } from 'src/utils/database.js';
+import {
+  PEOPLE_ASSET_VISIBILITIES,
+  anyUuid,
+  dummy,
+  inSharedAlbum,
+  removeUndefinedKeys,
+  withFilePath,
+} from 'src/utils/database.js';
 import { isLeapDayObserved } from 'src/utils/date.js';
 import { type PaginationOptions, paginationHelper } from 'src/utils/pagination.js';
 

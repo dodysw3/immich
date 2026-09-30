@@ -19,7 +19,7 @@ const setup = async () => {
 
 // 1024-dim unit vectors exercising specific cosine distances via the first two axes
 const vector = (x: number, y: number): string => {
-  const v = Array.from({ length: 1024 }).fill(0);
+  const v = Array.from({ length: 1024 }, () => 0);
   v[0] = x;
   v[1] = y;
   return `[${v.join(',')}]`;
