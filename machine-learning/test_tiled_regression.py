@@ -28,8 +28,15 @@ import pytest
 from PIL import Image
 
 from immich_ml.models.facial_recognition.detection import FaceDetector
+from immich_ml.schemas import FaceDetectionOptions
 
-TILED_KWARGS = {"tiled": True, "tileSize": 640, "tileOverlap": 0.25, "maxTiles": 64}
+# Options are a typed, per-call object since the optimized-inference refactor: predict()
+# forwards them to _predict(options=...) and nothing is configured onto the cached model
+# instance anymore, so the old configure()-poisoning vector is structurally gone. These
+# tests pin the replacement contract: per-call options select tiled vs single-pass, and
+# requests cannot influence each other.
+PASS1_OPTIONS = FaceDetectionOptions(min_score=0.5)
+TILED_OPTIONS = FaceDetectionOptions(min_score=0.5, tiled=True, tile_size=640, tile_overlap=0.25, max_tiles=500)
 
 
 def make_scrfd_heads(detections: list[tuple[int, int, float]]) -> list[np.ndarray]:
@@ -59,9 +66,9 @@ def detector(stub_session: Callable[..., mock.Mock], mocker: mock.Mock) -> FaceD
 
 class TestTiledRequestContract:
     def test_pass2_tiled_request_does_not_raise(self, detector: FaceDetector) -> None:
-        # This is the exact kwargs set the server sends for pass 2 (tiled) detection;
-        # it must be accepted by predict() rather than raise TypeError -> HTTP 500.
-        faces = detector.predict(Image.new("RGB", (1280, 640)), minScore=0.5, **TILED_KWARGS)
+        # The server's pass-2 (tiled) request parses into exactly these options;
+        # predict() must accept them rather than raise TypeError -> HTTP 500.
+        faces = detector.predict(Image.new("RGB", (1280, 640)), options=TILED_OPTIONS)
 
         assert set(faces) == {"boxes", "scores", "landmarks", "gpuFallback"}
 
@@ -71,11 +78,11 @@ class TestTiledRequestContract:
         # 1280x640 with tile 640, stride 480 -> 3 tiles, vs 1 single-pass inference.
         image = Image.new("RGB", (1280, 640))
 
-        detector.predict(image, minScore=0.5, **TILED_KWARGS)
+        detector.predict(image, options=TILED_OPTIONS)
         assert detector.session.run.call_count == 3
 
         detector.session.run.reset_mock()
-        detector.predict(image, minScore=0.5)  # pass 1: no tiled kwargs
+        detector.predict(image, options=PASS1_OPTIONS)  # pass 1: not tiled
         assert detector.session.run.call_count == 1, (
             "pass-1 request must run single-pass detection, not inherit tiled mode"
         )
@@ -83,25 +90,27 @@ class TestTiledRequestContract:
 
 class TestNoStatePoisoning:
     def test_failed_tiled_request_does_not_poison_later_pass1_requests(self, detector: FaceDetector) -> None:
-        # Production: the pass-2 request 500s (pre-fix: TypeError after configure
+        # Production: the pass-2 request 500s (pre-refactor: TypeError after configure
         # already ran). Whatever happens during the tiled request, a worker that
         # handled it must not flip every later pass-1 into tiled mode.
-        with contextlib.suppress(Exception):
-            detector.predict(Image.new("RGB", (1280, 640)), minScore=0.5, **TILED_KWARGS)
+        detector.session.run.side_effect = RuntimeError("tiled run failed")
+        with contextlib.suppress(RuntimeError):
+            detector.predict(Image.new("RGB", (1280, 640)), options=TILED_OPTIONS)
 
+        detector.session.run.side_effect = None
         detector.session.run.reset_mock()
-        detector.predict(Image.new("RGB", (1280, 640)), minScore=0.5)
+        detector.predict(Image.new("RGB", (1280, 640)), options=PASS1_OPTIONS)
 
         assert detector.session.run.call_count == 1, (
-            "a failed tiled request leaked _tiled=True into the cached model instance"
+            "options are per-call; a failed tiled request must not leak tiled mode into the cached model instance"
         )
 
     def test_interleaved_tiled_and_single_pass_requests_are_isolated(self, detector: FaceDetector) -> None:
         image = Image.new("RGB", (1280, 640))
 
-        detector.predict(image, minScore=0.5, **TILED_KWARGS)
-        detector.predict(image, minScore=0.5)
-        detector.predict(image, minScore=0.5, **TILED_KWARGS)
+        detector.predict(image, options=TILED_OPTIONS)
+        detector.predict(image, options=PASS1_OPTIONS)
+        detector.predict(image, options=TILED_OPTIONS)
 
         assert detector.session.run.call_count == 3 + 1 + 3
 
@@ -126,9 +135,9 @@ class TestLargeFaceIncident:
 
         detector = FaceDetector("buffalo_l")
         detector.load()
-        single = detector._predict(image, minScore=0.0)
+        single = detector._predict(image, options=FaceDetectionOptions(min_score=0.0))
         single_best = float(single["scores"].max()) if single["scores"].size else 0.0
-        tiled = detector._predict(image, minScore=0.0, tiled=True)
+        tiled = detector._predict(image, options=FaceDetectionOptions(min_score=0.0, tiled=True))
         tiled_best = float(tiled["scores"].max()) if tiled["scores"].size else 0.0
 
         assert single_best >= 0.5, "the face must clear the deployed minScore in single-pass mode"

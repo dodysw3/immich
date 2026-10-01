@@ -1671,7 +1671,7 @@ class TestFaceRecognition:
 
         ensure_cpu_spy = mocker.spy(face_detector, "_ensure_cpu_session")
 
-        faces = face_detector.predict(Image.new("RGB", (640, 640)), minScore=0.7)
+        faces = face_detector.predict(Image.new("RGB", (640, 640)), options=FaceDetectionOptions(min_score=0.7))
 
         assert faces["boxes"].shape[0] == 2
         assert faces["gpuFallback"] is False
@@ -1690,7 +1690,7 @@ class TestFaceRecognition:
 
         mock_warn = mocker.patch("immich_ml.models.facial_recognition.detection.log.warning")
 
-        faces = face_detector.predict(Image.new("RGB", (640, 640)), minScore=0.7)
+        faces = face_detector.predict(Image.new("RGB", (640, 640)), options=FaceDetectionOptions(min_score=0.7))
 
         assert faces["boxes"].shape[0] == 0
         assert faces["gpuFallback"] is False
@@ -1710,7 +1710,7 @@ class TestFaceRecognition:
 
         mock_warn = mocker.patch("immich_ml.models.facial_recognition.detection.log.warning")
 
-        faces = face_detector.predict(Image.new("RGB", (640, 640)), minScore=0.7)
+        faces = face_detector.predict(Image.new("RGB", (640, 640)), options=FaceDetectionOptions(min_score=0.7))
 
         assert faces["boxes"].shape[0] == 1
         assert faces["gpuFallback"] is True
@@ -1730,7 +1730,7 @@ class TestFaceRecognition:
 
         ensure_cpu_spy = mocker.spy(face_detector, "_ensure_cpu_session")
 
-        faces = face_detector.predict(Image.new("RGB", (640, 640)), minScore=0.7)
+        faces = face_detector.predict(Image.new("RGB", (640, 640)), options=FaceDetectionOptions(min_score=0.7))
 
         assert faces["boxes"].shape[0] == 0
         assert faces["gpuFallback"] is False
@@ -1747,7 +1747,7 @@ class TestFaceRecognition:
         face_detector.session = session
 
         # 1280x640 with tile 640, overlap 0.25 (stride 480) -> x positions [0, 480, 640]
-        faces = face_detector.predict(Image.new("RGB", (1280, 640)), minScore=0.7, tiled=True)
+        faces = face_detector.predict(Image.new("RGB", (1280, 640)), options=FaceDetectionOptions(min_score=0.7, tiled=True))
 
         assert session.run.call_count == 3
         assert faces["boxes"].shape[0] == 3
@@ -1764,12 +1764,12 @@ class TestFaceRecognition:
         face_detector.session = session
 
         # tile 640, overlap 0.5 (stride 320) -> x positions [0, 320, 640]
-        face_detector.predict(Image.new("RGB", (1280, 640)), minScore=0.7, tiled=True, tileOverlap=0.5)
+        face_detector.predict(Image.new("RGB", (1280, 640)), options=FaceDetectionOptions(min_score=0.7, tiled=True, tile_overlap=0.5))
         assert session.run.call_count == 3
 
         # the request's tiling options must not leak into a request that omits them
         session.run.reset_mock()
-        face_detector.predict(Image.new("RGB", (1280, 640)), minScore=0.7)
+        face_detector.predict(Image.new("RGB", (1280, 640)), options=FaceDetectionOptions(min_score=0.7))
         assert session.run.call_count == 1
 
 

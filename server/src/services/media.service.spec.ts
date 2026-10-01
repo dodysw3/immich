@@ -43,6 +43,10 @@ describe(MediaService.name, () => {
 
   beforeEach(() => {
     ({ sut, mocks } = newTestService(MediaService));
+    // generateEditedThumbnails reads these for edit-visibility checks; tests that
+    // exercise that path override with their own faces/ocr rows
+    mocks.person.getFaces.mockResolvedValue([]);
+    mocks.ocr.getByAssetId.mockResolvedValue([]);
   });
 
   it('should be defined', () => {

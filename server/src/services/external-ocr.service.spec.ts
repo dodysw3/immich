@@ -159,6 +159,12 @@ describe(ExternalOcrService.name, () => {
   describe('handleAssetCreate', () => {
     it('should set ocrAt when internal OCR is disabled for image assets', async () => {
       mocks.systemMetadata.get.mockResolvedValue(systemConfigStub.machineLearningDisabled);
+      // the AssetCreate payload only carries the id; type/visibility come from the re-fetch
+      mocks.asset.getById.mockResolvedValue({
+        id: 'asset-1',
+        type: AssetType.Image,
+        visibility: AssetVisibility.Timeline,
+      } as any);
 
       await sut.handleAssetCreate({
         asset: {
@@ -187,6 +193,11 @@ describe(ExternalOcrService.name, () => {
 
     it('should skip non-image and hidden assets', async () => {
       mocks.systemMetadata.get.mockResolvedValue(systemConfigStub.machineLearningDisabled);
+      mocks.asset.getById.mockResolvedValueOnce({
+        id: 'asset-video',
+        type: AssetType.Video,
+        visibility: AssetVisibility.Timeline,
+      } as any);
 
       await sut.handleAssetCreate({
         asset: {
@@ -196,6 +207,12 @@ describe(ExternalOcrService.name, () => {
         } as any,
         file: {} as any,
       });
+
+      mocks.asset.getById.mockResolvedValueOnce({
+        id: 'asset-hidden',
+        type: AssetType.Image,
+        visibility: AssetVisibility.Hidden,
+      } as any);
 
       await sut.handleAssetCreate({
         asset: {
