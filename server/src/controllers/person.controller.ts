@@ -35,6 +35,8 @@ import {
   PersonUsersDeleteDto,
   PersonUsersResponseDto,
   PersonUsersSearchDto,
+  RecentlyMatchedDto,
+  RecentlyMatchedResponseDto,
 } from 'src/dtos/person.dto.js';
 import { ApiTag, Permission } from 'src/enum.js';
 import { Auth, Authenticated, FileResponse } from 'src/middleware/auth.guard.js';
@@ -96,6 +98,19 @@ export class PersonController {
   })
   deletePeople(@Auth() auth: AuthDto, @Body() dto: PeopleDeleteDto): Promise<void> {
     return this.service.deleteAll(auth, dto);
+  }
+
+  // literal route must be declared before @Get(':id') or NestJS captures it as an id
+  @Get('recently-matched')
+  @Authenticated({ permission: Permission.PersonRead })
+  @Endpoint({
+    summary: 'Get recently matched faces',
+    description:
+      "Retrieve the most recent face-recognition matches across all of the user's people, one item per asset-person pair, newest first.",
+    history: new HistoryBuilder().added('v3.3.0'),
+  })
+  getRecentlyMatched(@Auth() auth: AuthDto, @Query() dto: RecentlyMatchedDto): Promise<RecentlyMatchedResponseDto> {
+    return this.service.getRecentlyMatched(auth, dto);
   }
 
   @Get(':id')

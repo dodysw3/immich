@@ -1175,6 +1175,9 @@ with
       "face_search" ("faceId", "embedding")
     values
       ($1, $2)
+    on conflict ("faceId") do update
+    set
+      "embedding" = "excluded"."embedding"
   )
 select
 from
@@ -1348,6 +1351,77 @@ where
   and "asset_face"."deletedAt" is null
   and "asset_face"."isVisible" is true
   and "asset"."ownerId" = $2
+
+-- PersonRepository.getRecentlyMatched
+select
+  count(
+    distinct (recent."assetId", person."personGroupId")
+  ) as "count"
+from
+  (
+    select
+      "assetId",
+      "personGroupId",
+      "updatedAt"
+    from
+      "asset_face"
+    where
+      "asset_face"."deletedAt" is null
+      and "asset_face"."isVisible" is true
+    order by
+      "asset_face"."updatedAt" desc
+    limit
+      $1
+  ) as "recent"
+  inner join "asset" on "asset"."id" = "recent"."assetId"
+  inner join "person" on "person"."personGroupId" = "recent"."personGroupId"
+  and "person"."ownerId" = "asset"."ownerId"
+where
+  "asset"."ownerId" = $2
+  and "asset"."visibility" in ('archive', 'timeline')
+  and "asset"."deletedAt" is null
+  and "person"."ownerId" = $3
+  and "person"."isHidden" = $4
+select
+  "recent"."assetId" as "assetId",
+  "person"."personGroupId" as "personId",
+  "person"."name" as "personName",
+  max(recent."updatedAt") as "recognizedAt"
+from
+  (
+    select
+      "assetId",
+      "personGroupId",
+      "updatedAt"
+    from
+      "asset_face"
+    where
+      "asset_face"."deletedAt" is null
+      and "asset_face"."isVisible" is true
+    order by
+      "asset_face"."updatedAt" desc
+    limit
+      $1
+  ) as "recent"
+  inner join "asset" on "asset"."id" = "recent"."assetId"
+  inner join "person" on "person"."personGroupId" = "recent"."personGroupId"
+  and "person"."ownerId" = "asset"."ownerId"
+where
+  "asset"."ownerId" = $2
+  and "asset"."visibility" in ('archive', 'timeline')
+  and "asset"."deletedAt" is null
+  and "person"."ownerId" = $3
+  and "person"."isHidden" = $4
+group by
+  "recent"."assetId",
+  "person"."personGroupId",
+  "person"."name"
+order by
+  max(recent."updatedAt") desc
+limit
+  $5
+offset
+  $6
 
 -- PersonRepository.getForMergePerson
 select

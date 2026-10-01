@@ -33,6 +33,11 @@ import { PersonGroupTable } from 'src/schema/tables/person-group.table.js';
   where: '"deletedAt" IS NULL AND "isVisible" IS TRUE',
 })
 @Index({ columns: ['personGroupId', 'assetId'] })
+@Index({
+  name: 'asset_face_updatedAt_notDeleted_isVisible_idx',
+  columns: ['updatedAt'],
+  where: '"deletedAt" IS NULL AND "isVisible" IS TRUE',
+})
 export class AssetFaceTable {
   @PrimaryGeneratedColumn()
   id!: Generated<string>;

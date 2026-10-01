@@ -1276,6 +1276,68 @@ export class PersonRepository {
     return { items, total };
   }
 
+  @GenerateSql({ params: [DummyValue.UUID, { limit: 50, offset: 0 }] })
+  async getRecentlyMatched(
+    ownerId: string,
+    options: { limit: number; offset: number },
+  ): Promise<{
+    items: { assetId: string; personId: string; personName: string; recognizedAt: Date }[];
+    total: number;
+  }> {
+    const { limit, offset } = options;
+    // Faces come off the recency index newest-first and only the recent window
+    // is grouped, so latency does not scale with the full face count. In a
+    // descending scan a pair's first sighting is its max(updatedAt), so the
+    // windowed top pairs are the exact top pairs as long as the window holds
+    // more distinct pairs than the requested page.
+    const faceWindow = Math.min(Math.max((offset + limit) * 4, 500), 10_000);
+
+    const recentFaces = () =>
+      this.db
+        .selectFrom('asset_face')
+        .select(['assetId', 'personGroupId', 'updatedAt'])
+        .where('asset_face.deletedAt', 'is', null)
+        .where('asset_face.isVisible', 'is', true)
+        .orderBy('asset_face.updatedAt', 'desc')
+        .limit(faceWindow);
+
+    const [countResult, items] = await Promise.all([
+      this.db
+        .selectFrom(recentFaces().as('recent'))
+        .innerJoin('asset', 'asset.id', 'recent.assetId')
+        .innerJoin('person', (join) =>
+          join.onRef('person.personGroupId', '=', 'recent.personGroupId').onRef('person.ownerId', '=', 'asset.ownerId'),
+        )
+        .where('asset.ownerId', '=', ownerId)
+        .where('asset.visibility', 'in', PEOPLE_ASSET_VISIBILITIES)
+        .where('asset.deletedAt', 'is', null)
+        .where('person.ownerId', '=', ownerId)
+        .where('person.isHidden', '=', false)
+        .select(sql<number>`count(distinct (recent."assetId", person."personGroupId"))`.as('count'))
+        .executeTakeFirst(),
+      this.db
+        .selectFrom(recentFaces().as('recent'))
+        .innerJoin('asset', 'asset.id', 'recent.assetId')
+        .innerJoin('person', (join) =>
+          join.onRef('person.personGroupId', '=', 'recent.personGroupId').onRef('person.ownerId', '=', 'asset.ownerId'),
+        )
+        .where('asset.ownerId', '=', ownerId)
+        .where('asset.visibility', 'in', PEOPLE_ASSET_VISIBILITIES)
+        .where('asset.deletedAt', 'is', null)
+        .where('person.ownerId', '=', ownerId)
+        .where('person.isHidden', '=', false)
+        .select(['recent.assetId as assetId', 'person.personGroupId as personId', 'person.name as personName'])
+        .select(sql<Date>`max(recent."updatedAt")`.as('recognizedAt'))
+        .groupBy(['recent.assetId', 'person.personGroupId', 'person.name'])
+        .orderBy(sql`max(recent."updatedAt")`, 'desc')
+        .limit(limit)
+        .offset(offset)
+        .execute(),
+    ]);
+
+    return { items, total: Number(countResult?.count ?? 0) };
+  }
+
   @GenerateSql({ params: [[DummyValue.UUID]] })
   getForMergePerson(personGroupIds: string[]) {
     return this.db

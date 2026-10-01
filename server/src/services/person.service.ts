@@ -28,6 +28,8 @@ import {
   PersonUsersDeleteDto,
   PersonUsersResponseDto,
   PersonUsersSearchDto,
+  RecentlyMatchedDto,
+  RecentlyMatchedResponseDto,
   mapFaces,
   mapPerson,
   mapPersonUsers,
@@ -53,7 +55,7 @@ import { FaceSearchTable } from 'src/schema/tables/face-search.table.js';
 import { PersonUserTable } from 'src/schema/tables/person-user.table.js';
 import { BaseService } from 'src/services/base.service.js';
 import { getDimensions, getMyPartnerIds } from 'src/utils/asset.util.js';
-import { asDateString } from 'src/utils/date.js';
+import { asDateString, asDateTimeString } from 'src/utils/date.js';
 import { ImmichFileResponse } from 'src/utils/file.js';
 import { isHttpException } from 'src/utils/logger.js';
 import { mimeTypes } from 'src/utils/mime-types.js';
@@ -224,7 +226,11 @@ export class PersonService extends BaseService {
   }
 
   async getPersonAssets(auth: AuthDto, id: string, dto: PersonAssetsDto): Promise<PersonAssetsResponseDto> {
-    await this.requireAccess({ auth, permission: Permission.PersonRead, ids: [id] });
+    await this.requirePersonAccess({
+      auth,
+      permission: Permission.PersonRead,
+      ids: [{ personGroupId: id, ownerId: auth.user.id }],
+    });
 
     const { items, total } = await this.personRepository.getPersonAssets(id, {
       page: dto.page,
@@ -246,6 +252,24 @@ export class PersonService extends BaseService {
         recognizedAt: asDateString(recognizedAtMap.get(asset.id)!)!,
       })),
       total,
+    };
+  }
+
+  async getRecentlyMatched(auth: AuthDto, dto: RecentlyMatchedDto): Promise<RecentlyMatchedResponseDto> {
+    // Owner-scoped by construction; no per-item access checks (same as getAll).
+    const { items, total } = await this.personRepository.getRecentlyMatched(auth.user.id, {
+      limit: dto.limit,
+      offset: dto.offset,
+    });
+
+    return {
+      total,
+      items: items.map((item) => ({
+        assetId: item.assetId,
+        personId: item.personId,
+        personName: item.personName,
+        recognizedAt: asDateTimeString(item.recognizedAt)!,
+      })),
     };
   }
 

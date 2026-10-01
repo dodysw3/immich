@@ -270,6 +270,35 @@ const PeopleResponseSchema = z
   .describe('People response');
 export class PeopleResponseDto extends createZodDto(PeopleResponseSchema) {}
 
+const RecentlyMatchedSchema = z
+  .object({
+    limit: z.coerce.number().int().min(1).max(100).default(50).describe('Number of items to return'),
+    offset: z.coerce.number().int().min(0).default(0).describe('Number of items to skip'),
+  })
+  .meta({ id: 'RecentlyMatchedDto' });
+export class RecentlyMatchedDto extends createZodDto(RecentlyMatchedSchema) {}
+
+const RecentlyMatchedItemSchema = z
+  .object({
+    assetId: z.uuidv4().describe('Asset ID of the matched face'),
+    personId: z.uuidv4().describe('Person ID the face was matched to'),
+    personName: z.string().describe('Person name, empty when the person is unnamed'),
+    recognizedAt: z
+      .string()
+      .meta({ format: 'date-time' })
+      .describe('When this asset-person pair was last matched by recognition'),
+  })
+  .meta({ id: 'RecentlyMatchedItemDto' });
+export class RecentlyMatchedItemDto extends createZodDto(RecentlyMatchedItemSchema) {}
+
+const RecentlyMatchedResponseSchema = z
+  .object({
+    total: z.int().min(0).describe('Total number of recent asset-person pairs'),
+    items: z.array(RecentlyMatchedItemSchema).describe('Asset-person pairs ordered by recognition recency'),
+  })
+  .meta({ id: 'RecentlyMatchedResponseDto' });
+export class RecentlyMatchedResponseDto extends createZodDto(RecentlyMatchedResponseSchema) {}
+
 type OptionalKeys = 'otherPeople' | 'sharedBy' | 'sharedWith';
 
 export function mapPerson(

@@ -5,6 +5,7 @@
   import { shortcut } from '$lib/actions/shortcut';
   import PeopleCard from './PeopleCard.svelte';
   import PeopleInfiniteScroll from './PeopleInfiniteScroll.svelte';
+  import RecentFacesStrip from './RecentFacesStrip.svelte';
   import SearchPeople from '$lib/components/faces-page/PeopleSearch.svelte';
   import UserPageLayout from '$lib/components/layouts/UserPageLayout.svelte';
   import OnEvents from '$lib/components/OnEvents.svelte';
@@ -326,6 +327,8 @@
       />
     </div>
   {/snippet}
+
+  <RecentFacesStrip />
 
   {#if countVisiblePeople > 0 && (!searchName || searchedPeopleLocal.length > 0)}
     <PeopleInfiniteScroll people={showPeople} hasNextPage={!!nextPage && !searchName} {loadNextPage}>

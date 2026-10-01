@@ -10712,6 +10712,72 @@
         "x-immich-state": "Stable"
       }
     },
+    "/people/recently-matched": {
+      "get": {
+        "description": "Retrieve the most recent face-recognition matches across all of the user's people, one item per asset-person pair, newest first.",
+        "operationId": "getRecentlyMatched",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items to return",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "description": "Number of items to skip",
+            "schema": {
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "default": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecentlyMatchedResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Get recently matched faces",
+        "tags": [
+          "People"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v3.3.0",
+            "state": "Added"
+          }
+        ],
+        "x-immich-permission": "person.read"
+      }
+    },
     "/people/users": {
       "delete": {
         "description": "Remove user access to people",
@@ -28483,6 +28549,60 @@
             "type": "boolean"
           }
         },
+        "type": "object"
+      },
+      "RecentlyMatchedItemDto": {
+        "properties": {
+          "assetId": {
+            "description": "Asset ID of the matched face",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+            "type": "string"
+          },
+          "personId": {
+            "description": "Person ID the face was matched to",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+            "type": "string"
+          },
+          "personName": {
+            "description": "Person name, empty when the person is unnamed",
+            "type": "string"
+          },
+          "recognizedAt": {
+            "description": "When this asset-person pair was last matched by recognition",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "assetId",
+          "personId",
+          "personName",
+          "recognizedAt"
+        ],
+        "type": "object"
+      },
+      "RecentlyMatchedResponseDto": {
+        "properties": {
+          "items": {
+            "description": "Asset-person pairs ordered by recognition recency",
+            "items": {
+              "$ref": "#/components/schemas/RecentlyMatchedItemDto"
+            },
+            "type": "array"
+          },
+          "total": {
+            "description": "Total number of recent asset-person pairs",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
         "type": "object"
       },
       "ReleaseChannel": {

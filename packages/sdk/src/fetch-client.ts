@@ -2137,6 +2137,22 @@ export type MergePersonDto = {
     /** Person IDs to merge */
     ids: string[];
 };
+export type RecentlyMatchedItemDto = {
+    /** Asset ID of the matched face */
+    assetId: string;
+    /** Person ID the face was matched to */
+    personId: string;
+    /** Person name, empty when the person is unnamed */
+    personName: string;
+    /** When this asset-person pair was last matched by recognition */
+    recognizedAt: string;
+};
+export type RecentlyMatchedResponseDto = {
+    /** Asset-person pairs ordered by recognition recency */
+    items: RecentlyMatchedItemDto[];
+    /** Total number of recent asset-person pairs */
+    total: number;
+};
 export type PersonUsersDeleteDto = {
     /** Person ID */
     personId: string;
@@ -6493,6 +6509,23 @@ export function mergePeople({ mergePersonDto }: {
         method: "POST",
         body: mergePersonDto
     })));
+}
+/**
+ * Get recently matched faces
+ */
+export function getRecentlyMatched({ limit, offset }: {
+    limit?: number;
+    offset?: number;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RecentlyMatchedResponseDto;
+    }>(`/people/recently-matched${QS.query(QS.explode({
+        limit,
+        offset
+    }))}`, {
+        ...opts
+    }));
 }
 /**
  * Remove users from people
