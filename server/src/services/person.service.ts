@@ -500,6 +500,7 @@ export class PersonService extends BaseService {
     const facesToAdd: (Insertable<AssetFaceTable> & { id: string })[] = [];
     const embeddings: FaceSearchTable[] = [];
     const mlFaceIds = new Set<string>();
+    const matchedFaceIds = new Set<string>();
 
     for (const face of asset.faces) {
       if (face.sourceType === SourceType.MachineLearning) {
@@ -535,9 +536,17 @@ export class PersonService extends BaseService {
         );
       });
 
-      if (match && !mlFaceIds.delete(match.id)) {
-        embeddings.push({ faceId: match.id, embedding });
-      } else if (!match) {
+      if (match) {
+        // multiple detections can match the same stored row (pass 1 and pass 2 boxes
+        // overlap it); only the first match acts, else refreshFaces would insert two
+        // face_search rows with the same faceId
+        if (!matchedFaceIds.has(match.id)) {
+          matchedFaceIds.add(match.id);
+          if (!mlFaceIds.delete(match.id)) {
+            embeddings.push({ faceId: match.id, embedding });
+          }
+        }
+      } else {
         const faceId = this.cryptoRepository.randomUUID();
         facesToAdd.push({
           id: faceId,

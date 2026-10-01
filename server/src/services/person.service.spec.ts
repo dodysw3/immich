@@ -1583,6 +1583,50 @@ describe(PersonService.name, () => {
       expect(mocks.person.reassignFace).not.toHaveBeenCalled();
       expect(mocks.person.reassignFaces).not.toHaveBeenCalled();
     });
+
+    it('should not push duplicate embeddings when multiple detections match the same stored face', async () => {
+      const mlFace = AssetFaceFactory.create();
+      const exifFace = AssetFaceFactory.create({
+        sourceType: SourceType.Exif,
+        boundingBoxX1: 300,
+        boundingBoxX2: 400,
+        boundingBoxY1: 100,
+        boundingBoxY2: 200,
+      });
+      const asset = AssetFactory.from()
+        .face(mlFace)
+        .face(exifFace)
+        .file({ type: AssetFileType.Preview })
+        .exif()
+        .build();
+      // first two detections both overlap the stored ML face (IoU 0.65 each, 0.41 between
+      // themselves so both survive the merge); the third lands on the exif face
+      mocks.machineLearning.detectFaces.mockResolvedValue({
+        faces: [
+          { boundingBox: { x1: 79, y1: 100, x2: 179, y2: 200 }, embedding: '[1, 2, 3, 4]', score: 0.9 },
+          { boundingBox: { x1: 121, y1: 100, x2: 221, y2: 200 }, embedding: '[2, 3, 4, 5]', score: 0.85 },
+          { boundingBox: { x1: 300, y1: 100, x2: 400, y2: 200 }, embedding: '[3, 4, 5, 6]', score: 0.8 },
+        ],
+        imageHeight: 500,
+        imageWidth: 400,
+        gpuFallback: false,
+      });
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
+      mocks.person.refreshFaces.mockResolvedValue();
+
+      await sut.handleDetectFaces({ id: asset.id });
+
+      // the ML face is claimed once and never re-embedded; only the coincident exif-face
+      // detection yields an embedding — a second push for the same faceId would violate
+      // the face_search primary key
+      expect(mocks.person.refreshFaces).toHaveBeenCalledTimes(1);
+      expect(mocks.person.refreshFaces).toHaveBeenCalledWith(
+        [],
+        [],
+        [{ faceId: exifFace.id, embedding: '[3, 4, 5, 6]' }],
+      );
+      expect(mocks.job.queueAll).not.toHaveBeenCalled();
+    });
   });
 
   describe('handleRecognizeFaces', () => {

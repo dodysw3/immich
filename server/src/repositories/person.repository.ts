@@ -1029,7 +1029,15 @@ export class PersonRepository {
     }
 
     if (embeddingsToAdd?.length) {
-      (query as any) = query.with('added_embeddings', (db) => db.insertInto('face_search').values(embeddingsToAdd));
+      // upsert: matched faces can already carry an embedding from an earlier run (manual
+      // faces get one on every coincident detection), and a plain insert would violate
+      // the face_search primary key
+      (query as any) = query.with('added_embeddings', (db) =>
+        db
+          .insertInto('face_search')
+          .values(embeddingsToAdd)
+          .onConflict((oc) => oc.column('faceId').doUpdateSet((eb) => ({ embedding: eb.ref('excluded.embedding') }))),
+      );
     }
 
     await query.selectFrom(dummy).execute();
