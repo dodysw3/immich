@@ -60,6 +60,7 @@ describe(SyncController.name, () => {
       expect(status).toBe(200);
       expect(errorService.handleError).toHaveBeenCalledWith(
         expect.anything(),
+        expect.anything(),
         expect.objectContaining({ message: 'stream error after headers sent' }),
       );
     });

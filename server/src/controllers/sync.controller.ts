@@ -31,7 +31,13 @@ export class SyncController {
     try {
       await this.service.stream(auth, res, dto);
     } catch (error: Error | any) {
-      res.setHeader('Content-Type', 'application/json');
+      // headers are already sent once the stream started; setHeader would throw
+      // ERR_HTTP_HEADERS_SENT and mask the original error, so end the stream instead
+      if (res.headersSent) {
+        res.end();
+      } else {
+        res.setHeader('Content-Type', 'application/json');
+      }
       this.errorService.handleError(req, res, error);
     }
   }
