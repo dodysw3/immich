@@ -6605,6 +6605,508 @@
         "x-immich-state": "Alpha"
       }
     },
+    "/documents": {
+      "get": {
+        "description": "List PDF documents owned by the authenticated user.",
+        "operationId": "getDocuments",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Page number",
+            "schema": {
+              "minimum": 1,
+              "maximum": 9007199254740991,
+              "default": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "size",
+            "required": false,
+            "in": "query",
+            "description": "Number of items per page",
+            "schema": {
+              "minimum": 1,
+              "maximum": 9007199254740991,
+              "default": 50,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter documents by processing status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "processing",
+                "ready",
+                "failed"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "List PDF documents",
+        "tags": [
+          "Documents"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v2.5.6",
+            "state": "Added"
+          },
+          {
+            "version": "v2.5.6",
+            "state": "Alpha"
+          }
+        ],
+        "x-immich-permission": "asset.read",
+        "x-immich-state": "Alpha"
+      }
+    },
+    "/documents/search": {
+      "get": {
+        "description": "Search PDF text and return matching documents with matching page numbers.",
+        "operationId": "searchDocuments",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Page number",
+            "schema": {
+              "minimum": 1,
+              "maximum": 9007199254740991,
+              "default": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "query",
+            "required": true,
+            "in": "query",
+            "description": "Search phrase",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "size",
+            "required": false,
+            "in": "query",
+            "description": "Number of items per page",
+            "schema": {
+              "minimum": 1,
+              "maximum": 9007199254740991,
+              "default": 50,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter documents by processing status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "processing",
+                "ready",
+                "failed"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Search PDF documents",
+        "tags": [
+          "Documents"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v2.5.6",
+            "state": "Added"
+          },
+          {
+            "version": "v2.5.6",
+            "state": "Alpha"
+          }
+        ],
+        "x-immich-permission": "asset.read",
+        "x-immich-state": "Alpha"
+      }
+    },
+    "/documents/{id}": {
+      "get": {
+        "description": "Get metadata for a single PDF document.",
+        "operationId": "getDocument",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "PDF document asset ID",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Get PDF document metadata",
+        "tags": [
+          "Documents"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v2.5.6",
+            "state": "Added"
+          },
+          {
+            "version": "v2.5.6",
+            "state": "Alpha"
+          }
+        ],
+        "x-immich-permission": "asset.read",
+        "x-immich-state": "Alpha"
+      }
+    },
+    "/documents/{id}/pages": {
+      "get": {
+        "description": "Get all indexed pages for a PDF document.",
+        "operationId": "getPages",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "PDF document asset ID",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Get PDF pages",
+        "tags": [
+          "Documents"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v2.5.6",
+            "state": "Added"
+          },
+          {
+            "version": "v2.5.6",
+            "state": "Alpha"
+          }
+        ],
+        "x-immich-permission": "asset.read",
+        "x-immich-state": "Alpha"
+      }
+    },
+    "/documents/{id}/pages/{pageNumber}": {
+      "get": {
+        "description": "Get one indexed page for a PDF document.",
+        "operationId": "getPage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "PDF document asset ID",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "required": true,
+            "in": "path",
+            "description": "Page number",
+            "schema": {
+              "minimum": 1,
+              "maximum": 9007199254740991,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Get PDF page",
+        "tags": [
+          "Documents"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v2.5.6",
+            "state": "Added"
+          },
+          {
+            "version": "v2.5.6",
+            "state": "Alpha"
+          }
+        ],
+        "x-immich-permission": "asset.read",
+        "x-immich-state": "Alpha"
+      }
+    },
+    "/documents/{id}/reprocess": {
+      "post": {
+        "description": "Queue PDF text extraction and OCR processing for a specific document again.",
+        "operationId": "reprocessDocument",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "PDF document asset ID",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Reprocess a PDF document",
+        "tags": [
+          "Documents"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v2.5.6",
+            "state": "Added"
+          },
+          {
+            "version": "v2.5.6",
+            "state": "Alpha"
+          }
+        ],
+        "x-immich-permission": "asset.update",
+        "x-immich-state": "Alpha"
+      }
+    },
+    "/documents/{id}/search": {
+      "get": {
+        "description": "Search indexed page text for a specific PDF and return snippets per matching page.",
+        "operationId": "searchInDocument",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "PDF document asset ID",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "query",
+            "required": true,
+            "in": "query",
+            "description": "Search phrase",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "size",
+            "required": false,
+            "in": "query",
+            "description": "Max matched pages to return",
+            "schema": {
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Search inside a PDF document",
+        "tags": [
+          "Documents"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v2.5.6",
+            "state": "Added"
+          },
+          {
+            "version": "v2.5.6",
+            "state": "Alpha"
+          }
+        ],
+        "x-immich-permission": "asset.read",
+        "x-immich-state": "Alpha"
+      }
+    },
     "/download/archive": {
       "post": {
         "description": "Download a ZIP archive containing the specified assets. The assets must have been previously requested via the \"getDownloadInfo\" endpoint.",
@@ -6975,6 +7477,133 @@
         ],
         "x-immich-permission": "duplicate.delete",
         "x-immich-state": "Stable"
+      }
+    },
+    "/external-ocr/assets/{id}/failure": {
+      "put": {
+        "description": "Store failure details from external OCR processing.",
+        "operationId": "reportFailure",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalOcrFailureDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Report external OCR failure",
+        "tags": [
+          "Assets"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v2.6.0",
+            "state": "Added"
+          },
+          {
+            "version": "v2.6.0",
+            "state": "Alpha"
+          }
+        ],
+        "x-immich-permission": "asset.update",
+        "x-immich-state": "Alpha"
+      }
+    },
+    "/external-ocr/assets/{id}/result": {
+      "put": {
+        "description": "Write external OCR result and searchable text through Immich repositories.",
+        "operationId": "writeResult",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalOcrResultDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalOcrWriteResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Write external OCR result",
+        "tags": [
+          "Assets"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v2.6.0",
+            "state": "Added"
+          },
+          {
+            "version": "v2.6.0",
+            "state": "Alpha"
+          }
+        ],
+        "x-immich-permission": "asset.update",
+        "x-immich-state": "Alpha"
       }
     },
     "/faces": {
@@ -10473,6 +11102,90 @@
         "x-immich-state": "Deprecated"
       }
     },
+    "/people/{id}/assets": {
+      "get": {
+        "description": "Retrieve a paginated list of a person's assets sorted by face recognition time.",
+        "operationId": "getPersonAssets",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Items per page",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "description": "Sort direction by recognition time",
+            "schema": {
+              "default": "desc",
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Page number",
+            "schema": {
+              "minimum": 1,
+              "maximum": 9007199254740991,
+              "default": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonAssetsResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Get person assets",
+        "tags": [
+          "People"
+        ],
+        "x-immich-permission": "person.read"
+      }
+    },
     "/people/{id}/merge": {
       "post": {
         "deprecated": true,
@@ -11433,6 +12146,57 @@
         ],
         "x-immich-permission": "queueJob.read",
         "x-immich-state": "Alpha"
+      }
+    },
+    "/search/ai-interpret": {
+      "post": {
+        "description": "Search assets by the AI interpretation of their contents. Results are fused from a dense semantic branch and a lexical keyword branch.",
+        "operationId": "searchAiInterpret",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiInterpretSearchDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiInterpretSearchResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "AI interpretation search",
+        "tags": [
+          "Search"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v3.2.0",
+            "state": "Added"
+          }
+        ],
+        "x-immich-permission": "asset.read"
       }
     },
     "/search/cities": {
@@ -18197,58 +18961,6 @@
         ],
         "x-immich-permission": "workflow.read"
       }
-    },
-    "/search/ai-interpret": {
-      "post": {
-        "description": "Search assets by the AI interpretation of their contents. Results are fused from a dense semantic branch and a lexical keyword branch.",
-        "operationId": "searchAiInterpret",
-        "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AiInterpretSearchDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AiInterpretSearchResponseDto"
-                }
-              }
-            },
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          },
-          {
-            "cookie": []
-          },
-          {
-            "api_key": []
-          }
-        ],
-        "summary": "AI interpretation search",
-        "tags": [
-          "Search"
-        ],
-        "x-immich-history": [
-          {
-            "version": "v3.2.0",
-            "state": "Added"
-          }
-        ],
-        "x-immich-permission": "asset.read",
-        "x-immich-state": "Stable"
-      }
     }
   },
   "info": {
@@ -18313,6 +19025,10 @@
     {
       "name": "Download",
       "description": "Endpoints for downloading assets or collections of assets."
+    },
+    {
+      "name": "Documents",
+      "description": "Endpoints for indexing, searching, and browsing uploaded PDF documents."
     },
     {
       "name": "Duplicates",
@@ -18919,6 +19635,12 @@
             "minimum": 0.1,
             "type": "number"
           },
+          "minFaceSize": {
+            "description": "Minimum bounding box pixel dimension for face recognition",
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
           "minFaces": {
             "description": "Minimum number of faces required for recognition",
             "maximum": 9007199254740991,
@@ -18935,15 +19657,20 @@
           "modelName": {
             "description": "Name of the model to use",
             "type": "string"
+          },
+          "tiling": {
+            "$ref": "#/components/schemas/AdminConfigTilingDto"
           }
         },
         "required": [
           "enabled",
           "importNamesFromOtherAccounts",
           "maxDistance",
+          "minFaceSize",
           "minFaces",
           "minScore",
-          "modelName"
+          "modelName",
+          "tiling"
         ],
         "type": "object"
       },
@@ -19131,6 +19858,9 @@
           "ocr": {
             "$ref": "#/components/schemas/AdminConfigJobSettingsDto"
           },
+          "pdfProcessing": {
+            "$ref": "#/components/schemas/AdminConfigJobSettingsDto"
+          },
           "search": {
             "$ref": "#/components/schemas/AdminConfigJobSettingsDto"
           },
@@ -19160,6 +19890,7 @@
           "migration",
           "notifications",
           "ocr",
+          "pdfProcessing",
           "search",
           "sidecar",
           "smartSearch",
@@ -19747,6 +20478,83 @@
         ],
         "type": "object"
       },
+      "AdminConfigTilingDto": {
+        "properties": {
+          "enabled": {
+            "description": "Enable tiled face detection for large/group photos",
+            "type": "boolean"
+          },
+          "maxTiles": {
+            "description": "Maximum number of tiles before downscaling",
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "tileOverlap": {
+            "description": "Overlap ratio between adjacent tiles",
+            "format": "double",
+            "maximum": 0.9,
+            "minimum": 0,
+            "type": "number"
+          },
+          "tileSize": {
+            "description": "Tile size in pixels for tiled detection",
+            "maximum": 9007199254740991,
+            "minimum": 128,
+            "type": "integer"
+          },
+          "triggers": {
+            "$ref": "#/components/schemas/AdminConfigTilingTriggersDto"
+          }
+        },
+        "required": [
+          "enabled",
+          "maxTiles",
+          "tileOverlap",
+          "tileSize",
+          "triggers"
+        ],
+        "type": "object"
+      },
+      "AdminConfigTilingMinDimWithFacesDto": {
+        "properties": {
+          "dim": {
+            "description": "Minimum original image dimension to consider tiling",
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "faces": {
+            "description": "Minimum pass-1 face count when original dim threshold is met",
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dim",
+          "faces"
+        ],
+        "type": "object"
+      },
+      "AdminConfigTilingTriggersDto": {
+        "properties": {
+          "minDimWithFaces": {
+            "$ref": "#/components/schemas/AdminConfigTilingMinDimWithFacesDto"
+          },
+          "minPass1Faces": {
+            "description": "Minimum pass-1 face count to trigger tiling",
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "minDimWithFaces",
+          "minPass1Faces"
+        ],
+        "type": "object"
+      },
       "AdminConfigTrashDto": {
         "properties": {
           "days": {
@@ -19789,6 +20597,96 @@
         },
         "required": [
           "isOnboarded"
+        ],
+        "type": "object"
+      },
+      "AiInterpretSearchDto": {
+        "properties": {
+          "page": {
+            "description": "Page number",
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "q": {
+            "description": "Natural language query against AI interpretations",
+            "minLength": 1,
+            "type": "string"
+          },
+          "size": {
+            "default": 100,
+            "description": "Number of results to return",
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/AssetVisibility",
+            "description": "Filter by visibility"
+          }
+        },
+        "required": [
+          "q"
+        ],
+        "type": "object"
+      },
+      "AiInterpretSearchItemDto": {
+        "properties": {
+          "asset": {
+            "$ref": "#/components/schemas/AssetResponseDto"
+          },
+          "branch": {
+            "description": "Search branch that contributed the best rank for this result",
+            "enum": [
+              "dense",
+              "lexical"
+            ],
+            "type": "string"
+          },
+          "score": {
+            "description": "Reciprocal rank fusion score of this result",
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "asset",
+          "branch",
+          "score"
+        ],
+        "type": "object"
+      },
+      "AiInterpretSearchResponseDto": {
+        "properties": {
+          "count": {
+            "description": "Number of results on this page",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AiInterpretSearchItemDto"
+            },
+            "type": "array"
+          },
+          "nextPage": {
+            "description": "Next page number, if more results are available",
+            "nullable": true,
+            "type": "string"
+          },
+          "total": {
+            "description": "Total number of fused results in the current window",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count",
+          "items",
+          "nextPage",
+          "total"
         ],
         "type": "object"
       },
@@ -20840,6 +21738,7 @@
           "refresh-faces",
           "refresh-metadata",
           "regenerate-thumbnail",
+          "interpret-image",
           "transcode-video"
         ],
         "type": "string"
@@ -22610,6 +23509,215 @@
         },
         "type": "object"
       },
+      "ExternalOcrFailureDto": {
+        "properties": {
+          "provider": {
+            "description": "External OCR provider identifier",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "reason": {
+            "description": "Failure reason",
+            "maxLength": 1000,
+            "type": "string"
+          },
+          "retriable": {
+            "description": "Whether the failure is retriable",
+            "type": "boolean"
+          },
+          "retryCount": {
+            "description": "Number of retries attempted",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "provider",
+          "reason",
+          "retriable",
+          "retryCount"
+        ],
+        "type": "object"
+      },
+      "ExternalOcrLineDto": {
+        "properties": {
+          "boxScore": {
+            "description": "Detection confidence",
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "text": {
+            "description": "Recognized text",
+            "maxLength": 4096,
+            "type": "string"
+          },
+          "textScore": {
+            "description": "Text recognition confidence",
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "x1": {
+            "description": "Bounding box x1",
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "x2": {
+            "description": "Bounding box x2",
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "x3": {
+            "description": "Bounding box x3",
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "x4": {
+            "description": "Bounding box x4",
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "y1": {
+            "description": "Bounding box y1",
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "y2": {
+            "description": "Bounding box y2",
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "y3": {
+            "description": "Bounding box y3",
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "y4": {
+            "description": "Bounding box y4",
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "boxScore",
+          "text",
+          "textScore",
+          "x1",
+          "x2",
+          "x3",
+          "x4",
+          "y1",
+          "y2",
+          "y3",
+          "y4"
+        ],
+        "type": "object"
+      },
+      "ExternalOcrResultDto": {
+        "properties": {
+          "language": {
+            "description": "Language hint",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "lines": {
+            "description": "OCR result lines",
+            "items": {
+              "$ref": "#/components/schemas/ExternalOcrLineDto"
+            },
+            "maxItems": 10000,
+            "type": "array"
+          },
+          "mode": {
+            "description": "OCR write mode",
+            "enum": [
+              "replace",
+              "merge"
+            ],
+            "type": "string"
+          },
+          "model": {
+            "description": "Model family/name",
+            "maxLength": 256,
+            "type": "string"
+          },
+          "modelRevision": {
+            "description": "Model revision for reprocessing control",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "processedAt": {
+            "description": "External OCR completion timestamp (ISO 8601)",
+            "type": "string"
+          },
+          "provider": {
+            "description": "External OCR provider identifier",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "searchText": {
+            "description": "Pre-tokenized search text",
+            "maxLength": 1000000,
+            "type": "string"
+          },
+          "sourceChecksum": {
+            "description": "SHA256 of original source bytes",
+            "maxLength": 128,
+            "type": "string"
+          }
+        },
+        "required": [
+          "lines",
+          "mode",
+          "model",
+          "modelRevision",
+          "processedAt",
+          "provider",
+          "sourceChecksum"
+        ],
+        "type": "object"
+      },
+      "ExternalOcrWriteResponseDto": {
+        "properties": {
+          "searchTextLength": {
+            "description": "Length of generated search text",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "written": {
+            "description": "Number of records written",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "searchTextLength",
+          "written"
+        ],
+        "type": "object"
+      },
       "FaceDto": {
         "properties": {
           "id": {
@@ -22837,6 +23945,10 @@
           "AssetFileMigration",
           "AssetGenerateThumbnailsQueueAll",
           "AssetGenerateThumbnails",
+          "AssetInterpretImage",
+          "AssetInterpretationReconcile",
+          "AiInterpretSearchSync",
+          "AiInterpretSearchReconcile",
           "AuditTableCleanup",
           "DatabaseBackup",
           "FacialRecognitionQueueAll",
@@ -22866,6 +23978,7 @@
           "PersonGenerateThumbnail",
           "SessionCleanup",
           "SendMail",
+          "SendAiInterpretationDiscordAlert",
           "SidecarQueueAll",
           "SidecarCheck",
           "SidecarWrite",
@@ -22877,6 +23990,8 @@
           "VersionCheck",
           "OcrQueueAll",
           "Ocr",
+          "PdfProcessQueueAll",
+          "PdfProcess",
           "WorkflowAssetTrigger",
           "IntegrityUntrackedFilesQueueAll",
           "IntegrityUntrackedFiles",
@@ -25364,6 +26479,251 @@
         ],
         "type": "string"
       },
+      "PersonAssetsResponseDto": {
+        "properties": {
+          "assets": {
+            "description": "Assets sorted by recognition time",
+            "items": {
+              "properties": {
+                "checksum": {
+                  "description": "Base64 encoded SHA1 hash",
+                  "type": "string"
+                },
+                "createdAt": {
+                  "description": "The UTC timestamp when the asset was originally uploaded to Immich.",
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "duplicateId": {
+                  "description": "Duplicate group ID",
+                  "format": "uuid",
+                  "nullable": true,
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+                  "type": "string"
+                },
+                "duration": {
+                  "description": "Video/gif duration in milliseconds (null for static images)",
+                  "maximum": 2147483647,
+                  "minimum": 0,
+                  "nullable": true,
+                  "type": "integer"
+                },
+                "exifInfo": {
+                  "$ref": "#/components/schemas/ExifResponseDto"
+                },
+                "fileCreatedAt": {
+                  "description": "The actual UTC timestamp when the file was created/captured, preserving timezone information. This is the authoritative timestamp for chronological sorting within timeline groups. Combined with timezone data, this can be used to determine the exact moment the photo was taken.",
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "fileModifiedAt": {
+                  "description": "The UTC timestamp when the file was last modified on the filesystem. This reflects the last time the physical file was changed, which may be different from when the photo was originally taken.",
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "hasMetadata": {
+                  "description": "Whether asset has metadata",
+                  "type": "boolean"
+                },
+                "height": {
+                  "description": "Asset height",
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "nullable": true,
+                  "type": "integer"
+                },
+                "id": {
+                  "description": "Asset ID",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+                  "type": "string"
+                },
+                "isArchived": {
+                  "description": "Is archived",
+                  "type": "boolean"
+                },
+                "isEdited": {
+                  "description": "Is edited",
+                  "type": "boolean",
+                  "x-immich-history": [
+                    {
+                      "version": "v2.5.0",
+                      "state": "Added"
+                    },
+                    {
+                      "version": "v2.5.0",
+                      "state": "Beta"
+                    }
+                  ],
+                  "x-immich-state": "Beta"
+                },
+                "isFavorite": {
+                  "description": "Is favorite",
+                  "type": "boolean"
+                },
+                "isOffline": {
+                  "description": "Is offline",
+                  "type": "boolean"
+                },
+                "isTrashed": {
+                  "description": "Is trashed",
+                  "type": "boolean"
+                },
+                "libraryId": {
+                  "description": "Library ID",
+                  "format": "uuid",
+                  "nullable": true,
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+                  "type": "string",
+                  "x-immich-history": [
+                    {
+                      "version": "v1",
+                      "state": "Added"
+                    },
+                    {
+                      "version": "v1",
+                      "state": "Deprecated"
+                    }
+                  ],
+                  "x-immich-state": "Deprecated"
+                },
+                "livePhotoVideoId": {
+                  "description": "Live photo video ID",
+                  "nullable": true,
+                  "type": "string"
+                },
+                "localDateTime": {
+                  "description": "The local date and time when the photo/video was taken, derived from EXIF metadata. This represents the photographer's local time regardless of timezone, stored as a timezone-agnostic timestamp. Used for timeline grouping by \"local\" days and months.",
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "originalFileName": {
+                  "description": "Original file name",
+                  "type": "string"
+                },
+                "originalMimeType": {
+                  "description": "Original MIME type",
+                  "type": "string"
+                },
+                "originalPath": {
+                  "description": "Original file path",
+                  "type": "string"
+                },
+                "owner": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                },
+                "ownerId": {
+                  "description": "Owner user ID",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+                  "type": "string"
+                },
+                "people": {
+                  "items": {
+                    "$ref": "#/components/schemas/PersonResponseDto"
+                  },
+                  "type": "array"
+                },
+                "recognizedAt": {
+                  "description": "When the face was matched to this person",
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "resized": {
+                  "description": "Is resized",
+                  "type": "boolean",
+                  "x-immich-history": [
+                    {
+                      "version": "v1",
+                      "state": "Added"
+                    },
+                    {
+                      "version": "v1.113.0",
+                      "state": "Deprecated"
+                    }
+                  ],
+                  "x-immich-state": "Deprecated"
+                },
+                "stack": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/AssetStackResponseDto"
+                    }
+                  ],
+                  "nullable": true
+                },
+                "tags": {
+                  "items": {
+                    "$ref": "#/components/schemas/TagResponseDto"
+                  },
+                  "type": "array"
+                },
+                "thumbhash": {
+                  "description": "Thumbhash for thumbnail generation (base64) also used as the c query param for thumbnail cache busting.",
+                  "nullable": true,
+                  "type": "string"
+                },
+                "type": {
+                  "$ref": "#/components/schemas/AssetTypeEnum"
+                },
+                "updatedAt": {
+                  "description": "The UTC timestamp when the asset record was last updated in the database. This is automatically maintained by the database and reflects when any field in the asset was last modified.",
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "visibility": {
+                  "$ref": "#/components/schemas/AssetVisibility"
+                },
+                "width": {
+                  "description": "Asset width",
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "nullable": true,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "type",
+                "thumbhash",
+                "localDateTime",
+                "duration",
+                "hasMetadata",
+                "width",
+                "height",
+                "createdAt",
+                "ownerId",
+                "originalPath",
+                "originalFileName",
+                "fileCreatedAt",
+                "fileModifiedAt",
+                "updatedAt",
+                "isFavorite",
+                "isArchived",
+                "isTrashed",
+                "isOffline",
+                "visibility",
+                "checksum",
+                "isEdited",
+                "recognizedAt"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total": {
+            "description": "Total number of assets",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "assets",
+          "total"
+        ],
+        "type": "object"
+      },
       "PersonCreateDto": {
         "properties": {
           "birthDate": {
@@ -26200,9 +27560,12 @@
           "notifications",
           "backupDatabase",
           "ocr",
+          "pdfProcessing",
           "workflow",
           "integrityCheck",
-          "editor"
+          "editor",
+          "imageInterpretation",
+          "aiInterpretSearch"
         ],
         "type": "string"
       },
@@ -26318,6 +27681,9 @@
       },
       "QueuesResponseLegacyDto": {
         "properties": {
+          "aiInterpretSearch": {
+            "$ref": "#/components/schemas/QueueResponseLegacyDto"
+          },
           "backgroundTask": {
             "$ref": "#/components/schemas/QueueResponseLegacyDto"
           },
@@ -26336,6 +27702,9 @@
           "facialRecognition": {
             "$ref": "#/components/schemas/QueueResponseLegacyDto"
           },
+          "imageInterpretation": {
+            "$ref": "#/components/schemas/QueueResponseLegacyDto"
+          },
           "integrityCheck": {
             "$ref": "#/components/schemas/QueueResponseLegacyDto"
           },
@@ -26352,6 +27721,9 @@
             "$ref": "#/components/schemas/QueueResponseLegacyDto"
           },
           "ocr": {
+            "$ref": "#/components/schemas/QueueResponseLegacyDto"
+          },
+          "pdfProcessing": {
             "$ref": "#/components/schemas/QueueResponseLegacyDto"
           },
           "search": {
@@ -26377,18 +27749,21 @@
           }
         },
         "required": [
+          "aiInterpretSearch",
           "backgroundTask",
           "backupDatabase",
           "duplicateDetection",
           "editor",
           "faceDetection",
           "facialRecognition",
+          "imageInterpretation",
           "integrityCheck",
           "library",
           "metadataExtraction",
           "migration",
           "notifications",
           "ocr",
+          "pdfProcessing",
           "search",
           "sidecar",
           "smartSearch",
@@ -27853,6 +29228,10 @@
       },
       "ServerFeaturesDto": {
         "properties": {
+          "aiInterpretSearch": {
+            "description": "Whether AI interpretation search is enabled",
+            "type": "boolean"
+          },
           "configFile": {
             "description": "Whether config file is available",
             "type": "boolean"
@@ -27916,13 +29295,10 @@
           "trash": {
             "description": "Whether trash feature is enabled",
             "type": "boolean"
-          },
-          "aiInterpretSearch": {
-            "description": "Whether AI interpretation search is enabled",
-            "type": "boolean"
           }
         },
         "required": [
+          "aiInterpretSearch",
           "configFile",
           "duplicateDetection",
           "email",
@@ -27951,6 +29327,13 @@
             },
             "type": "array"
           },
+          "pdf": {
+            "description": "Supported PDF MIME types",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "sidecar": {
             "description": "Supported sidecar MIME types",
             "items": {
@@ -27968,6 +29351,7 @@
         },
         "required": [
           "image",
+          "pdf",
           "sidecar",
           "video"
         ],
@@ -33974,93 +35358,6 @@
             "description": "Workflow trigger type"
           }
         },
-        "type": "object"
-      },
-      "AiInterpretSearchDto": {
-        "properties": {
-          "q": {
-            "description": "Natural language query against AI interpretations",
-            "minLength": 1,
-            "type": "string"
-          },
-          "page": {
-            "description": "Page number",
-            "maximum": 9007199254740991,
-            "minimum": 1,
-            "type": "integer"
-          },
-          "size": {
-            "default": 100,
-            "description": "Number of results to return",
-            "maximum": 1000,
-            "minimum": 1,
-            "type": "integer"
-          },
-          "visibility": {
-            "$ref": "#/components/schemas/AssetVisibility"
-          }
-        },
-        "type": "object"
-      },
-      "AiInterpretSearchItemDto": {
-        "properties": {
-          "asset": {
-            "$ref": "#/components/schemas/AssetResponseDto"
-          },
-          "branch": {
-            "description": "Search branch that contributed the best rank for this result",
-            "enum": [
-              "dense",
-              "lexical"
-            ],
-            "type": "string"
-          },
-          "score": {
-            "description": "Reciprocal rank fusion score of this result",
-            "format": "double",
-            "type": "number"
-          }
-        },
-        "required": [
-          "asset",
-          "branch",
-          "score"
-        ],
-        "type": "object"
-      },
-      "AiInterpretSearchResponseDto": {
-        "properties": {
-          "count": {
-            "description": "Number of results on this page",
-            "maximum": 9007199254740991,
-            "minimum": 0,
-            "type": "integer"
-          },
-          "items": {
-            "description": "",
-            "items": {
-              "$ref": "#/components/schemas/AiInterpretSearchItemDto"
-            },
-            "type": "array"
-          },
-          "nextPage": {
-            "description": "Next page number, if more results are available",
-            "nullable": true,
-            "type": "string"
-          },
-          "total": {
-            "description": "Total number of fused results in the current window",
-            "maximum": 9007199254740991,
-            "minimum": 0,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "count",
-          "items",
-          "nextPage",
-          "total"
-        ],
         "type": "object"
       }
     }

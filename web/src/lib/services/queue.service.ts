@@ -259,6 +259,10 @@ export const asQueueItem = ($t: MessageFormatter, queue: { name: QueueName }): Q
       icon: mdiImageSearch,
       title: $t('admin.ai_image_interpretation'),
     },
+    [QueueName.AiInterpretSearch]: {
+      icon: mdiImageSearch,
+      title: 'AI interpretation search',
+    },
   };
 
   return items[queue.name];

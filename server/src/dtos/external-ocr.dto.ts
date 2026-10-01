@@ -6,16 +6,16 @@ export type ExternalOcrMode = (typeof EXTERNAL_OCR_MODES)[number];
 
 const ExternalOcrLineSchema = z
   .object({
-    x1: z.number().min(0).max(1).describe('Bounding box x1'),
-    y1: z.number().min(0).max(1).describe('Bounding box y1'),
-    x2: z.number().min(0).max(1).describe('Bounding box x2'),
-    y2: z.number().min(0).max(1).describe('Bounding box y2'),
-    x3: z.number().min(0).max(1).describe('Bounding box x3'),
-    y3: z.number().min(0).max(1).describe('Bounding box y3'),
-    x4: z.number().min(0).max(1).describe('Bounding box x4'),
-    y4: z.number().min(0).max(1).describe('Bounding box y4'),
-    boxScore: z.number().min(0).max(1).describe('Detection confidence'),
-    textScore: z.number().min(0).max(1).describe('Text recognition confidence'),
+    x1: z.number().min(0).max(1).meta({ format: 'double' }).describe('Bounding box x1'),
+    y1: z.number().min(0).max(1).meta({ format: 'double' }).describe('Bounding box y1'),
+    x2: z.number().min(0).max(1).meta({ format: 'double' }).describe('Bounding box x2'),
+    y2: z.number().min(0).max(1).meta({ format: 'double' }).describe('Bounding box y2'),
+    x3: z.number().min(0).max(1).meta({ format: 'double' }).describe('Bounding box x3'),
+    y3: z.number().min(0).max(1).meta({ format: 'double' }).describe('Bounding box y3'),
+    x4: z.number().min(0).max(1).meta({ format: 'double' }).describe('Bounding box x4'),
+    y4: z.number().min(0).max(1).meta({ format: 'double' }).describe('Bounding box y4'),
+    boxScore: z.number().min(0).max(1).meta({ format: 'double' }).describe('Detection confidence'),
+    textScore: z.number().min(0).max(1).meta({ format: 'double' }).describe('Text recognition confidence'),
     text: z.string().max(4096).describe('Recognized text'),
   })
   .meta({ id: 'ExternalOcrLineDto' });

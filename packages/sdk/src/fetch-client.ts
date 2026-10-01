@@ -173,6 +173,7 @@ export type AdminConfigJobDto = {
     migration: AdminConfigJobSettingsDto;
     notifications: AdminConfigJobSettingsDto;
     ocr: AdminConfigJobSettingsDto;
+    pdfProcessing: AdminConfigJobSettingsDto;
     search: AdminConfigJobSettingsDto;
     sidecar: AdminConfigJobSettingsDto;
     smartSearch: AdminConfigJobSettingsDto;
@@ -217,6 +218,28 @@ export type AdminConfigDuplicateDetectionDto = {
     /** Maximum distance threshold for duplicate detection */
     maxDistance: number;
 };
+export type AdminConfigTilingMinDimWithFacesDto = {
+    /** Minimum original image dimension to consider tiling */
+    dim: number;
+    /** Minimum pass-1 face count when original dim threshold is met */
+    faces: number;
+};
+export type AdminConfigTilingTriggersDto = {
+    minDimWithFaces: AdminConfigTilingMinDimWithFacesDto;
+    /** Minimum pass-1 face count to trigger tiling */
+    minPass1Faces: number;
+};
+export type AdminConfigTilingDto = {
+    /** Enable tiled face detection for large/group photos */
+    enabled: boolean;
+    /** Maximum number of tiles before downscaling */
+    maxTiles: number;
+    /** Overlap ratio between adjacent tiles */
+    tileOverlap: number;
+    /** Tile size in pixels for tiled detection */
+    tileSize: number;
+    triggers: AdminConfigTilingTriggersDto;
+};
 export type AdminConfigFacialRecognitionDto = {
     /** Whether the task is enabled */
     enabled: boolean;
@@ -224,12 +247,15 @@ export type AdminConfigFacialRecognitionDto = {
     importNamesFromOtherAccounts: boolean;
     /** Maximum distance threshold for face recognition */
     maxDistance: number;
+    /** Minimum bounding box pixel dimension for face recognition */
+    minFaceSize: number;
     /** Minimum number of faces required for recognition */
     minFaces: number;
     /** Minimum confidence score for face detection */
     minScore: number;
     /** Name of the model to use */
     modelName: string;
+    tiling: AdminConfigTilingDto;
 };
 export type AdminConfigOcrDto = {
     /** Whether the task is enabled */
@@ -1701,6 +1727,66 @@ export type DuplicateResolveDto = {
     /** List of duplicate groups to resolve */
     groups: DuplicateResolveGroupDto[];
 };
+export type ExternalOcrFailureDto = {
+    /** External OCR provider identifier */
+    provider: string;
+    /** Failure reason */
+    reason: string;
+    /** Whether the failure is retriable */
+    retriable: boolean;
+    /** Number of retries attempted */
+    retryCount: number;
+};
+export type ExternalOcrLineDto = {
+    /** Detection confidence */
+    boxScore: number;
+    /** Recognized text */
+    text: string;
+    /** Text recognition confidence */
+    textScore: number;
+    /** Bounding box x1 */
+    x1: number;
+    /** Bounding box x2 */
+    x2: number;
+    /** Bounding box x3 */
+    x3: number;
+    /** Bounding box x4 */
+    x4: number;
+    /** Bounding box y1 */
+    y1: number;
+    /** Bounding box y2 */
+    y2: number;
+    /** Bounding box y3 */
+    y3: number;
+    /** Bounding box y4 */
+    y4: number;
+};
+export type ExternalOcrResultDto = {
+    /** Language hint */
+    language?: string;
+    /** OCR result lines */
+    lines: ExternalOcrLineDto[];
+    /** OCR write mode */
+    mode: Mode;
+    /** Model family/name */
+    model: string;
+    /** Model revision for reprocessing control */
+    modelRevision: string;
+    /** External OCR completion timestamp (ISO 8601) */
+    processedAt: string;
+    /** External OCR provider identifier */
+    provider: string;
+    /** Pre-tokenized search text */
+    searchText?: string;
+    /** SHA256 of original source bytes */
+    sourceChecksum: string;
+};
+export type ExternalOcrWriteResponseDto = {
+    /** Length of generated search text */
+    searchTextLength: number;
+    /** Number of records written */
+    written: number;
+};
 export type AssetFaceResponseDto = {
     /** Bounding box X1 coordinate */
     boundingBoxX1: number;
@@ -1772,13 +1858,14 @@ export type QueueResponseLegacyDto = {
     queueStatus: QueueStatusLegacyDto;
 };
 export type QueuesResponseLegacyDto = {
+    aiInterpretSearch: QueueResponseLegacyDto;
     backgroundTask: QueueResponseLegacyDto;
     backupDatabase: QueueResponseLegacyDto;
     duplicateDetection: QueueResponseLegacyDto;
     editor: QueueResponseLegacyDto;
-    imageInterpretation: QueueResponseLegacyDto;
     faceDetection: QueueResponseLegacyDto;
     facialRecognition: QueueResponseLegacyDto;
+    imageInterpretation: QueueResponseLegacyDto;
     integrityCheck: QueueResponseLegacyDto;
     library: QueueResponseLegacyDto;
     metadataExtraction: QueueResponseLegacyDto;
@@ -2099,22 +2186,6 @@ export type PersonUpdateDto = {
     /** Restrict the update to the person record of this User ID */
     userId?: string;
 };
-export type AssetFaceUpdateItem = {
-    /** Asset ID */
-    assetId: string;
-    /** Person ID */
-    personId: string;
-    /** User ID */
-    userId?: string;
-};
-export type AssetFaceUpdateDto = {
-    /** Face update items */
-    data: AssetFaceUpdateItem[];
-};
-export type PersonStatisticsResponseDto = {
-    /** Number of assets */
-    assets: number;
-};
 export type PersonAssetsResponseDto = {
     /** Assets sorted by recognition time */
     assets: {
@@ -2180,6 +2251,22 @@ export type PersonAssetsResponseDto = {
     }[];
     /** Total number of assets */
     total: number;
+};
+export type AssetFaceUpdateItem = {
+    /** Asset ID */
+    assetId: string;
+    /** Person ID */
+    personId: string;
+    /** User ID */
+    userId?: string;
+};
+export type AssetFaceUpdateDto = {
+    /** Face update items */
+    data: AssetFaceUpdateItem[];
+};
+export type PersonStatisticsResponseDto = {
+    /** Number of assets */
+    assets: number;
 };
 export type PluginMethodResponseDto = {
     /** Description */
@@ -2291,6 +2378,32 @@ export type QueueJobResponseDto = {
     name: JobName;
     /** Job creation timestamp */
     timestamp: number;
+};
+export type AiInterpretSearchDto = {
+    /** Page number */
+    page?: number;
+    /** Natural language query against AI interpretations */
+    q: string;
+    /** Number of results to return */
+    size?: number;
+    /** Filter by visibility */
+    visibility?: AssetVisibility;
+};
+export type AiInterpretSearchItemDto = {
+    asset: AssetResponseDto;
+    /** Search branch that contributed the best rank for this result */
+    branch: Branch;
+    /** Reciprocal rank fusion score of this result */
+    score: number;
+};
+export type AiInterpretSearchResponseDto = {
+    /** Number of results on this page */
+    count: number;
+    items: AiInterpretSearchItemDto[];
+    /** Next page number, if more results are available */
+    nextPage: string | null;
+    /** Total number of fused results in the current window */
+    total: number;
 };
 export type SearchExploreItem = {
     data: AssetResponseDto;
@@ -2663,32 +2776,6 @@ export type RandomSearchDto = {
     withPeople?: boolean;
     /** Include stacked assets */
     withStacked?: boolean;
-};
-export type AiInterpretSearchDto = {
-    /** Page number */
-    page?: number;
-    /** Natural language query against AI interpretations */
-    q: string;
-    /** Number of results to return */
-    size?: number;
-    visibility?: AssetVisibility;
-};
-export type AiInterpretSearchItemDto = {
-    asset: AssetResponseDto;
-    /** Search branch that contributed the best rank for this result */
-    branch: AiInterpretSearchBranch;
-    /** Reciprocal rank fusion score of this result */
-    score: number;
-};
-export type AiInterpretSearchBranch = "dense" | "lexical";
-export type AiInterpretSearchResponseDto = {
-    /** Number of results on this page */
-    count: number;
-    items: AiInterpretSearchItemDto[];
-    /** Next page number, if more results are available */
-    nextPage: string | null;
-    /** Total number of fused results in the current window */
-    total: number;
 };
 export type SmartSearchDto = {
     /** Filter by album IDs */
@@ -5468,6 +5555,115 @@ export function getUserConfigDefaults(opts?: Oazapfts.RequestOpts) {
     }));
 }
 /**
+ * List PDF documents
+ */
+export function getDocuments({ page, size, status }: {
+    page?: number;
+    size?: number;
+    status?: "pending" | "processing" | "ready" | "failed";
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: object;
+    }>(`/documents${QS.query(QS.explode({
+        page,
+        size,
+        status
+    }))}`, {
+        ...opts
+    }));
+}
+/**
+ * Search PDF documents
+ */
+export function searchDocuments({ page, query, size, status }: {
+    page?: number;
+    query: string;
+    size?: number;
+    status?: "pending" | "processing" | "ready" | "failed";
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: object;
+    }>(`/documents/search${QS.query(QS.explode({
+        page,
+        query,
+        size,
+        status
+    }))}`, {
+        ...opts
+    }));
+}
+/**
+ * Get PDF document metadata
+ */
+export function getDocument({ id }: {
+    id: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: object;
+    }>(`/documents/${encodeURIComponent(id)}`, {
+        ...opts
+    }));
+}
+/**
+ * Get PDF pages
+ */
+export function getPages({ id }: {
+    id: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: object[];
+    }>(`/documents/${encodeURIComponent(id)}/pages`, {
+        ...opts
+    }));
+}
+/**
+ * Get PDF page
+ */
+export function getPage({ id, pageNumber }: {
+    id: string;
+    pageNumber: number;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: object;
+    }>(`/documents/${encodeURIComponent(id)}/pages/${encodeURIComponent(pageNumber)}`, {
+        ...opts
+    }));
+}
+/**
+ * Reprocess a PDF document
+ */
+export function reprocessDocument({ id }: {
+    id: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/documents/${encodeURIComponent(id)}/reprocess`, {
+        ...opts,
+        method: "POST"
+    }));
+}
+/**
+ * Search inside a PDF document
+ */
+export function searchInDocument({ id, query, size }: {
+    id: string;
+    query: string;
+    size?: number;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: object[];
+    }>(`/documents/${encodeURIComponent(id)}/search${QS.query(QS.explode({
+        query,
+        size
+    }))}`, {
+        ...opts
+    }));
+}
+/**
  * Download asset archive
  */
 export function downloadArchive({ key, slug, downloadArchiveDto }: {
@@ -5555,6 +5751,35 @@ export function deleteDuplicate({ id }: {
         ...opts,
         method: "DELETE"
     }));
+}
+/**
+ * Report external OCR failure
+ */
+export function reportFailure({ id, externalOcrFailureDto }: {
+    id: string;
+    externalOcrFailureDto: ExternalOcrFailureDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/external-ocr/assets/${encodeURIComponent(id)}/failure`, oazapfts.json({
+        ...opts,
+        method: "PUT",
+        body: externalOcrFailureDto
+    })));
+}
+/**
+ * Write external OCR result
+ */
+export function writeResult({ id, externalOcrResultDto }: {
+    id: string;
+    externalOcrResultDto: ExternalOcrResultDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ExternalOcrWriteResponseDto;
+    }>(`/external-ocr/assets/${encodeURIComponent(id)}/result`, oazapfts.json({
+        ...opts,
+        method: "PUT",
+        body: externalOcrResultDto
+    })));
 }
 /**
  * Retrieve faces for asset
@@ -6358,6 +6583,9 @@ export function updatePerson({ id, personUpdateDto }: {
         body: personUpdateDto
     })));
 }
+/**
+ * Get person assets
+ */
 export function getPersonAssets({ id, limit, order, page }: {
     id: string;
     limit?: number;
@@ -6605,6 +6833,21 @@ export function getQueueJobs({ name, status }: {
     }));
 }
 /**
+ * AI interpretation search
+ */
+export function searchAiInterpret({ aiInterpretSearchDto }: {
+    aiInterpretSearchDto: AiInterpretSearchDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: AiInterpretSearchResponseDto;
+    }>("/search/ai-interpret", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: aiInterpretSearchDto
+    })));
+}
+/**
  * Retrieve assets by city
  */
 export function getAssetsByCity(opts?: Oazapfts.RequestOpts) {
@@ -6782,21 +7025,6 @@ export function searchSmart({ smartSearchDto }: {
         ...opts,
         method: "POST",
         body: smartSearchDto
-    })));
-}
-/**
- * AI interpretation search
- */
-export function searchAiInterpret({ aiInterpretSearchDto }: {
-    aiInterpretSearchDto: AiInterpretSearchDto;
-}, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
-        data: AiInterpretSearchResponseDto;
-    }>("/search/ai-interpret", oazapfts.json({
-        ...opts,
-        method: "POST",
-        body: aiInterpretSearchDto
     })));
 }
 /**
@@ -8439,6 +8667,10 @@ export enum AssetMediaSize {
     Preview = "preview",
     Thumbnail = "thumbnail"
 }
+export enum Mode {
+    Replace = "replace",
+    Merge = "merge"
+}
 export enum SourceType {
     MachineLearning = "machine-learning",
     Exif = "exif",
@@ -8482,7 +8714,8 @@ export enum QueueName {
     Workflow = "workflow",
     IntegrityCheck = "integrityCheck",
     Editor = "editor",
-    ImageInterpretation = "imageInterpretation"
+    ImageInterpretation = "imageInterpretation",
+    AiInterpretSearch = "aiInterpretSearch"
 }
 export enum QueueCommand {
     Start = "start",
@@ -8542,6 +8775,8 @@ export enum JobName {
     AssetGenerateThumbnails = "AssetGenerateThumbnails",
     AssetInterpretImage = "AssetInterpretImage",
     AssetInterpretationReconcile = "AssetInterpretationReconcile",
+    AiInterpretSearchSync = "AiInterpretSearchSync",
+    AiInterpretSearchReconcile = "AiInterpretSearchReconcile",
     AuditTableCleanup = "AuditTableCleanup",
     DatabaseBackup = "DatabaseBackup",
     FacialRecognitionQueueAll = "FacialRecognitionQueueAll",
@@ -8571,6 +8806,7 @@ export enum JobName {
     PersonGenerateThumbnail = "PersonGenerateThumbnail",
     SessionCleanup = "SessionCleanup",
     SendMail = "SendMail",
+    SendAiInterpretationDiscordAlert = "SendAiInterpretationDiscordAlert",
     SidecarQueueAll = "SidecarQueueAll",
     SidecarCheck = "SidecarCheck",
     SidecarWrite = "SidecarWrite",
@@ -8582,6 +8818,8 @@ export enum JobName {
     VersionCheck = "VersionCheck",
     OcrQueueAll = "OcrQueueAll",
     Ocr = "Ocr",
+    PdfProcessQueueAll = "PdfProcessQueueAll",
+    PdfProcess = "PdfProcess",
     WorkflowAssetTrigger = "WorkflowAssetTrigger",
     IntegrityUntrackedFilesQueueAll = "IntegrityUntrackedFilesQueueAll",
     IntegrityUntrackedFiles = "IntegrityUntrackedFiles",
@@ -8593,6 +8831,10 @@ export enum JobName {
     IntegrityChecksumFilesRefresh = "IntegrityChecksumFilesRefresh",
     IntegrityDeleteReportType = "IntegrityDeleteReportType",
     IntegrityDeleteReports = "IntegrityDeleteReports"
+}
+export enum Branch {
+    Dense = "dense",
+    Lexical = "lexical"
 }
 export enum SearchOrderField {
     FileCreatedAt = "fileCreatedAt",

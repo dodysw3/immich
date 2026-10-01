@@ -503,7 +503,7 @@ export class AiInterpretSearchDto extends createZodDto(AiInterpretSearchSchema) 
 const AiInterpretSearchItemSchema = z
   .object({
     asset: AssetResponseSchema,
-    score: z.number().describe('Reciprocal rank fusion score of this result'),
+    score: z.number().meta({ format: 'double' }).describe('Reciprocal rank fusion score of this result'),
     branch: z.enum(['dense', 'lexical']).describe('Search branch that contributed the best rank for this result'),
   })
   .meta({ id: 'AiInterpretSearchItemDto' });
