@@ -3,6 +3,7 @@ import type { Size } from '$lib/utils/container-utils';
 import {
   getBoundingBox,
   getFaceReferenceLabels,
+  getFaceStats,
   getPersonDisplayName,
   isPlaceholderFaceName,
   type FaceWithName,
@@ -23,6 +24,14 @@ const makeFace = (overrides: Partial<Faces> = {}): Faces => ({
 });
 
 const makeFaceWithPerson = (person: { name: string } | undefined, overrides: Partial<Faces> = {}): FaceWithName => ({
+  ...makeFace(overrides),
+  person,
+});
+
+const makeFaceWithStatsPerson = (
+  person: { id: string; name: string; isHidden: boolean } | null,
+  overrides: Partial<Faces> = {},
+) => ({
   ...makeFace(overrides),
   person,
 });
@@ -172,5 +181,40 @@ describe('getPersonDisplayName', () => {
     expect(
       getPersonDisplayName({ name: '...' }, [makeFaceWithPerson({ name: '...' })], new Map([['face-1', '[3]']])),
     ).toBe('[3]');
+  });
+});
+
+describe('getFaceStats', () => {
+  it('should count named persons, unnamed persons, and faces separately', () => {
+    const faces = [
+      makeFaceWithStatsPerson({ id: 'p-alice', name: 'Alice', isHidden: false }),
+      makeFaceWithStatsPerson({ id: 'p-alice', name: 'Alice', isHidden: false }, { id: 'face-2' }),
+      makeFaceWithStatsPerson({ id: 'p-bob', name: 'Bob', isHidden: false }),
+      makeFaceWithStatsPerson({ id: 'p-unnamed', name: '', isHidden: false }),
+      makeFaceWithStatsPerson(null, { id: 'face-5' }),
+    ];
+
+    expect(getFaceStats(faces)).toEqual({ namedPersons: 2, unnamedPersons: 1, faces: 5 });
+  });
+
+  it('should exclude hidden persons and their faces from every count', () => {
+    const faces = [
+      makeFaceWithStatsPerson({ id: 'p-alice', name: 'Alice', isHidden: false }),
+      makeFaceWithStatsPerson({ id: 'p-junk', name: 'Junk', isHidden: true }),
+      makeFaceWithStatsPerson({ id: 'p-junk', name: 'Junk', isHidden: true }, { id: 'face-3' }),
+      makeFaceWithStatsPerson({ id: 'p-hidden-unnamed', name: '', isHidden: true }),
+      makeFaceWithStatsPerson(null, { id: 'face-5' }),
+    ];
+
+    expect(getFaceStats(faces)).toEqual({ namedPersons: 1, unnamedPersons: 0, faces: 2 });
+  });
+
+  it('should treat "..." placeholder names as unnamed', () => {
+    const faces = [
+      makeFaceWithStatsPerson({ id: 'p-placeholder', name: '...', isHidden: false }),
+      makeFaceWithStatsPerson({ id: 'p-spaced', name: ' Alice ', isHidden: false }),
+    ];
+
+    expect(getFaceStats(faces)).toEqual({ namedPersons: 1, unnamedPersons: 1, faces: 2 });
   });
 });

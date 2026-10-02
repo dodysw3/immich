@@ -6,7 +6,7 @@
   import { faceManager } from '$lib/stores/face.svelte';
   import { locale } from '$lib/stores/preferences.store';
   import { getPeopleThumbnailUrl } from '$lib/utils';
-  import { getPersonDisplayName } from '$lib/utils/people-utils';
+  import { FACE_STATS_MIN_FACES, getFaceStats, getPersonDisplayName } from '$lib/utils/people-utils';
   import { type AssetResponseDto } from '@immich/sdk';
   import { IconButton, Text } from '@immich/ui';
   import { mdiEye, mdiEyeOff, mdiPencil, mdiPlus } from '@mdi/js';
@@ -22,6 +22,8 @@
   const { asset, isOwner, previousRoute }: Props = $props();
 
   const people = $derived(Array.from(faceManager.people));
+  const faceStats = $derived(getFaceStats(faceManager.data));
+  const showFaceStats = $derived(faceStats.faces > FACE_STATS_MIN_FACES);
   const visiblePeople = $derived(
     people
       .filter((p) => assetViewerManager.isShowingHiddenPeople || !p.isHidden)
@@ -100,6 +102,18 @@
           {/if}
         </div>
       </div>
+    {/if}
+
+    {#if (isOwner || visiblePeople.length > 0) && showFaceStats}
+      <Text size="tiny" color="muted">
+        {$t('people_face_stats', {
+          values: {
+            person: faceStats.namedPersons,
+            unnamed: faceStats.unnamedPersons,
+            faces: faceStats.faces,
+          },
+        })}
+      </Text>
     {/if}
 
     <div class="mt-2 grid {visiblePeople.length <= 6 ? 'grid-cols-3 gap-3' : 'grid-cols-4 gap-2'}">

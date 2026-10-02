@@ -92,6 +92,40 @@ export const getFaceReferenceLabels = (faces: FaceWithName[]): Map<string, strin
   return labels;
 };
 
+export type FaceStats = {
+  namedPersons: number;
+  unnamedPersons: number;
+  faces: number;
+};
+
+/** Show the face-stats summary line once visible faces exceed this count. */
+export const FACE_STATS_MIN_FACES = 16;
+
+export const getFaceStats = (
+  faces: { person?: { id: string; name: string; isHidden?: boolean } | null }[],
+): FaceStats => {
+  const persons = new Map<string, { name: string }>();
+  let faceCount = 0;
+  for (const face of faces) {
+    if (!face.person) {
+      faceCount += 1;
+      continue;
+    }
+    if (face.person.isHidden) {
+      continue;
+    }
+    faceCount += 1;
+    persons.set(face.person.id, face.person);
+  }
+  let namedPersons = 0;
+  for (const person of persons.values()) {
+    if (!isPlaceholderFaceName(person.name)) {
+      namedPersons += 1;
+    }
+  }
+  return { namedPersons, unnamedPersons: persons.size - namedPersons, faces: faceCount };
+};
+
 export const getPersonDisplayName = (
   person: { name: string },
   faces: FaceWithName[],
