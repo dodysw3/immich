@@ -36,7 +36,7 @@
   const THUMBNAIL_PAGE_LIMIT = 40;
 
   const normalizePageNumber = (page: number) => {
-    const next = Number(page);
+    const next = page;
     return Number.isFinite(next) ? Math.max(1, Math.floor(next)) : 1;
   };
 
@@ -125,7 +125,7 @@
     try {
       const pdfjs = await import('pdfjs-dist');
       // pdf.js worker must be set in browser context before loading documents.
-      pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
+      pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).href;
       // Needed for JPX/JPEG2000 and other wasm-backed decoders (e.g. openjpeg.wasm).
       const wasmUrl = `${base}/pdfjs/wasm/`;
       const task = pdfjs.getDocument({ url: `/api/assets/${assetId}/original`, wasmUrl });
@@ -165,19 +165,29 @@
 <div class="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700">
   <div class="flex items-center justify-between border-b border-gray-200 px-3 py-2 text-xs dark:border-gray-700">
     <div class="flex items-center gap-2">
-      <button type="button" class="rounded border px-2 py-1" onclick={() => updatePage(-1)} disabled={currentPage <= 1}>
+      <button
+        type="button"
+        class="rounded-sm border px-2 py-1"
+        onclick={() => updatePage(-1)}
+        disabled={currentPage <= 1}
+      >
         Prev
       </button>
-      <button type="button" class="rounded border px-2 py-1" onclick={() => updatePage(1)} disabled={currentPage >= totalPages}>
+      <button
+        type="button"
+        class="rounded-sm border px-2 py-1"
+        onclick={() => updatePage(1)}
+        disabled={currentPage >= totalPages}
+      >
         Next
       </button>
       <span>Page {currentPage}/{Math.max(1, totalPages)}</span>
     </div>
 
     <div class="flex items-center gap-2">
-      <button type="button" class="rounded border px-2 py-1" onclick={() => updateScale(scale - 0.1)}>-</button>
+      <button type="button" class="rounded-sm border px-2 py-1" onclick={() => updateScale(scale - 0.1)}>-</button>
       <span>{Math.round(scale * 100)}%</span>
-      <button type="button" class="rounded border px-2 py-1" onclick={() => updateScale(scale + 0.1)}>+</button>
+      <button type="button" class="rounded-sm border px-2 py-1" onclick={() => updateScale(scale + 0.1)}>+</button>
     </div>
   </div>
 
@@ -192,7 +202,7 @@
           {#each thumbnails as thumb (thumb.pageNumber)}
             <button
               type="button"
-              class={`overflow-hidden rounded border ${
+              class={`overflow-hidden rounded-sm border ${
                 thumb.pageNumber === currentPage ? 'border-primary-500' : 'border-gray-300 dark:border-gray-700'
               }`}
               onclick={() => setPage(thumb.pageNumber)}

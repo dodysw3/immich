@@ -33,9 +33,7 @@
 {#if !loading && assets.length > 0}
   <div class="py-2">
     <div class="flex items-center justify-between px-4 pt-2 pb-1">
-      <h2 class="text-lg font-medium text-immich-fg dark:text-immich-dark-fg">
-        Recently matched
-      </h2>
+      <h2 class="text-lg font-medium text-immich-fg dark:text-immich-dark-fg">Recently matched</h2>
       <a
         href="/people/{personId}/matched"
         class="text-sm font-medium text-immich-primary hover:text-immich-primary/80 dark:text-immich-dark-primary"

@@ -40,10 +40,9 @@ async function main() {
   try {
     await client.query('BEGIN');
 
-    const personRes = await client.query(
-      `SELECT id, name, "faceAssetId", "ownerId" FROM person WHERE id = $1`,
-      [PERSON_ID]
-    );
+    const personRes = await client.query(`SELECT id, name, "faceAssetId", "ownerId" FROM person WHERE id = $1`, [
+      PERSON_ID,
+    ]);
 
     if (personRes.rows.length === 0) {
       console.error(`ERROR: Person ${PERSON_ID} not found`);
@@ -60,7 +59,7 @@ async function main() {
 
     const totalRes = await client.query(
       `SELECT COUNT(*) as cnt FROM asset_face WHERE "personId" = $1 AND "deletedAt" IS NULL`,
-      [PERSON_ID]
+      [PERSON_ID],
     );
     const totalFaces = parseInt(totalRes.rows[0].cnt);
     console.log(`Total assigned faces: ${totalFaces}`);
@@ -70,9 +69,9 @@ async function main() {
     if (UNASSIGN_ALL) {
       const res = await client.query(
         `SELECT af.id FROM asset_face af WHERE af."personId" = $1 AND af."deletedAt" IS NULL`,
-        [PERSON_ID]
+        [PERSON_ID],
       );
-      faceIdsToUnassign = res.rows.map(r => r.id);
+      faceIdsToUnassign = res.rows.map((r) => r.id);
     } else {
       const res = await client.query(
         `SELECT af.id,
@@ -86,9 +85,9 @@ async function main() {
           AND af."deletedAt" IS NULL
           AND (fs.embedding <=> ff.embedding) > $3
         ORDER BY distance DESC`,
-        [PERSON_ID, person.faceAssetId, DISTANCE_THRESHOLD]
+        [PERSON_ID, person.faceAssetId, DISTANCE_THRESHOLD],
       );
-      faceIdsToUnassign = res.rows.map(r => r.id);
+      faceIdsToUnassign = res.rows.map((r) => r.id);
     }
 
     const keepCount = totalFaces - faceIdsToUnassign.length;
@@ -118,7 +117,7 @@ async function main() {
             AND (fs.embedding <=> ff.embedding) > $3
           ORDER BY distance DESC
           LIMIT 10`,
-          [PERSON_ID, person.faceAssetId, DISTANCE_THRESHOLD]
+          [PERSON_ID, person.faceAssetId, DISTANCE_THRESHOLD],
         );
         console.log('');
         console.log('Top 10 most distant faces to be unassigned:');
@@ -128,7 +127,9 @@ async function main() {
       }
 
       console.log('');
-      console.log(`Would unassign ${faceIdsToUnassign.length} faces and queue ${faceIdsToUnassign.length} recognition jobs`);
+      console.log(
+        `Would unassign ${faceIdsToUnassign.length} faces and queue ${faceIdsToUnassign.length} recognition jobs`,
+      );
       return;
     }
 
@@ -136,7 +137,7 @@ async function main() {
     const unassignRes = await client.query(
       `UPDATE asset_face SET "personId" = NULL
        WHERE id = ANY($1) AND "personId" = $2 AND "deletedAt" IS NULL`,
-      [faceIdsToUnassign, PERSON_ID]
+      [faceIdsToUnassign, PERSON_ID],
     );
     console.log(`  Updated ${unassignRes.rowCount} rows`);
 
@@ -145,7 +146,7 @@ async function main() {
     let queued = 0;
     for (let i = 0; i < faceIdsToUnassign.length; i += BATCH_SIZE) {
       const batch = faceIdsToUnassign.slice(i, i + BATCH_SIZE);
-      const jobs = batch.map(id => ({
+      const jobs = batch.map((id) => ({
         name: 'FacialRecognition',
         data: { id, deferred: false },
       }));
@@ -159,7 +160,6 @@ async function main() {
     console.log('');
     console.log('Done! Faces will be re-processed by the recognition queue.');
     console.log('Monitor progress at: Admin > Jobs > Facial Recognition');
-
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Error:', err.message);
@@ -171,7 +171,7 @@ async function main() {
 
 main()
   .then(() => process.exit(0))
-  .catch(err => {
+  .catch((err) => {
     console.error(err);
     process.exit(1);
   });

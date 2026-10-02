@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom';
-import { init } from 'svelte-i18n';
 import { Storage } from 'happy-dom';
+import { init } from 'svelte-i18n';
 
 // neither Node (>=22 without --localstorage-file) nor happy-dom in vitest provides
 // a working storage global; module-scope code in @immich/ui and persisted.ts needs one

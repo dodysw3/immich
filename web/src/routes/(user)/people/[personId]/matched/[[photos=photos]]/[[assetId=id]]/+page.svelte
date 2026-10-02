@@ -29,13 +29,7 @@
   import { toTimelineAsset } from '$lib/utils/timeline-util';
   import { createPageMap, getLoadedAssets } from '$lib/utils/page-map';
   import { getPersonAssets } from '@immich/sdk';
-  import {
-    ActionButton,
-    CommandPaletteDefaultProvider,
-    Icon,
-    IconButton,
-    LoadingSpinner,
-  } from '@immich/ui';
+  import { ActionButton, CommandPaletteDefaultProvider, Icon, IconButton, LoadingSpinner } from '@immich/ui';
   import { mdiArrowLeft, mdiDotsVertical, mdiImageOffOutline, mdiSelectAll } from '@mdi/js';
   import { onDestroy, tick } from 'svelte';
   import { t } from 'svelte-i18n';
@@ -94,7 +88,7 @@
     (async () => {
       const savedPage = sessionStorage.getItem(SessionStorageKey.MATCHED_SCROLL_PAGE);
       if (savedPage) {
-        const targetPage = parseInt(savedPage, 10);
+        const targetPage = Math.trunc(Number(savedPage));
         for (let p = 2; p <= targetPage; p++) {
           try {
             await fetchPage(p);
@@ -110,7 +104,7 @@
       if (savedScroll) {
         await tick();
         document.scrollingElement?.scrollTo({
-          top: parseFloat(savedScroll),
+          top: Number(savedScroll),
           behavior: 'instant',
         });
         sessionStorage.removeItem(SessionStorageKey.MATCHED_SCROLL_POSITION);
@@ -127,15 +121,26 @@
   const isAssetUrl = (pathname: string) => pathname.includes('/matched/photos/');
 
   beforeNavigate(({ to, from }) => {
-    if (from?.url && to?.url && from.url.pathname.startsWith(matchedPrefix) && to.url.pathname.startsWith(matchedPrefix)) {
-      if (!isAssetUrl(from.url.pathname) && isAssetUrl(to.url.pathname)) {
-        scrollBeforeAssetView = document.scrollingElement?.scrollTop ?? 0;
-      }
+    if (
+      from?.url &&
+      to?.url &&
+      from.url.pathname.startsWith(matchedPrefix) &&
+      to.url.pathname.startsWith(matchedPrefix) &&
+      !isAssetUrl(from.url.pathname) &&
+      isAssetUrl(to.url.pathname)
+    ) {
+      scrollBeforeAssetView = document.scrollingElement?.scrollTop ?? 0;
     }
   });
 
   afterNavigate(({ from, to }) => {
-    if (from?.url && to?.url && isAssetUrl(from.url.pathname) && !isAssetUrl(to.url.pathname) && scrollBeforeAssetView > 0) {
+    if (
+      from?.url &&
+      to?.url &&
+      isAssetUrl(from.url.pathname) &&
+      !isAssetUrl(to.url.pathname) &&
+      scrollBeforeAssetView > 0
+    ) {
       const restore = scrollBeforeAssetView;
       scrollBeforeAssetView = 0;
       void tick().then(() => {

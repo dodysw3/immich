@@ -73,7 +73,7 @@
 
 <div
   data-zoom-image-ignore
-  class="absolute group pointer-events-auto"
+  class="group pointer-events-auto absolute"
   style="top: {faceBox.top}px; left: {faceBox.left}px; width: {faceBox.width}px; height: {faceBox.height}px;"
   role="button"
   tabindex="0"
@@ -90,18 +90,18 @@
 >
   {#if isNavigating}
     <div class="absolute inset-0 rounded-lg border-2 border-white bg-black/45"></div>
-    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+    <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
       <LoadingSpinner />
     </div>
   {:else if variant === 'hover'}
-    <div class="absolute inset-0 border-solid border-white border-3 rounded-lg"></div>
+    <div class="absolute inset-0 rounded-lg border-3 border-solid border-white"></div>
     {#if faceBox.personName}
       <div
-        class="absolute left-0 right-0 flex justify-end pointer-events-none overflow-hidden"
+        class="pointer-events-none absolute inset-x-0 flex justify-end overflow-hidden"
         style="top: calc(100% + {hoverLabelCompensation.gap}px);"
       >
         <div
-          class="flex-none bg-white/90 text-black px-2 py-1 rounded text-sm font-medium whitespace-nowrap shadow-lg"
+          class="flex-none rounded-sm bg-white/90 px-2 py-1 text-sm font-medium whitespace-nowrap text-black shadow-lg"
           style="width: {hoverLabelWidth}; min-width: {hoverLabelWidth}; transform: scale({hoverLabelCompensation.scale}); transform-origin: top right;"
         >
           {faceBox.personName}
@@ -109,7 +109,7 @@
       </div>
     {/if}
   {:else if isHovered || isActive}
-    <svg class="absolute inset-0 pointer-events-none overflow-visible" width={faceBox.width} height={faceBox.height}>
+    <svg class="pointer-events-none absolute inset-0 overflow-visible" width={faceBox.width} height={faceBox.height}>
       <rect
         x="1"
         y="1"
@@ -128,11 +128,11 @@
     <div class="absolute inset-0 rounded-lg border border-green-500"></div>
     {#if faceBox.personName && !isActive}
       <div
-        class="absolute left-0 right-0 flex justify-center pointer-events-none overflow-hidden"
+        class="pointer-events-none absolute inset-x-0 flex justify-center overflow-hidden"
         style="top: {faceBox.height}px;"
       >
         <div
-          class="flex-none text-center text-white text-xs bg-black/75 px-1 py-0.5 rounded-b break-all"
+          class="flex-none rounded-b bg-black/75 px-1 py-0.5 text-center text-xs break-all text-white"
           style="width: {labelWidth}; min-width: {labelWidth}; transform: scale({labelCompensation.scale}); transform-origin: top center;"
         >
           {faceBox.personName}

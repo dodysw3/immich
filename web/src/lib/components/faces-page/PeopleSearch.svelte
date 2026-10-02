@@ -76,10 +76,7 @@
     if (!lastApiResultWasComplete) {
       return true;
     }
-    if (previousSearch.length < 3) {
-      return false;
-    }
-    return true;
+    return !(previousSearch.length < 3);
   };
 
   export async function searchPeople(force?: boolean, name?: string) {

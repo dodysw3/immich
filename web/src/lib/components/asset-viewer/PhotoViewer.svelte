@@ -295,7 +295,8 @@
         {@const label = getFaceLabelStyle(displayLabel, boundingbox, boundingBoxes)}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
-          class="pointer-events-auto absolute rounded-lg {isActive && 'border-3 border-solid border-white'} {showPersistent && 'border border-green-500'}"
+          class="pointer-events-auto absolute rounded-lg {isActive &&
+            'border-3 border-solid border-white'} {showPersistent && 'border border-green-500'}"
           style="top: {boundingbox.top}px; left: {boundingbox.left}px; height: {boundingbox.height}px; width: {boundingbox.width}px;"
           onpointerenter={() => assetViewerManager.setHighlightedFaces([boundingbox.face])}
           onpointerleave={() => assetViewerManager.clearHighlightedFaces()}
@@ -320,7 +321,9 @@
               style="top: {boundingbox.height}px;"
             >
               <div
-                class="max-w-full flex-none rounded-b bg-black/50 px-1 py-0.5 text-center text-white {label.wrap ? '' : 'whitespace-nowrap'}"
+                class="max-w-full flex-none rounded-b bg-black/50 px-1 py-0.5 text-center text-white {label.wrap
+                  ? ''
+                  : 'whitespace-nowrap'}"
                 style="width: {boundingbox.width}px; font-size: {label.fontSize}px;"
               >
                 {displayLabel ?? '…'}

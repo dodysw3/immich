@@ -1,5 +1,5 @@
-import type { FaceOverlayData } from '$lib/features/face-overlay/face-overlay.store.svelte';
 import type { ZoomImageWheelState } from '@zoom-image/core';
+import type { FaceOverlayData } from '$lib/features/face-overlay/face-overlay.store.svelte';
 
 const getContainedSize = (img: HTMLImageElement): { width: number; height: number } => {
   const ratio = img.naturalWidth / img.naturalHeight;

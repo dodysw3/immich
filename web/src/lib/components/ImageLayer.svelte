@@ -13,24 +13,11 @@
     height: string;
   };
 
-  let {
-    adaptiveImageLoader,
-    quality,
-    src,
-    alt = '',
-    role,
-    ref = $bindable(),
-    width,
-    height,
-  }: Props = $props();
+  let { adaptiveImageLoader, quality, src, alt = '', role, ref = $bindable(), width, height }: Props = $props();
 </script>
 
 {#key adaptiveImageLoader}
-  <div
-    class="absolute top-0 origin-top-left"
-    style:width
-    style:height
-  >
+  <div class="absolute top-0 origin-top-left" style:width style:height>
     <Image
       {src}
       onStart={() => adaptiveImageLoader.onStart(quality)}

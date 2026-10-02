@@ -1,3 +1,4 @@
+import type { AssetResponseDto } from '@immich/sdk';
 import { describe, expect, it } from 'vitest';
 import {
   type PageMap,
@@ -6,8 +7,7 @@ import {
   getPageAtScrollOffset,
   findGhostPagesNearViewport,
 } from '$lib/utils/page-map';
-
-import type { AssetResponseDto } from '@immich/sdk';
+import type { PageState } from '$lib/utils/page-map';
 
 const createAsset = (id: string) =>
   ({
@@ -24,8 +24,6 @@ function makePage(entries: [number, PageState][], initial?: PageMap): PageMap {
   }
   return map;
 }
-
-import type { PageState } from '$lib/utils/page-map';
 
 describe('getLoadedAssets', () => {
   it('returns empty array for empty map', () => {
@@ -162,7 +160,7 @@ describe('findGhostPagesNearViewport', () => {
     ]);
 
     const result = findGhostPagesNearViewport(map, 300, 800, 2);
-    expect(result.sort()).toEqual([1, 3, 4]);
+    expect(result.sort((a, b) => a - b)).toEqual([1, 3, 4]);
   });
 
   it('excludes ghost pages far outside the threshold', () => {

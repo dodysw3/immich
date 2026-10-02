@@ -63,11 +63,13 @@ export function getPageAtScrollOffset(pages: PageMap, offset: number): number | 
 
   for (const pageNum of sorted) {
     const state = pages[pageNum];
-    if (state.status === 'loaded' || state.status === 'ghost') {
-      accumulated += state.height;
-      if (offset < accumulated) {
-        return pageNum;
-      }
+    if (!(state.status === 'loaded' || state.status === 'ghost')) {
+      continue;
+    }
+
+    accumulated += state.height;
+    if (offset < accumulated) {
+      return pageNum;
     }
   }
   return undefined;

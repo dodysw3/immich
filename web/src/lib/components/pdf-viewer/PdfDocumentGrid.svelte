@@ -1,11 +1,7 @@
 <script lang="ts">
   import Dropdown from '$lib/elements/Dropdown.svelte';
   import { Route } from '$lib/route';
-  import {
-    PdfDocumentSortBy,
-    SortOrder,
-    pdfDocumentSortSettings,
-  } from '$lib/stores/preferences.store';
+  import { PdfDocumentSortBy, SortOrder, pdfDocumentSortSettings } from '$lib/stores/preferences.store';
   import { mdiArrowDownThin, mdiArrowUpThin } from '@mdi/js';
 
   interface DocumentItem {
@@ -164,9 +160,13 @@
         class="flex w-full max-w-[350px] flex-col rounded-xl border border-gray-200 p-3 transition hover:border-primary-400 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-900"
         href={Route.viewDocument({ id: item.assetId })}
       >
-        <div class="mb-2 overflow-hidden rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-900">
+        <div
+          class="mb-2 overflow-hidden rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-900"
+        >
           {#if failedThumbnails.has(item.assetId)}
-            <div class="flex h-36 w-full items-center justify-center bg-gray-100 text-sm font-semibold text-gray-500 dark:bg-gray-900 dark:text-gray-400">
+            <div
+              class="flex h-36 w-full items-center justify-center bg-gray-100 text-sm font-semibold text-gray-500 dark:bg-gray-900 dark:text-gray-400"
+            >
               PDF
             </div>
           {:else}
@@ -183,19 +183,22 @@
             />
           {/if}
         </div>
-        <p class="line-clamp-2 text-sm font-semibold leading-5 text-gray-900 dark:text-gray-100" title={item.title || item.originalFileName}>
+        <p
+          class="line-clamp-2 text-sm/5 font-semibold text-gray-900 dark:text-gray-100"
+          title={item.title || item.originalFileName}
+        >
           {item.title || item.originalFileName}
         </p>
         <p class="mt-1 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
           {#if createdAt}
             <span class="truncate">{createdAt}</span>
-            <span aria-hidden="true" class="h-1 w-1 rounded-full bg-gray-400/80 dark:bg-gray-500"></span>
+            <span aria-hidden="true" class="size-1 rounded-full bg-gray-400/80 dark:bg-gray-500"></span>
           {/if}
           <span>{formatPageCount(item.pageCount)}</span>
         </p>
         {#if item.status}
           <p
-            class={`mt-1 inline-block rounded px-2 py-0.5 text-[11px] ${
+            class={`mt-1 inline-block rounded-sm px-2 py-0.5 text-[11px] ${
               item.status === 'ready'
                 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                 : item.status === 'failed'

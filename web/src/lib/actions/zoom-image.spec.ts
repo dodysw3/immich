@@ -1,6 +1,6 @@
-import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
-import { zoomImageAction } from '$lib/actions/zoom-image';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { zoomImageAction } from '$lib/actions/zoom-image';
+import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
 
 const zoomHandlerState = {
   pointerDownCalls: 0,
@@ -12,9 +12,13 @@ vi.mock('@zoom-image/core', () => ({
     node.addEventListener('pointerdown', () => {
       zoomHandlerState.pointerDownCalls++;
     });
-    node.addEventListener('touchstart', () => {
-      zoomHandlerState.touchStartCalls++;
-    });
+    node.addEventListener(
+      'touchstart',
+      () => {
+        zoomHandlerState.touchStartCalls++;
+      },
+      { passive: true },
+    );
 
     return {
       cleanup: vi.fn(),

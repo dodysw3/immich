@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { SvelteURLSearchParams } from 'svelte/reactivity';
   import PdfDocumentGrid from '$lib/components/pdf-viewer/PdfDocumentGrid.svelte';
   import PdfSearchBar from '$lib/components/pdf-viewer/PdfSearchBar.svelte';
   import UserPageLayout from '$lib/components/layouts/UserPageLayout.svelte';
@@ -34,7 +35,7 @@
   const navigateDocuments = (next: { query?: string; status?: string }) => {
     const nextQuery = next.query ?? query;
     const nextStatus = next.status ?? status;
-    const params = new URLSearchParams();
+    const params = new SvelteURLSearchParams();
     if (nextQuery) {
       params.set('query', nextQuery);
     }
@@ -104,7 +105,9 @@
   });
 
   const shouldPollDocuments = () =>
-    items.some((item: { status: string }) => item.status === 'pending' || item.status === 'processing') && !query && refreshFailures < MAX_REFRESH_FAILURES;
+    items.some((item: { status: string }) => item.status === 'pending' || item.status === 'processing') &&
+    !query &&
+    refreshFailures < MAX_REFRESH_FAILURES;
 
   const refreshDocuments = async () => {
     if (refreshing) {
@@ -113,9 +116,7 @@
 
     refreshing = true;
     try {
-      const response = await fetch(
-        `/api/documents?page=1${status ? `&status=${encodeURIComponent(status)}` : ''}`,
-      );
+      const response = await fetch(`/api/documents?page=1${status ? `&status=${encodeURIComponent(status)}` : ''}`);
       if (!response.ok) {
         refreshFailures += 1;
         return;
@@ -137,7 +138,7 @@
       return;
     }
 
-    const timer = setInterval(() => void refreshDocuments(), 5_000);
+    const timer = setInterval(() => void refreshDocuments(), 5000);
     return () => clearInterval(timer);
   });
 </script>
@@ -146,12 +147,14 @@
   <div class="mb-4">
     <div class="mb-3 flex flex-wrap gap-2 text-xs">
       <button
-        class={`rounded-full px-2 py-1 ${!status ? 'bg-gray-200 dark:bg-gray-700' : 'bg-gray-100 dark:bg-gray-800'}`}
+        type="button"
+        class={`rounded-full px-2 py-1 ${status ? 'bg-gray-100 dark:bg-gray-800' : 'bg-gray-200 dark:bg-gray-700'}`}
         onclick={() => setStatus('')}
       >
         Total: {summary.total}
       </button>
       <button
+        type="button"
         class={`rounded-full px-2 py-1 text-amber-800 dark:text-amber-300 ${
           status === 'pending' ? 'bg-amber-200 dark:bg-amber-900/50' : 'bg-amber-100 dark:bg-amber-900/30'
         }`}
@@ -160,6 +163,7 @@
         Pending: {summary.pending}
       </button>
       <button
+        type="button"
         class={`rounded-full px-2 py-1 text-blue-800 dark:text-blue-300 ${
           status === 'processing' ? 'bg-blue-200 dark:bg-blue-900/50' : 'bg-blue-100 dark:bg-blue-900/30'
         }`}
@@ -168,6 +172,7 @@
         Processing: {summary.processing}
       </button>
       <button
+        type="button"
         class={`rounded-full px-2 py-1 text-green-800 dark:text-green-300 ${
           status === 'ready' ? 'bg-green-200 dark:bg-green-900/50' : 'bg-green-100 dark:bg-green-900/30'
         }`}
@@ -176,6 +181,7 @@
         Ready: {summary.ready}
       </button>
       <button
+        type="button"
         class={`rounded-full px-2 py-1 text-red-800 dark:text-red-300 ${
           status === 'failed' ? 'bg-red-200 dark:bg-red-900/50' : 'bg-red-100 dark:bg-red-900/30'
         }`}
@@ -193,14 +199,18 @@
       </p>
     {/if}
     {#if query}
-      <button class="mt-2 text-xs text-primary-700 dark:text-primary-300" onclick={resetSearch}>Clear search</button>
+      <button type="button" class="mt-2 text-xs text-primary-700 dark:text-primary-300" onclick={resetSearch}
+        >Clear search</button
+      >
     {/if}
   </div>
   <PdfDocumentGrid {items} />
   {#if nextPage}
     <div bind:this={sentinel} class="flex justify-center py-8">
       {#if loading}
-        <div class="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600 dark:border-gray-600 dark:border-t-gray-300"></div>
+        <div
+          class="size-6 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600 dark:border-gray-600 dark:border-t-gray-300"
+        ></div>
       {/if}
     </div>
   {/if}

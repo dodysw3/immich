@@ -153,7 +153,10 @@
               page: searchDto.page,
             },
           });
-          return { albums: { items: [] as AlbumResponseDto[] }, assets: { ...response, items: response.items.map((item) => item.asset) } };
+          return {
+            albums: { items: [] as AlbumResponseDto[] },
+            assets: { ...response, items: response.items.map((item) => item.asset) },
+          };
         }
         if (('query' in searchDto || 'queryAssetId' in searchDto) && smartSearchEnabled) {
           return await searchSmart({

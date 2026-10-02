@@ -196,7 +196,7 @@ export class EditManager {
         currentRotation += rotateAngle;
       }
 
-      const nextRotation = ((currentRotation + normalizedAngle) % 360 + 360) % 360;
+      const nextRotation = (((currentRotation + normalizedAngle) % 360) + 360) % 360;
       const edits: EditActions =
         nextRotation === 0
           ? editsWithoutRotate

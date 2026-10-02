@@ -60,6 +60,7 @@ export default defineConfig(
       '**/.DS_Store',
       '**/node_modules',
       'build',
+      'static/pdfjs', // Vendored PDF.js runtime copied from its package during build.
       '.svelte-kit',
       'package',
       '**/.env',
@@ -195,6 +196,12 @@ export default defineConfig(
       parserOptions: {
         parser: typescriptEslint.parser,
       },
+    },
+  },
+  {
+    files: ['bin/**/*.mjs'],
+    languageOptions: {
+      parserOptions: { project: ['./tsconfig.scripts.json'] },
     },
   },
   eslintPluginPrettierRecommended,

@@ -988,6 +988,9 @@ importers:
       '@types/luxon':
         specifier: ^3.4.2
         version: 3.7.5
+      '@types/node':
+        specifier: 24.13.6
+        version: 24.13.6
       '@types/qrcode':
         specifier: ^1.5.5
         version: 1.5.6

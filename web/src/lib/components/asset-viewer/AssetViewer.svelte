@@ -112,7 +112,6 @@
   const nextAsset = $derived(cursor.nextAsset);
   const previousAsset = $derived(cursor.previousAsset);
   const isOwner = $derived(authManager.user?.id === asset.ownerId);
-  let appearsInAlbums: AlbumResponseDto[] = $state([]);
   let sharedLink = getSharedLink();
   let fullscreenElement = $state<Element>();
 
@@ -672,13 +671,13 @@
     {/if}
 
     {#if showFaceButton}
-      <div class="absolute bottom-0 end-0 mb-6 me-6">
+      <div class="absolute inset-e-0 bottom-0 me-6 mb-6">
         <FaceOverlayButton />
       </div>
     {/if}
 
     {#if showOcrButton}
-      <div class="absolute bottom-0 end-0 me-6" class:mb-20={showFaceButton} class:mb-6={!showFaceButton}>
+      <div class="absolute inset-e-0 bottom-0 me-6" class:mb-20={showFaceButton} class:mb-6={!showFaceButton}>
         <OcrButton />
       </div>
     {/if}

@@ -123,7 +123,7 @@
   };
 
   const selectIndexedPage = (pageNumber: number) => {
-    const target = Number(pageNumber);
+    const target = pageNumber;
     if (!Number.isFinite(target) || target < 1) {
       return;
     }
@@ -132,10 +132,7 @@
   };
 </script>
 
-<UserPageLayout
-  title={document.title || document.originalFileName}
-  description={`${document.pageCount} page(s)`}
->
+<UserPageLayout title={document.title || document.originalFileName} description={`${document.pageCount} page(s)`}>
   {#snippet buttons()}
     <div class="flex gap-2">
       <button
@@ -180,7 +177,7 @@
             No matching indexed text. Processing may still be running.
           </p>
         {:else}
-          <ul class="mt-3 space-y-3 overflow-y-auto pr-1 max-h-[min(22rem,45vh)] xl:max-h-[calc(100vh-32rem)]">
+          <ul class="mt-3 max-h-[min(22rem,45vh)] space-y-3 overflow-y-auto pr-1 xl:max-h-[calc(100vh-32rem)]">
             {#each highlightedPages as page (page.pageNumber)}
               <li>
                 <button
@@ -188,7 +185,7 @@
                   class={`w-full rounded-xl border p-3 text-left text-sm transition dark:border-gray-700 ${
                     page.pageNumber === viewerPage
                       ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/20'
-                      : 'border-gray-200 hover:border-primary-300 dark:border-gray-700'
+                      : 'border-gray-200 hover:border-primary-300'
                   }`}
                   onclick={() => selectIndexedPage(page.pageNumber)}
                 >

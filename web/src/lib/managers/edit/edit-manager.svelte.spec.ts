@@ -1,5 +1,6 @@
 import type { AssetResponseDto } from '@immich/sdk';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { EditManager } from '$lib/managers/edit/edit-manager.svelte';
 
 const mocks = vi.hoisted(() => ({
   editAsset: vi.fn(),
@@ -67,8 +68,6 @@ vi.mock('@immich/sdk', () => ({
   getAssetInfo: mocks.getAssetInfo,
   removeAssetEdits: mocks.removeAssetEdits,
 }));
-
-import { EditManager } from '$lib/managers/edit/edit-manager.svelte';
 
 const createAsset = (id: string): AssetResponseDto => ({ id }) as AssetResponseDto;
 

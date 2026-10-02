@@ -5,10 +5,7 @@ export const load = (async ({ url, fetch }) => {
   await authenticate(url);
   const query = url.searchParams.get('query')?.trim() || '';
   const requestedStatus = url.searchParams.get('status')?.trim() || '';
-  const status =
-    requestedStatus === 'pending' || requestedStatus === 'processing' || requestedStatus === 'ready' || requestedStatus === 'failed'
-      ? requestedStatus
-      : '';
+  const status = ['pending', 'processing', 'ready', 'failed'].includes(requestedStatus) ? requestedStatus : '';
   const endpoint = query
     ? `/api/documents/search?query=${encodeURIComponent(query)}&page=1${
         status ? `&status=${encodeURIComponent(status)}` : ''

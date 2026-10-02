@@ -39,10 +39,15 @@ export const zoomImageAction = (node: HTMLElement, options?: ZoomImageActionOpti
   const { signal } = controller;
 
   node.addEventListener('pointerdown', () => assetViewerManager.cancelZoomAnimation(), { capture: true, signal });
-  node.addEventListener('touchstart', () => assetViewerManager.cancelZoomAnimation(), { capture: true, signal, passive: true });
+  node.addEventListener('touchstart', () => assetViewerManager.cancelZoomAnimation(), {
+    capture: true,
+    signal,
+    passive: true,
+  });
 
   const isOverlayEvent = (event: Event) =>
-    !!(event.target as HTMLElement).closest('[data-overlay-interactive]') || matchesIgnoreSelector(event.target, options);
+    !!(event.target as HTMLElement).closest('[data-overlay-interactive]') ||
+    matchesIgnoreSelector(event.target, options);
   const isOverlayAtPoint = (x: number, y: number) => {
     const target = document.elementFromPoint(x, y);
     return !!target?.closest('[data-overlay-interactive]') || matchesIgnoreSelector(target, options);
