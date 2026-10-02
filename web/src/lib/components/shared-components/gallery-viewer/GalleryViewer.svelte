@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { SvelteMap, SvelteSet } from 'svelte/reactivity';
   import { goto } from '$app/navigation';
   import { shortcuts, type ShortcutOptions } from '$lib/actions/shortcut';
   import type { Action } from '$lib/components/asset-viewer/actions/action';
@@ -100,18 +101,21 @@
     if (!pageMap) {
       return;
     }
-    const sortedKeys = Object.keys(pageMap).map(Number).sort((a, b) => a - b);
+    const sortedKeys = Object.keys(pageMap)
+      .map(Number)
+      .sort((a, b) => a - b);
     for (const pageNum of sortedKeys) {
       const state = pageMap[pageNum];
-      if (state.status === 'loaded') {
-        const range = pageAssetRanges.get(pageNum);
-        if (range) {
-          const height =
-            geometry.getTop(range.last) + geometry.getHeight(range.last) - geometry.getTop(range.first);
-          if (state.height !== height) {
-            pageMap[pageNum] = { ...state, height };
-          }
-        }
+      if (state.status !== 'loaded') {
+        continue;
+      }
+      const range = pageAssetRanges.get(pageNum);
+      if (!range) {
+        continue;
+      }
+      const height = geometry.getTop(range.last) + geometry.getHeight(range.last) - geometry.getTop(range.first);
+      if (state.height !== height) {
+        pageMap[pageNum] = { ...state, height };
       }
     }
   });
@@ -146,19 +150,22 @@
 
   const pageAssetRanges = $derived.by(() => {
     if (!pageMap) {
-      return new Map<number, { first: number; last: number }>();
+      return new SvelteMap<number, { first: number; last: number }>();
     }
-    const ranges = new Map<number, { first: number; last: number }>();
-    const sortedKeys = Object.keys(pageMap).map(Number).sort((a, b) => a - b);
+    const ranges = new SvelteMap<number, { first: number; last: number }>();
+    const sortedKeys = Object.keys(pageMap)
+      .map(Number)
+      .sort((a, b) => a - b);
     let assetIndex = 0;
 
     for (const pageNum of sortedKeys) {
       const state = pageMap[pageNum];
-      if (state.status === 'loaded') {
-        const first = assetIndex;
-        assetIndex += state.assets.length;
-        ranges.set(pageNum, { first, last: assetIndex - 1 });
+      if (state.status !== 'loaded') {
+        continue;
       }
+      const first = assetIndex;
+      assetIndex += state.assets.length;
+      ranges.set(pageNum, { first, last: assetIndex - 1 });
     }
 
     return ranges;
@@ -168,7 +175,9 @@
     if (!pageMap) {
       return [];
     }
-    const sortedKeys = Object.keys(pageMap).map(Number).sort((a, b) => a - b);
+    const sortedKeys = Object.keys(pageMap)
+      .map(Number)
+      .sort((a, b) => a - b);
     const result: { top: number; height: number }[] = [];
     let accumulated = 0;
     const windowBottom = slidingWindow.bottom;
@@ -193,7 +202,9 @@
   let lastViewportWidth = $state(viewport.width);
   $effect(() => {
     if (pageMap && lastViewportWidth > 0 && viewport.width !== lastViewportWidth) {
-      for (const pageNum of Object.keys(pageMap).map(Number).sort((a, b) => a - b)) {
+      for (const pageNum of Object.keys(pageMap)
+        .map(Number)
+        .sort((a, b) => a - b)) {
         const state = pageMap[pageNum];
         if (state.status === 'ghost') {
           pageMap[pageNum] = { status: 'unloaded' };
@@ -227,12 +238,14 @@
   const updateCurrentAsset = (asset: AssetResponseDto) => {
     if (pageMap) {
       for (const state of Object.values(pageMap)) {
-        if (state.status === 'loaded') {
-          const index = state.assets.findIndex((a) => a.id === asset.id);
-          if (index !== -1) {
-            state.assets[index] = asset;
-            return;
-          }
+        if (state.status !== 'loaded') {
+          continue;
+        }
+
+        const index = state.assets.findIndex((a) => a.id === asset.id);
+        if (index !== -1) {
+          state.assets[index] = asset;
+          return;
         }
       }
     } else {
@@ -249,16 +262,20 @@
     }
   };
 
-  const debouncedOnEndReached = debounce(() => {
-    if (pageMap) {
-      const loadingPages = Object.values(pageMap).filter((s) => s.status === 'loading');
-      if (loadingPages.length === 0) {
+  const debouncedOnEndReached = debounce(
+    () => {
+      if (pageMap) {
+        const loadingPages = Object.values(pageMap).filter((s) => s.status === 'loading');
+        if (loadingPages.length === 0) {
+          onEndReached?.();
+        }
+      } else {
         onEndReached?.();
       }
-    } else {
-      onEndReached?.();
-    }
-  }, 750, { maxWait: 100, leading: true });
+    },
+    750,
+    { maxWait: 100, leading: true },
+  );
 
   const runEviction = throttle(
     () => {
@@ -272,7 +289,9 @@
       const rangeBottom = currentScroll + viewportH + threshold * viewportH;
 
       let accumulated = 0;
-      const sortedKeys = Object.keys(pageMap).map(Number).sort((a, b) => a - b);
+      const sortedKeys = Object.keys(pageMap)
+        .map(Number)
+        .sort((a, b) => a - b);
 
       for (const pageNum of sortedKeys) {
         const state = pageMap[pageNum];
@@ -280,8 +299,7 @@
         if (state.status === 'loaded') {
           const range = pageAssetRanges.get(pageNum);
           if (range) {
-            pageHeight =
-              geometry.getTop(range.last) + geometry.getHeight(range.last) - geometry.getTop(range.first);
+            pageHeight = geometry.getTop(range.last) + geometry.getHeight(range.last) - geometry.getTop(range.first);
           }
         } else if (state.status === 'ghost') {
           pageHeight = state.height;
@@ -316,20 +334,24 @@
 
       for (const pageNum of nearbyGhosts) {
         const currentState = pageMap[pageNum];
-        if (currentState && currentState.status === 'ghost' && !loadingPagesSet.has(pageNum)) {
-          loadingPagesSet.add(pageNum);
-          pageMap[pageNum] = { status: 'loading', ghostHeight: currentState.height };
+        if (!(currentState && currentState.status === 'ghost') || loadingPagesSet.has(pageNum)) {
+          continue;
+        }
+
+        loadingPagesSet.add(pageNum);
+        pageMap[pageNum] = { status: 'loading', ghostHeight: currentState.height };
+        handlePromiseError(
           reloadPage(pageNum).finally(() => {
             loadingPagesSet.delete(pageNum);
-          });
-        }
+          }),
+        );
       }
     },
     250,
     { trailing: true },
   );
 
-  const loadingPagesSet = new Set<number>();
+  const loadingPagesSet = new SvelteSet<number>();
 
   let lastEndReachedBottom = 0;
   $effect(() => {
@@ -430,12 +452,7 @@
       }
     };
 
-    await deleteAssets(
-      forceOrNoTrash,
-      removeFromData,
-      selectedAssets,
-      onReload,
-    );
+    await deleteAssets(forceOrNoTrash, removeFromData, selectedAssets, onReload);
 
     assetInteraction.clear();
   };
@@ -535,12 +552,14 @@
         const nextAsset = assetCursor.nextAsset ?? assetCursor.previousAsset;
         if (pageMap) {
           for (const state of Object.values(pageMap)) {
-            if (state.status === 'loaded') {
-              const idx = state.assets.findIndex((a) => a.id === action.asset.id);
-              if (idx !== -1) {
-                state.assets.splice(idx, 1);
-                break;
-              }
+            if (state.status !== 'loaded') {
+              continue;
+            }
+
+            const idx = state.assets.findIndex((a) => a.id === action.asset.id);
+            if (idx !== -1) {
+              state.assets.splice(idx, 1);
+              break;
             }
           }
         } else {
@@ -635,13 +654,8 @@
     {/each}
 
     {#each visibleLoadingPages as loadingPage (loadingPage.top)}
-      <div
-        class="absolute w-full"
-        style="top: {loadingPage.top}px; height: {loadingPage.height}px"
-      >
-        <div
-          class="flex size-full animate-pulse items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-700"
-        >
+      <div class="absolute w-full" style="top: {loadingPage.top}px; height: {loadingPage.height}px">
+        <div class="flex size-full animate-pulse items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-700">
           <svg
             class="size-8 animate-spin text-gray-400 dark:text-gray-500"
             xmlns="http://www.w3.org/2000/svg"
@@ -649,11 +663,7 @@
             viewBox="0 0 24 24"
           >
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-            <path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-            />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
         </div>
       </div>
