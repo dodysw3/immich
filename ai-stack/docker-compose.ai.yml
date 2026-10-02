@@ -1,0 +1,136 @@
+# docker-compose.ai.yml — local AI stack for the Immich PDF+AI fork
+#
+# Use as an override on top of the upstream-style base compose:
+#
+#   docker compose \
+#     -f docker/docker-compose.yml \
+#     -f ai-stack/docker-compose.ai.yml \
+#     --env-file .env --env-file ai-stack/.env.ai up -d
+#
+# (setup-ai-stack.sh does exactly this, plus model downloads and health checks.)
+#
+# What it adds:
+#   immich-llm-vision   llama.cpp server hosting the vision LLM (image interpretation)
+#   immich-llm-embed    llama.cpp server hosting BGE-M3 embeddings (AI search)
+#   immich-server       rebuilt from this fork's source + wired to the two servers
+#   immich-machine-learning  rebuilt from this fork's source (tiled face detection etc.)
+#
+# Every AI_* variable has a working default; setup-ai-stack.sh writes
+# ai-stack/.env.ai tuned to your GPUs. Models live in AI_MODELS_DIR (default
+# ./llm-models at the repo root, ~17 GB for the recommended profile).
+
+name: ${COMPOSE_PROJECT_NAME:-immich}
+
+services:
+  # ---------------------------------------------------------------- vision LLM
+  immich-llm-vision:
+    # Full llama.cpp image tag: server-cuda when GPUs are present, plain `server`
+    # for the CPU-only fallback. setup-ai-stack.sh writes AI_VISION_IMAGE.
+    # Gated behind the "vision" compose profile: .env.ai sets COMPOSE_PROFILES=vision
+    # (or empty for --without-vision installs).
+    profiles: ["vision"]
+    image: ghcr.io/ggml-org/llama.cpp:${AI_VISION_IMAGE:-server-cuda}
+    container_name: immich_llm_vision
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    # $$-refs expand inside the container; plain ${...} refs are interpolated by
+    # compose from ai-stack/.env.ai.
+    command:
+      - |
+        exec /app/llama-server \
+          -m /models/vision/Muse-Glimmer-30B-$${AI_VISION_VARIANT}.gguf \
+          --mmproj /models/vision/mmproj-Muse-Glimmer-30B-$${AI_MMPROJ_VARIANT}.gguf $${AI_MMPROJ_OFFLOAD:+--mmproj-offload} \
+          --host 0.0.0.0 --port 8080 \
+          --alias unsloth/Muse-Glimmer-30B-GGUF \
+          --parallel $${AI_VISION_PARALLEL} -c $${AI_VISION_TOTAL_CTX} \
+          --flash-attn on --no-context-shift --jinja \
+          --cache-type-k q8_0 --cache-type-v q8_0 \
+          --gpu-layers $${AI_GPU_LAYERS} --fit off \
+          $${AI_TENSOR_SPLIT:+--tensor-split $$AI_TENSOR_SPLIT} \
+          --metrics
+    environment:
+      AI_VISION_VARIANT: ${AI_VISION_VARIANT:-UD-Q3_K_XL}
+      AI_MMPROJ_VARIANT: ${AI_MMPROJ_VARIANT:-Q8_0}
+      AI_MMPROJ_OFFLOAD: ${AI_MMPROJ_OFFLOAD:-1}
+      AI_VISION_PARALLEL: ${AI_VISION_PARALLEL:-4}
+      AI_VISION_TOTAL_CTX: ${AI_VISION_TOTAL_CTX:-32768}
+      AI_GPU_LAYERS: ${AI_GPU_LAYERS:-99}
+      AI_TENSOR_SPLIT: ${AI_TENSOR_SPLIT:-}
+    volumes:
+      - ${AI_MODELS_DIR:-./llm-models}:/models:ro
+    ports:
+      - "${AI_VISION_PORT:-51899}:8080"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # ------------------------------------------------------------- embed server
+  # BGE-M3 on CPU measures ~34 ms/query and ~1.2 GB RAM — deliberately no GPU.
+  immich-llm-embed:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    container_name: immich_llm_embed
+    restart: unless-stopped
+    command:
+      - -m /models/embed/bge-m3-Q8_0.gguf
+      - --host 0.0.0.0
+      - --port 8080
+      - --embedding
+      - --pooling cls
+      - -ngl 0
+      - -c 2048
+      - --batch-size 2048
+      - --ubatch-size 2048
+      - --threads ${AI_EMBED_THREADS:-8}
+      - --alias bge-m3-Q8_0
+      - --metrics
+    volumes:
+      - ${AI_MODELS_DIR:-./llm-models}:/models:ro
+    ports:
+      - "${AI_EMBED_PORT:-51898}:8080"
+
+
+  # ------------------------------------------------------ fork ML rebuild
+  immich-machine-learning:
+    build:
+      context: ..
+      dockerfile: machine-learning/Dockerfile
+      args:
+        DEVICE: ${AI_ML_DEVICE:-cpu}
+    image: immich-fork-machine-learning:local
+
+  # ------------------------------------------------- fork server rebuild + wiring
+  # Replaces the upstream image with one built from this fork (PDF support,
+  # interpretation orchestrator, AI search, tiled face detection) and wires it
+  # to the two llama.cpp services. These keys override/merge into the base
+  # compose file's immich-server definition.
+  immich-server:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    image: immich-fork-server:local
+    environment:
+      # image interpretation (vision LLM)
+      IMMICH_AI_IMAGE_INTERPRETATION_ENABLED: ${AI_ENABLE_INTERPRETATION:-true}
+      IMMICH_AI_IMAGE_INTERPRETATION_URL: http://immich-llm-vision:8080/v1
+      IMMICH_AI_IMAGE_INTERPRETATION_MODEL: unsloth/Muse-Glimmer-30B-GGUF
+      IMMICH_AI_IMAGE_INTERPRETATION_QUANT: ${AI_VISION_VARIANT:-UD-Q3_K_XL}
+      IMMICH_AI_IMAGE_INTERPRETATION_TIMEOUT_MS: ${AI_INTERPRET_TIMEOUT_MS:-900000}
+      IMMICH_AI_IMAGE_INTERPRETATION_MAX_EDGE: ${AI_INTERPRET_MAX_EDGE:-1600}
+      IMMICH_AI_IMAGE_INTERPRETATION_MAX_PIXELS: ${AI_INTERPRET_MAX_PIXELS:-24000000}
+      IMMICH_AI_IMAGE_INTERPRETATION_CONCURRENCY: ${AI_VISION_PARALLEL:-4}
+      # AI interpretation search (BGE-M3 embeddings)
+      IMMICH_AI_INTERPRET_SEARCH_ENABLED: ${AI_ENABLE_INTERPRETATION:-true}
+      IMMICH_AI_INTERPRET_SEARCH_URL: http://immich-llm-embed:8080
+      IMMICH_AI_INTERPRET_SEARCH_MODEL: bge-m3-Q8_0
+      IMMICH_AI_INTERPRET_SEARCH_TIMEOUT_MS: ${AI_EMBED_TIMEOUT_MS:-30000}
+      IMMICH_AI_INTERPRET_SEARCH_MIN_SCORE: ${AI_SEARCH_MIN_SCORE:-0.4}
+      # PDFs: embedded text first; OCR fallback uses the ML container's own
+      # OCR (no extra services required). See SETUP-GUIDE.md for the optional
+      # external OCR microservice.
+      PDF_ENABLE: "true"
+      PDF_OCR_ENABLE: "true"
+      PDF_OCR_PROVIDER: immich
