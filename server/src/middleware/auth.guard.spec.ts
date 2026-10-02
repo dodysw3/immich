@@ -1,8 +1,12 @@
-import { ExecutionContext } from '@nestjs/common';
+import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { AssetMediaController } from 'src/controllers/asset-media.controller.js';
+import { Permission } from 'src/enum.js';
 import { AuthGuard, Authenticated } from 'src/middleware/auth.guard.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';
 import { AuthService } from 'src/services/auth.service.js';
+import { ApiKeyFactory } from 'test/factories/api-key.factory.js';
+import { SharedLinkFactory } from 'test/factories/shared-link.factory.js';
 import { mockEnvData } from 'test/repositories/config.repository.mock.js';
 import { ServiceMocks, newTestService } from 'test/utils.js';
 
@@ -20,6 +24,14 @@ const contextFor = (handler: () => void) =>
   ({
     getHandler: () => handler,
     switchToHttp: () => ({ getRequest: () => ({ headers: {}, query: {}, path: '/' }) }),
+  }) as unknown as ExecutionContext;
+
+const contextWithHeaders = (headers: Record<string, string>) =>
+  ({
+    getHandler: () => AssetMediaController.prototype.downloadAssetAnnotated,
+    switchToHttp: () => ({
+      getRequest: () => ({ headers, query: {}, path: '/assets/asset-1/annotated-original' }),
+    }),
   }) as unknown as ExecutionContext;
 
 describe(AuthGuard.name, () => {
@@ -65,6 +77,26 @@ describe(AuthGuard.name, () => {
       mocks.user.hasAdmin.mockResolvedValue(true);
 
       await expect(sut.canActivate(contextFor(TestController.prototype.publicRoute))).resolves.toBe(true);
+    });
+  });
+
+  describe('annotated-original route', () => {
+    it('rejects a valid shared-link session even with download enabled', async () => {
+      const link = SharedLinkFactory.create({ allowDownload: true });
+      mocks.sharedLink.getByKey.mockResolvedValue({ ...link, user: link.owner });
+      await expect(
+        sut.canActivate(contextWithHeaders({ 'x-immich-share-key': link.key.toString('base64url') })),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+    it('rejects API keys without asset.download permission', async () => {
+      mocks.apiKey.getKey.mockResolvedValue(ApiKeyFactory.create({ permissions: [Permission.AssetRead] }));
+      await expect(sut.canActivate(contextWithHeaders({ 'x-api-key': 'test' }))).rejects.toThrow(
+        'Missing required permission: asset.download',
+      );
+    });
+    it('accepts an authenticated key with asset.download permission', async () => {
+      mocks.apiKey.getKey.mockResolvedValue(ApiKeyFactory.create({ permissions: [Permission.AssetDownload] }));
+      await expect(sut.canActivate(contextWithHeaders({ 'x-api-key': 'test' }))).resolves.toBe(true);
     });
   });
 

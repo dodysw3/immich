@@ -53,8 +53,9 @@ import AssetTagModal from '$lib/modals/AssetTagModal.svelte';
 import ProfileImageCropperModal from '$lib/modals/ProfileImageCropperModal.svelte';
 import SharedLinkCreateModal from '$lib/modals/SharedLinkCreateModal.svelte';
 import { Route } from '$lib/route';
+import { faceManager } from '$lib/stores/face.svelte';
 import { SlideshowState, slideshowStore } from '$lib/stores/slideshow.store';
-import { getAssetMediaUrl, getSharedLink, sleep } from '$lib/utils';
+import { getAssetAnnotatedUrl, getAssetMediaUrl, getSharedLink, sleep } from '$lib/utils';
 import { downloadUrl } from '$lib/utils';
 import { handleError } from '$lib/utils/handle-error';
 import { getFormatter } from '$lib/utils/i18n';
@@ -176,6 +177,24 @@ export const getAssetActions = (
     icon: mdiDownloadBox,
     $if: () => !!authUser && asset.isEdited,
     onAction: () => handleDownloadAsset(asset, { edited: false }),
+  };
+
+  const DownloadWithFaces: ActionItem = {
+    title: $t('download_with_faces'),
+    icon: mdiFaceRecognition,
+    $if: () =>
+      !!authUser &&
+      !sharedLink &&
+      asset.type === AssetTypeEnum.Image &&
+      assetViewerManager.asset?.id === asset.id &&
+      faceManager.data.some((face) => !face.person?.isHidden),
+    onAction: () => {
+      toastManager.info($t('downloading_photo_with_faces'));
+      const base = asset.originalFileName.replace(/\.[^.]+$/, '');
+      const ext = asset.originalFileName.split('.').at(-1)?.toLowerCase();
+      const outputExt = ext === 'png' || ext === 'webp' ? ext : 'jpg';
+      downloadUrl(getAssetAnnotatedUrl(asset.id), `${base} (faces).${outputExt}`);
+    },
   };
 
   const SharedLinkDownload: ActionItem = {
@@ -366,6 +385,7 @@ export const getAssetActions = (
     Share,
     Download,
     DownloadOriginal,
+    DownloadWithFaces,
     SharedLinkDownload,
     Offline,
     Info,

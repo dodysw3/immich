@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import sanitize from 'sanitize-filename';
+import sharp from 'sharp';
 import type { UploadFile, UploadRequest } from 'src/types.js';
 import { StorageCore } from 'src/cores/storage.core.js';
 import { Asset, AuthSharedLink } from 'src/database.js';
@@ -17,10 +18,12 @@ import {
   AssetMediaSize,
   UploadFieldName,
 } from 'src/dtos/asset-media.dto.js';
-import { AssetDownloadOriginalDto } from 'src/dtos/asset.dto.js';
+import { AssetAnnotatedOriginalDto, AssetDownloadOriginalDto } from 'src/dtos/asset.dto.js';
 import { AuthDto } from 'src/dtos/auth.dto.js';
+import { mapFaces } from 'src/dtos/person.dto.js';
 import {
   AssetFileType,
+  AssetType,
   AssetVisibility,
   CacheControl,
   ChecksumAlgorithm,
@@ -31,8 +34,9 @@ import {
 import { AuthRequest } from 'src/middleware/auth.guard.js';
 import { BaseService } from 'src/services/base.service.js';
 import { requireUploadAccess } from 'src/utils/access.js';
-import { asUploadRequest, onBeforeLink } from 'src/utils/asset.util.js';
+import { asUploadRequest, getDimensions, onBeforeLink } from 'src/utils/asset.util.js';
 import { isAssetChecksumConstraint } from 'src/utils/database.js';
+import { buildFaceOverlaySvg, getFaceReferenceLabels } from 'src/utils/face-overlay.js';
 import { ImmichFileResponse, getFileNameWithoutExtension, getFilenameExtension } from 'src/utils/file.js';
 import { mimeTypes } from 'src/utils/mime-types.js';
 import { fromChecksum } from 'src/utils/request.js';
@@ -244,6 +248,51 @@ export class AssetMediaService extends BaseService {
       path,
       fileName: getFileNameWithoutExtension(originalFileName) + getFilenameExtension(path),
       contentType: mimeTypes.lookup(path),
+      cacheControl: CacheControl.PrivateWithCache,
+    });
+  }
+
+  async downloadAnnotatedOriginal(
+    auth: AuthDto,
+    id: string,
+    dto: AssetAnnotatedOriginalDto,
+  ): Promise<ImmichFileResponse> {
+    await this.requireAccess({ auth, permission: Permission.AssetDownload, ids: [id] });
+    if (auth.sharedLink) {
+      throw new BadRequestException('Shared links cannot download annotated images');
+    }
+    const { originalPath, originalFileName, editedPath } = await this.assetRepository.getForOriginal(id, true);
+    const path = editedPath ?? originalPath!;
+    if (mimeTypes.assetType(path) !== AssetType.Image) {
+      throw new BadRequestException('Asset must be an image');
+    }
+    const base = sharp(path);
+    const metadata = await base.metadata();
+    const { data, info } = await base.rotate().raw().toBuffer({ resolveWithObject: true });
+    const render = sharp(data, { raw: { width: info.width, height: info.height, channels: info.channels } });
+    if (dto.layers.includes('faces')) {
+      const rows = await this.personRepository.getFaces(id, { viewingUserId: auth.user.id, isVisible: true });
+      const asset = await this.assetRepository.getForFaces(id);
+      const mappedFaces = rows.map((face) => mapFaces(face, editedPath ? asset.edits : [], getDimensions(asset)));
+      // The viewer numbers its full pool before hiding people, preserving gaps in the references.
+      const labels = getFaceReferenceLabels(mappedFaces);
+      const faces = mappedFaces.filter((face) => !face.person?.isHidden);
+      if (faces.length > 0) {
+        render.composite([{ input: Buffer.from(buildFaceOverlaySvg(faces, info.width, info.height, labels)) }]);
+      }
+    }
+    const format = metadata.format === 'png' ? 'png' : metadata.format === 'webp' ? 'webp' : 'jpeg';
+    const buffer = await (
+      format === 'png'
+        ? render.png()
+        : format === 'webp'
+          ? render.webp({ quality: 90 })
+          : render.jpeg({ quality: 90, mozjpeg: true })
+    ).toBuffer();
+    return new ImmichFileResponse({
+      buffer,
+      fileName: `${getFileNameWithoutExtension(originalFileName)} (faces).${format === 'jpeg' ? 'jpg' : format}`,
+      contentType: `image/${format}`,
       cacheControl: CacheControl.PrivateWithCache,
     });
   }

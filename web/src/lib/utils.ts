@@ -270,6 +270,9 @@ export const getAssetMediaUrl = (options: AssetUrlOptions) => {
   return createUrl(path, { ...authManager.params, size: isOriginal ? undefined : size, c, edited });
 };
 
+export const getAssetAnnotatedUrl = (id: string, layers: string[] = ['faces']) =>
+  createUrl(`/assets/${id}/annotated-original`, { layers, ...authManager.params });
+
 export const getAssetPlaybackUrl = (options: AssetUrlOptions) => {
   const { id, cacheKey: c } = options;
   return createUrl(getAssetPlaybackPath(id), { ...authManager.params, c });

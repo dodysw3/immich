@@ -6,6 +6,18 @@ import { AssetType, AssetVisibilitySchema } from 'src/enum.js';
 import { AssetStats } from 'src/repositories/asset.repository.js';
 import { IsNotSiblingOf, isoDatetimeToDate, latitudeSchema, longitudeSchema, stringToBool } from 'src/validation.js';
 
+const AssetAnnotatedOriginalSchema = z
+  .object({
+    layers: z
+      .union([z.enum(['faces']), z.array(z.enum(['faces']))])
+      .transform((value) => (typeof value === 'string' ? [value] : value))
+      .default(['faces'])
+      .describe('Annotation layers to render'),
+  })
+  .meta({ id: 'AssetAnnotatedOriginalDto' });
+
+export class AssetAnnotatedOriginalDto extends createZodDto(AssetAnnotatedOriginalSchema) {}
+
 const UpdateAssetBaseSchema = z
   .object({
     isFavorite: z.boolean().optional().describe('Mark as favorite'),

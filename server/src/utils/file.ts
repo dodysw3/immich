@@ -26,11 +26,15 @@ export function getLivePhotoMotionFilename(stillName: string, motionName: string
 
 export class ImmichFileResponse {
   public readonly path!: string;
+  public readonly buffer?: Buffer;
   public readonly contentType!: string;
   public readonly cacheControl!: CacheControl;
   public readonly fileName?: string;
 
-  constructor(response: ImmichFileResponse) {
+  constructor(
+    response: Omit<ImmichFileResponse, 'path' | 'buffer'> &
+      ({ path: string; buffer?: never } | { buffer: Buffer; path?: never }),
+  ) {
     Object.assign(this, response);
   }
 }
@@ -57,7 +61,9 @@ export const sendFile = async (
   try {
     const file = await handler();
 
-    await access(file.path, constants.R_OK);
+    if (!file.buffer) {
+      await access(file.path, constants.R_OK);
+    }
 
     const cacheControlHeader = cacheControlHeaders[file.cacheControl];
     if (cacheControlHeader) {
@@ -67,9 +73,16 @@ export const sendFile = async (
 
     res.header('Content-Type', file.contentType);
     if (file.fileName) {
-      res.header('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(file.fileName)}`);
+      res.header(
+        'Content-Disposition',
+        `${file.buffer ? 'attachment' : 'inline'}; filename*=UTF-8''${encodeURIComponent(file.fileName)}`,
+      );
     }
 
+    if (file.buffer) {
+      res.send(file.buffer);
+      return;
+    }
     return await _sendFile(file.path, { dotfiles: 'allow' });
   } catch (error: Error | any) {
     const { canWrite } = onRouteError(undefined, res, error, logger);

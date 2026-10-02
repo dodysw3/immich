@@ -5063,6 +5063,22 @@ export function updateAsset({ id, updateAssetDto }: {
     })));
 }
 /**
+ * Download asset with face labels
+ */
+export function downloadAssetAnnotated({ id, layers }: {
+    id: string;
+    layers?: "faces" | "faces"[];
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchBlob<{
+        status: 200;
+        data: Blob;
+    }>(`/assets/${encodeURIComponent(id)}/annotated-original${QS.query(QS.explode({
+        layers
+    }))}`, {
+        ...opts
+    }));
+}
+/**
  * Remove edits from an existing asset
  */
 export function removeAssetEdits({ id }: {

@@ -127,6 +127,7 @@
 
         <ActionMenuItem action={Actions.Download} />
         <ActionMenuItem action={Actions.DownloadOriginal} />
+        <ActionMenuItem action={Actions.DownloadWithFaces} />
 
         {#if !isLocked && asset.isTrashed}
           <RestoreAction {asset} {onAction} />

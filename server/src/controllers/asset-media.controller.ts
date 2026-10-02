@@ -29,7 +29,7 @@ import {
   AssetMediaOptionsDto,
   AssetMediaSize,
 } from 'src/dtos/asset-media.dto.js';
-import { AssetDownloadOriginalDto } from 'src/dtos/asset.dto.js';
+import { AssetAnnotatedOriginalDto, AssetDownloadOriginalDto } from 'src/dtos/asset.dto.js';
 import { type AuthDto } from 'src/dtos/auth.dto.js';
 import { ApiTag, ImmichHeader, Permission, RouteKey } from 'src/enum.js';
 import { AssetUploadInterceptor } from 'src/middleware/asset-upload.interceptor.js';
@@ -105,6 +105,24 @@ export class AssetMediaController {
     @Next() next: NextFunction,
   ) {
     await sendFile(res, next, () => this.service.downloadOriginal(auth, id, dto), this.logger);
+  }
+
+  @Get(':id/annotated-original')
+  @FileResponse()
+  @Authenticated({ permission: Permission.AssetDownload })
+  @Endpoint({
+    summary: 'Download asset with face labels',
+    description: 'Renders face boxes and labels onto the original or edited image.',
+    history: new HistoryBuilder().added('v3').beta('v3'),
+  })
+  async downloadAssetAnnotated(
+    @Auth() auth: AuthDto,
+    @Param() { id }: UUIDParamDto,
+    @Query() dto: AssetAnnotatedOriginalDto,
+    @Res() res: Response,
+    @Next() next: NextFunction,
+  ) {
+    await sendFile(res, next, () => this.service.downloadAnnotatedOriginal(auth, id, dto), this.logger);
   }
 
   @Get(':id/thumbnail')
