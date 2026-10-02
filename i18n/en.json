@@ -1668,6 +1668,7 @@
   "people": "People",
   "people_count": "{count, plural, one {# person} other {# people}}",
   "people_edits_count": "Edited {count, plural, one {# person} other {# people}}",
+  "people_face_stats": "{faces} faces · {person} named · {unnamed} unnamed",
   "people_feature_description": "Browsing photos and videos grouped by people",
   "people_search_description": "Select one or more people to find photos they appear in.",
   "permanent_deletion_warning": "Permanent deletion warning",
