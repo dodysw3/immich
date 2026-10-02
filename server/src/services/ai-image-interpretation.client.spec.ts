@@ -9,13 +9,9 @@ vi.mock('undici', () => ({ Agent: class {}, fetch: fetchMock }));
 const result = {
   title: 'A quiet room',
   literal_description: 'A room with a window and a table.',
-  visual_analysis: 'Muted colors and soft light create a calm composition.',
   interpretation: 'The image suggests a pause in an otherwise active day.',
-  context_and_significance: 'The scene is useful as a record of an ordinary interior.',
   notable_details: [{ detail: 'Soft light', significance: 'It establishes the mood.', confidence: 'high' as const }],
   identifications: [],
-  alternative_interpretations: [],
-  uncertainties: ['The location cannot be determined from the image alone.'],
   archive_summary: 'A softly lit room with a table and a window.',
   search_keywords: ['room', 'window', 'interior'],
 };
@@ -69,6 +65,7 @@ describe(AiImageInterpretationClient.name, () => {
     });
     expect(body.model).toBe('unsloth/Muse-Glimmer-30B-GGUF');
     expect(body.max_tokens).toBe(6400);
+    expect(body.chat_template_kwargs).toEqual({ reasoning_strength: 'low' });
     expect(body.response_format.json_schema.strict).toBe(true);
     expect(body.messages[0].content).toContain('Do not guess or invent');
     expect(body.messages[0].content).not.toMatch(/filename|GPS|EXIF/i);
@@ -140,7 +137,7 @@ describe(AiImageInterpretationClient.name, () => {
   it('repairs a truncated completion closed mid-array', async () => {
     // finish_reason=length style truncation: cut inside a nested array.
     const full = JSON.stringify(result);
-    const cutAt = full.indexOf('"alternative_interpretations"') + 60;
+    const cutAt = full.indexOf('"notable_details"') + 60;
     const content = full.slice(0, cutAt);
     fetchMock.mockResolvedValue({
       ok: true,

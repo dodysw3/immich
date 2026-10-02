@@ -31,9 +31,7 @@ export const MuseInterpretationResultSchema = z
   .object({
     title: z.string(),
     literal_description: z.string(),
-    visual_analysis: z.string(),
     interpretation: z.string(),
-    context_and_significance: z.string(),
     notable_details: z.array(
       z.object({
         detail: z.string(),
@@ -49,13 +47,10 @@ export const MuseInterpretationResultSchema = z
         basis: z.string(),
       }),
     ),
-    alternative_interpretations: z.array(z.string()),
-    uncertainties: z.array(z.string()),
     archive_summary: z.string(),
     search_keywords: z.array(z.string()),
   })
   .meta({ id: 'MuseInterpretationResult' });
-
 export type MuseInterpretationResult = z.infer<typeof MuseInterpretationResultSchema>;
 
 const AiInterpretationRunSchema = z
@@ -105,22 +100,16 @@ export const MUSE_RESULT_JSON_SCHEMA = {
   required: [
     'title',
     'literal_description',
-    'visual_analysis',
     'interpretation',
-    'context_and_significance',
     'notable_details',
     'identifications',
-    'alternative_interpretations',
-    'uncertainties',
     'archive_summary',
     'search_keywords',
   ],
   properties: {
     title: { type: 'string' },
     literal_description: { type: 'string' },
-    visual_analysis: { type: 'string' },
     interpretation: { type: 'string' },
-    context_and_significance: { type: 'string' },
     notable_details: {
       type: 'array',
       items: {
@@ -148,8 +137,6 @@ export const MUSE_RESULT_JSON_SCHEMA = {
         },
       },
     },
-    alternative_interpretations: { type: 'array', items: { type: 'string' } },
-    uncertainties: { type: 'array', items: { type: 'string' } },
     archive_summary: { type: 'string' },
     search_keywords: { type: 'array', items: { type: 'string' } },
   },

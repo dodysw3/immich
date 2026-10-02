@@ -82,6 +82,13 @@ export class AiImageInterpretationClient {
           model: overrides?.model ?? config.model,
           temperature: 0.2,
           max_tokens: AI_IMAGE_INTERPRETATION_MAX_OUTPUT_TOKENS,
+          // Muse-Glimmer is a GLM-family model that "thinks" before answering;
+          // the hidden reasoning is ~35% of completion tokens and is discarded
+          // by this client. 'low' is the serving stack's verified floor — the
+          // stronger off switches (--reasoning-budget, template prefills) are
+          // ignored or hard-error on this build. Benchmarked 2026-10-02:
+          // quality judged equal-or-better blind at ~half the total tokens.
+          chat_template_kwargs: { reasoning_strength: 'low' },
           response_format: {
             type: 'json_schema',
             json_schema: {

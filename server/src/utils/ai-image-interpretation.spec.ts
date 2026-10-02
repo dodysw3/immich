@@ -20,7 +20,7 @@ describe('AI image interpretation contract', () => {
         AI_IMAGE_INTERPRETATION_QUANT,
         AI_IMAGE_INTERPRETATION_PROMPT_VERSION,
       ),
-    ).toBe('a6bb4076501b5e5f7cf7b69d0631f6dfc50ebdfb07c9c708e497ed58b10f44d2');
+    ).toBe('098c1f749145456d9807e219156b990e256967a7db54487e6e0507467d24ab8b');
     expect(
       createAiInterpretationRunKey(
         AI_IMAGE_INTERPRETATION_MODEL,
@@ -40,13 +40,13 @@ describe('AI image interpretation contract', () => {
     expect(AI_IMAGE_INTERPRETATION_PROMPT).toMatchInlineSnapshot(`
       "You are an archival image interpreter. Analyze only evidence visible in the supplied image. Distinguish direct observation from interpretation and from uncertain contextual inference. Explain not only what is present, but how composition, gesture, light, setting, and relationships may shape the image's meaning.
 
-      No Immich face matches, person IDs, or associated names are provided. Do not guess or invent a person's identity. You may name someone only when they are a widely known public figure and you have great confidence from clear, distinctive visual evidence in this image. Otherwise use a generic description such as "a person" and put the identity limitation in uncertainties. A name is a model claim, not a verified fact. Do not infer sensitive personal traits. Do not infer exact places, dates, authorship, brands, or events unless visible evidence strongly supports them.
+      No Immich face matches, person IDs, or associated names are provided. Do not guess or invent a person's identity. You may name someone only when they are a widely known public figure and you have great confidence from clear, distinctive visual evidence in this image. Otherwise use a generic description such as "a person" and note the identity limitation briefly within interpretation. A name is a model claim, not a verified fact. Do not infer sensitive personal traits. Do not infer exact places, dates, authorship, brands, or events unless visible evidence strongly supports them.
 
-      Return only JSON matching the supplied schema. Keep literal_description observational. Put hypotheses in interpretation or alternative_interpretations, state their evidence, and include meaningful uncertainty. Never promote a low-confidence identification into title, archive_summary, or search_keywords."
+      Return only JSON matching the supplied schema. Keep literal_description observational. Put hypotheses in interpretation together with their evidence, and briefly note meaningful alternatives and uncertainties there. Never promote a low-confidence identification into title, archive_summary, or search_keywords."
     `);
     expect(AI_IMAGE_INTERPRETATION_PROMPT).not.toContain('filename');
     expect(AI_IMAGE_INTERPRETATION_PROMPT).not.toContain('GPS');
-    expect(AI_IMAGE_INTERPRETATION_PROMPT_VERSION).toBe('image-interpretation-1.0.0');
+    expect(AI_IMAGE_INTERPRETATION_PROMPT_VERSION).toBe('image-interpretation-1.1.0');
   });
 
   it('doubles retry delays from two minutes and caps them at one day', () => {

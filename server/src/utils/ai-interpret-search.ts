@@ -10,11 +10,12 @@ export const buildAiInterpretLexicalDoc = (result: MuseInterpretationResult): st
     .join(' ');
 };
 
-// The dense document embeds only grounded fields. Speculative fields
-// (context_and_significance, alternative_interpretations, uncertainties,
-// visual_analysis) are deliberately excluded: they describe what the image
-// might be rather than what it shows, and embedding them dilutes the signal
-// for cross-lingual retrieval.
+// The dense document embeds only grounded fields. Prompt 1.1.0 removed the
+// speculative fields (context_and_significance, alternative_interpretations,
+// uncertainties, visual_analysis) entirely — they described what the image
+// might be rather than what it shows, and embedding them diluted the signal
+// for cross-lingual retrieval. Documents from older runs may still carry
+// those keys; zod strips them, so they never reach this builder.
 export const buildAiInterpretDenseDoc = (result: MuseInterpretationResult): string => {
   const parts = [
     result.title,

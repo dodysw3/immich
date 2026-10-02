@@ -9,9 +9,7 @@ import {
 const interpretResult: MuseInterpretationResult = {
   title: 'Children playing on the floor',
   literal_description: 'Two children play with wooden blocks on a laminate floor.',
-  visual_analysis: 'Warm indoor lighting, shallow depth of field.',
   interpretation: 'A family moment: kids play while adults watch television nearby.',
-  context_and_significance: 'Documents everyday family life at home.',
   notable_details: [
     {
       detail: 'Wooden blocks scattered mid-build',
@@ -28,8 +26,6 @@ const interpretResult: MuseInterpretationResult = {
     { name: 'Sofa', type: 'object', confidence: 'high', basis: 'Distinct shape and fabric texture.' },
     { name: 'Ria', type: 'person', confidence: 'low', basis: 'Partially visible profile.' },
   ],
-  alternative_interpretations: ['The children might be at a daycare rather than home.'],
-  uncertainties: ['The exact relationship between the people is unclear.'],
   archive_summary: 'Family living-room scene with children playing.',
   search_keywords: ['family', 'children playing', 'living room', 'blocks'],
 };

@@ -28,13 +28,9 @@ const input: AiInterpretationInput = {
 const result: MuseInterpretationResult = {
   title: 'Test image',
   literal_description: 'A test image.',
-  visual_analysis: 'The image is clear.',
   interpretation: 'It records a test case.',
-  context_and_significance: 'It verifies the metadata contract.',
   notable_details: [],
   identifications: [],
-  alternative_interpretations: [],
-  uncertainties: [],
   archive_summary: 'A test image for repository coverage.',
   search_keywords: ['test'],
 };

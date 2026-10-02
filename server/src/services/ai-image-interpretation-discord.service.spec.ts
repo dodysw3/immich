@@ -19,13 +19,9 @@ const runKey = 'a'.repeat(64);
 const result: MuseInterpretationResult = {
   title: 'A quiet platform',
   literal_description: '',
-  visual_analysis: '',
   interpretation: 'The image suggests anticipation.',
-  context_and_significance: '',
   notable_details: [],
   identifications: [],
-  alternative_interpretations: [],
-  uncertainties: [],
   archive_summary: 'A traveler waits on a quiet station platform.',
   search_keywords: [],
 };

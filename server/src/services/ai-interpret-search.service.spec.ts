@@ -9,13 +9,9 @@ import { newConfigRepositoryMock } from 'test/repositories/config.repository.moc
 const interpretResult = {
   title: 'Children playing',
   literal_description: 'Two children play on the floor.',
-  visual_analysis: 'Warm light.',
   interpretation: 'A family moment.',
-  context_and_significance: 'Everyday life.',
   notable_details: [{ detail: 'Blocks', significance: 'Interrupted play.', confidence: 'high' as const }],
   identifications: [{ name: 'Ria', type: 'person' as const, confidence: 'low' as const, basis: 'Profile.' }],
-  alternative_interpretations: [],
-  uncertainties: [],
   archive_summary: 'Family scene.',
   search_keywords: ['family', 'blocks'],
 };

@@ -11,13 +11,9 @@ const webhookUrl = 'https://discord.com/api/webhooks/123456789/test_webhook-toke
 const result: MuseInterpretationResult = {
   title: 'A quiet platform',
   literal_description: 'A person waits beside a train.',
-  visual_analysis: 'The frame is balanced.',
   interpretation: 'The image suggests anticipation.',
-  context_and_significance: 'A travel moment.',
   notable_details: [],
   identifications: [],
-  alternative_interpretations: [],
-  uncertainties: [],
   archive_summary: 'A traveler waits on a quiet station platform.',
   search_keywords: ['station'],
 };
