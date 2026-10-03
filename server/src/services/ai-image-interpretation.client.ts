@@ -8,9 +8,9 @@ import {
 import { ConfigRepository } from 'src/repositories/config.repository.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';
 import {
+  AI_IMAGE_INTERPRETATION_FORMAT_INSTRUCTION,
   AI_IMAGE_INTERPRETATION_MAX_OUTPUT_TOKENS,
   AI_IMAGE_INTERPRETATION_PROMPT,
-  AI_IMAGE_INTERPRETATION_SCHEMA_INSTRUCTION,
 } from 'src/utils/ai-image-interpretation.js';
 
 type CompletionResponse = {
@@ -103,7 +103,7 @@ export class AiImageInterpretationClient {
               role: 'user',
               content: [
                 { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${image.toString('base64')}` } },
-                { type: 'text', text: AI_IMAGE_INTERPRETATION_SCHEMA_INSTRUCTION },
+                { type: 'text', text: AI_IMAGE_INTERPRETATION_FORMAT_INSTRUCTION },
               ],
             },
           ],
@@ -145,14 +145,17 @@ export class AiImageInterpretationClient {
 
       let decoded: unknown;
       try {
-        decoded = parseJsonContent(content, usage);
+        decoded = parseLineContent(content);
       } catch (error) {
-        if ((error as AiImageInterpretationClientError)?.code === 'invalid_json') {
-          this.logger.warn(
-            `AI interpretation returned unparseable content (finish_reason: ${finishReason ?? 'unknown'}, completion tokens: ${usage?.completion_tokens ?? 'unknown'}, ${content.length} chars): ${contentSnippet(content)}`,
-          );
-        }
-        throw error;
+        this.logger.warn(
+          `AI interpretation returned unparseable content (finish_reason: ${finishReason ?? 'unknown'}, completion tokens: ${usage?.completion_tokens ?? 'unknown'}, ${content.length} chars): ${contentSnippet(content)}`,
+        );
+        throw new AiImageInterpretationClientError(
+          'invalid_json',
+          `AI interpretation content did not match the line contract: ${error instanceof Error ? error.message : String(error)}`,
+          usage?.prompt_tokens,
+          usage?.completion_tokens,
+        );
       }
 
       const result = MuseInterpretationResultSchema.safeParse(decoded);
@@ -214,66 +217,9 @@ const getContent = (payload: CompletionResponse): string => {
   throw new AiImageInterpretationClientError('invalid_output', 'AI interpretation response had no text content');
 };
 
-const tryParseJson = (text: string): { parsed: true; value: unknown } | { parsed: false } => {
-  try {
-    return { parsed: true, value: JSON.parse(text) };
-  } catch {
-    return { parsed: false };
-  }
-};
-
-const fixStrayQuote = (text: string) => text.replace(/"\s*\}\s*$/, '}');
-const fixTrailingCommas = (text: string) => text.replaceAll(/,\s*([}\]])/g, '$1');
-
-// String-aware scan for delimiters still open at the end of the text; if a
-// string was left unterminated, close it too before the bracket closers.
-const closeOpenDelimiters = (text: string): string => {
-  const stack: string[] = [];
-  let inString = false;
-  let escaped = false;
-  for (const ch of text) {
-    if (inString) {
-      if (escaped) {
-        escaped = false;
-      } else if (ch === '\\') {
-        escaped = true;
-      } else if (ch === '"') {
-        inString = false;
-      }
-      continue;
-    }
-    switch (ch) {
-      case '"': {
-        inString = true;
-        break;
-      }
-      case '{': {
-        stack.push('}');
-        break;
-      }
-      case '[': {
-        stack.push(']');
-        break;
-      }
-      case '}':
-      case ']': {
-        stack.pop();
-        break;
-      }
-      default: {
-        break;
-      }
-    }
-  }
-  if (stack.length === 0 && !inString) {
-    return text;
-  }
-  return `${text}${inString ? '"' : ''}${stack.toReversed().join('')}`;
-};
-
 // Emit the exact characters around the defect — JSON.stringify keeps escapes,
 // quotes, and whitespace verbatim — without flooding the log with a full ~8KB
-// completion: the head shows how the object opens, the tail shows where
+// completion: the head shows how the output opens, the tail shows where
 // generation stopped.
 const contentSnippet = (content: string): string => {
   if (content.length <= 1400) {
@@ -282,78 +228,137 @@ const contentSnippet = (content: string): string => {
   return `${JSON.stringify(content.slice(0, 1000))} ...[${content.length - 1400} chars omitted]... ${JSON.stringify(content.slice(-400))}`;
 };
 
-// The serving endpoint (an Unsloth llama.cpp fork running the local VLM)
-// ignores response_format entirely — verified 2026-09-15: json_schema and
-// json_object both return unconstrained prose — so completions arrive as
-// unguided JSON. Repair single-response defects in place instead of failing
-// the run: no additional outbound request is made, and content that is still
-// unparseable fails as invalid_json exactly as before (with a snippet logged
-// for pattern analysis). Schema validation downstream remains the safety net.
-//
-// Candidate order matters: repairs that preserve every field come first.
-// The brace-extraction candidates below can cut off trailing required fields
-// (the model sometimes stops one token early — observed 2026-09-15:
-// finish=stop with the root object's final `}` missing — in which case
-// closing the full content parses cleanly, while extraction would amputate
-// everything after the last inner `}` and fail the required-field schema).
-const parseJsonContent = (content: string, usage?: { prompt_tokens?: number; completion_tokens?: number }): unknown => {
-  const direct = tryParseJson(content);
-  if (direct.parsed) {
-    return direct.value;
+// 1.2.0 wire format: one record per line — T/D/I/A singles, N/X array records
+// (`N M|detail|significance`, `X H|PLACE|Name|basis`), one K keyword line.
+// Text fields may legitimately contain '|', so array records anchor on the
+// enum fields: a record's first field must decode as a confidence code (and an
+// X record's second as a type code); every remaining separator folds back into
+// the trailing text. Anything else — unknown markers, duplicate or missing
+// singles, undecodable codes — fails the run as invalid_json and retries like
+// any other defect; the benchmarked malformation budget is ~2-3% of runs
+// (immich-app/format-bench/REPORT.md). Markdown fences are tolerated: the
+// model occasionally wraps the block despite the instruction.
+const CONFIDENCE_CODES = {
+  H: 'high',
+  M: 'medium',
+  L: 'low',
+  HIGH: 'high',
+  MEDIUM: 'medium',
+  LOW: 'low',
+} as const;
+
+const IDENTIFICATION_TYPE_CODES = {
+  PERS: 'person',
+  PLACE: 'place',
+  ART: 'artwork',
+  OBJ: 'object',
+  ORG: 'organization',
+  OTH: 'other',
+  PERSON: 'person',
+} as const;
+
+const decodeConfidenceCode = (value: string): string => {
+  const code = CONFIDENCE_CODES[value.trim().toUpperCase() as keyof typeof CONFIDENCE_CODES];
+  if (!code) {
+    throw new Error(`unknown confidence code ${JSON.stringify(value.slice(0, 40))}`);
   }
+  return code;
+};
 
-  const closed = closeOpenDelimiters(content);
-  const candidates = [
-    closed,
-    fixTrailingCommas(content),
-    closeOpenDelimiters(fixTrailingCommas(content)),
-    fixStrayQuote(closed),
-  ];
+const decodeIdentificationTypeCode = (value: string): string => {
+  const code = IDENTIFICATION_TYPE_CODES[value.trim().toUpperCase() as keyof typeof IDENTIFICATION_TYPE_CODES];
+  if (!code) {
+    throw new Error(`unknown identification type ${JSON.stringify(value.slice(0, 40))}`);
+  }
+  return code;
+};
 
-  for (const candidate of candidates) {
-    const attempt = tryParseJson(candidate);
-    if (attempt.parsed) {
-      return attempt.value;
+const stripFences = (content: string): string => {
+  const trimmed = content.trim();
+  if (!trimmed.startsWith('```')) {
+    return trimmed;
+  }
+  return trimmed
+    .replace(/^```[a-zA-Z]*\s*/, '')
+    .replace(/\s*```\s*$/, '')
+    .trim();
+};
+
+const parseLineContent = (content: string): unknown => {
+  const singles = new Map<string, string>();
+  const notableDetails: Array<{ detail: string; significance: string; confidence: string }> = [];
+  const identifications: Array<{ name: string; type: string; confidence: string; basis: string }> = [];
+  let keywords: string[] | undefined;
+
+  for (const rawLine of stripFences(content).split(/\r?\n/)) {
+    const line = rawLine.trimEnd();
+    if (line.trim().length === 0) {
+      continue;
+    }
+    const match = /^([TDINXAK])\s+(.*)$/s.exec(line);
+    if (!match) {
+      throw new Error(`unrecognized record ${JSON.stringify(line.slice(0, 60))}`);
+    }
+    const marker = match[1];
+    const value = match[2];
+    switch (marker) {
+      case 'N': {
+        const parts = value.split('|').map((part) => part.trim());
+        if (parts.length < 3) {
+          throw new Error(`N record needs <confidence>|<detail>|<significance>: ${JSON.stringify(line.slice(0, 60))}`);
+        }
+        notableDetails.push({
+          detail: parts[1],
+          significance: parts.slice(2).join('|'),
+          confidence: decodeConfidenceCode(parts[0]),
+        });
+        break;
+      }
+      case 'X': {
+        const parts = value.split('|').map((part) => part.trim());
+        if (parts.length < 4) {
+          throw new Error(`X record needs <confidence>|<type>|<name>|<basis>: ${JSON.stringify(line.slice(0, 60))}`);
+        }
+        identifications.push({
+          name: parts[2],
+          type: decodeIdentificationTypeCode(parts[1]),
+          confidence: decodeConfidenceCode(parts[0]),
+          basis: parts.slice(3).join('|'),
+        });
+        break;
+      }
+      case 'K': {
+        if (keywords !== undefined) {
+          throw new Error('duplicate K record');
+        }
+        keywords = value
+          .split('|')
+          .map((keyword) => keyword.trim())
+          .filter((keyword) => keyword.length > 0);
+        break;
+      }
+      default: {
+        if (singles.has(marker)) {
+          throw new Error(`duplicate ${marker} record`);
+        }
+        singles.set(marker, value.trim());
+      }
     }
   }
 
-  const start = content.indexOf('{');
-  const end = content.lastIndexOf('}');
-  if (start === -1 || end <= start) {
-    throw new AiImageInterpretationClientError(
-      'invalid_json',
-      'AI interpretation response content was not valid JSON',
-      usage?.prompt_tokens,
-      usage?.completion_tokens,
-    );
-  }
-
-  const extracted = content.slice(start, end + 1);
-  const dequoted = fixStrayQuote(extracted);
-  const extractionCandidates = [
-    extracted,
-    // Stray quote before the final brace: the observed `..."]"}` defect.
-    // End-anchored, so a legitimately terminated object is never altered
-    // (it would have parsed directly above).
-    dequoted,
-    // Trailing commas, the other common single-response LLM defect.
-    fixTrailingCommas(extracted),
-    fixTrailingCommas(dequoted),
-    closeOpenDelimiters(extracted),
-    closeOpenDelimiters(fixTrailingCommas(dequoted)),
-  ];
-
-  for (const candidate of extractionCandidates) {
-    const attempt = tryParseJson(candidate);
-    if (attempt.parsed) {
-      return attempt.value;
+  for (const marker of ['T', 'D', 'I', 'A']) {
+    if (!singles.has(marker)) {
+      throw new Error(`missing ${marker} record`);
     }
   }
 
-  throw new AiImageInterpretationClientError(
-    'invalid_json',
-    'AI interpretation response content was not valid JSON',
-    usage?.prompt_tokens,
-    usage?.completion_tokens,
-  );
+  return {
+    title: singles.get('T'),
+    literal_description: singles.get('D'),
+    interpretation: singles.get('I'),
+    notable_details: notableDetails,
+    identifications,
+    archive_summary: singles.get('A'),
+    search_keywords: keywords ?? [],
+  };
 };

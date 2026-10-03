@@ -433,7 +433,7 @@ const getEnv = (): EnvData => {
       apiKey: dto.IMMICH_AI_IMAGE_INTERPRETATION_API_KEY,
       model: dto.IMMICH_AI_IMAGE_INTERPRETATION_MODEL || 'unsloth/Muse-Glimmer-30B-GGUF',
       quant: dto.IMMICH_AI_IMAGE_INTERPRETATION_QUANT || 'UD-Q3_K_XL',
-      promptVersion: dto.IMMICH_AI_IMAGE_INTERPRETATION_PROMPT_VERSION || 'image-interpretation-1.1.0',
+      promptVersion: dto.IMMICH_AI_IMAGE_INTERPRETATION_PROMPT_VERSION || 'image-interpretation-1.2.0',
       timeoutMs: dto.IMMICH_AI_IMAGE_INTERPRETATION_TIMEOUT_MS || 15 * 60 * 1000,
       maxEdge: dto.IMMICH_AI_IMAGE_INTERPRETATION_MAX_EDGE || 1600,
       maxPixels: dto.IMMICH_AI_IMAGE_INTERPRETATION_MAX_PIXELS || 16_000_000,

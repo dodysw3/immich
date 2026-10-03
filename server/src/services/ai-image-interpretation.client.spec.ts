@@ -16,6 +16,39 @@ const result = {
   search_keywords: ['room', 'window', 'interior'],
 };
 
+type ContractResult = {
+  title: string;
+  literal_description: string;
+  interpretation: string;
+  notable_details: Array<{ detail: string; significance: string; confidence: string }>;
+  identifications: Array<{ name: string; type: string; confidence: string; basis: string }>;
+  archive_summary: string;
+  search_keywords: string[];
+};
+
+const IDENTIFICATION_CODES = {
+  person: 'PERS',
+  place: 'PLACE',
+  artwork: 'ART',
+  object: 'OBJ',
+  organization: 'ORG',
+  other: 'OTH',
+} as const;
+
+const lineContract = (value: ContractResult): string =>
+  [
+    `T ${value.title}`,
+    `D ${value.literal_description}`,
+    `I ${value.interpretation}`,
+    ...value.notable_details.map((n) => `N ${n.confidence[0].toUpperCase()}|${n.detail}|${n.significance}`),
+    ...value.identifications.map(
+      (i) =>
+        `X ${i.confidence[0].toUpperCase()}|${IDENTIFICATION_CODES[i.type as keyof typeof IDENTIFICATION_CODES]}|${i.name}|${i.basis}`,
+    ),
+    `A ${value.archive_summary}`,
+    `K ${value.search_keywords.join('|')}`,
+  ].join('\n');
+
 describe(AiImageInterpretationClient.name, () => {
   const configRepository = newConfigRepositoryMock();
   const logger = { debug: vi.fn(), warn: vi.fn() };
@@ -40,11 +73,11 @@ describe(AiImageInterpretationClient.name, () => {
     vi.unstubAllGlobals();
   });
 
-  it('sends the pinned model, prompt, JSON schema, and preview without metadata', async () => {
+  it('sends the pinned model, prompt, line-format instruction, and preview without metadata', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue({
-        choices: [{ message: { content: JSON.stringify(result) } }],
+        choices: [{ message: { content: lineContract(result) } }],
         usage: { prompt_tokens: 12, completion_tokens: 34 },
       }),
     });
@@ -71,54 +104,22 @@ describe(AiImageInterpretationClient.name, () => {
     expect(body.messages[0].content).not.toMatch(/filename|GPS|EXIF/i);
     expect(body.messages[1].content).toEqual([
       { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,cHJldmlldw==' } },
-      expect.objectContaining({ type: 'text', text: expect.stringContaining('Do not omit any key') }),
+      expect.objectContaining({ type: 'text', text: expect.stringContaining('no blank lines, no markdown') }),
     ]);
   });
 
-  it('rejects output that does not match the pinned result contract', async () => {
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockResolvedValue({ choices: [{ message: { content: '{}' }, finish_reason: 'stop' }] }),
-    });
-
-    await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({
-      code: 'invalid_output',
-    });
-    expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('schema validation'));
-  });
-
-  it('sanitizes malformed JSON, endpoint, and timeout failures', async () => {
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      json: vi.fn().mockRejectedValue(new SyntaxError('response body')),
-    });
-    await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'invalid_json' });
-
-    // A body read that dies mid-stream is a network failure, not malformed JSON.
-    fetchMock.mockReset().mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockRejectedValue(new TypeError('terminated')),
-    });
-    await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'network_error' });
-
-    fetchMock.mockReset().mockResolvedValue({ ok: false, status: 502, json: vi.fn() });
-    await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'endpoint_error' });
-    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('502'));
-
-    fetchMock.mockReset().mockRejectedValue(new DOMException('aborted', 'AbortError'));
-    await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'timeout' });
-
-    fetchMock.mockReset().mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockRejectedValue(new DOMException('aborted', 'AbortError')),
-    });
-    await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'timeout' });
-  });
-
-  it('repairs a completion that stops before the final closing brace', async () => {
-    // Observed 2026-09-15: finish=stop, all required fields present, but the
-    // root object's final `}` missing (endpoint applies no grammar).
-    const content = JSON.stringify(result).replace(/\}$/, '');
+  it('decodes code drift and folds stray pipes back into text fields', async () => {
+    // Observed in the 1.2.0 benchmark: confidence codes arrive lowercase or as
+    // full words, and detail/significance/basis text legitimately contains '|'.
+    const content = [
+      'T Market scene',
+      'D People selling vegetables at a covered market.',
+      'I Informal daily commerce, likely a family-run stall.',
+      'N m|Hand-written price signs|Signals informal| household-run retail',
+      'X L|PERS|a vendor|The apron and cash box suggest| the stall keeper',
+      'A Covered market stall with hand-written prices.',
+      'K market|vegetables',
+    ].join('\n');
     fetchMock.mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue({
@@ -128,57 +129,57 @@ describe(AiImageInterpretationClient.name, () => {
     });
 
     await expect(client.interpret(Buffer.from('preview'))).resolves.toEqual({
-      result,
+      result: {
+        title: 'Market scene',
+        literal_description: 'People selling vegetables at a covered market.',
+        interpretation: 'Informal daily commerce, likely a family-run stall.',
+        notable_details: [
+          {
+            detail: 'Hand-written price signs',
+            significance: 'Signals informal|household-run retail',
+            confidence: 'medium',
+          },
+        ],
+        identifications: [
+          {
+            name: 'a vendor',
+            type: 'person',
+            confidence: 'low',
+            basis: 'The apron and cash box suggest|the stall keeper',
+          },
+        ],
+        archive_summary: 'Covered market stall with hand-written prices.',
+        search_keywords: ['market', 'vegetables'],
+      },
       promptTokens: 12,
       completionTokens: 34,
     });
   });
 
-  it('repairs a truncated completion closed mid-array', async () => {
-    // finish_reason=length style truncation: cut inside a nested array.
-    const full = JSON.stringify(result);
-    const cutAt = full.indexOf('"notable_details"') + 60;
-    const content = full.slice(0, cutAt);
+  it('tolerates markdown fences and an omitted keyword line', async () => {
+    const content = [
+      '```text',
+      'T A quiet room',
+      'D A room with a window and a table.',
+      'I The image suggests a pause in an otherwise active day.',
+      'A A softly lit room with a table and a window.',
+      '```',
+    ].join('\n');
     fetchMock.mockResolvedValue({
       ok: true,
-      json: vi.fn().mockResolvedValue({ choices: [{ message: { content }, finish_reason: 'length' }] }),
+      json: vi.fn().mockResolvedValue({ choices: [{ message: { content } }] }),
     });
 
-    await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'invalid_output' });
-    expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('schema validation'));
+    await expect(client.interpret(Buffer.from('preview'))).resolves.toMatchObject({
+      result: { ...result, notable_details: [], search_keywords: [] },
+    });
   });
 
-  it('repairs a stray quote after the final bracket without another request', async () => {
-    // Observed 2026-09-11: complete object, finish=stop, single extra `"` (`..."]"}`).
-    const content = JSON.stringify(result).replaceAll(/\}$/g, '"}');
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockResolvedValue({
-        choices: [{ message: { content } }],
-        usage: { prompt_tokens: 12, completion_tokens: 34 },
-      }),
-    });
-
-    await expect(client.interpret(Buffer.from('preview'))).resolves.toEqual({
-      result,
-      promptTokens: 12,
-      completionTokens: 34,
-    });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('extracts JSON wrapped in prose and repairs trailing commas', async () => {
-    const wrapped = `Here is the analysis:\n${JSON.stringify(result).replaceAll(']}', '] , }')} \nDone.`;
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockResolvedValue({ choices: [{ message: { content: wrapped } }] }),
-    });
-
-    await expect(client.interpret(Buffer.from('preview'))).resolves.toMatchObject({ result });
-  });
-
-  it('still rejects content that no repair can parse, logging the defect for triage', async () => {
-    for (const content of ['not json at all', ' '.repeat(3)]) {
+  it('rejects malformed line output as invalid_json, logging the defect for triage', async () => {
+    // Garbage, JSON remnants of the 1.1.0 format, and structural violations
+    // (duplicate or missing singles) all fail the same way.
+    const contents = ['not json at all', '{}', 'K only|keywords', `${lineContract(result)}\nT a second title`];
+    for (const content of contents) {
       fetchMock.mockReset().mockResolvedValue({
         ok: true,
         json: vi.fn().mockResolvedValue({
@@ -193,13 +194,24 @@ describe(AiImageInterpretationClient.name, () => {
       expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining(JSON.stringify(content).slice(0, 40)));
     }
 
-    // A truncation the closer can repair parses fine but then fails the
-    // required-field schema — an honest invalid_output, not invalid_json.
+    // An undecodable confidence code fails the same way — enum drift is
+    // tolerated only within the pinned code table.
     fetchMock.mockReset().mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue({
-        choices: [{ message: { content: '{"title": "unterminated' }, finish_reason: 'length' }],
+        choices: [{ message: { content: 'T t\nD d\nI i\nN X|a|b\nA a' } }],
       }),
+    });
+    await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({
+      code: 'invalid_json',
+      message: expect.stringContaining('unknown confidence code'),
+    });
+  });
+
+  it('keeps empty content an invalid_output defect', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ choices: [{ message: { content: '' }, finish_reason: 'stop' }] }),
     });
     await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'invalid_output' });
   });

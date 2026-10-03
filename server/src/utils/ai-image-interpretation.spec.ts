@@ -20,7 +20,7 @@ describe('AI image interpretation contract', () => {
         AI_IMAGE_INTERPRETATION_QUANT,
         AI_IMAGE_INTERPRETATION_PROMPT_VERSION,
       ),
-    ).toBe('098c1f749145456d9807e219156b990e256967a7db54487e6e0507467d24ab8b');
+    ).toBe('dd8bdc1429792264d54303fea88700d502d68053a9d6c2b10ad7fffa66a5e182');
     expect(
       createAiInterpretationRunKey(
         AI_IMAGE_INTERPRETATION_MODEL,
@@ -42,11 +42,11 @@ describe('AI image interpretation contract', () => {
 
       No Immich face matches, person IDs, or associated names are provided. Do not guess or invent a person's identity. You may name someone only when they are a widely known public figure and you have great confidence from clear, distinctive visual evidence in this image. Otherwise use a generic description such as "a person" and note the identity limitation briefly within interpretation. A name is a model claim, not a verified fact. Do not infer sensitive personal traits. Do not infer exact places, dates, authorship, brands, or events unless visible evidence strongly supports them.
 
-      Return only JSON matching the supplied schema. Keep literal_description observational. Put hypotheses in interpretation together with their evidence, and briefly note meaningful alternatives and uncertainties there. Never promote a low-confidence identification into title, archive_summary, or search_keywords."
+      Return only the requested output representation. Keep literal_description observational. Put hypotheses in interpretation together with their evidence, and briefly note meaningful alternatives and uncertainties there. Never promote a low-confidence identification into title, archive_summary, or search_keywords."
     `);
     expect(AI_IMAGE_INTERPRETATION_PROMPT).not.toContain('filename');
     expect(AI_IMAGE_INTERPRETATION_PROMPT).not.toContain('GPS');
-    expect(AI_IMAGE_INTERPRETATION_PROMPT_VERSION).toBe('image-interpretation-1.1.0');
+    expect(AI_IMAGE_INTERPRETATION_PROMPT_VERSION).toBe('image-interpretation-1.2.0');
   });
 
   it('doubles retry delays from two minutes and caps them at one day', () => {
