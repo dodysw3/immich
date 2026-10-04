@@ -2,19 +2,22 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiInterpretationDocument } from 'src/dtos/ai-image-interpretation.dto.js';
 import { AssetFileType, AssetType, AssetVisibility, JobName, JobStatus, QueueName } from 'src/enum.js';
 import { AiImageInterpretationRepository } from 'src/repositories/ai-image-interpretation.repository.js';
 import { AssetJobRepository } from 'src/repositories/asset-job.repository.js';
+import { AssetRepository } from 'src/repositories/asset.repository.js';
 import { ConfigRepository } from 'src/repositories/config.repository.js';
 import { JobRepository } from 'src/repositories/job.repository.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';
+import { SystemMetadataRepository } from 'src/repositories/system-metadata.repository.js';
 import {
   AiImageInterpretationClient,
   AiImageInterpretationClientError,
 } from 'src/services/ai-image-interpretation.client.js';
 import { AiImageInterpretationService } from 'src/services/ai-image-interpretation.service.js';
+import { clearConfigCache } from 'src/utils/config.js';
 import { AssetFactory } from 'test/factories/asset.factory.js';
 
 const runKey = 'a'.repeat(64);
@@ -40,6 +43,15 @@ const makeService = () => {
       getWorker: vi.fn(),
     },
     assetJobRepository: { getForGenerateThumbnailJob: vi.fn() },
+    assetRepository: {
+      // Not pending by default: a detected marker lets deliveries proceed.
+      getDuplicateAnalysisState: vi.fn().mockResolvedValue({
+        stackId: null,
+        visibility: AssetVisibility.Timeline,
+        duplicatesDetectedAt: new Date(),
+      }),
+    },
+    systemMetadataRepository: { get: vi.fn().mockResolvedValue({}) },
     jobRepository: {
       queue: vi.fn(),
       jobExists: vi.fn(),
@@ -50,6 +62,8 @@ const makeService = () => {
       get: vi.fn(),
       transitionToRunning: vi.fn(),
       complete: vi.fn(),
+      completeCopy: vi.fn(),
+      findCopySource: vi.fn().mockResolvedValue(null),
       fail: vi.fn(),
       failStale: vi.fn(),
       findDueRetries: vi.fn(),
@@ -61,6 +75,8 @@ const makeService = () => {
     dependencies.logger as never as LoggingRepository,
     dependencies.configRepository as never as ConfigRepository,
     dependencies.assetJobRepository as never as AssetJobRepository,
+    dependencies.assetRepository as never as AssetRepository,
+    dependencies.systemMetadataRepository as never as SystemMetadataRepository,
     dependencies.jobRepository as never as JobRepository,
     dependencies.interpretationRepository as never as AiImageInterpretationRepository,
     dependencies.client as never as AiImageInterpretationClient,
@@ -68,8 +84,38 @@ const makeService = () => {
   return { service, dependencies };
 };
 
+const makeRunningAsset = (
+  service: AiImageInterpretationService,
+  dependencies: ReturnType<typeof makeService>['dependencies'],
+) => {
+  dependencies.interpretationRepository.transitionToRunning.mockResolvedValue(true);
+  dependencies.interpretationRepository.get.mockResolvedValue({
+    schemaVersion: 1,
+    runs: { [runKey]: { model: config.model, quant: config.quant, promptVersion: config.promptVersion } },
+  } as AiInterpretationDocument);
+  const asset = AssetFactory.from({ type: AssetType.Image, visibility: AssetVisibility.Timeline })
+    .files([AssetFileType.Preview])
+    .build();
+  dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue(asset);
+  service_preparePreview(service);
+  return { asset };
+};
+
+const service_preparePreview = (service: AiImageInterpretationService) => {
+  const internals = service as never as { preparePreview: ReturnType<typeof vi.fn> };
+  internals.preparePreview = vi.fn().mockResolvedValue({
+    buffer: Buffer.from('preview'),
+    input: { source: 'preview', width: 100, height: 80, mimeType: 'image/jpeg' },
+  });
+  return internals;
+};
+
 describe(AiImageInterpretationService.name, () => {
-  it('claims and queues only enabled image uploads with an unedited preview', async () => {
+  beforeEach(() => {
+    clearConfigCache();
+  });
+
+  it('claims and queues only enabled image uploads with an unedited preview after duplicate analysis', async () => {
     const { service, dependencies } = makeService();
     const asset = AssetFactory.from({ type: AssetType.Image, visibility: AssetVisibility.Timeline })
       .files([AssetFileType.Preview])
@@ -77,7 +123,7 @@ describe(AiImageInterpretationService.name, () => {
     dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue(asset);
     dependencies.interpretationRepository.claim.mockResolvedValue({ alreadyExists: false, runKey, run: {} });
 
-    await service.onThumbnailGenerated({ assetId: asset.id, source: 'upload' });
+    await service.onDuplicateDetectionCompleted({ assetId: asset.id });
 
     expect(dependencies.interpretationRepository.claim).toHaveBeenCalledWith(asset.id, {
       model: config.model,
@@ -90,19 +136,16 @@ describe(AiImageInterpretationService.name, () => {
     });
   });
 
-  it('ignores disabled mode, non-upload sources, hidden assets, and duplicate claims', async () => {
+  it('ignores disabled mode, hidden assets, and duplicate claims', async () => {
     const { service, dependencies } = makeService();
     const asset = AssetFactory.from({ visibility: AssetVisibility.Hidden }).files([AssetFileType.Preview]).build();
     dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue(asset);
-
-    await service.onThumbnailGenerated({ assetId: asset.id, source: 'edit' });
-    expect(dependencies.assetJobRepository.getForGenerateThumbnailJob).not.toHaveBeenCalled();
 
     dependencies.configRepository.getEnv.mockReturnValue({
       aiImageInterpretation: { ...config, enabled: false },
       aiInterpretSearch: { enabled: false },
     });
-    await service.onThumbnailGenerated({ assetId: asset.id, source: 'upload' });
+    await service.onDuplicateDetectionCompleted({ assetId: asset.id });
     expect(dependencies.assetJobRepository.getForGenerateThumbnailJob).not.toHaveBeenCalled();
 
     dependencies.configRepository.getEnv.mockReturnValue({
@@ -114,7 +157,7 @@ describe(AiImageInterpretationService.name, () => {
       visibility: AssetVisibility.Timeline,
       type: AssetType.Video,
     });
-    await service.onThumbnailGenerated({ assetId: asset.id, source: 'upload' });
+    await service.onDuplicateDetectionCompleted({ assetId: asset.id });
     expect(dependencies.interpretationRepository.claim).not.toHaveBeenCalled();
 
     dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue({
@@ -123,7 +166,7 @@ describe(AiImageInterpretationService.name, () => {
       type: AssetType.Image,
     });
     dependencies.interpretationRepository.claim.mockResolvedValue({ alreadyExists: true, runKey, run: {} });
-    await service.onThumbnailGenerated({ assetId: asset.id, source: 'upload' });
+    await service.onDuplicateDetectionCompleted({ assetId: asset.id });
 
     expect(dependencies.jobRepository.queue).not.toHaveBeenCalled();
   });
@@ -143,11 +186,7 @@ describe(AiImageInterpretationService.name, () => {
     dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue(
       AssetFactory.create({ type: AssetType.Image, visibility: AssetVisibility.Timeline }),
     );
-    const internals = service as never as { preparePreview: ReturnType<typeof vi.fn> };
-    internals.preparePreview = vi.fn().mockResolvedValue({
-      buffer: Buffer.from('preview'),
-      input: { source: 'preview', width: 100, height: 80, mimeType: 'image/jpeg' },
-    });
+    service_preparePreview(service);
     dependencies.client.interpret.mockRejectedValue(new AiImageInterpretationClientError('timeout', 'secret details'));
 
     await expect(service.handleInterpretation({ id: 'asset-1', runKey } as never)).resolves.toBe(JobStatus.Success);
@@ -175,23 +214,146 @@ describe(AiImageInterpretationService.name, () => {
     );
   });
 
+  it('defers manual deliveries until duplicate detection has completed for the asset', async () => {
+    const { service, dependencies } = makeService();
+    makeRunningAsset(service, dependencies);
+    dependencies.assetRepository.getDuplicateAnalysisState.mockResolvedValue({
+      stackId: null,
+      visibility: AssetVisibility.Timeline,
+      duplicatesDetectedAt: null,
+    });
+
+    await expect(service.handleInterpretation({ id: 'asset-1', runKey } as never)).resolves.toBe(JobStatus.Success);
+
+    expect(dependencies.interpretationRepository.fail).toHaveBeenCalledWith(
+      'asset-1',
+      runKey,
+      { code: 'duplicates_pending', message: 'Duplicate detection has not completed yet' },
+      expect.objectContaining({ durationMs: expect.any(Number) }),
+    );
+    expect(dependencies.client.interpret).not.toHaveBeenCalled();
+    expect(dependencies.interpretationRepository.complete).not.toHaveBeenCalled();
+    expect(dependencies.jobRepository.recordAiInterpretationCompletion).not.toHaveBeenCalled();
+  });
+
+  it('does not defer upload-sourced deliveries that the duplicate completion event queued', async () => {
+    const { service, dependencies } = makeService();
+    makeRunningAsset(service, dependencies);
+    dependencies.assetRepository.getDuplicateAnalysisState.mockResolvedValue({
+      stackId: null,
+      visibility: AssetVisibility.Timeline,
+      duplicatesDetectedAt: null,
+    });
+    dependencies.client.interpret.mockResolvedValue({ result: {} as never });
+    dependencies.interpretationRepository.complete.mockResolvedValue(true);
+
+    await expect(service.handleInterpretation({ id: 'asset-1', runKey, source: 'upload' } as never)).resolves.toBe(
+      JobStatus.Success,
+    );
+
+    expect(dependencies.client.interpret).toHaveBeenCalled();
+    expect(dependencies.interpretationRepository.fail).not.toHaveBeenCalled();
+  });
+
+  it('interprets immediately when duplicate analysis will never run for the asset', async () => {
+    const { service, dependencies } = makeService();
+    makeRunningAsset(service, dependencies);
+    dependencies.client.interpret.mockResolvedValue({ result: {} as never });
+    dependencies.interpretationRepository.complete.mockResolvedValue(true);
+
+    // no job-status row: the non-force duplicate scan will never stream it
+    dependencies.assetRepository.getDuplicateAnalysisState.mockResolvedValue(undefined);
+    await expect(service.handleInterpretation({ id: 'asset-1', runKey } as never)).resolves.toBe(JobStatus.Success);
+
+    // stacked assets are excluded from duplicate detection
+    dependencies.assetRepository.getDuplicateAnalysisState.mockResolvedValue({
+      stackId: 'stack-1',
+      visibility: AssetVisibility.Timeline,
+      duplicatesDetectedAt: null,
+    });
+    await expect(service.handleInterpretation({ id: 'asset-1', runKey } as never)).resolves.toBe(JobStatus.Success);
+
+    expect(dependencies.client.interpret).toHaveBeenCalledTimes(2);
+    expect(dependencies.interpretationRepository.fail).not.toHaveBeenCalled();
+  });
+
+  it('interprets immediately when duplicate detection is disabled', async () => {
+    const { service, dependencies } = makeService();
+    makeRunningAsset(service, dependencies);
+    dependencies.client.interpret.mockResolvedValue({ result: {} as never });
+    dependencies.interpretationRepository.complete.mockResolvedValue(true);
+    dependencies.systemMetadataRepository.get.mockResolvedValue({
+      machineLearning: { duplicateDetection: { enabled: false } },
+    });
+
+    await expect(service.handleInterpretation({ id: 'asset-1', runKey } as never)).resolves.toBe(JobStatus.Success);
+
+    expect(dependencies.client.interpret).toHaveBeenCalled();
+    expect(dependencies.assetRepository.getDuplicateAnalysisState).not.toHaveBeenCalled();
+  });
+
+  it('copies the result from an interpreted duplicate without calling the model', async () => {
+    const { service, dependencies } = makeService();
+    makeRunningAsset(service, dependencies);
+    const copySource = {
+      assetId: 'asset-2',
+      runKey,
+      result: { title: 'Copied result' } as never,
+      input: { source: 'preview', width: 100, height: 80, mimeType: 'image/jpeg' },
+      model: config.model,
+      quant: config.quant,
+      promptVersion: config.promptVersion,
+    };
+    dependencies.interpretationRepository.findCopySource.mockResolvedValue(copySource);
+    dependencies.interpretationRepository.completeCopy.mockResolvedValue(true);
+    dependencies.configRepository.getEnv.mockReturnValue({
+      aiImageInterpretation: config,
+      aiInterpretSearch: { enabled: true },
+    });
+
+    await expect(service.handleInterpretation({ id: 'asset-1', runKey } as never)).resolves.toBe(JobStatus.Success);
+
+    expect(dependencies.interpretationRepository.findCopySource).toHaveBeenCalledWith('asset-1', runKey);
+    expect(dependencies.client.interpret).not.toHaveBeenCalled();
+    expect(dependencies.interpretationRepository.complete).not.toHaveBeenCalled();
+    expect(dependencies.interpretationRepository.completeCopy).toHaveBeenCalledWith(
+      'asset-1',
+      runKey,
+      copySource,
+      expect.objectContaining({ durationMs: expect.any(Number) }),
+    );
+    expect(dependencies.jobRepository.recordAiInterpretationCompletion).toHaveBeenCalledWith('asset-1', runKey);
+    expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
+      name: JobName.AiInterpretSearchSync,
+      data: { id: 'asset-1' },
+    });
+    expect(dependencies.jobRepository.queue).not.toHaveBeenCalledWith({
+      name: JobName.SendAiInterpretationDiscordAlert,
+      data: { assetId: 'asset-1', runKey },
+    });
+  });
+
+  it('falls back to the model path when no duplicate sibling has a completed result', async () => {
+    const { service, dependencies } = makeService();
+    makeRunningAsset(service, dependencies);
+    dependencies.client.interpret.mockResolvedValue({ result: {} as never });
+    dependencies.interpretationRepository.complete.mockResolvedValue(true);
+
+    await expect(service.handleInterpretation({ id: 'asset-1', runKey } as never)).resolves.toBe(JobStatus.Success);
+
+    expect(dependencies.client.interpret).toHaveBeenCalledWith(Buffer.from('preview'), { model: config.model });
+    expect(dependencies.interpretationRepository.completeCopy).not.toHaveBeenCalled();
+    expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
+      name: JobName.SendAiInterpretationDiscordAlert,
+      data: { assetId: 'asset-1', runKey },
+    });
+  });
+
   it('claims a missing tuple for a manual delivery before running', async () => {
     const { service, dependencies } = makeService();
-    const asset = AssetFactory.from({ type: AssetType.Image, visibility: AssetVisibility.Timeline })
-      .files([AssetFileType.Preview])
-      .build();
+    const { asset } = makeRunningAsset(service, dependencies);
     dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue(asset);
     dependencies.interpretationRepository.claim.mockResolvedValue({ alreadyExists: false, runKey, run: {} });
-    dependencies.interpretationRepository.transitionToRunning.mockResolvedValue(true);
-    dependencies.interpretationRepository.get.mockResolvedValue({
-      schemaVersion: 1,
-      runs: { [runKey]: { model: config.model, quant: config.quant, promptVersion: config.promptVersion } },
-    } as AiInterpretationDocument);
-    const internals = service as never as { preparePreview: ReturnType<typeof vi.fn> };
-    internals.preparePreview = vi.fn().mockResolvedValue({
-      buffer: Buffer.from('preview'),
-      input: { source: 'preview', width: 100, height: 80, mimeType: 'image/jpeg' },
-    });
     dependencies.client.interpret.mockResolvedValue({ result: {} as never });
     dependencies.interpretationRepository.complete.mockResolvedValue(true);
 
@@ -213,19 +375,7 @@ describe(AiImageInterpretationService.name, () => {
 
   it('queues an alert only for a newly persisted completion with a configured webhook', async () => {
     const { service, dependencies } = makeService();
-    dependencies.interpretationRepository.transitionToRunning.mockResolvedValue(true);
-    dependencies.interpretationRepository.get.mockResolvedValue({
-      schemaVersion: 1,
-      runs: { [runKey]: { model: config.model, quant: config.quant, promptVersion: config.promptVersion } },
-    } as AiInterpretationDocument);
-    dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue(
-      AssetFactory.create({ type: AssetType.Image, visibility: AssetVisibility.Timeline }),
-    );
-    const internals = service as never as { preparePreview: ReturnType<typeof vi.fn> };
-    internals.preparePreview = vi.fn().mockResolvedValue({
-      buffer: Buffer.from('preview'),
-      input: { source: 'preview', width: 100, height: 80, mimeType: 'image/jpeg' },
-    });
+    makeRunningAsset(service, dependencies);
     dependencies.client.interpret.mockResolvedValue({ result: {} as never });
     dependencies.interpretationRepository.complete.mockResolvedValue(false);
 
@@ -244,19 +394,7 @@ describe(AiImageInterpretationService.name, () => {
 
   it('does not alter a completed interpretation when alert enqueueing fails', async () => {
     const { service, dependencies } = makeService();
-    dependencies.interpretationRepository.transitionToRunning.mockResolvedValue(true);
-    dependencies.interpretationRepository.get.mockResolvedValue({
-      schemaVersion: 1,
-      runs: { [runKey]: { model: config.model, quant: config.quant, promptVersion: config.promptVersion } },
-    } as AiInterpretationDocument);
-    dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue(
-      AssetFactory.create({ type: AssetType.Image, visibility: AssetVisibility.Timeline }),
-    );
-    const internals = service as never as { preparePreview: ReturnType<typeof vi.fn> };
-    internals.preparePreview = vi.fn().mockResolvedValue({
-      buffer: Buffer.from('preview'),
-      input: { source: 'preview', width: 100, height: 80, mimeType: 'image/jpeg' },
-    });
+    makeRunningAsset(service, dependencies);
     dependencies.client.interpret.mockResolvedValue({ result: {} as never });
     dependencies.interpretationRepository.complete.mockResolvedValue(true);
     dependencies.jobRepository.queue.mockRejectedValue(new Error('queue unavailable'));
@@ -272,19 +410,7 @@ describe(AiImageInterpretationService.name, () => {
 
   it('does not alter a completed interpretation when the completion sample cannot be recorded', async () => {
     const { service, dependencies } = makeService();
-    dependencies.interpretationRepository.transitionToRunning.mockResolvedValue(true);
-    dependencies.interpretationRepository.get.mockResolvedValue({
-      schemaVersion: 1,
-      runs: { [runKey]: { model: config.model, quant: config.quant, promptVersion: config.promptVersion } },
-    } as AiInterpretationDocument);
-    dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue(
-      AssetFactory.create({ type: AssetType.Image, visibility: AssetVisibility.Timeline }),
-    );
-    const internals = service as never as { preparePreview: ReturnType<typeof vi.fn> };
-    internals.preparePreview = vi.fn().mockResolvedValue({
-      buffer: Buffer.from('preview'),
-      input: { source: 'preview', width: 100, height: 80, mimeType: 'image/jpeg' },
-    });
+    makeRunningAsset(service, dependencies);
     dependencies.client.interpret.mockResolvedValue({ result: {} as never });
     dependencies.interpretationRepository.complete.mockResolvedValue(true);
     dependencies.jobRepository.recordAiInterpretationCompletion.mockRejectedValue(new Error('redis unavailable'));

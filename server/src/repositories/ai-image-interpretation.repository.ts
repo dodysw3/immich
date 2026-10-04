@@ -24,6 +24,16 @@ export type AiInterpretationClaim =
   | { alreadyExists: true; runKey: string; run: AiInterpretationRun }
   | { alreadyExists: false; runKey: string; run: AiInterpretationRun };
 
+export type AiInterpretationCopySource = {
+  assetId: string;
+  runKey: string;
+  result: MuseInterpretationResult;
+  input?: AiInterpretationInput;
+  model: string;
+  quant: string;
+  promptVersion: string;
+};
+
 @Injectable()
 export class AiImageInterpretationRepository {
   constructor(@InjectKysely() private db: Kysely<DB>) {}
@@ -115,6 +125,106 @@ export class AiImageInterpretationRepository {
         input,
         result,
         metrics,
+        error: undefined,
+        nextAttemptAt: undefined,
+      };
+    });
+    return next !== null;
+  }
+
+  // A duplicate sibling with a completed run makes the LLM call redundant: the
+  // group members show the same visual content, so the result can be copied.
+  // Same-identity runs (same model/quant/promptVersion) win over more recent
+  // ones so the copied result stays semantically aligned with the claiming run.
+  async findCopySource(assetId: string, runKey: string): Promise<AiInterpretationCopySource | null> {
+    const asset = await this.db.selectFrom('asset').select('duplicateId').where('id', '=', assetId).executeTakeFirst();
+    if (!asset?.duplicateId) {
+      return null;
+    }
+
+    const rows = await this.db
+      .selectFrom('asset_metadata')
+      .select(['asset_metadata.assetId', 'asset_metadata.value'])
+      .innerJoin('asset', 'asset.id', 'asset_metadata.assetId')
+      .where('asset.duplicateId', '=', asset.duplicateId)
+      .where('asset.deletedAt', 'is', null)
+      .where('asset_metadata.key', '=', AssetMetadataKey.AiInterpretationV1)
+      .where('asset_metadata.assetId', '!=', assetId)
+      .execute();
+
+    const pick = (
+      best: (AiInterpretationCopySource & { finishedAt: string }) | null,
+      candidate: AiInterpretationCopySource & { finishedAt: string },
+    ) => (!best || candidate.finishedAt > best.finishedAt ? candidate : best);
+
+    let sameIdentity: (AiInterpretationCopySource & { finishedAt: string }) | null = null;
+    let mostRecent: (AiInterpretationCopySource & { finishedAt: string }) | null = null;
+    for (const row of rows) {
+      let document: AiInterpretationDocument;
+      try {
+        document = this.parseDocument(row.value);
+      } catch {
+        continue;
+      }
+
+      for (const [sourceRunKey, run] of Object.entries(document.runs)) {
+        if (run.status !== 'completed' || !run.result) {
+          continue;
+        }
+
+        const candidate: AiInterpretationCopySource & { finishedAt: string } = {
+          assetId: row.assetId,
+          runKey: sourceRunKey,
+          result: run.result,
+          input: run.input,
+          model: run.model,
+          quant: run.quant,
+          promptVersion: run.promptVersion,
+          finishedAt: run.finishedAt ?? run.requestedAt,
+        };
+        mostRecent = pick(mostRecent, candidate);
+        if (sourceRunKey === runKey) {
+          sameIdentity = pick(sameIdentity, candidate);
+        }
+      }
+    }
+
+    const source = sameIdentity ?? mostRecent;
+    if (!source) {
+      return null;
+    }
+
+    const { finishedAt: _, ...copySource } = source;
+    return copySource;
+  }
+
+  async completeCopy(
+    assetId: string,
+    runKey: string,
+    source: AiInterpretationCopySource,
+    metrics: AiInterpretationMetrics,
+    finishedAt = new Date(),
+  ): Promise<boolean> {
+    const next = await this.updateRun(assetId, runKey, (run) => {
+      if (run.status !== 'running') {
+        return;
+      }
+
+      return {
+        ...run,
+        status: 'completed',
+        finishedAt: finishedAt.toISOString(),
+        input: source.input,
+        result: source.result,
+        metrics,
+        copiedFrom: {
+          assetId: source.assetId,
+          runKey: source.runKey,
+          model: source.model,
+          quant: source.quant,
+          promptVersion: source.promptVersion,
+          copiedAt: finishedAt.toISOString(),
+        },
         error: undefined,
         nextAttemptAt: undefined,
       };

@@ -53,6 +53,14 @@
     finishedAt?: string;
     attempts?: number;
     nextAttemptAt?: string;
+    copiedFrom?: {
+      assetId: string;
+      runKey?: string;
+      model?: string;
+      quant?: string;
+      promptVersion?: string;
+      copiedAt?: string;
+    };
     input?: { source?: string; width?: number; height?: number; mimeType?: string };
     metrics?: { durationMs?: number; promptTokens?: number; completionTokens?: number };
     error?: { code?: string; message?: string };
@@ -389,6 +397,10 @@
     }
     if (run.trigger) {
       rows.push({ label: $t('trigger'), value: run.trigger });
+    }
+    if (run.copiedFrom) {
+      const source = [run.copiedFrom.assetId, run.copiedFrom.model].filter((part) => !!part).join(' · ');
+      rows.push({ label: $t('copied_from_duplicate'), value: source });
     }
     for (const [key, value] of [
       ['requested_at', run.requestedAt],

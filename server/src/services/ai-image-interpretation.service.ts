@@ -8,15 +8,19 @@ import { AiInterpretationInput, AiInterpretationMetrics } from 'src/dtos/ai-imag
 import { AssetFileType, AssetType, AssetVisibility, ImmichWorker, JobName, JobStatus, QueueName } from 'src/enum.js';
 import { AiImageInterpretationRepository } from 'src/repositories/ai-image-interpretation.repository.js';
 import { AssetJobRepository } from 'src/repositories/asset-job.repository.js';
+import { AssetRepository } from 'src/repositories/asset.repository.js';
 import { ConfigRepository } from 'src/repositories/config.repository.js';
 import { JobRepository } from 'src/repositories/job.repository.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';
+import { SystemMetadataRepository } from 'src/repositories/system-metadata.repository.js';
 import {
   AiImageInterpretationClient,
   AiImageInterpretationClientError,
 } from 'src/services/ai-image-interpretation.client.js';
 import { createAiInterpretationJobId } from 'src/utils/ai-image-interpretation.js';
 import { getAssetFile } from 'src/utils/asset.util.js';
+import { getConfig } from 'src/utils/config.js';
+import { isDuplicateDetectionEnabled } from 'src/utils/misc.js';
 
 type PreparedPreview = {
   buffer: Buffer;
@@ -29,6 +33,8 @@ export class AiImageInterpretationService {
     private logger: LoggingRepository,
     private configRepository: ConfigRepository,
     private assetJobRepository: AssetJobRepository,
+    private assetRepository: AssetRepository,
+    private systemMetadataRepository: SystemMetadataRepository,
     private jobRepository: JobRepository,
     private interpretationRepository: AiImageInterpretationRepository,
     private client: AiImageInterpretationClient,
@@ -55,12 +61,12 @@ export class AiImageInterpretationService {
     await this.reconcile();
   }
 
-  @OnEvent({ name: 'AssetThumbnailGenerated', workers: [ImmichWorker.Microservices] })
-  async onThumbnailGenerated({ assetId, source }: ArgOf<'AssetThumbnailGenerated'>) {
-    if (source !== 'upload') {
-      return;
-    }
-
+  // Upload-path trigger: the duplicate service emits once duplicate analysis has
+  // concluded for the asset (final pass, exclusion, or feature off), so
+  // interpretation can deduplicate against already-interpreted group members
+  // instead of racing the duplicate pipeline.
+  @OnEvent({ name: 'AssetDuplicateDetectionCompleted', workers: [ImmichWorker.Microservices] })
+  async onDuplicateDetectionCompleted({ assetId }: ArgOf<'AssetDuplicateDetectionCompleted'>) {
     const runKey = await this.claimMissingRun(assetId);
     if (!runKey) {
       return;
@@ -76,6 +82,7 @@ export class AiImageInterpretationService {
   async handleInterpretation({
     id: assetId,
     runKey: requestedRunKey,
+    source,
   }: JobOf<JobName.AssetInterpretImage>): Promise<JobStatus> {
     const config = this.configRepository.getEnv().aiImageInterpretation;
     let runKey = requestedRunKey;
@@ -96,6 +103,7 @@ export class AiImageInterpretationService {
 
     let input: AiInterpretationInput | undefined;
     let completed = false;
+    let copied = false;
     try {
       if (!config.enabled) {
         throw new AiImageInterpretationClientError('feature_disabled', 'AI interpretation is disabled');
@@ -112,17 +120,41 @@ export class AiImageInterpretationService {
         throw new AiImageInterpretationClientError('preview_missing', 'Generated image preview is unavailable');
       }
 
-      const prepared = await this.preparePreview(asset);
-      input = prepared.input;
-      const response = await this.client.interpret(prepared.buffer, {
-        model: run.model,
-      });
+      // Upload-sourced deliveries come from the duplicate-detection completion
+      // event, so their analysis is final by construction. Everything else
+      // (manual actions, ops scripts, retry requeues) waits out the analysis
+      // instead of interpreting against a still-changing duplicate group.
+      if (source !== 'upload' && (await this.isDuplicateAnalysisPending(assetId))) {
+        const failure = { code: 'duplicates_pending', message: 'Duplicate detection has not completed yet' } as const;
+        await this.interpretationRepository.fail(assetId, runKey, failure, { durationMs: Date.now() - startedAt });
+        this.logger.debug(`Deferring AI interpretation for ${assetId} until duplicate detection completes`);
+        return JobStatus.Success;
+      }
 
-      completed = await this.interpretationRepository.complete(assetId, runKey, input, response.result, {
-        durationMs: Date.now() - startedAt,
-        promptTokens: response.promptTokens,
-        completionTokens: response.completionTokens,
-      });
+      const copySource = await this.interpretationRepository.findCopySource(assetId, runKey);
+      if (copySource) {
+        completed = await this.interpretationRepository.completeCopy(assetId, runKey, copySource, {
+          durationMs: Date.now() - startedAt,
+        });
+        copied = completed;
+        if (completed) {
+          this.logger.log(
+            `Copied AI interpretation for ${assetId} from duplicate asset ${copySource.assetId} (run ${copySource.runKey})`,
+          );
+        }
+      } else {
+        const prepared = await this.preparePreview(asset);
+        input = prepared.input;
+        const response = await this.client.interpret(prepared.buffer, {
+          model: run.model,
+        });
+
+        completed = await this.interpretationRepository.complete(assetId, runKey, input, response.result, {
+          durationMs: Date.now() - startedAt,
+          promptTokens: response.promptTokens,
+          completionTokens: response.completionTokens,
+        });
+      }
     } catch (error) {
       const failure = this.asFailure(error);
       const metrics: AiInterpretationMetrics = { durationMs: Date.now() - startedAt };
@@ -149,7 +181,9 @@ export class AiImageInterpretationService {
         );
       }
 
-      if (config.discord.webhookUrl) {
+      // Copied runs add no information the source run's alert did not already
+      // cover, and a backlog drain would otherwise emit a burst of empty ones.
+      if (config.discord.webhookUrl && !copied) {
         try {
           await this.jobRepository.queue({
             name: JobName.SendAiInterpretationDiscordAlert,
@@ -196,6 +230,36 @@ export class AiImageInterpretationService {
       promptVersion: config.promptVersion,
     });
     return claim.alreadyExists ? undefined : claim.runKey;
+  }
+
+  // Whether duplicate-detection analysis can still change this asset's duplicate
+  // group. Assets duplicate detection will never process (no job-status row —
+  // the non-force scan inner-joins asset_job_status — stacked, hidden, locked)
+  // are treated as concluded so they cannot be stranded here.
+  private async isDuplicateAnalysisPending(assetId: string): Promise<boolean> {
+    const { machineLearning } = await getConfig(
+      {
+        configRepo: this.configRepository,
+        metadataRepo: this.systemMetadataRepository,
+        logger: this.logger,
+      },
+      { withCache: true },
+    );
+    if (!isDuplicateDetectionEnabled(machineLearning)) {
+      return false;
+    }
+
+    const state = await this.assetRepository.getDuplicateAnalysisState(assetId);
+    if (
+      !state ||
+      state.stackId ||
+      state.visibility === AssetVisibility.Hidden ||
+      state.visibility === AssetVisibility.Locked
+    ) {
+      return false;
+    }
+
+    return !state.duplicatesDetectedAt;
   }
 
   @OnJob({ name: JobName.AssetInterpretationReconcile, queue: QueueName.ImageInterpretation })

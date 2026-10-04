@@ -53,6 +53,17 @@ export const MuseInterpretationResultSchema = z
   .meta({ id: 'MuseInterpretationResult' });
 export type MuseInterpretationResult = z.infer<typeof MuseInterpretationResultSchema>;
 
+const AiInterpretationCopiedFromSchema = z
+  .object({
+    assetId: z.string().uuid(),
+    runKey: z.string().regex(/^[a-f0-9]{64}$/),
+    model: z.string().min(1),
+    quant: z.string().min(1),
+    promptVersion: z.string().min(1),
+    copiedAt: z.iso.datetime({ offset: true }),
+  })
+  .meta({ id: 'AiInterpretationCopiedFrom' });
+
 const AiInterpretationRunSchema = z
   .object({
     model: z.string().min(1),
@@ -65,6 +76,7 @@ const AiInterpretationRunSchema = z
     finishedAt: z.iso.datetime({ offset: true }).optional(),
     input: AiInterpretationInputSchema.optional(),
     result: MuseInterpretationResultSchema.optional(),
+    copiedFrom: AiInterpretationCopiedFromSchema.optional(),
     error: AiInterpretationErrorSchema.optional(),
     metrics: AiInterpretationMetricsSchema.optional(),
     attempts: z.int().nonnegative().optional(),
@@ -93,6 +105,7 @@ export type AiInterpretationDocument = z.infer<typeof AiInterpretationDocumentSc
 export type AiInterpretationInput = z.infer<typeof AiInterpretationInputSchema>;
 export type AiInterpretationMetrics = z.infer<typeof AiInterpretationMetricsSchema>;
 export type AiInterpretationError = z.infer<typeof AiInterpretationErrorSchema>;
+export type AiInterpretationCopiedFrom = z.infer<typeof AiInterpretationCopiedFromSchema>;
 
 export const MUSE_RESULT_JSON_SCHEMA = {
   type: 'object',

@@ -386,6 +386,26 @@ export class AssetRepository {
       .execute();
   }
 
+  async getJobStatuses(assetIds: string[]): Promise<Array<Selectable<AssetJobStatusTable>>> {
+    if (assetIds.length === 0) {
+      return [];
+    }
+
+    return this.db.selectFrom('asset_job_status').selectAll().where('assetId', '=', anyUuid(assetIds)).execute();
+  }
+
+  async getDuplicateAnalysisState(
+    assetId: string,
+  ): Promise<{ stackId: string | null; visibility: AssetVisibility; duplicatesDetectedAt: Date | null } | undefined> {
+    return this.db
+      .selectFrom('asset')
+      .leftJoin('asset_job_status', 'asset_job_status.assetId', 'asset.id')
+      .select(['asset.stackId', 'asset.visibility', 'asset_job_status.duplicatesDetectedAt'])
+      .where('asset.id', '=', asUuid(assetId))
+      .where('asset.deletedAt', 'is', null)
+      .executeTakeFirst();
+  }
+
   async upsertJobStatus(...jobStatus: Insertable<AssetJobStatusTable>[]): Promise<void> {
     if (jobStatus.length === 0) {
       return;

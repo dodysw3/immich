@@ -54,6 +54,8 @@ type EventMap = {
   AssetDelete: [{ assetId: string; userId: string }];
   AssetMetadataExtracted: [{ assetId: string; userId: string; source?: JobSource }];
   AssetThumbnailGenerated: [{ assetId: string; source?: JobSource }];
+  /** duplicate-detection analysis concluded for the asset (final pass, exclusion, or disabled) */
+  AssetDuplicateDetectionCompleted: [{ assetId: string }];
 
   // asset bulk events
   AssetTrashAll: [{ assetIds: string[]; userId: string }];

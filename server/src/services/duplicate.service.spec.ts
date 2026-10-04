@@ -28,6 +28,14 @@ const hasDupe = {
   duplicateId: 'duplicate-id',
 };
 
+const jobStatus = (assetId: string, ocrAt: Date | null) => ({
+  assetId,
+  duplicatesDetectedAt: null,
+  facesRecognizedAt: null,
+  metadataExtractedAt: null,
+  ocrAt,
+});
+
 describe(DuplicateService.name, () => {
   let sut: DuplicateService;
   let mocks: ServiceMocks;
@@ -405,6 +413,7 @@ describe(DuplicateService.name, () => {
         },
       });
       mocks.duplicateRepository.getOcrTexts.mockResolvedValue(new Map());
+      mocks.duplicateRepository.getPdfDocuments.mockResolvedValue(new Map());
     });
 
     it('should skip if machine learning is disabled', async () => {
@@ -431,10 +440,12 @@ describe(DuplicateService.name, () => {
           },
         },
       });
-      const result = await sut.handleSearchDuplicates({ id: newUuid() });
+      const assetId = newUuid();
+      const result = await sut.handleSearchDuplicates({ id: assetId });
 
       expect(result).toBe(JobStatus.Skipped);
       expect(mocks.assetJob.getForSearchDuplicatesJob).not.toHaveBeenCalled();
+      expect(mocks.event.emit).toHaveBeenCalledWith('AssetDuplicateDetectionCompleted', { assetId });
     });
 
     it('should fail if asset is not found', async () => {
@@ -455,6 +466,7 @@ describe(DuplicateService.name, () => {
 
       expect(result).toBe(JobStatus.Skipped);
       expect(mocks.logger.debug).toHaveBeenCalledWith(`Asset ${asset.id} is part of a stack, skipping`);
+      expect(mocks.event.emit).toHaveBeenCalledWith('AssetDuplicateDetectionCompleted', { assetId: asset.id });
     });
 
     it('should skip if asset is not visible', async () => {
@@ -534,6 +546,7 @@ describe(DuplicateService.name, () => {
     it('should remove duplicateId if no duplicates found and asset has duplicateId', async () => {
       mocks.assetJob.getForSearchDuplicatesJob.mockResolvedValue(hasDupe);
       mocks.duplicateRepository.search.mockResolvedValue([]);
+      mocks.asset.getJobStatuses.mockResolvedValue([jobStatus(hasDupe.id, new Date())]);
 
       const result = await sut.handleSearchDuplicates({ id: hasDupe.id });
 
@@ -542,6 +555,48 @@ describe(DuplicateService.name, () => {
       expect(mocks.asset.upsertJobStatus).toHaveBeenCalledWith({
         assetId: hasDupe.id,
         duplicatesDetectedAt: expect.any(Date),
+      });
+      expect(mocks.asset.getJobStatuses).toHaveBeenCalledWith([hasDupe.id]);
+      expect(mocks.event.emit).toHaveBeenCalledWith('AssetDuplicateDetectionCompleted', { assetId: hasDupe.id });
+    });
+
+    it('should emit duplicate analysis completed for every touched asset after a final pass', async () => {
+      mocks.assetJob.getForSearchDuplicatesJob.mockResolvedValue(hasEmbedding);
+      const asset = AssetFactory.create();
+      mocks.duplicateRepository.search.mockResolvedValue([{ assetId: asset.id, distance: 0.01, duplicateId: null }]);
+      mocks.duplicateRepository.merge.mockResolvedValue();
+      // the OCR veto is on by default: with OCR completed for both assets the
+      // pass is final and the signal may fire for each of them
+      mocks.asset.getJobStatuses.mockResolvedValue([
+        jobStatus(asset.id, new Date()),
+        jobStatus(hasEmbedding.id, new Date()),
+      ]);
+
+      await sut.handleSearchDuplicates({ id: hasEmbedding.id });
+
+      expect(mocks.event.emit).toHaveBeenCalledWith('AssetDuplicateDetectionCompleted', { assetId: asset.id });
+      expect(mocks.event.emit).toHaveBeenCalledWith('AssetDuplicateDetectionCompleted', { assetId: hasEmbedding.id });
+    });
+
+    it('should not emit for assets whose OCR is still pending when the OCR veto is enabled', async () => {
+      mocks.systemMetadata.get.mockResolvedValue({
+        machineLearning: {
+          enabled: true,
+          ocr: { enabled: true },
+          duplicateDetection: { enabled: true, ocrVeto: true },
+        },
+      });
+      mocks.assetJob.getForSearchDuplicatesJob.mockResolvedValue(hasEmbedding);
+      const asset = AssetFactory.create();
+      mocks.duplicateRepository.search.mockResolvedValue([{ assetId: asset.id, distance: 0.01, duplicateId: null }]);
+      mocks.duplicateRepository.merge.mockResolvedValue();
+      mocks.asset.getJobStatuses.mockResolvedValue([jobStatus(asset.id, new Date()), jobStatus(hasEmbedding.id, null)]);
+
+      await sut.handleSearchDuplicates({ id: hasEmbedding.id });
+
+      expect(mocks.event.emit).toHaveBeenCalledWith('AssetDuplicateDetectionCompleted', { assetId: asset.id });
+      expect(mocks.event.emit).not.toHaveBeenCalledWith('AssetDuplicateDetectionCompleted', {
+        assetId: hasEmbedding.id,
       });
     });
 

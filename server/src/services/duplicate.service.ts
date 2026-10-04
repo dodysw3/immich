@@ -321,6 +321,9 @@ export class DuplicateService extends BaseService {
   async handleSearchDuplicates({ id }: JobOf<JobName.AssetDetectDuplicates>): Promise<JobStatus> {
     const { machineLearning } = await this.getConfig({ withCache: true });
     if (!isDuplicateDetectionEnabled(machineLearning)) {
+      // Downstream consumers (AI interpretation) wait for this signal; with the
+      // feature off there is nothing to wait for.
+      await this.eventRepository.emit('AssetDuplicateDetectionCompleted', { assetId: id });
       return JobStatus.Skipped;
     }
 
@@ -332,16 +335,19 @@ export class DuplicateService extends BaseService {
 
     if (asset.stackId) {
       this.logger.debug(`Asset ${id} is part of a stack, skipping`);
+      await this.eventRepository.emit('AssetDuplicateDetectionCompleted', { assetId: id });
       return JobStatus.Skipped;
     }
 
     if (asset.visibility === AssetVisibility.Hidden) {
       this.logger.debug(`Asset ${id} is not visible, skipping`);
+      await this.eventRepository.emit('AssetDuplicateDetectionCompleted', { assetId: id });
       return JobStatus.Skipped;
     }
 
     if (asset.visibility === AssetVisibility.Locked) {
       this.logger.debug(`Asset ${id} is locked, skipping`);
+      await this.eventRepository.emit('AssetDuplicateDetectionCompleted', { assetId: id });
       return JobStatus.Skipped;
     }
 
@@ -375,7 +381,31 @@ export class DuplicateService extends BaseService {
     const duplicatesDetectedAt = new Date();
     await this.assetRepository.upsertJobStatus(...assetIds.map((assetId) => ({ assetId, duplicatesDetectedAt })));
 
+    await this.emitDuplicateAnalysisCompleted(assetIds, machineLearning);
+
     return JobStatus.Success;
+  }
+
+  // Duplicate-aware AI interpretation keys off this signal, so it must only fire
+  // once no further veto re-run can change the group: while the asset's own OCR
+  // is still pending (and the OCR veto can act on it), handleOcr re-queues a
+  // duplicate pass that finalizes instead.
+  private async emitDuplicateAnalysisCompleted(assetIds: string[], machineLearning: MachineLearningConfig) {
+    const ocrPending = isOcrEnabled(machineLearning) && machineLearning.duplicateDetection.ocrVeto;
+    if (!ocrPending) {
+      for (const assetId of assetIds) {
+        await this.eventRepository.emit('AssetDuplicateDetectionCompleted', { assetId });
+      }
+      return;
+    }
+
+    const statuses = await this.assetRepository.getJobStatuses(assetIds);
+    const ocrAtById = new Map(statuses.map(({ assetId, ocrAt }) => [assetId, ocrAt]));
+    for (const assetId of assetIds) {
+      if (ocrAtById.get(assetId)) {
+        await this.eventRepository.emit('AssetDuplicateDetectionCompleted', { assetId });
+      }
+    }
   }
 
   // CLIP embeddings cannot separate visually-identical document templates that differ
