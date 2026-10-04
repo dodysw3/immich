@@ -22,7 +22,7 @@ import {
 import { JobName, JobStatus, QueueName } from 'src/enum.js';
 import { BaseService } from 'src/services/base.service.js';
 import { tokenizeForSearch } from 'src/utils/database.js';
-import { isOcrEnabled } from 'src/utils/misc.js';
+import { isDuplicateDetectionEnabled, isOcrEnabled } from 'src/utils/misc.js';
 
 const DEFAULT_PDF_TEXT_EXTRACTION_PAGE_LIMIT = 250;
 const PDF_PROCESS_TIMEOUT_MS = 120_000;
@@ -145,6 +145,13 @@ export class PdfService extends BaseService {
       const searchText = tokenizeForSearch(pages.map((item) => item.text).join(' ')).join(' ');
       await this.pdfRepository.upsertSearch(id, searchText);
       await this.pdfRepository.markDocumentReady(id, new Date());
+
+      // Duplicate detection may have already run (upload pipeline starts it in parallel
+      // with PDF processing) while this asset had no processed PDF state. Re-run it now
+      // that the whole-document PDF veto has page count and text to compare.
+      if (isDuplicateDetectionEnabled(machineLearning) && machineLearning.duplicateDetection.pdfVeto) {
+        await this.jobRepository.queue({ name: JobName.AssetDetectDuplicates, data: { id } });
+      }
 
       this.logger.log(
         `Processed PDF ${id} in ${Date.now() - startedAt}ms (pages=${metadata.pageCount}, indexed=${pages.length}, ocr=${ocrPages})`,

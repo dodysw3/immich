@@ -359,6 +359,7 @@ export class DuplicateService extends BaseService {
     });
 
     duplicateAssets = await this.filterOcrVetoed(asset.id, duplicateAssets, machineLearning);
+    duplicateAssets = await this.filterPdfVetoed(asset.id, duplicateAssets, machineLearning);
 
     let assetIds = [asset.id];
     if (duplicateAssets.length > 0) {
@@ -418,6 +419,66 @@ export class DuplicateService extends BaseService {
 
     if (vetoed > 0) {
       this.logger.log(`OCR veto removed ${vetoed} of ${candidates.length} duplicate candidates for ${sourceId}`);
+    }
+
+    return filtered;
+  }
+
+  // PDFs embed, OCR, and veto on their first page only, so two documents sharing a
+  // page-1 template (bank statements, yearly forms of the same layout) are as close
+  // as true re-copies at the embedding level. The PDF pipeline holds whole-document
+  // state that separates them: re-copies have the same page count and effectively
+  // identical extracted text, while template variants do not. Pairs without a
+  // processed PDF document on either side (non-PDF "other" files have none) keep the
+  // first-page-only behavior.
+  private async filterPdfVetoed(
+    sourceId: string,
+    candidates: AssetDuplicateResult[],
+    machineLearning: MachineLearningConfig,
+  ): Promise<AssetDuplicateResult[]> {
+    const { pdfVeto, pdfVetoMaxTokenDiff } = machineLearning.duplicateDetection;
+    if (!pdfVeto || candidates.length === 0) {
+      return candidates;
+    }
+
+    const documents = await this.duplicateRepository.getPdfDocuments([
+      sourceId,
+      ...candidates.map(({ assetId }) => assetId),
+    ]);
+    const sourceDocument = documents.get(sourceId);
+    if (sourceDocument?.status !== 'ready') {
+      return candidates;
+    }
+
+    const filtered: AssetDuplicateResult[] = [];
+    let vetoed = 0;
+    for (const candidate of candidates) {
+      const document = documents.get(candidate.assetId);
+      if (document?.status !== 'ready') {
+        filtered.push(candidate);
+        continue;
+      }
+
+      let reason: string | null = null;
+      if (document.pageCount !== sourceDocument.pageCount) {
+        reason = `page count ${document.pageCount} != ${sourceDocument.pageCount}`;
+      } else if (sourceDocument.text && document.text) {
+        const tokenDiff = ocrTokenBagDiff(sourceDocument.text, document.text);
+        if (tokenDiff > pdfVetoMaxTokenDiff) {
+          reason = `text token diff ${tokenDiff} > ${pdfVetoMaxTokenDiff}`;
+        }
+      }
+
+      if (reason) {
+        vetoed++;
+        this.logger.debug(`Vetoed duplicate candidate ${candidate.assetId} for ${sourceId}: ${reason}`);
+      } else {
+        filtered.push(candidate);
+      }
+    }
+
+    if (vetoed > 0) {
+      this.logger.log(`PDF veto removed ${vetoed} of ${candidates.length} duplicate candidates for ${sourceId}`);
     }
 
     return filtered;

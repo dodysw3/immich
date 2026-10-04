@@ -255,6 +255,15 @@ const AdminConfigSchemaWithVisibility = z
             .int()
             .min(0)
             .describe('Maximum OCR token-bag symmetric difference before a duplicate candidate is vetoed'),
+          pdfVeto: z
+            .boolean()
+            .describe(
+              'Exclude duplicate PDF candidates whose page count or whole-document text differs from the source asset',
+            ),
+          pdfVetoMaxTokenDiff: z
+            .int()
+            .min(0)
+            .describe('Maximum whole-document PDF text token-bag symmetric difference before a candidate is vetoed'),
         }).meta({ id: 'AdminConfigDuplicateDetectionDto' }),
         facialRecognition: AdminConfigMachineLearningModelSchema.extend({
           importNamesFromOtherAccounts: z
@@ -671,6 +680,8 @@ export const defaults = Object.freeze<SystemConfig>({
       maxDistance: 0.01,
       ocrVeto: true,
       ocrVetoMaxTokenDiff: 4,
+      pdfVeto: true,
+      pdfVetoMaxTokenDiff: 1,
     },
     facialRecognition: {
       enabled: true,

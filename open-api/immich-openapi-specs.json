@@ -19600,13 +19600,25 @@
             "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
+          },
+          "pdfVeto": {
+            "description": "Exclude duplicate PDF candidates whose page count or whole-document text differs from the source asset",
+            "type": "boolean"
+          },
+          "pdfVetoMaxTokenDiff": {
+            "description": "Maximum whole-document PDF text token-bag symmetric difference before a candidate is vetoed",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
           }
         },
         "required": [
           "enabled",
           "maxDistance",
           "ocrVeto",
-          "ocrVetoMaxTokenDiff"
+          "ocrVetoMaxTokenDiff",
+          "pdfVeto",
+          "pdfVetoMaxTokenDiff"
         ],
         "type": "object"
       },

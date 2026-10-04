@@ -124,6 +124,8 @@ const updatedConfig = Object.freeze<SystemConfig>({
       maxDistance: 0.01,
       ocrVeto: true,
       ocrVetoMaxTokenDiff: 4,
+      pdfVeto: true,
+      pdfVetoMaxTokenDiff: 1,
     },
     facialRecognition: {
       enabled: true,

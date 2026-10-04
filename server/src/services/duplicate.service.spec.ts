@@ -641,5 +641,105 @@ describe(DuplicateService.name, () => {
         sourceIds: [],
       });
     });
+
+    it('should veto PDF candidates whose page count differs', async () => {
+      mocks.assetJob.getForSearchDuplicatesJob.mockResolvedValue(hasEmbedding);
+      mocks.duplicateRepository.merge.mockResolvedValue();
+      mocks.duplicateRepository.search.mockResolvedValue([
+        { assetId: 'pdf-twin', distance: 0.0001, duplicateId: null },
+        { assetId: 'pdf-variant', distance: 0.0002, duplicateId: null },
+      ]);
+      mocks.duplicateRepository.getPdfDocuments.mockResolvedValue(
+        new Map([
+          [hasEmbedding.id, { pageCount: 13, status: 'ready', text: 'bukti potongan preamble' }],
+          ['pdf-twin', { pageCount: 13, status: 'ready', text: 'bukti potongan preamble' }],
+          ['pdf-variant', { pageCount: 25, status: 'ready', text: 'bukti potongan preamble' }],
+        ]),
+      );
+
+      await sut.handleSearchDuplicates({ id: hasEmbedding.id });
+
+      expect(mocks.duplicateRepository.getPdfDocuments).toHaveBeenCalledWith([
+        hasEmbedding.id,
+        'pdf-twin',
+        'pdf-variant',
+      ]);
+      expect(mocks.duplicateRepository.merge).toHaveBeenCalledWith({
+        assetIds: ['pdf-twin', hasEmbedding.id],
+        targetId: expect.any(String),
+        sourceIds: [],
+      });
+      expect(mocks.logger.log).toHaveBeenCalledWith(
+        `PDF veto removed 1 of 2 duplicate candidates for ${hasEmbedding.id}`,
+      );
+    });
+
+    it('should veto PDF candidates whose whole-document text differs beyond the threshold', async () => {
+      mocks.assetJob.getForSearchDuplicatesJob.mockResolvedValue(hasEmbedding);
+      mocks.duplicateRepository.merge.mockResolvedValue();
+      mocks.duplicateRepository.search.mockResolvedValue([
+        { assetId: 'pdf-twin', distance: 0.0001, duplicateId: null },
+        { assetId: 'pdf-variant', distance: 0.0002, duplicateId: null },
+      ]);
+      // consecutive tax years of the same form: page count matches, printed values differ
+      mocks.duplicateRepository.getPdfDocuments.mockResolvedValue(
+        new Map([
+          [hasEmbedding.id, { pageCount: 1, status: 'ready', text: 'spt tahunan 2 0 1 8 penghasilan 117,000,000' }],
+          ['pdf-twin', { pageCount: 1, status: 'ready', text: 'spt tahunan 2 0 1 8 penghasilan 117,000,000' }],
+          ['pdf-variant', { pageCount: 1, status: 'ready', text: 'spt tahunan 2 0 1 9 penghasilan 0' }],
+        ]),
+      );
+
+      await sut.handleSearchDuplicates({ id: hasEmbedding.id });
+
+      expect(mocks.duplicateRepository.merge).toHaveBeenCalledWith({
+        assetIds: ['pdf-twin', hasEmbedding.id],
+        targetId: expect.any(String),
+        sourceIds: [],
+      });
+      expect(mocks.logger.log).toHaveBeenCalledWith(
+        `PDF veto removed 1 of 2 duplicate candidates for ${hasEmbedding.id}`,
+      );
+    });
+
+    it('should keep PDF candidates without processed PDF state', async () => {
+      mocks.assetJob.getForSearchDuplicatesJob.mockResolvedValue(hasEmbedding);
+      mocks.duplicateRepository.merge.mockResolvedValue();
+      mocks.duplicateRepository.search.mockResolvedValue([
+        { assetId: 'pdf-unprocessed', distance: 0.0001, duplicateId: null },
+        { assetId: 'other-asset', distance: 0.0002, duplicateId: null },
+      ]);
+
+      await sut.handleSearchDuplicates({ id: hasEmbedding.id });
+
+      expect(mocks.duplicateRepository.merge).toHaveBeenCalledWith({
+        assetIds: ['pdf-unprocessed', 'other-asset', hasEmbedding.id],
+        targetId: expect.any(String),
+        sourceIds: [],
+      });
+    });
+
+    it('should not compare PDF documents when the veto is disabled', async () => {
+      mocks.systemMetadata.get.mockResolvedValue({
+        machineLearning: {
+          enabled: true,
+          duplicateDetection: { enabled: true, pdfVeto: false },
+        },
+      });
+      mocks.assetJob.getForSearchDuplicatesJob.mockResolvedValue(hasEmbedding);
+      mocks.duplicateRepository.merge.mockResolvedValue();
+      mocks.duplicateRepository.search.mockResolvedValue([
+        { assetId: 'pdf-variant', distance: 0.0001, duplicateId: null },
+      ]);
+
+      await sut.handleSearchDuplicates({ id: hasEmbedding.id });
+
+      expect(mocks.duplicateRepository.getPdfDocuments).not.toHaveBeenCalled();
+      expect(mocks.duplicateRepository.merge).toHaveBeenCalledWith({
+        assetIds: ['pdf-variant', hasEmbedding.id],
+        targetId: expect.any(String),
+        sourceIds: [],
+      });
+    });
   });
 });

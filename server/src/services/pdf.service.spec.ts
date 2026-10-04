@@ -217,6 +217,47 @@ describe(PdfService.name, () => {
     expect(mocks.pdf.markDocumentReady).toHaveBeenCalledWith('asset-3', expect.any(Date));
   });
 
+  it('should requeue duplicate detection after PDF processing completes', async () => {
+    mocks.pdf.getAssetForProcessing.mockResolvedValue({
+      id: 'asset-3',
+      ownerId: 'user-1',
+      originalPath: '/uploads/zero.pdf',
+      originalFileName: 'zero.pdf',
+      type: AssetType.Other,
+      deletedAt: null,
+    });
+    mocks.metadata.readTags.mockResolvedValue({ PageCount: 0, Title: 'Zero' } as any);
+
+    await sut.handlePdfProcess({ id: 'asset-3' });
+
+    expect(mocks.job.queue).toHaveBeenCalledWith({ name: JobName.AssetDetectDuplicates, data: { id: 'asset-3' } });
+  });
+
+  it('should not requeue duplicate detection when the PDF veto is disabled', async () => {
+    mocks.systemMetadata.get.mockResolvedValue({
+      machineLearning: {
+        enabled: true,
+        duplicateDetection: { enabled: true, pdfVeto: false },
+      },
+    });
+    mocks.pdf.getAssetForProcessing.mockResolvedValue({
+      id: 'asset-3',
+      ownerId: 'user-1',
+      originalPath: '/uploads/zero.pdf',
+      originalFileName: 'zero.pdf',
+      type: AssetType.Other,
+      deletedAt: null,
+    });
+    mocks.metadata.readTags.mockResolvedValue({ PageCount: 0, Title: 'Zero' } as any);
+
+    await sut.handlePdfProcess({ id: 'asset-3' });
+
+    expect(mocks.job.queue).not.toHaveBeenCalledWith({
+      name: JobName.AssetDetectDuplicates,
+      data: { id: 'asset-3' },
+    });
+  });
+
   it('should run OCR fallback for textless pages', async () => {
     mocks.pdf.getAssetForProcessing.mockResolvedValue({
       id: 'asset-4',

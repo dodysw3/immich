@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { type Kysely, type NotNull, type Selectable, type ShallowDehydrateObject, sql } from 'kysely';
 import { jsonArrayFrom } from 'kysely/helpers/postgres';
 import { InjectKysely } from 'nestjs-kysely';
+import type { PdfDocumentStatus } from 'src/schema/tables/pdf-document.table.js';
 import { columns } from 'src/database.js';
 import { Chunked, DummyValue, GenerateSql } from 'src/decorators.js';
 import { MapAsset } from 'src/dtos/asset-response.dto.js';
@@ -13,6 +14,12 @@ import { anyUuid, asUuid, withDefaultVisibility } from 'src/utils/database.js';
 
 // Maximum number of candidate duplicates to return from vector search
 const DUPLICATE_SEARCH_LIMIT = 64;
+
+interface PdfDocumentLookup {
+  pageCount: number;
+  status: PdfDocumentStatus;
+  text: string | null;
+}
 
 interface DuplicateSearch {
   assetId: string;
@@ -191,6 +198,21 @@ export class DuplicateRepository {
       .where('assetId', '=', anyUuid(assetIds))
       .execute();
     return new Map(rows.map((row) => [row.assetId, row.text]));
+  }
+
+  @GenerateSql({ params: [[DummyValue.UUID]] })
+  async getPdfDocuments(assetIds: string[]): Promise<Map<string, PdfDocumentLookup>> {
+    if (assetIds.length === 0) {
+      return new Map();
+    }
+
+    const rows = await this.db
+      .selectFrom('pdf_document')
+      .leftJoin('pdf_search', 'pdf_search.assetId', 'pdf_document.assetId')
+      .select(['pdf_document.assetId', 'pdf_document.pageCount', 'pdf_document.status', 'pdf_search.text as text'])
+      .where('pdf_document.assetId', '=', anyUuid(assetIds))
+      .execute();
+    return new Map(rows.map((row) => [row.assetId, { pageCount: row.pageCount, status: row.status, text: row.text }]));
   }
 
   @GenerateSql({

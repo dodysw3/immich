@@ -143,6 +143,27 @@ where
   "ownerId" = $2
   and "duplicateId" in ($3)
 
+-- DuplicateRepository.getOcrTexts
+select
+  "assetId",
+  "text"
+from
+  "ocr_search"
+where
+  "assetId" = any ($1::uuid[])
+
+-- DuplicateRepository.getPdfDocuments
+select
+  "pdf_document"."assetId",
+  "pdf_document"."pageCount",
+  "pdf_document"."status",
+  "pdf_search"."text" as "text"
+from
+  "pdf_document"
+  left join "pdf_search" on "pdf_search"."assetId" = "pdf_document"."assetId"
+where
+  "pdf_document"."assetId" = any ($1::uuid[])
+
 -- DuplicateRepository.search
 begin
 set

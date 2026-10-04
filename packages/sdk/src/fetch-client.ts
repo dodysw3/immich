@@ -221,6 +221,10 @@ export type AdminConfigDuplicateDetectionDto = {
     ocrVeto: boolean;
     /** Maximum OCR token-bag symmetric difference before a duplicate candidate is vetoed */
     ocrVetoMaxTokenDiff: number;
+    /** Exclude duplicate PDF candidates whose page count or whole-document text differs from the source asset */
+    pdfVeto: boolean;
+    /** Maximum whole-document PDF text token-bag symmetric difference before a candidate is vetoed */
+    pdfVetoMaxTokenDiff: number;
 };
 export type AdminConfigTilingMinDimWithFacesDto = {
     /** Minimum original image dimension to consider tiling */
