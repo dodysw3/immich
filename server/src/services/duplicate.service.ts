@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { MachineLearningConfig } from 'src/dtos/config.dto.js';
 import type { JobOf } from 'src/types.js';
 import { OnJob } from 'src/decorators.js';
 import { BulkIdErrorReason, BulkIdResponseDto, BulkIdsDto } from 'src/dtos/asset-ids.response.dto.js';
@@ -8,8 +9,9 @@ import { DuplicateResolveDto, DuplicateResolveGroupDto, DuplicateResponseDto } f
 import { AssetStatus, AssetVisibility, JobName, JobStatus, Permission, QueueName } from 'src/enum.js';
 import { AssetDuplicateResult } from 'src/repositories/search.repository.js';
 import { BaseService } from 'src/services/base.service.js';
+import { ocrTokenBagDiff } from 'src/utils/duplicate-ocr.js';
 import { suggestDuplicateKeepAssetIds } from 'src/utils/duplicate.js';
-import { batched, isDuplicateDetectionEnabled } from 'src/utils/misc.js';
+import { batched, isDuplicateDetectionEnabled, isOcrEnabled } from 'src/utils/misc.js';
 
 type ResolveRequest = {
   assetUpdate: {
@@ -348,13 +350,15 @@ export class DuplicateService extends BaseService {
       return JobStatus.Failed;
     }
 
-    const duplicateAssets = await this.duplicateRepository.search({
+    let duplicateAssets = await this.duplicateRepository.search({
       assetId: asset.id,
       embedding: asset.embedding,
       maxDistance: machineLearning.duplicateDetection.maxDistance,
       type: asset.type,
       userIds: [asset.ownerId],
     });
+
+    duplicateAssets = await this.filterOcrVetoed(asset.id, duplicateAssets, machineLearning);
 
     let assetIds = [asset.id];
     if (duplicateAssets.length > 0) {
@@ -371,6 +375,52 @@ export class DuplicateService extends BaseService {
     await this.assetRepository.upsertJobStatus(...assetIds.map((assetId) => ({ assetId, duplicatesDetectedAt })));
 
     return JobStatus.Success;
+  }
+
+  // CLIP embeddings cannot separate visually-identical document templates that differ
+  // only in printed values (dates, amounts, reference numbers) — those pairs are closer
+  // than true re-copies of the same document. OCR text separates them, so candidates
+  // whose token bag differs materially from the source asset are vetoed. Pairs without
+  // OCR on either side keep the visual-only behavior.
+  private async filterOcrVetoed(
+    sourceId: string,
+    candidates: AssetDuplicateResult[],
+    machineLearning: MachineLearningConfig,
+  ): Promise<AssetDuplicateResult[]> {
+    const { ocrVeto, ocrVetoMaxTokenDiff } = machineLearning.duplicateDetection;
+    if (!ocrVeto || !isOcrEnabled(machineLearning) || candidates.length === 0) {
+      return candidates;
+    }
+
+    const ocrTexts = await this.duplicateRepository.getOcrTexts([
+      sourceId,
+      ...candidates.map(({ assetId }) => assetId),
+    ]);
+    const sourceText = ocrTexts.get(sourceId);
+    if (!sourceText) {
+      return candidates;
+    }
+
+    const filtered: AssetDuplicateResult[] = [];
+    let vetoed = 0;
+    for (const candidate of candidates) {
+      const candidateText = ocrTexts.get(candidate.assetId);
+      const tokenDiff = candidateText ? ocrTokenBagDiff(sourceText, candidateText) : 0;
+      if (!candidateText || tokenDiff <= ocrVetoMaxTokenDiff) {
+        filtered.push(candidate);
+      } else {
+        vetoed++;
+        this.logger.debug(
+          `Vetoed duplicate candidate ${candidate.assetId} for ${sourceId}: OCR token diff ${tokenDiff} > ${ocrVetoMaxTokenDiff}`,
+        );
+      }
+    }
+
+    if (vetoed > 0) {
+      this.logger.log(`OCR veto removed ${vetoed} of ${candidates.length} duplicate candidates for ${sourceId}`);
+    }
+
+    return filtered;
   }
 
   private async updateDuplicates(

@@ -404,6 +404,7 @@ describe(DuplicateService.name, () => {
           },
         },
       });
+      mocks.duplicateRepository.getOcrTexts.mockResolvedValue(new Map());
     });
 
     it('should skip if machine learning is disabled', async () => {
@@ -541,6 +542,103 @@ describe(DuplicateService.name, () => {
       expect(mocks.asset.upsertJobStatus).toHaveBeenCalledWith({
         assetId: hasDupe.id,
         duplicatesDetectedAt: expect.any(Date),
+      });
+    });
+
+    it('should veto candidates whose OCR differs beyond the threshold', async () => {
+      const sourceOcr =
+        'Keterangan Transaksi Bank Mandiri …9365 Rekening Sumber Total Transaksi Rp 350.000 Sesama Bank Mandiri 2302161121579235335 08:13:20';
+      // same document re-copied: only dot-leader jitter survives normalization
+      const twinOcr = sourceOcr.replace('…9365', '……9365');
+      // same template, different transaction: date, reference number and time differ
+      const variantOcr =
+        'Pindah Dana per 21 Nov Keterangan Transaksi Bank Mandiri 4908 Rekening Sumber Total Transaksi Rp 50.002.500 2303031121608644047 18:27:00 Sesama Bank Mandiri';
+
+      mocks.assetJob.getForSearchDuplicatesJob.mockResolvedValue(hasEmbedding);
+      mocks.duplicateRepository.merge.mockResolvedValue();
+      mocks.duplicateRepository.search.mockResolvedValue([
+        { assetId: 'twin-asset', distance: 0.001, duplicateId: null },
+        { assetId: 'variant-asset', distance: 0.001, duplicateId: null },
+      ]);
+      mocks.duplicateRepository.getOcrTexts.mockResolvedValue(
+        new Map([
+          [hasEmbedding.id, sourceOcr],
+          ['twin-asset', twinOcr],
+          ['variant-asset', variantOcr],
+        ]),
+      );
+
+      await sut.handleSearchDuplicates({ id: hasEmbedding.id });
+
+      expect(mocks.duplicateRepository.getOcrTexts).toHaveBeenCalledWith([
+        hasEmbedding.id,
+        'twin-asset',
+        'variant-asset',
+      ]);
+      expect(mocks.duplicateRepository.merge).toHaveBeenCalledWith({
+        assetIds: ['twin-asset', hasEmbedding.id],
+        targetId: expect.any(String),
+        sourceIds: [],
+      });
+      expect(mocks.logger.log).toHaveBeenCalledWith(
+        `OCR veto removed 1 of 2 duplicate candidates for ${hasEmbedding.id}`,
+      );
+    });
+
+    it('should keep candidates when the source asset has no OCR', async () => {
+      mocks.assetJob.getForSearchDuplicatesJob.mockResolvedValue(hasEmbedding);
+      mocks.duplicateRepository.merge.mockResolvedValue();
+      mocks.duplicateRepository.search.mockResolvedValue([
+        { assetId: 'variant-asset', distance: 0.001, duplicateId: null },
+      ]);
+      mocks.duplicateRepository.getOcrTexts.mockResolvedValue(new Map([['variant-asset', 'some different text']]));
+
+      await sut.handleSearchDuplicates({ id: hasEmbedding.id });
+
+      expect(mocks.duplicateRepository.merge).toHaveBeenCalledWith({
+        assetIds: ['variant-asset', hasEmbedding.id],
+        targetId: expect.any(String),
+        sourceIds: [],
+      });
+    });
+
+    it('should keep candidates without OCR', async () => {
+      mocks.assetJob.getForSearchDuplicatesJob.mockResolvedValue(hasEmbedding);
+      mocks.duplicateRepository.merge.mockResolvedValue();
+      mocks.duplicateRepository.search.mockResolvedValue([
+        { assetId: 'variant-asset', distance: 0.001, duplicateId: null },
+      ]);
+      mocks.duplicateRepository.getOcrTexts.mockResolvedValue(new Map([[hasEmbedding.id, 'some text']]));
+
+      await sut.handleSearchDuplicates({ id: hasEmbedding.id });
+
+      expect(mocks.duplicateRepository.merge).toHaveBeenCalledWith({
+        assetIds: ['variant-asset', hasEmbedding.id],
+        targetId: expect.any(String),
+        sourceIds: [],
+      });
+    });
+
+    it('should not compare OCR when the veto is disabled', async () => {
+      mocks.systemMetadata.get.mockResolvedValue({
+        machineLearning: {
+          enabled: true,
+          duplicateDetection: { enabled: true, ocrVeto: false },
+        },
+      });
+      mocks.assetJob.getForSearchDuplicatesJob.mockResolvedValue(hasEmbedding);
+      mocks.duplicateRepository.merge.mockResolvedValue();
+      mocks.duplicateRepository.search.mockResolvedValue([
+        { assetId: 'variant-asset', distance: 0.001, duplicateId: null },
+      ]);
+
+      await sut.handleSearchDuplicates({ id: hasEmbedding.id });
+
+      expect(mocks.duplicateRepository.getOcrTexts).not.toHaveBeenCalled();
+      expect(mocks.duplicateRepository.merge).toHaveBeenCalledWith({
+        assetIds: ['variant-asset', hasEmbedding.id],
+        targetId: expect.any(String),
+        sourceIds: [],
       });
     });
   });

@@ -248,6 +248,13 @@ const AdminConfigSchemaWithVisibility = z
             .max(0.1)
             .describe('Maximum distance threshold for duplicate detection')
             .meta({ format: 'double' }),
+          ocrVeto: z
+            .boolean()
+            .describe('Exclude duplicate candidates whose OCR text differs materially from the source asset'),
+          ocrVetoMaxTokenDiff: z
+            .int()
+            .min(0)
+            .describe('Maximum OCR token-bag symmetric difference before a duplicate candidate is vetoed'),
         }).meta({ id: 'AdminConfigDuplicateDetectionDto' }),
         facialRecognition: AdminConfigMachineLearningModelSchema.extend({
           importNamesFromOtherAccounts: z
@@ -662,6 +669,8 @@ export const defaults = Object.freeze<SystemConfig>({
     duplicateDetection: {
       enabled: true,
       maxDistance: 0.01,
+      ocrVeto: true,
+      ocrVetoMaxTokenDiff: 4,
     },
     facialRecognition: {
       enabled: true,

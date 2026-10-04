@@ -217,6 +217,10 @@ export type AdminConfigDuplicateDetectionDto = {
     enabled: boolean;
     /** Maximum distance threshold for duplicate detection */
     maxDistance: number;
+    /** Exclude duplicate candidates whose OCR text differs materially from the source asset */
+    ocrVeto: boolean;
+    /** Maximum OCR token-bag symmetric difference before a duplicate candidate is vetoed */
+    ocrVetoMaxTokenDiff: number;
 };
 export type AdminConfigTilingMinDimWithFacesDto = {
     /** Minimum original image dimension to consider tiling */

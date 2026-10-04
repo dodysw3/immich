@@ -179,6 +179,20 @@ export class DuplicateRepository {
       .execute();
   }
 
+  @GenerateSql({ params: [[DummyValue.UUID]] })
+  async getOcrTexts(assetIds: string[]): Promise<Map<string, string>> {
+    if (assetIds.length === 0) {
+      return new Map();
+    }
+
+    const rows = await this.db
+      .selectFrom('ocr_search')
+      .select(['assetId', 'text'])
+      .where('assetId', '=', anyUuid(assetIds))
+      .execute();
+    return new Map(rows.map((row) => [row.assetId, row.text]));
+  }
+
   @GenerateSql({
     params: [
       {

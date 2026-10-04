@@ -19590,11 +19590,23 @@
             "maximum": 0.1,
             "minimum": 0.001,
             "type": "number"
+          },
+          "ocrVeto": {
+            "description": "Exclude duplicate candidates whose OCR text differs materially from the source asset",
+            "type": "boolean"
+          },
+          "ocrVetoMaxTokenDiff": {
+            "description": "Maximum OCR token-bag symmetric difference before a duplicate candidate is vetoed",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
           }
         },
         "required": [
           "enabled",
-          "maxDistance"
+          "maxDistance",
+          "ocrVeto",
+          "ocrVetoMaxTokenDiff"
         ],
         "type": "object"
       },

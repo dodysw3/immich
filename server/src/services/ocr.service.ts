@@ -6,7 +6,7 @@ import { AssetVisibility, JobName, JobStatus, QueueName } from 'src/enum.js';
 import { OCR } from 'src/repositories/machine-learning.repository.js';
 import { BaseService } from 'src/services/base.service.js';
 import { tokenizeForSearch } from 'src/utils/database.js';
-import { batched, isOcrEnabled } from 'src/utils/misc.js';
+import { batched, isDuplicateDetectionEnabled, isOcrEnabled } from 'src/utils/misc.js';
 
 @Injectable()
 export class OcrService extends BaseService {
@@ -49,6 +49,13 @@ export class OcrService extends BaseService {
     await this.ocrRepository.upsert(id, ocrDataList, searchText);
 
     await this.assetRepository.upsertJobStatus({ assetId: id, ocrAt: new Date() });
+
+    // Duplicate detection may have already run (upload pipeline starts it in parallel
+    // with OCR) while this asset had no OCR text. Re-run it now that the veto has
+    // something to compare; if it re-vetoes all candidates it also dissolves the group.
+    if (isDuplicateDetectionEnabled(machineLearning) && machineLearning.duplicateDetection.ocrVeto) {
+      await this.jobRepository.queue({ name: JobName.AssetDetectDuplicates, data: { id } });
+    }
 
     this.logger.debug(`Processed ${ocrResults.text.length} OCR result(s) for ${id}`);
     return JobStatus.Success;

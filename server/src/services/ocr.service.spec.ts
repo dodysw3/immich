@@ -167,6 +167,33 @@ describe(OcrService.name, () => {
       expect(mocks.ocr.upsert).toHaveBeenCalledWith(asset.id, [], '');
     });
 
+    it('should requeue duplicate detection after OCR completes', async () => {
+      const asset = AssetFactory.create();
+      mockOcrResult('One', 'Two');
+
+      expect(await sut.handleOcr({ id: asset.id })).toEqual(JobStatus.Success);
+
+      expect(mocks.job.queue).toHaveBeenCalledWith({ name: JobName.AssetDetectDuplicates, data: { id: asset.id } });
+    });
+
+    it('should not requeue duplicate detection when the OCR veto is disabled', async () => {
+      mocks.systemMetadata.get.mockResolvedValue({
+        machineLearning: {
+          enabled: true,
+          duplicateDetection: { enabled: true, ocrVeto: false },
+        },
+      });
+      const asset = AssetFactory.create();
+      mockOcrResult('One', 'Two');
+
+      expect(await sut.handleOcr({ id: asset.id })).toEqual(JobStatus.Success);
+
+      expect(mocks.job.queue).not.toHaveBeenCalledWith({
+        name: JobName.AssetDetectDuplicates,
+        data: { id: asset.id },
+      });
+    });
+
     it('should skip invisible assets', async () => {
       const asset = AssetFactory.from().file({ type: AssetFileType.Preview }).build();
       mocks.assetJob.getForOcr.mockResolvedValue({
