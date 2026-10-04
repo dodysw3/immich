@@ -275,7 +275,13 @@ export class LibraryService extends BaseService {
       }),
     );
 
-    const assetIds = await this.assetRepository.createAll(assetImports);
+    const assetIds = await this.assetRepository.createAllExternal(assetImports);
+    const skippedCount = assetImports.length - assetIds.length;
+    if (skippedCount > 0) {
+      this.logger.warn(
+        `Skipped ${skippedCount} file(s) whose checksum already exists in library ${job.libraryId} (likely a normalization twin)`,
+      );
+    }
 
     const progressMessage =
       job.progressCounter && job.totalAssets
@@ -406,7 +412,8 @@ export class LibraryService extends BaseService {
     return {
       ownerId,
       libraryId,
-      checksum: this.cryptoRepository.hashSha1(`path:${assetPath}`),
+      // NFC-normalized so NFC/NFD filename twins hash identically; originalPath keeps the on-disk form
+      checksum: this.cryptoRepository.hashSha1(`path:${assetPath.normalize('NFC')}`),
       checksumAlgorithm: ChecksumAlgorithm.sha1Path,
       originalPath: assetPath,
 
@@ -654,23 +661,32 @@ export class LibraryService extends BaseService {
 
     for await (const pathBatch of pathsOnDisk) {
       crawlCount += pathBatch.length;
-      const paths = await this.assetRepository.filterNewExternalAssetPaths(library.id, pathBatch);
+      const { newPaths, normalizationSkips } = await this.assetRepository.filterNewExternalAssetPaths(
+        library.id,
+        pathBatch,
+      );
 
-      if (paths.length > 0) {
-        importCount += paths.length;
+      for (const { path, matchingPath } of normalizationSkips) {
+        this.logger.log(
+          `Skipping ${path} in library ${library.id}: NFC-equal to already handled path ${matchingPath} (normalization twin)`,
+        );
+      }
+
+      if (newPaths.length > 0) {
+        importCount += newPaths.length;
 
         await this.jobRepository.queue({
           name: JobName.LibrarySyncFiles,
           data: {
             libraryId: library.id,
-            paths,
+            paths: newPaths,
             progressCounter: crawlCount,
           },
         });
       }
 
       this.logger.log(
-        `Crawled ${crawlCount} file(s) so far: ${paths.length} of current batch of ${pathBatch.length} will be imported to library ${library.id}...`,
+        `Crawled ${crawlCount} file(s) so far: ${newPaths.length} of current batch of ${pathBatch.length} will be imported to library ${library.id}...`,
       );
     }
 

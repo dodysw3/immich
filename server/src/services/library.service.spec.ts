@@ -169,7 +169,10 @@ describe(LibraryService.name, () => {
       mocks.storage.walk.mockImplementation(mockWalk);
       mocks.storage.stat.mockResolvedValue({ isDirectory: () => true } as Stats);
       mocks.storage.checkFileExists.mockResolvedValue(true);
-      mocks.asset.filterNewExternalAssetPaths.mockResolvedValue(['/data/user1/photo.jpg']);
+      mocks.asset.filterNewExternalAssetPaths.mockResolvedValue({
+        newPaths: ['/data/user1/photo.jpg'],
+        normalizationSkips: [],
+      });
 
       await sut.handleQueueSyncFiles({ id: library.id });
 
@@ -224,7 +227,10 @@ describe(LibraryService.name, () => {
       mocks.storage.walk.mockImplementation(mockWalk);
       mocks.storage.stat.mockResolvedValue({ isDirectory: () => true } as Stats);
       mocks.storage.checkFileExists.mockResolvedValue(true);
-      mocks.asset.filterNewExternalAssetPaths.mockResolvedValue(['/data/user1/photo.jpg']);
+      mocks.asset.filterNewExternalAssetPaths.mockResolvedValue({
+        newPaths: ['/data/user1/photo.jpg'],
+        normalizationSkips: [],
+      });
 
       await sut.handleQueueSyncFiles({ id: library.id });
 
@@ -562,12 +568,12 @@ describe(LibraryService.name, () => {
         paths: ['/data/user1/photo.jpg'],
       };
 
-      mocks.asset.createAll.mockResolvedValue([asset.id]);
+      mocks.asset.createAllExternal.mockResolvedValue([asset.id]);
       mocks.library.get.mockResolvedValue(library);
 
       await expect(sut.handleSyncFiles(mockLibraryJob)).resolves.toBe(JobStatus.Success);
 
-      expect(mocks.asset.createAll).toHaveBeenCalledWith([
+      expect(mocks.asset.createAllExternal).toHaveBeenCalledWith([
         expect.objectContaining({
           ownerId: library.ownerId,
           libraryId: library.id,
@@ -593,6 +599,42 @@ describe(LibraryService.name, () => {
       ]);
     });
 
+    it('should hash NFC-normalized paths so NFC/NFD twins share a checksum, keeping the on-disk path', async () => {
+      const library = factory.library();
+      const nfc = '/data/user1/caf\u{E9}.pdf';
+      const nfd = nfc.normalize('NFD');
+      expect(nfd).not.toBe(nfc);
+
+      const asset = AssetFactory.create();
+      const asset2 = AssetFactory.create();
+
+      mocks.asset.createAllExternal.mockResolvedValue([asset.id, asset2.id]);
+      mocks.library.get.mockResolvedValue(library);
+
+      await expect(sut.handleSyncFiles({ libraryId: library.id, paths: [nfc, nfd] })).resolves.toBe(JobStatus.Success);
+
+      expect(mocks.asset.createAllExternal).toHaveBeenCalledTimes(1);
+      const [imports] = mocks.asset.createAllExternal.mock.calls[0];
+      expect(imports.map((item: { originalPath: string }) => item.originalPath).sort()).toEqual([nfc, nfd].sort());
+
+      const checksumInputs = mocks.crypto.hashSha1.mock.calls.map(([input]) => input);
+      expect(checksumInputs).toEqual([`path:${nfc}`, `path:${nfc}`]);
+    });
+
+    it('should warn when imports were skipped due to checksum collisions', async () => {
+      const library = factory.library();
+      const asset = AssetFactory.create();
+
+      mocks.asset.createAllExternal.mockResolvedValue([asset.id]);
+      mocks.library.get.mockResolvedValue(library);
+
+      await expect(
+        sut.handleSyncFiles({ libraryId: library.id, paths: ['/data/user1/a.jpg', '/data/user1/b.jpg'] }),
+      ).resolves.toBe(JobStatus.Success);
+
+      expect(mocks.logger.warn).toHaveBeenCalledWith(expect.stringContaining('Skipped 1 file(s)'));
+    });
+
     it('should not import an asset to a soft deleted library', async () => {
       const library = factory.library({ deletedAt: new Date() });
 
@@ -605,7 +647,7 @@ describe(LibraryService.name, () => {
 
       await expect(sut.handleSyncFiles(mockLibraryJob)).resolves.toBe(JobStatus.Failed);
 
-      expect(mocks.asset.createAll.mock.calls).toEqual([]);
+      expect(mocks.asset.createAllExternal.mock.calls).toEqual([]);
     });
   });
 

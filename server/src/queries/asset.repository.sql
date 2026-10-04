@@ -537,20 +537,13 @@ where
 
 -- AssetRepository.filterNewExternalAssetPaths
 select
-  "path"
+  "path",
+  "asset"."originalPath" as "existingPath"
 from
   unnest(array[$1]::text[]) as "path"
-where
-  not exists (
-    select
-      "originalPath"
-    from
-      "asset"
-    where
-      "asset"."originalPath" = "path"
-      and "libraryId" = $2::uuid
-      and "isExternal" = $3
-  )
+  left join "asset" on "asset"."libraryId" = $2::uuid
+  and "asset"."isExternal" = $3
+  and normalize("asset"."originalPath", nfc) = normalize("path"."path", nfc)
 
 -- AssetRepository.getForOriginal
 select

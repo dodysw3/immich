@@ -1,11 +1,13 @@
 import { Kysely } from 'kysely';
-import { AssetFileType, AssetOrder, AssetOrderBy, AssetVisibility } from 'src/enum.js';
+import type { Insertable } from 'kysely';
+import { AssetFileType, AssetOrder, AssetOrderBy, AssetVisibility, ChecksumAlgorithm } from 'src/enum.js';
 import { AssetRepository } from 'src/repositories/asset.repository.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';
 import { DB } from 'src/schema/index.js';
+import { AssetTable } from 'src/schema/tables/asset.table.js';
 import { BaseService } from 'src/services/base.service.js';
-import { newMediumService } from 'test/medium.factory.js';
-import { factory } from 'test/small.factory.js';
+import { mediumFactory, newMediumService } from 'test/medium.factory.js';
+import { factory, newUuid } from 'test/small.factory.js';
 import { getKyselyDB } from 'test/utils.js';
 
 let defaultDatabase: Kysely<DB>;
@@ -22,6 +24,16 @@ const setup = (db?: Kysely<DB>) => {
 beforeAll(async () => {
   defaultDatabase = await getKyselyDB();
 });
+
+const newExternalLibrary = async (ctx: ReturnType<typeof setup>['ctx']) => {
+  const { user } = await ctx.newUser();
+  const libraryId = newUuid();
+  await ctx.database
+    .insertInto('library')
+    .values({ id: libraryId, ownerId: user.id, name: 'External Library', importPaths: [], exclusionPatterns: [] })
+    .execute();
+  return { ownerId: user.id, libraryId };
+};
 
 // Metadata extraction is repeatable: probing improves, files get repaired,
 // and a re-run has to be able to correct what an earlier run stored.
@@ -531,6 +543,124 @@ describe(AssetRepository.name, () => {
     it('should return an empty array when given an empty input', async () => {
       const { sut } = setup();
       await expect(sut.createAll([])).resolves.toStrictEqual([]);
+    });
+  });
+
+  describe('filterNewExternalAssetPaths', () => {
+    it('should skip an existing path exactly and flag an NFC-equal path as a normalization-only skip', async () => {
+      const { ctx, sut } = setup();
+      const { ownerId, libraryId } = await newExternalLibrary(ctx);
+
+      const nfc = '/photos/caf\u{E9}.pdf';
+      const nfd = nfc.normalize('NFD');
+      expect(nfc).not.toBe(nfd);
+
+      await ctx.newAsset({
+        ownerId,
+        libraryId,
+        isExternal: true,
+        originalPath: nfd,
+        checksumAlgorithm: ChecksumAlgorithm.sha1Path,
+      });
+
+      await expect(sut.filterNewExternalAssetPaths(libraryId, [nfd])).resolves.toEqual({
+        newPaths: [],
+        normalizationSkips: [],
+      });
+
+      await expect(sut.filterNewExternalAssetPaths(libraryId, [nfc])).resolves.toEqual({
+        newPaths: [],
+        normalizationSkips: [{ path: nfc, matchingPath: nfd }],
+      });
+    });
+
+    it('should dedupe a mixed-encoding batch to the exact-NFC spelling', async () => {
+      const { ctx, sut } = setup();
+      const { libraryId } = await newExternalLibrary(ctx);
+
+      const nfc = '/photos/caf\u{E9}.pdf';
+      const nfd = nfc.normalize('NFD');
+
+      await expect(sut.filterNewExternalAssetPaths(libraryId, [nfd, nfc])).resolves.toEqual({
+        newPaths: [nfc],
+        normalizationSkips: [{ path: nfd, matchingPath: nfc }],
+      });
+
+      await expect(sut.filterNewExternalAssetPaths(libraryId, [nfc, nfd])).resolves.toEqual({
+        newPaths: [nfc],
+        normalizationSkips: [{ path: nfd, matchingPath: nfc }],
+      });
+    });
+
+    it('should silently skip when both normalization twins already exist', async () => {
+      const { ctx, sut } = setup();
+      const { ownerId, libraryId } = await newExternalLibrary(ctx);
+
+      const nfc = '/photos/caf\u{E9}.pdf';
+      const nfd = nfc.normalize('NFD');
+
+      await ctx.newAsset({
+        ownerId,
+        libraryId,
+        isExternal: true,
+        originalPath: nfc,
+        checksumAlgorithm: ChecksumAlgorithm.sha1Path,
+      });
+      await ctx.newAsset({
+        ownerId,
+        libraryId,
+        isExternal: true,
+        originalPath: nfd,
+        checksumAlgorithm: ChecksumAlgorithm.sha1Path,
+      });
+
+      await expect(sut.filterNewExternalAssetPaths(libraryId, [nfc, nfd])).resolves.toEqual({
+        newPaths: [],
+        normalizationSkips: [],
+      });
+    });
+  });
+
+  describe('createAllExternal', () => {
+    it('should return an empty array when given an empty input', async () => {
+      const { sut } = setup();
+      await expect(sut.createAllExternal([])).resolves.toStrictEqual([]);
+    });
+
+    it('should skip a colliding checksum without throwing and import the rest of the batch', async () => {
+      const { ctx, sut } = setup();
+      const { user } = await ctx.newUser();
+      const libraryId = newUuid();
+      await ctx.database
+        .insertInto('library')
+        .values({ id: libraryId, ownerId: user.id, name: 'External Library', importPaths: [], exclusionPatterns: [] })
+        .execute();
+
+      const collidingChecksum = Buffer.from('twin-checksum');
+      await ctx.newAsset({
+        ownerId: user.id,
+        libraryId,
+        isExternal: true,
+        checksum: collidingChecksum,
+        checksumAlgorithm: ChecksumAlgorithm.sha1Path,
+      });
+
+      const assetInsert = (checksum: Buffer, originalPath: string): Insertable<AssetTable> =>
+        mediumFactory.assetInsert({ ownerId: user.id, libraryId, isExternal: true, checksum, originalPath });
+
+      const insertedIds = await sut.createAllExternal([
+        assetInsert(collidingChecksum, '/photos/dup.jpg'),
+        assetInsert(Buffer.from('fresh-checksum'), '/photos/new.jpg'),
+      ]);
+
+      expect(insertedIds).toHaveLength(1);
+
+      const checksums = await ctx.database
+        .selectFrom('asset')
+        .select('checksum')
+        .where('libraryId', '=', libraryId)
+        .execute();
+      expect(checksums.map(({ checksum }) => checksum.toString())).toEqual(['twin-checksum', 'fresh-checksum']);
     });
   });
 });

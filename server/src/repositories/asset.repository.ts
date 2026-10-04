@@ -146,6 +146,40 @@ type UpsertExifOptions = {
 const distinctLocked = <T extends LockableProperty[] | null>(eb: ExpressionBuilder<DB, 'asset_exif'>, columns: T) =>
   sql<T>`nullif(array(select distinct unnest(${eb.ref('asset_exif.lockedProperties')} || ${columns})), '{}')`;
 
+// prefers the exact-NFC spelling among NFC-equal paths, lexicographic order as the deterministic tiebreak
+const pickNfcPreferred = (group: string[]): string => {
+  let winner = group[0];
+  for (const path of group) {
+    const pathExact = path === path.normalize('NFC');
+    const winnerExact = winner === winner.normalize('NFC');
+    if (pathExact !== winnerExact) {
+      if (pathExact) {
+        winner = path;
+      }
+    } else if (path < winner) {
+      winner = path;
+    }
+  }
+  return winner;
+};
+
+// picks between two existing asset paths matching the same crawled path:
+// byte-exact spelling first, then lexicographically smallest
+const pickBestMatch = (path: string, a: string | null, b: string | null): string | null => {
+  if (a === null) {
+    return b;
+  }
+  if (b === null) {
+    return a;
+  }
+  const aExact = a === path;
+  const bExact = b === path;
+  if (aExact !== bExact) {
+    return aExact ? a : b;
+  }
+  return a < b ? a : b;
+};
+
 const getBoundingCircle = (bbox: BoundingBox) => {
   const { west, south, east, north } = bbox;
   const eastUnwrapped = west <= east ? east : east + 360;
@@ -454,6 +488,21 @@ export class AssetRepository {
       return [];
     }
     const ids = await this.db.insertInto('asset').values(assets).returning('id').execute();
+    return ids.map(({ id }) => id);
+  }
+
+  // external imports tolerate checksum collisions (partial unique indexes) instead of failing the batch
+  @ChunkedArray({ chunkSize: 4000 })
+  async createAllExternal(assets: Insertable<AssetTable>[]) {
+    if (assets.length === 0) {
+      return [];
+    }
+    const ids = await this.db
+      .insertInto('asset')
+      .values(assets)
+      .onConflict((cb) => cb.doNothing())
+      .returning('id')
+      .execute();
     return ids.map(({ id }) => id);
   }
 
@@ -1109,25 +1158,69 @@ export class AssetRepository {
   }
 
   @GenerateSql({ params: [DummyValue.UUID, [DummyValue.STRING]] })
-  async filterNewExternalAssetPaths(libraryId: string, paths: string[]): Promise<string[]> {
-    const result = await this.db
+  async filterNewExternalAssetPaths(
+    libraryId: string,
+    paths: string[],
+  ): Promise<{ newPaths: string[]; normalizationSkips: Array<{ path: string; matchingPath: string }> }> {
+    // Plain (non-lateral) join on the normalized expressions so Postgres can hash the
+    // asset side once; a per-path correlated lookup seq-scans the whole library per path.
+    const rows = await this.db
       .selectFrom(unnest(paths).as('path'))
-      .select('path')
-      .where((eb) =>
-        eb.not(
-          eb.exists(
-            this.db
-              .selectFrom('asset')
-              .select('originalPath')
-              .whereRef('asset.originalPath', '=', eb.ref('path'))
-              .where('libraryId', '=', asUuid(libraryId))
-              .where('isExternal', '=', true),
-          ),
-        ),
+      .leftJoin('asset', (join) =>
+        join
+          .on('asset.libraryId', '=', asUuid(libraryId))
+          .on('asset.isExternal', '=', true)
+          .on(sql`normalize(${sql.ref('asset.originalPath')}, nfc)`, '=', sql`normalize(${sql.ref('path.path')}, nfc)`),
       )
+      .select(['path', 'asset.originalPath as existingPath'])
       .execute();
 
-    return result.map((row) => row.path as string);
+    // a crawled path can match several NFC-equal assets: prefer the byte-exact
+    // originalPath, then the lexicographically smallest
+    const existingPathByPath = new Map<string, string | null>();
+    for (const row of rows) {
+      const path = row.path as string;
+      const existingPath = (row.existingPath as string | null) ?? null;
+      const incumbent = existingPathByPath.get(path);
+      if (incumbent === undefined || pickBestMatch(path, incumbent, existingPath) !== incumbent) {
+        existingPathByPath.set(path, existingPath);
+      }
+    }
+
+    const newPaths: string[] = [];
+    const normalizationSkips: Array<{ path: string; matchingPath: string }> = [];
+    const candidates = new Map<string, string[]>();
+
+    for (const path of paths) {
+      const existingPath = existingPathByPath.get(path) ?? null;
+      if (existingPath === path) {
+        continue;
+      }
+      if (existingPath !== null) {
+        // NFC-equal to an existing asset's path, but not byte-equal: a normalization twin
+        normalizationSkips.push({ path, matchingPath: existingPath });
+        continue;
+      }
+      const nfc = path.normalize('NFC');
+      const group = candidates.get(nfc);
+      if (group) {
+        group.push(path);
+      } else {
+        candidates.set(nfc, [path]);
+      }
+    }
+
+    for (const group of candidates.values()) {
+      const winner = pickNfcPreferred(group);
+      newPaths.push(winner);
+      for (const path of group) {
+        if (path !== winner) {
+          normalizationSkips.push({ path, matchingPath: winner });
+        }
+      }
+    }
+
+    return { newPaths, normalizationSkips };
   }
 
   async getLibraryAssetCount(libraryId: string): Promise<number> {
