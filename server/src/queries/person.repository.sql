@@ -74,6 +74,15 @@ where
       "user"."clusterGroupId" = "cluster_group"."id"
   )
 
+-- PersonRepository.deleteSmallFaces
+delete from "asset_face"
+where
+  (
+    "asset_face"."boundingBoxX2" - "asset_face"."boundingBoxX1" < $1
+    or "asset_face"."boundingBoxY2" - "asset_face"."boundingBoxY1" < $2
+  )
+  and "asset_face"."deletedAt" is null
+
 -- PersonRepository.getAllFaces
 select
   "asset_face".*
@@ -243,7 +252,7 @@ from
   and "asset_face"."deletedAt" is null
   and "asset_face"."isVisible" is true
   inner join "asset" on "asset"."id" = "asset_face"."assetId"
-  and "asset"."visibility" = 'timeline'
+  and "asset"."visibility" in ('archive', 'timeline')
   and "asset"."deletedAt" is null
   and (
     "asset"."ownerId" = any ($6::uuid[])
@@ -749,6 +758,64 @@ where
   "person"."personGroupId" = $4
   and "person"."ownerId" = $5
 
+-- PersonRepository.getNameImportCandidates
+select
+  "person"."name",
+  "user"."email",
+  count(distinct ("asset_face"."assetId")) as "assetCount"
+from
+  "person"
+  inner join "user" on "user"."id" = "person"."ownerId"
+  inner join "asset_face" on "asset_face"."personGroupId" = "person"."personGroupId"
+  inner join "asset" on "asset"."id" = "asset_face"."assetId"
+  and "asset"."ownerId" = "person"."ownerId"
+  and "asset"."deletedAt" is null
+where
+  "person"."personGroupId" = $1
+  and "person"."ownerId" != $2
+  and "person"."name" != $3
+  and "person"."name" not like $4
+group by
+  "person"."ownerId",
+  "person"."name",
+  "person"."createdAt",
+  "user"."email"
+order by
+  "assetCount" desc,
+  "person"."createdAt" asc
+
+-- PersonRepository.getNameImportBackfillCandidates
+select distinct
+  on ("target"."ownerId", "target"."personGroupId") "target"."ownerId",
+  "target"."personGroupId",
+  "source"."name",
+  "source_user"."email"
+from
+  "person" as "target"
+  inner join "person" as "source" on "source"."personGroupId" = "target"."personGroupId"
+  and "source"."ownerId" != "target"."ownerId"
+  inner join "user" as "source_user" on "source_user"."id" = "source"."ownerId"
+  inner join "asset_face" on "asset_face"."personGroupId" = "source"."personGroupId"
+  inner join "asset" on "asset"."id" = "asset_face"."assetId"
+  and "asset"."ownerId" = "source"."ownerId"
+  and "asset"."deletedAt" is null
+where
+  "target"."name" = $1
+  and "source"."name" != $2
+  and "source"."name" not like $3
+group by
+  "target"."ownerId",
+  "target"."personGroupId",
+  "source"."ownerId",
+  "source"."name",
+  "source"."createdAt",
+  "source_user"."email"
+order by
+  "target"."ownerId" asc,
+  "target"."personGroupId" asc,
+  count(distinct ("asset_face"."assetId")) desc,
+  "source"."createdAt" asc
+
 -- PersonRepository.getForThumbnail
 select
   (
@@ -905,7 +972,7 @@ from
       and "asset_face"."deletedAt" is null
       and "asset_face"."isVisible" is true
       inner join "asset" on "asset"."id" = "asset_face"."assetId"
-      and "asset"."visibility" = 'timeline'
+      and "asset"."visibility" in ('archive', 'timeline')
       and "asset"."deletedAt" is null
       and (
         "asset"."ownerId" = any ($3::uuid[])
@@ -1111,6 +1178,9 @@ with
       "face_search" ("faceId", "embedding")
     values
       ($1, $2)
+    on conflict ("faceId") do update
+    set
+      "embedding" = "excluded"."embedding"
   )
 select
 from
@@ -1266,6 +1336,91 @@ where
   "asset_face"."assetId" = $2
   and "asset_face"."personGroupId" = $3
   and "asset_face"."deletedAt" is null
+
+-- PersonRepository.getPersonAssets
+select
+  count(distinct ("asset"."id")) as "count"
+from
+  "asset_face"
+  inner join "asset" on "asset"."id" = "asset_face"."assetId"
+  and "asset"."visibility" in ('archive', 'timeline')
+  and "asset"."deletedAt" is null
+where
+  "asset_face"."personGroupId" = $1
+  and "asset_face"."deletedAt" is null
+  and "asset_face"."isVisible" is true
+  and "asset"."ownerId" = $2
+
+-- PersonRepository.getRecentlyMatched
+select
+  count(
+    distinct (recent."assetId", person."personGroupId")
+  ) as "count"
+from
+  (
+    select
+      "assetId",
+      "personGroupId",
+      "updatedAt"
+    from
+      "asset_face"
+    where
+      "asset_face"."deletedAt" is null
+      and "asset_face"."isVisible" is true
+    order by
+      "asset_face"."updatedAt" desc
+    limit
+      $1
+  ) as "recent"
+  inner join "asset" on "asset"."id" = "recent"."assetId"
+  inner join "person" on "person"."personGroupId" = "recent"."personGroupId"
+  and "person"."ownerId" = "asset"."ownerId"
+where
+  "asset"."ownerId" = $2
+  and "asset"."visibility" in ('archive', 'timeline')
+  and "asset"."deletedAt" is null
+  and "person"."ownerId" = $3
+  and "person"."isHidden" = $4
+select
+  "recent"."assetId" as "assetId",
+  "person"."personGroupId" as "personId",
+  "person"."name" as "personName",
+  max(recent."updatedAt") as "recognizedAt"
+from
+  (
+    select
+      "assetId",
+      "personGroupId",
+      "updatedAt"
+    from
+      "asset_face"
+    where
+      "asset_face"."deletedAt" is null
+      and "asset_face"."isVisible" is true
+    order by
+      "asset_face"."updatedAt" desc
+    limit
+      $1
+  ) as "recent"
+  inner join "asset" on "asset"."id" = "recent"."assetId"
+  inner join "person" on "person"."personGroupId" = "recent"."personGroupId"
+  and "person"."ownerId" = "asset"."ownerId"
+where
+  "asset"."ownerId" = $2
+  and "asset"."visibility" in ('archive', 'timeline')
+  and "asset"."deletedAt" is null
+  and "person"."ownerId" = $3
+  and "person"."isHidden" = $4
+group by
+  "recent"."assetId",
+  "person"."personGroupId",
+  "person"."name"
+order by
+  max(recent."updatedAt") desc
+limit
+  $5
+offset
+  $6
 
 -- PersonRepository.getForMergePerson
 select
