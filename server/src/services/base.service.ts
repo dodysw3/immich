@@ -342,7 +342,7 @@ export class BaseService {
       payload.password = await this.cryptoRepository.hashBcrypt(payload.password, SALT_ROUNDS);
     }
     if (payload.storageLabel) {
-      payload.storageLabel = sanitize(payload.storageLabel.replaceAll('.', ''));
+      payload.storageLabel = sanitize(payload.storageLabel);
     }
 
     const clusterGroup = await this.clusterGroupRepository.create();

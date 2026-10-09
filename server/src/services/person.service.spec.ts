@@ -1,7 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { BulkIdErrorReason } from 'src/dtos/asset-ids.response.dto.js';
 import { AssetEditAction, MirrorAxis } from 'src/dtos/editing.dto.js';
-import { PersonUserRole, mapFaces, mapPerson } from 'src/dtos/person.dto.js';
+import { PeopleUsersUpsertType, PersonUserRole, mapFaces, mapPerson } from 'src/dtos/person.dto.js';
 import { AssetFileType, CacheControl, JobName, JobStatus, SourceType, SystemMetadataKey } from 'src/enum.js';
 import { PersonService } from 'src/services/person.service.js';
 import { ImmichFileResponse } from 'src/utils/file.js';
@@ -52,6 +52,7 @@ describe(PersonService.name, () => {
         hasNextPage: false,
       });
       mocks.person.getNumberOfPeople.mockResolvedValue({ total: 2, hidden: 1 });
+      mocks.partner.getAll.mockResolvedValue([]);
       await expect(sut.getAll(auth, { withHidden: true, page: 1, size: 10 })).resolves.toEqual({
         hasNextPage: false,
         total: 2,
@@ -66,6 +67,7 @@ describe(PersonService.name, () => {
       });
       expect(mocks.person.getAllForUser).toHaveBeenCalledWith({ skip: 0, take: 10 }, auth.user.id, {
         withHidden: true,
+        partnerIds: [],
       });
     });
 
@@ -78,6 +80,7 @@ describe(PersonService.name, () => {
         hasNextPage: false,
       });
       mocks.person.getNumberOfPeople.mockResolvedValue({ total: 2, hidden: 1 });
+      mocks.partner.getAll.mockResolvedValue([]);
       await expect(sut.getAll(auth, { withHidden: false, page: 1, size: 10 })).resolves.toEqual({
         hasNextPage: false,
         total: 2,
@@ -92,6 +95,7 @@ describe(PersonService.name, () => {
       });
       expect(mocks.person.getAllForUser).toHaveBeenCalledWith({ skip: 0, take: 10 }, auth.user.id, {
         withHidden: false,
+        partnerIds: [],
       });
     });
   });
@@ -2020,7 +2024,7 @@ describe(PersonService.name, () => {
       expect(mocks.access.person.checkAccess).toHaveBeenCalledWith(auth.user.id, new Set(ids), PERSON_READ_ROLES);
     });
 
-    it('should only include partners that are shown in the timeline', async () => {
+    it('should include all partners that are shown in the timeline', async () => {
       const auth = AuthFactory.create();
       const person = PersonFactory.create();
       const ids = [{ personGroupId: person.personGroupId, ownerId: auth.user.id }];
@@ -2036,7 +2040,7 @@ describe(PersonService.name, () => {
       await expect(sut.getStatistics(auth, person.personGroupId)).resolves.toEqual({ assets: 3 });
       expect(mocks.person.getStatistics).toHaveBeenCalledWith(person.personGroupId, {
         ownerId: auth.user.id,
-        partnerIds: [inTimeline.id],
+        partnerIds: [inTimeline.id, notInTimeline.id],
       });
     });
 
@@ -2054,12 +2058,12 @@ describe(PersonService.name, () => {
     });
   });
 
-  describe('addUsersToPeople', () => {
+  describe('upsertPeopleUsers', () => {
     it('should reject sharing a person with yourself', async () => {
       const auth = AuthFactory.create();
 
       await expect(
-        sut.addUsersToPeople(auth, {
+        sut.upsertPeopleUsers(auth, {
           personIds: [newUuid()],
           sharedWithIds: [auth.user.id],
           role: PersonUserRole.Read,
@@ -2079,7 +2083,7 @@ describe(PersonService.name, () => {
       mocks.user.get.mockResolvedValue(user);
       mocks.clusterGroup.getUsers.mockResolvedValue([user, sharedWith]);
 
-      await sut.addUsersToPeople(auth, {
+      await sut.upsertPeopleUsers(auth, {
         personIds: [personId],
         sharedWithIds: [sharedWith.id],
         role: PersonUserRole.Read,
@@ -2091,7 +2095,7 @@ describe(PersonService.name, () => {
       ]);
     });
 
-    it('should share every person owned by the user when personIds is omitted', async () => {
+    it('should share every person owned by the user when type is everyone', async () => {
       const auth = AuthFactory.create();
       const user = UserFactory.create({ id: auth.user.id });
       const sharedWith = UserFactory.create({ clusterGroupId: user.clusterGroupId });
@@ -2099,7 +2103,11 @@ describe(PersonService.name, () => {
       mocks.user.get.mockResolvedValue(user);
       mocks.clusterGroup.getUsers.mockResolvedValue([user, sharedWith]);
 
-      await sut.addUsersToPeople(auth, { sharedWithIds: [sharedWith.id], role: PersonUserRole.Write });
+      await sut.upsertPeopleUsers(auth, {
+        type: PeopleUsersUpsertType.Everyone,
+        sharedWithIds: [sharedWith.id],
+        role: PersonUserRole.Write,
+      });
 
       expect(mocks.access.person.checkAccess).not.toHaveBeenCalled();
       expect(mocks.personUser.createAll).not.toHaveBeenCalled();
@@ -2121,7 +2129,7 @@ describe(PersonService.name, () => {
       mocks.clusterGroup.getUsers.mockResolvedValue([user]);
 
       await expect(
-        sut.addUsersToPeople(auth, { personIds: [personId], sharedWithIds: [outsider.id], role: PersonUserRole.Read }),
+        sut.upsertPeopleUsers(auth, { personIds: [personId], sharedWithIds: [outsider.id], role: PersonUserRole.Read }),
       ).rejects.toBeInstanceOf(BadRequestException);
 
       expect(mocks.personUser.createAll).not.toHaveBeenCalled();

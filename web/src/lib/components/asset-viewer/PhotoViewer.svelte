@@ -62,6 +62,7 @@
 
   let containerWidth = $state(0);
   let containerHeight = $state(0);
+  const faceLabelOffset = 32;
 
   const container = $derived({
     width: containerWidth,
@@ -221,6 +222,57 @@
   });
 
   const faces = $derived(Array.from(faceToNameMap.keys()));
+
+  // we want to bind to `boundingbox.labelWidth`, which requires deep reactivity
+  // $derived does not currently support that, only $state does.
+  let boundingBoxes = $state<Array<BoundingBox & { name?: string; face: Faces; referenceLabel?: string }>>([]);
+  $effect(() => {
+    if (assetViewerManager.isFaceEditMode || ocrManager.showOverlay) {
+      return;
+    }
+
+    const referenceLabels = faceManager.faceReferenceLabels;
+
+    if (faceOverlayStore.showOverlay) {
+      const allFaces = faceManager.data.filter(
+        (face) => !face.person?.isHidden || assetViewerManager.isShowingHiddenPeople,
+      );
+      const boxes = getBoundingBox(allFaces, overlaySize);
+      boundingBoxes = boxes.map((box, index) => ({
+        ...box,
+        face: allFaces[index],
+        name: allFaces[index].person?.name ?? undefined,
+        referenceLabel: referenceLabels.get(allFaces[index].id),
+      }));
+      return;
+    }
+
+    const knownBoxes = getBoundingBox(faces, overlaySize);
+    const result = knownBoxes.map((box, index) => ({
+      ...box,
+      face: faces[index],
+      name: faceToNameMap.get(faces[index]),
+      referenceLabel: referenceLabels.get(faces[index].id),
+    }));
+
+    if (assetViewerManager.highlightedFaces.length === 0) {
+      boundingBoxes = result;
+    }
+
+    const knownIds = new Set(faces.map((f) => f.id));
+    const unassignedFaces = assetViewerManager.highlightedFaces.filter((f) => !knownIds.has(f.id));
+    const unassignedBoxes = getBoundingBox(unassignedFaces, overlaySize);
+    for (let i = 0; i < unassignedBoxes.length; i++) {
+      result.push({
+        ...unassignedBoxes[i],
+        face: unassignedFaces[i],
+        name: undefined,
+        referenceLabel: referenceLabels.get(unassignedFaces[i].id),
+      });
+    }
+
+    boundingBoxes = result;
+  });
 </script>
 
 <AssetViewerEvents {onCopy} {onZoom} {onFaceEditModeChange} />
@@ -302,11 +354,14 @@
           onpointerleave={() => assetViewerManager.clearHighlightedFaces()}
         >
           {#if isActive && displayLabel}
+            {@const labelAbove =
+              boundingbox.top + boundingbox.height + faceLabelOffset > overlaySize.height &&
+              boundingbox.top >= faceLabelOffset}
             <div
               aria-hidden="true"
               class="absolute rounded-sm bg-white/90 px-2 py-1 text-sm font-medium whitespace-nowrap text-black shadow-lg"
               bind:clientWidth={boundingbox.labelWidth}
-              style="top: {boundingbox.height + 4}px; {assetViewerManager.imgRef
+              style="{labelAbove ? 'bottom' : 'top'}: {boundingbox.height + 4}px; {assetViewerManager.imgRef
                 ? boundingbox.left >= boundingbox.labelWidth - boundingbox.width
                   ? `right: ${Math.max(boundingbox.left + boundingbox.width - assetViewerManager.imgRef.clientWidth, 0)}px;`
                   : `left: ${-boundingbox.left}px;`

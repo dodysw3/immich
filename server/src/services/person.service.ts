@@ -18,13 +18,13 @@ import {
   PeopleDeleteDto,
   PeopleResponseDto,
   PeopleUpdateDto,
+  PeopleUsersUpsertDto,
   PersonCreateDto,
   PersonDeleteDto,
   PersonResponseDto,
   PersonSearchDto,
   PersonStatisticsResponseDto,
   PersonUpdateDto,
-  PersonUsersCreateDto,
   PersonUsersDeleteDto,
   PersonUsersResponseDto,
   PersonUsersSearchDto,
@@ -90,12 +90,17 @@ export class PersonService extends BaseService {
       }
       closestFaceAssetId = person.faceAssetId;
     }
+    const partnerIds = await getMyPartnerIds({
+      userId: auth.user.id,
+      repository: this.partnerRepository,
+    });
     const { items, hasNextPage } = await this.personRepository.getAllForUser(pagination, auth.user.id, {
       withHidden,
+      partnerIds,
       closestFaceAssetId,
       ...filters,
     });
-    const { total, hidden } = await this.personRepository.getNumberOfPeople(auth.user.id, filters);
+    const { total, hidden } = await this.personRepository.getNumberOfPeople(auth.user.id, { partnerIds, ...filters });
 
     return {
       people: items.map((person) => mapPerson(person)),
@@ -220,7 +225,6 @@ export class PersonService extends BaseService {
     const partnerIds = await getMyPartnerIds({
       userId: auth.user.id,
       repository: this.partnerRepository,
-      timelineEnabled: true,
     });
     return this.personRepository.getStatistics(personGroupId, { ownerId: auth.user.id, partnerIds });
   }
@@ -1252,7 +1256,7 @@ export class PersonService extends BaseService {
     return mapPersonUsers(sharedUsers);
   }
 
-  async addUsersToPeople(auth: AuthDto, dto: PersonUsersCreateDto) {
+  async upsertPeopleUsers(auth: AuthDto, dto: PeopleUsersUpsertDto) {
     if (dto.sharedWithIds.includes(auth.user.id)) {
       throw new BadRequestException('Cannot share a person with yourself');
     }
