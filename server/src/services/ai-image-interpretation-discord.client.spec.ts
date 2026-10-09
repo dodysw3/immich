@@ -158,7 +158,7 @@ describe(AiImageInterpretationDiscordClient.name, () => {
     expect(form.get('files[0]')).toMatchObject({ name: 'ai-interpretation-thumbnail.webp', type: 'image/webp' });
   });
 
-  it('classifies rate limits, server errors, and permanent client errors without response bodies', async () => {
+  it('classifies rate limits, server errors, and permanent client errors with safe details', async () => {
     const { client } = makeClient();
     fetchMock.mockResolvedValueOnce(
       new Response('do not log this response', { status: 429, headers: { 'retry-after': '0.25' } }),
@@ -173,27 +173,64 @@ describe(AiImageInterpretationDiscordClient.name, () => {
     await expect(client.send(makeAlert())).rejects.toMatchObject({ code: 'server_error', retryable: true });
 
     fetchMock.mockResolvedValueOnce(new Response('client secret', { status: 400 }));
-    const error = await client.send(makeAlert()).catch((error: AiInterpretationDiscordAlertError) => error);
-    if (!(error instanceof AiInterpretationDiscordAlertError)) {
+    const nonJsonError = await client.send(makeAlert()).catch((error: AiInterpretationDiscordAlertError) => error);
+    if (!(nonJsonError instanceof AiInterpretationDiscordAlertError)) {
       throw new TypeError('Expected a Discord alert error');
     }
-    expect(error).toMatchObject({ code: 'client_error', retryable: false });
-    expect(error.message).not.toContain('client secret');
-    expect(error.message).not.toContain('test_webhook-token');
+    expect(nonJsonError).toMatchObject({ code: 'client_error', retryable: false });
+    expect(nonJsonError.message).not.toContain('client secret');
+    expect(nonJsonError.message).not.toContain('test_webhook-token');
+    expect(nonJsonError.message).toContain('HTTP 400');
+
+    fetchMock.mockResolvedValueOnce(
+      Response.json(
+        { message: 'Invalid Webhook Token' },
+        {
+          status: 401,
+          headers: { 'content-type': 'application/json' },
+        },
+      ),
+    );
+    const jsonError = await client.send(makeAlert()).catch((error: AiInterpretationDiscordAlertError) => error);
+    if (!(jsonError instanceof AiInterpretationDiscordAlertError)) {
+      throw new TypeError('Expected a Discord alert error');
+    }
+    expect(jsonError.message).toContain('HTTP 401: Invalid Webhook Token');
+    expect(jsonError.message).not.toContain('test_webhook-token');
   });
 
-  it('classifies timeouts and network failures as retryable', async () => {
+  it('classifies timeouts and network failures as retryable with the failure stage', async () => {
     const { client } = makeClient();
     fetchMock.mockRejectedValueOnce(new DOMException('timed out', 'TimeoutError'));
-    await expect(client.send(makeAlert())).rejects.toMatchObject({ code: 'timeout', retryable: true });
-
-    fetchMock.mockRejectedValueOnce(new TypeError('network failed at secret URL'));
-    const error = await client.send(makeAlert()).catch((error: AiInterpretationDiscordAlertError) => error);
-    if (!(error instanceof AiInterpretationDiscordAlertError)) {
+    const timeoutError = await client.send(makeAlert()).catch((error: AiInterpretationDiscordAlertError) => error);
+    if (!(timeoutError instanceof AiInterpretationDiscordAlertError)) {
       throw new TypeError('Expected a Discord alert error');
     }
-    expect(error).toMatchObject({ code: 'network', retryable: true });
-    expect(error.message).not.toContain('secret URL');
+    expect(timeoutError).toMatchObject({ code: 'timeout', retryable: true });
+    expect(timeoutError.message).toContain('timed out after 10s');
+    expect(timeoutError.message).toContain('discord.com');
+    expect(timeoutError.message).not.toContain('test_webhook-token');
+
+    fetchMock.mockRejectedValueOnce(new TypeError('network failed at secret URL'));
+    const bareNetworkError = await client.send(makeAlert()).catch((error: AiInterpretationDiscordAlertError) => error);
+    if (!(bareNetworkError instanceof AiInterpretationDiscordAlertError)) {
+      throw new TypeError('Expected a Discord alert error');
+    }
+    expect(bareNetworkError).toMatchObject({ code: 'network', retryable: true });
+    expect(bareNetworkError.message).not.toContain('secret URL');
+
+    const wrapped = new TypeError('fetch failed', {
+      cause: Object.assign(new Error('connect refused'), { code: 'ECONNREFUSED' }),
+    });
+    fetchMock.mockRejectedValueOnce(wrapped);
+    const causedNetworkError = await client
+      .send(makeAlert())
+      .catch((error: AiInterpretationDiscordAlertError) => error);
+    if (!(causedNetworkError instanceof AiInterpretationDiscordAlertError)) {
+      throw new TypeError('Expected a Discord alert error');
+    }
+    expect(causedNetworkError).toMatchObject({ code: 'network', retryable: true });
+    expect(causedNetworkError.message).toContain('(ECONNREFUSED)');
   });
 
   it('rejects delivery after the integration is disabled', async () => {

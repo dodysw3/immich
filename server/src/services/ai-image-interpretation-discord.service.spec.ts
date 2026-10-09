@@ -271,11 +271,21 @@ describe(AiImageInterpretationDiscordService.name, () => {
 
   it('retries transient failures and stops permanent failures', async () => {
     const { service, dependencies } = makeService();
-    const transient = new AiInterpretationDiscordAlertError('server_error', true);
+    const transient = new AiInterpretationDiscordAlertError(
+      'Discord webhook returned HTTP 503 from discord.com',
+      'server_error',
+      true,
+    );
     dependencies.discordClient.send.mockRejectedValueOnce(transient);
     await expect(service.handleAlert({ assetId: 'asset-1', runKey })).rejects.toBe(transient);
 
-    dependencies.discordClient.send.mockRejectedValueOnce(new AiInterpretationDiscordAlertError('client_error', false));
+    dependencies.discordClient.send.mockRejectedValueOnce(
+      new AiInterpretationDiscordAlertError(
+        'Discord webhook rejected the request with HTTP 400',
+        'client_error',
+        false,
+      ),
+    );
     await expect(service.handleAlert({ assetId: 'asset-1', runKey })).rejects.toBeInstanceOf(UnrecoverableError);
     expect(dependencies.interpretationRepository.get).toHaveBeenCalledTimes(2);
   });

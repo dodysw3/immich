@@ -46,17 +46,51 @@ type DiscordAlertErrorCode =
 
 export class AiInterpretationDiscordAlertError extends Error {
   constructor(
+    message: string,
     public readonly code: DiscordAlertErrorCode,
     public readonly retryable: boolean,
     public readonly retryAfterMs?: number,
+    options?: { cause?: unknown },
   ) {
-    super(`Discord interpretation alert failed (${code})`);
+    super(message, options);
   }
 }
 
 const truncate = (value: string, limit: number) => {
   const normalized = value.trim();
   return normalized.length <= limit ? normalized : `${normalized.slice(0, limit - 1)}…`;
+};
+
+const DISCORD_ERROR_DETAIL_LIMIT = 300;
+
+// Never embed the raw webhook URL or response body in errors: the URL carries
+// the webhook token and the body can echo requester-supplied content.
+const getWebhookHost = (webhookUrl: string) => {
+  try {
+    return new URL(webhookUrl).host;
+  } catch {
+    return 'unknown host';
+  }
+};
+
+const getNetworkCauseCode = (error: unknown) => {
+  const cause = (error as { cause?: { code?: string; errors?: Array<{ code?: string }> } } | undefined)?.cause;
+  if (!cause) {
+    return;
+  }
+  return cause.code ?? cause.errors?.find((entry) => entry.code)?.code;
+};
+
+const getDiscordApiMessage = async (response: Response) => {
+  try {
+    const body = (await response.json()) as { message?: unknown };
+    if (typeof body.message !== 'string' || !body.message.trim()) {
+      return;
+    }
+    return truncate(body.message, DISCORD_ERROR_DETAIL_LIMIT);
+  } catch {
+    return;
+  }
 };
 
 const getAssetUrl = (externalDomain: string | undefined, assetId: string) => {
@@ -149,9 +183,14 @@ export class AiImageInterpretationDiscordClient {
   async send(alert: AiInterpretationDiscordAlert): Promise<void> {
     const webhookUrl = this.configRepository.getEnv().aiImageInterpretation.discord.webhookUrl;
     if (!webhookUrl) {
-      throw new AiInterpretationDiscordAlertError('not_configured', false);
+      throw new AiInterpretationDiscordAlertError(
+        'Discord webhook URL is not configured; set IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_WEBHOOK_URL',
+        'not_configured',
+        false,
+      );
     }
 
+    const host = getWebhookHost(webhookUrl);
     const url = new URL(webhookUrl);
     url.searchParams.set('wait', 'true');
 
@@ -183,7 +222,24 @@ export class AiImageInterpretationDiscordClient {
       });
     } catch (error) {
       const isTimeout = error instanceof DOMException && error.name === 'TimeoutError';
-      throw new AiInterpretationDiscordAlertError(isTimeout ? 'timeout' : 'network', true);
+      if (isTimeout) {
+        throw new AiInterpretationDiscordAlertError(
+          `Discord webhook request to ${host} timed out after ${DISCORD_REQUEST_TIMEOUT_MS / 1000}s (no response; check container network egress)`,
+          'timeout',
+          true,
+          undefined,
+          { cause: error },
+        );
+      }
+
+      const causeCode = getNetworkCauseCode(error);
+      throw new AiInterpretationDiscordAlertError(
+        `Discord webhook request to ${host} failed${causeCode ? ` (${causeCode})` : ''}`,
+        'network',
+        true,
+        undefined,
+        { cause: error },
+      );
     }
 
     if (response.ok) {
@@ -191,13 +247,28 @@ export class AiImageInterpretationDiscordClient {
     }
 
     if (response.status === 429) {
-      throw new AiInterpretationDiscordAlertError('rate_limited', true, getRetryAfterMs(response));
+      const retryAfterMs = getRetryAfterMs(response);
+      throw new AiInterpretationDiscordAlertError(
+        `Discord webhook is rate limited${retryAfterMs ? ` (retry after ${retryAfterMs}ms)` : ''}`,
+        'rate_limited',
+        true,
+        retryAfterMs,
+      );
     }
 
     if (response.status >= 500) {
-      throw new AiInterpretationDiscordAlertError('server_error', true);
+      throw new AiInterpretationDiscordAlertError(
+        `Discord webhook returned HTTP ${response.status} from ${host}`,
+        'server_error',
+        true,
+      );
     }
 
-    throw new AiInterpretationDiscordAlertError('client_error', false);
+    const apiMessage = await getDiscordApiMessage(response);
+    throw new AiInterpretationDiscordAlertError(
+      `Discord webhook rejected the request with HTTP ${response.status}${apiMessage ? `: ${apiMessage}` : ''}`,
+      'client_error',
+      false,
+    );
   }
 }
