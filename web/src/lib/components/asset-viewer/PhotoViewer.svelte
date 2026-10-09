@@ -89,53 +89,6 @@
 
   const ocrBoxes = $derived(ocrManager.showOverlay ? getOcrBoundingBoxes(ocrManager.data, overlaySize) : []);
 
-  const boundingBoxes = $derived.by(() => {
-    if (assetViewerManager.isFaceEditMode || ocrManager.showOverlay) {
-      return [];
-    }
-
-    const referenceLabels = faceManager.faceReferenceLabels;
-
-    if (faceOverlayStore.showOverlay) {
-      const allFaces = faceManager.data.filter(
-        (face) => !face.person?.isHidden || assetViewerManager.isShowingHiddenPeople,
-      );
-      const boxes = getBoundingBox(allFaces, overlaySize);
-      return boxes.map((box, index) => ({
-        ...box,
-        face: allFaces[index],
-        name: allFaces[index].person?.name ?? undefined,
-        referenceLabel: referenceLabels.get(allFaces[index].id),
-      }));
-    }
-
-    const knownBoxes = getBoundingBox(faces, overlaySize);
-    const result = knownBoxes.map((box, index) => ({
-      ...box,
-      face: faces[index],
-      name: faceToNameMap.get(faces[index]),
-      referenceLabel: referenceLabels.get(faces[index].id),
-    }));
-
-    if (assetViewerManager.highlightedFaces.length === 0) {
-      return result;
-    }
-
-    const knownIds = new Set(faces.map((f) => f.id));
-    const unassignedFaces = assetViewerManager.highlightedFaces.filter((f) => !knownIds.has(f.id));
-    const unassignedBoxes = getBoundingBox(unassignedFaces, overlaySize);
-    for (let i = 0; i < unassignedBoxes.length; i++) {
-      result.push({
-        ...unassignedBoxes[i],
-        face: unassignedFaces[i],
-        name: undefined,
-        referenceLabel: referenceLabels.get(unassignedFaces[i].id),
-      });
-    }
-
-    return result;
-  });
-
   const onCopy = async () => {
     if (!canCopyImageToClipboard() || !assetViewerManager.imgRef) {
       return;

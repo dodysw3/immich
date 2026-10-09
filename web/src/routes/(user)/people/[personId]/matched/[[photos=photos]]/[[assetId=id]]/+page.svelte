@@ -10,12 +10,10 @@
   import ChangeDate from '$lib/components/timeline/actions/ChangeDateAction.svelte';
   import ChangeDescription from '$lib/components/timeline/actions/ChangeDescriptionAction.svelte';
   import ChangeLocation from '$lib/components/timeline/actions/ChangeLocationAction.svelte';
-  import CreateSharedLink from '$lib/components/timeline/actions/CreateSharedLinkAction.svelte';
   import DeleteAssets from '$lib/components/timeline/actions/DeleteAssetsAction.svelte';
   import DownloadAction from '$lib/components/timeline/actions/DownloadAction.svelte';
   import FavoriteAction from '$lib/components/timeline/actions/FavoriteAction.svelte';
   import SetVisibilityAction from '$lib/components/timeline/actions/SetVisibilityAction.svelte';
-  import TagAction from '$lib/components/timeline/actions/TagAction.svelte';
   import AssetSelectControlBar from '$lib/components/timeline/AssetSelectControlBar.svelte';
   import { assetMultiSelectManager } from '$lib/managers/asset-multi-select-manager.svelte';
   import { authManager } from '$lib/managers/auth-manager.svelte';
@@ -251,7 +249,7 @@
       <AssetSelectControlBar>
         {@const Actions = getAssetBulkActions($t)}
         <CommandPaletteDefaultProvider name={$t('assets')} actions={Object.values(Actions)} />
-        <CreateSharedLink />
+        <ActionButton action={Actions.CreateSharedLink} />
         <IconButton
           shape="round"
           color="secondary"
@@ -283,7 +281,7 @@
             />
             <SetVisibilityAction menuItem onVisibilitySet={handleSetVisibility} />
             {#if authManager.preferences.tags.enabled}
-              <TagAction menuItem />
+              <ActionMenuItem action={Actions.Tag} />
             {/if}
             <DeleteAssets menuItem {onAssetDelete} />
           </ButtonContextMenu>
