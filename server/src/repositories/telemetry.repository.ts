@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { MetricOptions } from '@opentelemetry/api';
+import { MetricAttributes, MetricOptions } from '@opentelemetry/api';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
@@ -44,6 +44,14 @@ export class MetricGroupRepository {
     }
   }
 
+  // unlike addToHistogram, the attributes are bound per observation, so a
+  // single instrument can carry a label dimension (e.g. job name)
+  recordHistogram(name: string, value: number, attributes?: MetricAttributes, options?: MetricOptions): void {
+    if (this.enabled) {
+      this.metricService.getHistogram(name, options).record(value, attributes);
+    }
+  }
+
   configure(options: MetricGroupOptions): this {
     this.enabled = options.enabled;
     return this;
@@ -51,7 +59,8 @@ export class MetricGroupRepository {
 }
 
 const aggregationBoundaries = [
-  0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10_000,
+  0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10_000, 25_000,
+  50_000, 75_000, 100_000, 250_000, 500_000, 1_200_000,
 ];
 
 let instance: NodeSDK | undefined;

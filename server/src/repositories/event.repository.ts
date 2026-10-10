@@ -114,8 +114,10 @@ export type AppRestartEvent = {
   isMaintenanceMode: boolean;
 };
 
-type JobSuccessEvent = { job: JobItem; response?: JobStatus };
-type JobErrorEvent = { job: JobItem; error: Error | any };
+// the emitted payload is the BullMQ job, which carries scheduling metadata
+type JobLifecycleMetadata = { processedOn?: number | null; finishedOn?: number | null };
+type JobSuccessEvent = { job: JobItem & JobLifecycleMetadata; response?: JobStatus };
+type JobErrorEvent = { job: JobItem & JobLifecycleMetadata; error: Error | any };
 
 type QueueStartEvent = {
   name: QueueName;

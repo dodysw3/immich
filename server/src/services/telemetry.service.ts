@@ -34,6 +34,8 @@ export class TelemetryService extends BaseService {
 
   @OnEvent({ name: 'JobSuccess' })
   onJobSuccess({ job, response }: ArgOf<'JobSuccess'>) {
+    this.recordJobDuration(job);
+
     if (!(response && Object.values(JobStatus).includes(response as JobStatus))) {
       return;
     }
@@ -44,8 +46,23 @@ export class TelemetryService extends BaseService {
 
   @OnEvent({ name: 'JobError' })
   onJobError({ job }: ArgOf<'JobError'>) {
+    this.recordJobDuration(job);
+
     const jobMetric = `immich.jobs.${snakeCase(job.name)}.${JobStatus.Failed}`;
     this.telemetryRepository.jobs.addToCounter(jobMetric, 1);
+  }
+
+  private recordJobDuration(job: ArgOf<'JobSuccess'>['job']): void {
+    if (!job.processedOn) {
+      return;
+    }
+
+    this.telemetryRepository.jobs.recordHistogram(
+      'immich.jobs.duration',
+      Date.now() - job.processedOn,
+      { job_name: snakeCase(job.name) },
+      { unit: 'ms', description: 'Duration in ms of each job run, labeled by job name' },
+    );
   }
 
   @OnEvent({ name: 'JobComplete' })
