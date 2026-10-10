@@ -27,6 +27,7 @@ import { EmailRepository } from 'src/repositories/email.repository.js';
 import { EventRepository } from 'src/repositories/event.repository.js';
 import { IntegrityRepository } from 'src/repositories/integrity.repository.js';
 import { JobRepository } from 'src/repositories/job.repository.js';
+import { LibraryStatsRepository } from 'src/repositories/library-stats.repository.js';
 import { LibraryRepository } from 'src/repositories/library.repository.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';
 import { MachineLearningRepository } from 'src/repositories/machine-learning.repository.js';
@@ -98,6 +99,7 @@ export const BASE_SERVICE_DEPENDENCIES = [
   IntegrityRepository,
   JobRepository,
   LibraryRepository,
+  LibraryStatsRepository,
   MachineLearningRepository,
   MapRepository,
   MediaRepository,
@@ -162,6 +164,7 @@ export class BaseService {
     protected integrityRepository: IntegrityRepository,
     protected jobRepository: JobRepository,
     protected libraryRepository: LibraryRepository,
+    protected libraryStatsRepository: LibraryStatsRepository,
     protected machineLearningRepository: MachineLearningRepository,
     protected mapRepository: MapRepository,
     protected mediaRepository: MediaRepository,
@@ -235,6 +238,7 @@ export class BaseService {
       ctx.integrityRepository,
       ctx.jobRepository,
       ctx.libraryRepository,
+      ctx.libraryStatsRepository,
       ctx.machineLearningRepository,
       ctx.mapRepository,
       ctx.mediaRepository,

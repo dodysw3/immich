@@ -8,6 +8,7 @@ const newMetricGroupMock = () => {
     addToGauge: vitest.fn(),
     addToHistogram: vitest.fn(),
     recordHistogram: vitest.fn(),
+    observeGauge: vitest.fn(),
     configure: vitest.fn(),
   };
 };
@@ -25,5 +26,6 @@ export const newTelemetryRepositoryMock = (): ITelemetryRepositoryMock => {
     host: newMetricGroupMock(),
     jobs: newMetricGroupMock(),
     repo: newMetricGroupMock(),
+    library: newMetricGroupMock(),
   };
 };

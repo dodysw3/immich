@@ -678,6 +678,7 @@ export enum ImmichTelemetry {
   Io = 'io',
   Repo = 'repo',
   Job = 'job',
+  Library = 'library',
 }
 
 export enum ExifOrientation {

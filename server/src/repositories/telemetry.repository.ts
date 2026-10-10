@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { MetricAttributes, MetricOptions } from '@opentelemetry/api';
+import { MetricAttributes, MetricOptions, ObservableResult } from '@opentelemetry/api';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
@@ -49,6 +49,14 @@ export class MetricGroupRepository {
   recordHistogram(name: string, value: number, attributes?: MetricAttributes, options?: MetricOptions): void {
     if (this.enabled) {
       this.metricService.getHistogram(name, options).record(value, attributes);
+    }
+  }
+
+  // absolute readings re-published on every scrape (not additive events); the
+  // callback runs at collection time and can observe per-label values
+  observeGauge(name: string, observer: (result: ObservableResult) => void, options?: MetricOptions): void {
+    if (this.enabled) {
+      this.metricService.getObservableGauge(name, options).addCallback(observer);
     }
   }
 
@@ -118,6 +126,7 @@ export class TelemetryRepository {
   host: MetricGroupRepository;
   jobs: MetricGroupRepository;
   repo: MetricGroupRepository;
+  library: MetricGroupRepository;
 
   constructor(
     private metricService: MetricService,
@@ -132,6 +141,9 @@ export class TelemetryRepository {
     this.host = new MetricGroupRepository(metricService).configure({ enabled: metrics.has(ImmichTelemetry.Host) });
     this.jobs = new MetricGroupRepository(metricService).configure({ enabled: metrics.has(ImmichTelemetry.Job) });
     this.repo = new MetricGroupRepository(metricService).configure({ enabled: metrics.has(ImmichTelemetry.Repo) });
+    this.library = new MetricGroupRepository(metricService).configure({
+      enabled: metrics.has(ImmichTelemetry.Library),
+    });
   }
 
   setup({ repositories }: { repositories: (new (...args: any[]) => unknown)[] }) {
