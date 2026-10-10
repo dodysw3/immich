@@ -53,8 +53,13 @@ export class MetricGroupRepository {
   }
 
   // absolute readings re-published on every scrape (not additive events); the
-  // callback runs at collection time and can observe per-label values
-  observeGauge(name: string, observer: (result: ObservableResult) => void, options?: MetricOptions): void {
+  // callback runs at collection time and can observe per-label values; async
+  // callbacks are awaited by the SDK at collection
+  observeGauge(
+    name: string,
+    observer: (result: ObservableResult) => void | Promise<void>,
+    options?: MetricOptions,
+  ): void {
     if (this.enabled) {
       this.metricService.getObservableGauge(name, options).addCallback(observer);
     }
