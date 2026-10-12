@@ -521,7 +521,9 @@ export class AssetService extends BaseService {
         }
 
         case AssetJobName.INTERPRET_IMAGE: {
-          jobs.push({ name: JobName.AssetInterpretImage, data: { id } });
+          // Explicit "interpret now" intent from the photo viewer — queue
+          // ahead of uploads (2) and the bulk script backlog (3).
+          jobs.push({ name: JobName.AssetInterpretImage, data: { id, priority: 1 } });
           break;
         }
 

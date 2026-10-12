@@ -797,12 +797,14 @@ describe(AssetService.name, () => {
       ]);
     });
 
-    it('should run the image interpretation job', async () => {
+    it('should run the image interpretation job at the interactive priority tier', async () => {
       mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set(['asset-1']));
 
       await sut.run(authStub.admin, { assetIds: ['asset-1'], name: AssetJobName.INTERPRET_IMAGE });
 
-      expect(mocks.job.queueAll).toHaveBeenCalledWith([{ name: JobName.AssetInterpretImage, data: { id: 'asset-1' } }]);
+      expect(mocks.job.queueAll).toHaveBeenCalledWith([
+        { name: JobName.AssetInterpretImage, data: { id: 'asset-1', priority: 1 } },
+      ]);
     });
 
     it('should run the transcode video', async () => {

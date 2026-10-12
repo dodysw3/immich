@@ -190,15 +190,20 @@ export class JobRepository {
     return this.getQueue(name).clean(0, 1000, type);
   }
 
-  getJobCounts(name: QueueName): Promise<JobCounts> {
-    return this.getQueue(name).getJobCounts(
+  async getJobCounts(name: QueueName): Promise<JobCounts> {
+    // Priority-enqueued jobs live in BullMQ's 'prioritized' zset, not the 'wait'
+    // list, so they must be folded into 'waiting' for dashboards/ETAs to see the
+    // true backlog.
+    const counts = (await this.getQueue(name).getJobCounts(
       'active',
       'completed',
       'failed',
       'delayed',
       'waiting',
+      'prioritized',
       'paused',
-    ) as unknown as Promise<JobCounts>;
+    )) as unknown as JobCounts & { prioritized: number };
+    return { ...counts, waiting: counts.waiting + counts.prioritized };
   }
 
   async recordAiInterpretationCompletion(assetId: string, runKey: string, completedAt = new Date()): Promise<void> {
@@ -247,6 +252,9 @@ export class JobRepository {
 
       if (job.options?.jobId || job.options?.deduplication) {
         // need to use add() instead of addBulk() for jobId/deduplication to take effect
+        if (await this.promoteInterpretationJob(item)) {
+          continue;
+        }
         promises.push(this.getQueue(queueName).add(item.name, item.data, job.options));
       } else {
         itemsByQueue[queueName] ||= [];
@@ -264,6 +272,33 @@ export class JobRepository {
 
   async queue(item: JobItem): Promise<void> {
     return this.queueAll([item]);
+  }
+
+  /**
+   * Tier-1 "interpret now" for an asset that is already queued (e.g. by the bulk
+   * script): the bare-assetId job id is deterministic, so a plain add() would be
+   * dropped as a duplicate and the photo would stay behind the backlog. Re-score
+   * the waiting job to priority 1 instead. Jobs in any other state (active,
+   * completed, failed) are left alone — the follow-up add() no-ops on those
+   * duplicates exactly as before.
+   */
+  private async promoteInterpretationJob(item: JobItem): Promise<boolean> {
+    if (item.name !== JobName.AssetInterpretImage || item.data.priority !== 1) {
+      return false;
+    }
+    const jobId = item.data.runKey ? createAiInterpretationJobId(item.data.id, item.data.runKey) : item.data.id;
+    const job = await this.getQueue(QueueName.ImageInterpretation).getJob(jobId);
+    if (!job) {
+      return false;
+    }
+    // BullMQ's declared JobState omits 'paused', but getState can return it.
+    const state = (await job.getState()) as string;
+    if (state !== 'waiting' && state !== 'prioritized' && state !== 'paused') {
+      return false;
+    }
+    await job.changePriority({ priority: item.data.priority });
+    this.logger.log(`Promoted queued AI interpretation job ${jobId} to priority ${item.data.priority}`);
+    return true;
   }
 
   async waitForQueueCompletion(...queues: QueueName[]): Promise<void> {
@@ -329,6 +364,7 @@ export class JobRepository {
       case JobName.AssetInterpretImage: {
         return {
           jobId: item.data.runKey ? createAiInterpretationJobId(item.data.id, item.data.runKey) : item.data.id,
+          priority: item.data.priority,
         };
       }
       case JobName.AssetInterpretationReconcile: {

@@ -15,6 +15,22 @@ const makeRepositoryWithRedis = (redis: Record<string, ReturnType<typeof vi.fn>>
   return repository;
 };
 
+const makeRepositoryWithQueue = (queue: Record<string, ReturnType<typeof vi.fn>>) => {
+  const repository = new JobRepository(
+    undefined as never,
+    undefined as never,
+    undefined as never,
+    { setContext: vi.fn(), log: vi.fn() } as never,
+  );
+  (repository as never as { getQueue: () => unknown }).getQueue = () => queue;
+  return repository;
+};
+
+const promoteInterpretationJob = (repository: JobRepository, item: unknown) =>
+  (
+    repository as never as { promoteInterpretationJob: (item: unknown) => Promise<boolean> }
+  ).promoteInterpretationJob.bind(repository)(item);
+
 describe(JobRepository.name, () => {
   it('uses the asset and run tuple as the interpretation job id', () => {
     const repository = new JobRepository(
@@ -33,6 +49,18 @@ describe(JobRepository.name, () => {
 
     expect(getJobOptions({ name: JobName.AssetInterpretImage, data: { id: 'asset-1' } })).toEqual({
       jobId: 'asset-1',
+    });
+
+    expect(getJobOptions({ name: JobName.AssetInterpretImage, data: { id: 'asset-1', priority: 1 } })).toEqual({
+      jobId: 'asset-1',
+      priority: 1,
+    });
+
+    expect(
+      getJobOptions({ name: JobName.AssetInterpretImage, data: { id: 'asset-1', runKey: 'run-a', priority: 2 } }),
+    ).toEqual({
+      jobId: 'asset-1/run-a',
+      priority: 2,
     });
   });
 
@@ -110,5 +138,89 @@ describe(JobRepository.name, () => {
       now.getTime() - 5 * 60_000,
       '+inf',
     );
+  });
+
+  describe('promoteInterpretationJob', () => {
+    it('re-scores a queued tier-1 job to priority 1 instead of re-adding it', async () => {
+      const changePriority = vi.fn().mockResolvedValue(undefined);
+      const queue = {
+        getJob: vi.fn().mockResolvedValue({
+          getState: vi.fn().mockResolvedValue('prioritized'),
+          changePriority,
+        }),
+      };
+      const repository = makeRepositoryWithQueue(queue);
+
+      await expect(
+        promoteInterpretationJob(repository, {
+          name: JobName.AssetInterpretImage,
+          data: { id: 'asset-1', priority: 1 },
+        }),
+      ).resolves.toBe(true);
+
+      expect(queue.getJob).toHaveBeenCalledWith('asset-1');
+      expect(changePriority).toHaveBeenCalledWith({ priority: 1 });
+    });
+
+    it('promotes runKey-qualified jobs via their composite id', async () => {
+      const queue = {
+        getJob: vi.fn().mockResolvedValue({
+          getState: vi.fn().mockResolvedValue('waiting'),
+          changePriority: vi.fn().mockResolvedValue(undefined),
+        }),
+      };
+      const repository = makeRepositoryWithQueue(queue);
+
+      await expect(
+        promoteInterpretationJob(repository, {
+          name: JobName.AssetInterpretImage,
+          data: { id: 'asset-1', runKey: 'run-a', priority: 1 },
+        }),
+      ).resolves.toBe(true);
+
+      expect(queue.getJob).toHaveBeenCalledWith('asset-1/run-a');
+    });
+
+    it('leaves jobs in terminal or active states alone', async () => {
+      const changePriority = vi.fn();
+      const queue = {
+        getJob: vi.fn().mockResolvedValue({
+          getState: vi.fn().mockResolvedValue('failed'),
+          changePriority,
+        }),
+      };
+      const repository = makeRepositoryWithQueue(queue);
+
+      await expect(
+        promoteInterpretationJob(repository, {
+          name: JobName.AssetInterpretImage,
+          data: { id: 'asset-1', priority: 1 },
+        }),
+      ).resolves.toBe(false);
+      expect(changePriority).not.toHaveBeenCalled();
+    });
+
+    it('ignores non-tier-1 items and jobs that do not exist', async () => {
+      const queue = { getJob: vi.fn().mockResolvedValue(undefined) };
+      const repository = makeRepositoryWithQueue(queue);
+
+      await expect(
+        promoteInterpretationJob(repository, {
+          name: JobName.AssetInterpretImage,
+          data: { id: 'asset-1', priority: 2 },
+        }),
+      ).resolves.toBe(false);
+      await expect(
+        promoteInterpretationJob(repository, { name: JobName.AssetExtractMetadata, data: { id: 'asset-1' } }),
+      ).resolves.toBe(false);
+      await expect(
+        promoteInterpretationJob(repository, {
+          name: JobName.AssetInterpretImage,
+          data: { id: 'asset-1', priority: 1 },
+        }),
+      ).resolves.toBe(false);
+
+      expect(queue.getJob).toHaveBeenCalledTimes(1);
+    });
   });
 });

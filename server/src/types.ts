@@ -341,6 +341,8 @@ export interface IFacialRecognitionQueueAll extends INightlyJob {
 
 export interface IAssetInterpretationJob extends IEntityJob {
   runKey?: string;
+  /** Queue tier: 1 = interactive "interpret now", 2 = upload default, 3 = bulk script backlog. */
+  priority?: 1 | 2 | 3;
 }
 
 export interface IAiInterpretationDiscordAlertJob {

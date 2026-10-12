@@ -74,7 +74,7 @@ export class AiImageInterpretationService {
 
     await this.jobRepository.queue({
       name: JobName.AssetInterpretImage,
-      data: { id: assetId, runKey, source: 'upload' },
+      data: { id: assetId, runKey, source: 'upload', priority: 2 },
     });
   }
 
@@ -288,7 +288,12 @@ export class AiImageInterpretationService {
         continue;
       }
 
-      await this.jobRepository.queue({ name: JobName.AssetInterpretImage, data: { id: assetId, runKey } });
+      // Retry re-adds keep the upload-path tier; tier 1 stays reserved for
+      // explicit "interpret now" actions.
+      await this.jobRepository.queue({
+        name: JobName.AssetInterpretImage,
+        data: { id: assetId, runKey, priority: 2 },
+      });
       dispatched++;
     }
 

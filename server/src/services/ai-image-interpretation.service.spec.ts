@@ -132,7 +132,7 @@ describe(AiImageInterpretationService.name, () => {
     });
     expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
       name: JobName.AssetInterpretImage,
-      data: { id: asset.id, runKey, source: 'upload' },
+      data: { id: asset.id, runKey, source: 'upload', priority: 2 },
     });
   });
 
@@ -500,11 +500,11 @@ describe(AiImageInterpretationService.name, () => {
     expect(dependencies.interpretationRepository.requeue).toHaveBeenCalledTimes(2);
     expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
       name: JobName.AssetInterpretImage,
-      data: { id: 'asset-1', runKey },
+      data: { id: 'asset-1', runKey, priority: 2 },
     });
     expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
       name: JobName.AssetInterpretImage,
-      data: { id: 'asset-2', runKey },
+      data: { id: 'asset-2', runKey, priority: 2 },
     });
   });
 
