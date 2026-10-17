@@ -99,7 +99,9 @@ describe(AiImageInterpretationClient.name, () => {
     expect(body.model).toBe('unsloth/Muse-Glimmer-30B-GGUF');
     expect(body.max_tokens).toBe(6400);
     expect(body.chat_template_kwargs).toEqual({ reasoning_strength: 'low' });
-    expect(body.response_format.json_schema.strict).toBe(true);
+    // llama.cpp builds since 2026-10-15 enforce response_format as a grammar,
+    // which forces JSON and breaks the line contract — it must not be sent.
+    expect(body.response_format).toBeUndefined();
     expect(body.messages[0].content).toContain('Do not guess or invent');
     expect(body.messages[0].content).not.toMatch(/filename|GPS|EXIF/i);
     expect(body.messages[1].content).toEqual([

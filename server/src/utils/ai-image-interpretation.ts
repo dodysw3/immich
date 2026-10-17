@@ -30,9 +30,12 @@ No Immich face matches, person IDs, or associated names are provided. Do not gue
 
 Return only the requested output representation. Keep literal_description observational. Put hypotheses in interpretation together with their evidence, and briefly note meaningful alternatives and uncertainties there. Never promote a low-confidence identification into title, archive_summary, or search_keywords.`;
 
-// The serving endpoint (an Unsloth llama.cpp fork) ignores response_format
-// entirely — verified 2026-09-15 — so the output contract lives in this
-// instruction. Kept separate from the versioned archival prompt so the
+// The output contract lives in this instruction — the client must not send
+// response_format: llama.cpp builds since 2026-10-15 (b11541-mix) enforce it
+// as a hard JSON grammar, and a grammar-confined model leaks the T/D/I/A/K
+// markers into JSON values, failing every parse. (Older builds ignored the
+// field entirely — verified 2026-09-15 — which is why it was once safe to
+// send.) Kept separate from the versioned archival prompt so the
 // semantic prompt identity stays deliberate while the wire representation
 // evolves. 1.2.0 format: one record per line, confidence/type as letter codes
 // (the model drifts to lowercase h/m/l even when told full words — the parser

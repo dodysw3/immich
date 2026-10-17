@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Agent, fetch as undiciFetch } from 'undici';
-import {
-  MUSE_RESULT_JSON_SCHEMA,
-  MuseInterpretationResult,
-  MuseInterpretationResultSchema,
-} from 'src/dtos/ai-image-interpretation.dto.js';
+import { MuseInterpretationResult, MuseInterpretationResultSchema } from 'src/dtos/ai-image-interpretation.dto.js';
 import { ConfigRepository } from 'src/repositories/config.repository.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';
 import {
@@ -89,14 +85,11 @@ export class AiImageInterpretationClient {
           // ignored or hard-error on this build. Benchmarked 2026-10-02:
           // quality judged equal-or-better blind at ~half the total tokens.
           chat_template_kwargs: { reasoning_strength: 'low' },
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'muse_image_interpretation',
-              strict: true,
-              schema: MUSE_RESULT_JSON_SCHEMA,
-            },
-          },
+          // No response_format: llama.cpp builds since 2026-10-15 (b11541-mix)
+          // compile it into a hard grammar, which forces JSON and fights the
+          // 1.2.0 line contract in the format instruction (the hybrid output
+          // fails parseLineContent 100% of the time). The line format is the
+          // output contract; nothing server-side constrains it.
           messages: [
             { role: 'system', content: AI_IMAGE_INTERPRETATION_PROMPT },
             {
