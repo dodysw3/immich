@@ -430,10 +430,11 @@ describe(AiImageInterpretationService.name, () => {
     });
   });
 
-  it('prepares an orientation-correct bounded JPEG and rejects oversized or missing previews', async () => {
+  it('prepares an orientation-correct bounded JPEG, clamps oversized previews, and rejects missing previews', async () => {
     const { service, dependencies } = makeService();
     const directory = mkdtempSync(join(tmpdir(), 'ai-interpretation-'));
     const previewPath = join(directory, 'preview.jpg');
+    const tallPreviewPath = join(directory, 'tall-preview.jpg');
 
     try {
       const preview = await sharp({
@@ -443,8 +444,19 @@ describe(AiImageInterpretationService.name, () => {
         .jpeg()
         .toBuffer();
       writeFileSync(previewPath, preview);
+      // 18 MP: above the configured 16 MP budget but far below the decode
+      // ceiling, so preparePreview must clamp it to the edge limit.
+      const tallPreview = await sharp({
+        create: { width: 2000, height: 9000, channels: 3, background: { r: 60, g: 40, b: 20 } },
+      })
+        .jpeg()
+        .toBuffer();
+      writeFileSync(tallPreviewPath, tallPreview);
       const asset = AssetFactory.from({ type: AssetType.Image, visibility: AssetVisibility.Timeline })
         .files([{ type: AssetFileType.Preview, path: previewPath }])
+        .build();
+      const tallAsset = AssetFactory.from({ type: AssetType.Image, visibility: AssetVisibility.Timeline })
+        .files([{ type: AssetFileType.Preview, path: tallPreviewPath }])
         .build();
       const internals = service as never as {
         preparePreview: (asset: unknown) => Promise<{ buffer: Buffer; input: { width: number; height: number } }>;
@@ -454,6 +466,12 @@ describe(AiImageInterpretationService.name, () => {
       expect(prepared.input).toMatchObject({ source: 'preview', mimeType: 'image/jpeg' });
       expect(prepared.input.height).toBeGreaterThan(prepared.input.width);
       expect(Math.max(prepared.input.width, prepared.input.height)).toBe(1600);
+
+      const clamped = await internals.preparePreview(tallAsset);
+      expect(Math.max(clamped.input.width, clamped.input.height)).toBe(1600);
+      expect(dependencies.logger.log).toHaveBeenCalledWith(
+        expect.stringContaining('Clamping oversized AI interpretation preview (2000x9000)'),
+      );
 
       dependencies.configRepository.getEnv.mockReturnValue({
         aiImageInterpretation: { ...config, maxPixels: 100 },
