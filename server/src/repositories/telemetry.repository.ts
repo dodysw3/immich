@@ -52,6 +52,14 @@ export class MetricGroupRepository {
     }
   }
 
+  // like recordHistogram, for counters that carry per-observation labels
+  // (e.g. serving backend + outcome) instead of process-wide totals
+  recordCounter(name: string, value: number, attributes?: MetricAttributes, options?: MetricOptions): void {
+    if (this.enabled) {
+      this.metricService.getCounter(name, options).add(value, attributes);
+    }
+  }
+
   // absolute readings re-published on every scrape (not additive events); the
   // callback runs at collection time and can observe per-label values; async
   // callbacks are awaited by the SDK at collection

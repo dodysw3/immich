@@ -52,7 +52,8 @@ const lineContract = (value: ContractResult): string =>
 describe(AiImageInterpretationClient.name, () => {
   const configRepository = newConfigRepositoryMock();
   const logger = { debug: vi.fn(), warn: vi.fn() };
-  const client = new AiImageInterpretationClient(configRepository, logger as never);
+  const telemetryRepository = { jobs: { recordCounter: vi.fn(), recordHistogram: vi.fn() } };
+  const client = new AiImageInterpretationClient(configRepository, logger as never, telemetryRepository as never);
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -86,6 +87,7 @@ describe(AiImageInterpretationClient.name, () => {
       result,
       promptTokens: 12,
       completionTokens: 34,
+      backend: 'local',
     });
 
     const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -155,6 +157,7 @@ describe(AiImageInterpretationClient.name, () => {
       },
       promptTokens: 12,
       completionTokens: 34,
+      backend: 'local',
     });
   });
 
@@ -216,5 +219,80 @@ describe(AiImageInterpretationClient.name, () => {
       json: vi.fn().mockResolvedValue({ choices: [{ message: { content: '' }, finish_reason: 'stop' }] }),
     });
     await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'invalid_output' });
+  });
+
+  it('attributes success telemetry to the backend stamped by the proxy header', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      headers: { get: (name: string) => (name.toLowerCase() === 'x-ai-backend' ? 'remote' : null) },
+      json: vi.fn().mockResolvedValue({
+        choices: [{ message: { content: lineContract(result) } }],
+        usage: { prompt_tokens: 12, completion_tokens: 34 },
+      }),
+    });
+
+    await expect(client.interpret(Buffer.from('preview'))).resolves.toMatchObject({ backend: 'remote' });
+
+    expect(telemetryRepository.jobs.recordCounter).toHaveBeenCalledWith(
+      'immich.ai.interpretation.requests',
+      1,
+      { backend: 'remote', outcome: 'success' },
+      expect.anything(),
+    );
+    expect(telemetryRepository.jobs.recordHistogram).toHaveBeenCalledWith(
+      'immich.ai.interpretation.request',
+      expect.any(Number),
+      { backend: 'remote' },
+      expect.anything(),
+    );
+  });
+
+  it('defaults the backend to local when no proxy header is present', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ choices: [{ message: { content: lineContract(result) } }] }),
+    });
+
+    await expect(client.interpret(Buffer.from('preview'))).resolves.toMatchObject({ backend: 'local' });
+    expect(telemetryRepository.jobs.recordCounter).toHaveBeenCalledWith(
+      'immich.ai.interpretation.requests',
+      1,
+      { backend: 'local', outcome: 'success' },
+      expect.anything(),
+    );
+  });
+
+  it('attributes endpoint failures to the backend the proxy named, and records timeouts as local', async () => {
+    // A proxy 502 from a dead rented instance carries x-ai-backend (add_header
+    // always) and must land on the remote series.
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 502,
+      headers: { get: (name: string) => (name.toLowerCase() === 'x-ai-backend' ? 'remote' : null) },
+    });
+    await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'endpoint_error' });
+    expect(telemetryRepository.jobs.recordCounter).toHaveBeenCalledWith(
+      'immich.ai.interpretation.requests',
+      1,
+      { backend: 'remote', outcome: 'endpoint_error' },
+      expect.anything(),
+    );
+
+    // A connection that never answers is genuinely unattributable: it keeps
+    // the default and records as local.
+    fetchMock.mockRejectedValue(new DOMException('aborted', 'AbortError'));
+    await expect(client.interpret(Buffer.from('preview'))).rejects.toMatchObject({ code: 'timeout' });
+    expect(telemetryRepository.jobs.recordCounter).toHaveBeenCalledWith(
+      'immich.ai.interpretation.requests',
+      1,
+      { backend: 'local', outcome: 'timeout' },
+      expect.anything(),
+    );
+    expect(telemetryRepository.jobs.recordHistogram).toHaveBeenCalledWith(
+      'immich.ai.interpretation.request',
+      expect.any(Number),
+      { backend: 'local' },
+      expect.anything(),
+    );
   });
 });

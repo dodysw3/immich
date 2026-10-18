@@ -3,6 +3,7 @@ import { Agent, fetch as undiciFetch } from 'undici';
 import { MuseInterpretationResult, MuseInterpretationResultSchema } from 'src/dtos/ai-image-interpretation.dto.js';
 import { ConfigRepository } from 'src/repositories/config.repository.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';
+import { TelemetryRepository } from 'src/repositories/telemetry.repository.js';
 import {
   AI_IMAGE_INTERPRETATION_FORMAT_INSTRUCTION,
   AI_IMAGE_INTERPRETATION_MAX_OUTPUT_TOKENS,
@@ -46,13 +47,17 @@ export type AiImageInterpretationResponse = {
   result: MuseInterpretationResult;
   promptTokens?: number;
   completionTokens?: number;
+  backend: string;
 };
+
+type InterpretationOutcome = 'success' | AiImageInterpretationClientError['code'];
 
 @Injectable()
 export class AiImageInterpretationClient {
   constructor(
     private configRepository: ConfigRepository,
     private logger: LoggingRepository,
+    private telemetryRepository: TelemetryRepository,
   ) {}
 
   async interpret(image: Buffer, overrides?: { model?: string }): Promise<AiImageInterpretationResponse> {
@@ -64,6 +69,12 @@ export class AiImageInterpretationClient {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
     const startedAt = Date.now();
+    // The hybrid proxy (gpu-burst/nginx-ai-hybrid.conf) stamps the upstream
+    // that served the response into x-ai-backend. Absent means a direct
+    // endpoint config, which in this deployment is always the local rig; a
+    // mid-flight connection death is genuinely unattributable and also lands
+    // here (proxy 502s do carry the header, via add_header ... always).
+    let backend = 'local';
 
     try {
       const response = await undiciFetch(`${config.url.replace(/\/$/, '')}/chat/completions`, {
@@ -102,6 +113,10 @@ export class AiImageInterpretationClient {
           ],
         }),
       });
+
+      // read before the !ok check: a proxy 502 (rented instance down) carries
+      // the header, and those failures must land on the remote series
+      backend = response.headers?.get('x-ai-backend') ?? backend;
 
       if (!response.ok) {
         this.logger.warn(
@@ -168,26 +183,44 @@ export class AiImageInterpretationClient {
       }
 
       this.logger.debug(
-        `AI interpretation completed in ${Date.now() - startedAt}ms (prompt tokens: ${usage?.prompt_tokens ?? 'unknown'}, completion tokens: ${usage?.completion_tokens ?? 'unknown'})`,
+        `AI interpretation completed in ${Date.now() - startedAt}ms (prompt tokens: ${usage?.prompt_tokens ?? 'unknown'}, completion tokens: ${usage?.completion_tokens ?? 'unknown'}, backend: ${backend})`,
       );
+      this.recordRequest(backend, 'success', Date.now() - startedAt);
       return {
         result: result.data,
         promptTokens: usage?.prompt_tokens,
         completionTokens: usage?.completion_tokens,
+        backend,
       };
     } catch (error) {
-      if (error instanceof AiImageInterpretationClientError) {
-        throw error;
-      }
-
-      if ((error as Error)?.name === 'AbortError' || (error as { code?: string })?.code === 'ABORT_ERR') {
-        throw new AiImageInterpretationClientError('timeout', 'AI interpretation request timed out');
-      }
-
-      throw new AiImageInterpretationClientError('network_error', 'AI interpretation request failed');
+      // normalize first, then record the FINAL outcome (an abort that becomes
+      // 'timeout' must not be recorded as 'network_error')
+      const normalized =
+        error instanceof AiImageInterpretationClientError
+          ? error
+          : (error as Error)?.name === 'AbortError' || (error as { code?: string })?.code === 'ABORT_ERR'
+            ? new AiImageInterpretationClientError('timeout', 'AI interpretation request timed out')
+            : new AiImageInterpretationClientError('network_error', 'AI interpretation request failed');
+      this.recordRequest(backend, normalized.code, Date.now() - startedAt);
+      throw normalized;
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  private recordRequest(backend: string, outcome: InterpretationOutcome, durationMs: number): void {
+    this.telemetryRepository.jobs.recordCounter(
+      'immich.ai.interpretation.requests',
+      1,
+      { backend, outcome },
+      { description: 'AI interpretation endpoint requests, by serving backend and outcome' },
+    );
+    this.telemetryRepository.jobs.recordHistogram(
+      'immich.ai.interpretation.request',
+      durationMs,
+      { backend },
+      { unit: 'ms', description: 'Duration in ms of each AI interpretation request, by serving backend' },
+    );
   }
 }
 
