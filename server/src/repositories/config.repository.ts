@@ -78,6 +78,7 @@ export interface EnvData {
 
   network: {
     trustedProxies: string[];
+    apiKeyAllowedNetworks: string[];
   };
 
   otel: OpenTelemetryModuleOptions;
@@ -361,6 +362,7 @@ const getEnv = (): EnvData => {
 
     network: {
       trustedProxies: dto.IMMICH_TRUSTED_PROXIES ?? ['linklocal', 'uniquelocal'],
+      apiKeyAllowedNetworks: dto.IMMICH_API_KEY_ALLOWED_NETWORKS ?? ['loopback', 'uniquelocal', '100.64.0.0/10'],
     },
 
     otel: {

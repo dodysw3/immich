@@ -1,11 +1,15 @@
+import { HttpStatus } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { json, urlencoded } from 'body-parser';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import helmetMiddleware from 'helmet';
 import { existsSync } from 'node:fs';
+import { compile as compileTrust } from 'proxy-addr';
 import sirv from 'sirv';
+import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { IMMICH_SERVER_START, excludePaths, serverVersion } from 'src/constants.js';
+import { ImmichHeader, ImmichQuery } from 'src/enum.js';
 import { MaintenanceWorkerService } from 'src/maintenance/maintenance-worker.service.js';
 import { WebSocketAdapter } from 'src/middleware/websocket.adapter.js';
 import { ConfigRepository } from 'src/repositories/config.repository.js';
@@ -20,6 +24,39 @@ export function configureTelemetry() {
     bootstrapTelemetry(telemetry.apiPort);
   }
 }
+
+/**
+ * Rejects requests that carry an Immich API key (`x-api-key` header or `apiKey`
+ * query param) from clients outside the allowlisted networks — API keys are meant
+ * for LAN/docker use, while session and shared-link access stays open to the
+ * internet. The client IP honors `trust proxy`, so requests forwarded by a
+ * trusted reverse proxy are judged by the forwarded client address, not the
+ * proxy's address, and proxies not listed in `IMMICH_TRUSTED_PROXIES` cannot
+ * influence it via a forged `X-Forwarded-For`.
+ */
+export const createApiKeyNetworkGuard = (
+  allowedNetworks: string[],
+  logger: Pick<LoggingRepository, 'warn'>,
+): RequestHandler => {
+  // the compiled matcher's `distance` arg is optional at runtime but required in @types/proxy-addr
+  const isAllowedNetwork = compileTrust(allowedNetworks) as (addr: string) => boolean;
+
+  return (req: Request, res: Response, next: NextFunction) => {
+    const hasApiKey = req.headers[ImmichHeader.ApiKey] !== undefined || req.query[ImmichQuery.ApiKey] !== undefined;
+    if (hasApiKey && !isAllowedNetwork(req.ip ?? '')) {
+      logger.warn(
+        `Rejected API key request from non-allowlisted network: ${req.ip ?? '<unknown>'} ${req.method} ${req.path}`,
+      );
+      res.status(HttpStatus.FORBIDDEN).json({
+        error: 'Forbidden',
+        message: 'API key authentication is not allowed from this network',
+        statusCode: HttpStatus.FORBIDDEN,
+      });
+      return;
+    }
+    next();
+  };
+};
 
 export async function configureExpress(
   app: NestExpressApplication,
@@ -48,6 +85,8 @@ export async function configureExpress(
 
   app.set('trust proxy', ['loopback', ...network.trustedProxies]);
   app.set('etag', 'strong');
+
+  app.use(createApiKeyNetworkGuard(network.apiKeyAllowedNetworks, logger));
 
   if (helmet.config) {
     app.use(helmetMiddleware(helmet.config));

@@ -49,6 +49,7 @@ export const envData: EnvData = {
 
   network: {
     trustedProxies: [],
+    apiKeyAllowedNetworks: ['loopback', 'uniquelocal', '100.64.0.0/10'],
   },
 
   otel: {

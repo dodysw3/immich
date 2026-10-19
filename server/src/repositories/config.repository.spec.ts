@@ -14,6 +14,7 @@ const resetEnv = () => {
     'IMMICH_WORKERS_INCLUDE',
     'IMMICH_WORKERS_EXCLUDE',
     'IMMICH_TRUSTED_PROXIES',
+    'IMMICH_API_KEY_ALLOWED_NETWORKS',
     'IMMICH_API_METRICS_PORT',
     'IMMICH_MEDIA_LOCATION',
     'IMMICH_MICROSERVICES_METRICS_PORT',
@@ -406,6 +407,7 @@ describe('getEnv', () => {
       const { network } = getEnv();
       expect(network).toEqual({
         trustedProxies: ['linklocal', 'uniquelocal'],
+        apiKeyAllowedNetworks: ['loopback', 'uniquelocal', '100.64.0.0/10'],
       });
     });
 
@@ -414,7 +416,19 @@ describe('getEnv', () => {
       const { network } = getEnv();
       expect(network).toEqual({
         trustedProxies: ['10.1.0.0', '10.2.0.0', '169.254.0.0/16'],
+        apiKeyAllowedNetworks: ['loopback', 'uniquelocal', '100.64.0.0/10'],
       });
+    });
+
+    it('should parse the API key network allowlist', () => {
+      process.env.IMMICH_API_KEY_ALLOWED_NETWORKS = '127.0.0.0/8, 192.168.20.0/24';
+      const { network } = getEnv();
+      expect(network.apiKeyAllowedNetworks).toEqual(['127.0.0.0/8', '192.168.20.0/24']);
+    });
+
+    it('should reject an invalid API key network allowlist', () => {
+      process.env.IMMICH_API_KEY_ALLOWED_NETWORKS = '192.168.20';
+      expect(() => getEnv()).toThrow('[IMMICH_API_KEY_ALLOWED_NETWORKS] Must be an ip address or ip address range');
     });
 
     it('should reject invalid trusted proxies', () => {
