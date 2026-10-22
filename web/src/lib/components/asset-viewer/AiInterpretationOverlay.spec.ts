@@ -57,22 +57,32 @@ describe('AiInterpretationOverlay', () => {
     });
 
     const button = await screen.findByLabelText('ai_interpretation');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(button).toHaveAttribute('aria-pressed', 'false');
 
     await fireEvent.click(button);
 
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(await screen.findByTestId('ai-interpretation-title')).toHaveTextContent('Latest title');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByTestId('ai-interpretation-title')).not.toHaveTextContent('Older title');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByTestId('ai-interpretation-summary')).toHaveTextContent(
       '[I] Latest interpretation // [S] Latest archive summary',
     );
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByTestId('ai-interpretation-overlay')).toHaveClass('fixed');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByTestId('ai-interpretation-title')).toHaveClass('text-left', 'font-bold', 'text-white');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByTestId('ai-interpretation-summary')).toHaveClass('text-left', 'text-sm/snug', 'wrap-break-word');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByTestId('ai-interpretation-summary')).not.toHaveClass('font-bold');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByTestId('ai-interpretation-bottom')).toHaveStyle({
       'inset-inline-end': '5rem',
     });
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByTestId('ai-interpretation-summary')).toHaveStyle({
       'text-shadow': '0 2px 4px rgb(0 0 0 / 0.95), 0 0 8px rgb(0 0 0 / 0.8)',
     });
@@ -82,15 +92,21 @@ describe('AiInterpretationOverlay', () => {
       'Medium detail',
       'Low detail',
     ]);
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByText('High detail')).toHaveClass('rounded-full', 'bg-green-600/90', 'text-white');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByText('Medium detail')).toHaveClass('rounded-full', 'bg-amber-500/90', 'text-black');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByText('Low detail')).toHaveClass('rounded-full', 'bg-red-600/90', 'text-white');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByText('High detail')).toHaveAttribute('data-tooltip-trigger');
     await fireEvent.pointerEnter(screen.getByText('High detail'));
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(await screen.findByText('High significance')).toBeInTheDocument();
 
     await fireEvent.click(button);
     expect(screen.queryByTestId('ai-interpretation-overlay')).toBeNull();
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(button).toHaveAttribute('aria-pressed', 'false');
     expect(sessionStorage.getItem(SESSION_STORAGE_KEY)).toBe('false');
   });
@@ -123,6 +139,7 @@ describe('AiInterpretationOverlay', () => {
 
     const button = await screen.findByLabelText('ai_interpretation');
     await fireEvent.click(button);
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(await screen.findByTestId('ai-interpretation-title')).toHaveTextContent('First title');
 
     await rerender({
@@ -146,7 +163,9 @@ describe('AiInterpretationOverlay', () => {
       }),
     );
     await waitFor(() => {
+      // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
       expect(screen.getByLabelText('ai_interpretation')).toHaveAttribute('aria-pressed', 'true');
+      // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
       expect(screen.getByTestId('ai-interpretation-summary')).toHaveTextContent('[S] Second summary');
     });
   });
@@ -197,7 +216,9 @@ describe('AiInterpretationOverlay', () => {
       buttonBottom: 24,
     });
     const secondButton = await screen.findByLabelText('ai_interpretation');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(secondButton).toHaveAttribute('aria-pressed', 'true');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(await screen.findByTestId('ai-interpretation-title')).toHaveTextContent('Persisted title');
   });
 
@@ -214,6 +235,7 @@ describe('AiInterpretationOverlay', () => {
     const button = await screen.findByLabelText('ai_interpretation');
 
     await fireEvent.click(button);
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(button).toHaveAttribute('aria-pressed', 'true');
     setItem.mockRestore();
   });

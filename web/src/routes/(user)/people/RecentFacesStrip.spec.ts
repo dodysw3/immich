@@ -38,7 +38,9 @@ describe('RecentFacesStrip component', () => {
     mockedGetRecentlyMatched.mockResolvedValue({ items: [], total: 0 });
     render(RecentFacesStrip);
     await waitFor(() => expect(mockedGetRecentlyMatched).toHaveBeenCalledWith({ limit: 50 }));
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     await waitFor(() => expect(screen.queryByText('Recently recognized')).not.toBeInTheDocument());
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
@@ -46,7 +48,9 @@ describe('RecentFacesStrip component', () => {
     mockedGetRecentlyMatched.mockRejectedValue(new Error('network down'));
     render(RecentFacesStrip);
     await waitFor(() => expect(mockedGetRecentlyMatched).toHaveBeenCalled());
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.queryByText('Recently recognized')).not.toBeInTheDocument();
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
@@ -59,9 +63,13 @@ describe('RecentFacesStrip component', () => {
       ],
     });
     render(RecentFacesStrip);
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     await waitFor(() => expect(screen.getByText('Recently recognized')).toBeInTheDocument());
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByText('Alice')).toBeInTheDocument();
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByText('—')).toBeInTheDocument();
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByText('View all →')).toBeInTheDocument();
     const personLinks = screen.getAllByRole('link');
     expect(personLinks.map((link) => link.getAttribute('href'))).toEqual([

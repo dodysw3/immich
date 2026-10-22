@@ -5,9 +5,9 @@ import { OnEvent } from 'src/decorators.js';
 import { ImmichWorker, JobStatus, QueueName } from 'src/enum.js';
 import { BaseService } from 'src/services/base.service.js';
 
-// states that make up a queue's backlog; active is tracked separately by the
-// event-driven immich.queues.<name>.active gauge
-const QUEUE_COUNT_STATES = ['waiting', 'delayed', 'paused', 'failed'] as const;
+// BullMQ 6 includes paused jobs in waiting; active is tracked separately by
+// the event-driven immich.queues.<name>.active gauge.
+const QUEUE_COUNT_STATES = ['waiting', 'delayed', 'failed'] as const;
 
 export class TelemetryService extends BaseService {
   @OnEvent({ name: 'AppBootstrap', workers: [ImmichWorker.Api] })

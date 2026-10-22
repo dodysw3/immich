@@ -9,8 +9,12 @@ const makeRepositoryWithRedis = (redis: Record<string, ReturnType<typeof vi.fn>>
     undefined as never,
     { setContext: vi.fn() } as never,
   );
-  (repository as never as { getQueue: () => { client: Promise<unknown> } }).getQueue = () => ({
-    client: Promise.resolve(redis),
+  // The test replaces private queue lookup with an isolated Redis backend.
+  const testRepository = repository as unknown as {
+    getQueue: () => { getBackend: () => { client: Promise<unknown> } };
+  };
+  testRepository.getQueue = () => ({
+    getBackend: () => ({ client: Promise.resolve(redis) }),
   });
   return repository;
 };

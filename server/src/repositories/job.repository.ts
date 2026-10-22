@@ -201,7 +201,6 @@ export class JobRepository {
       'delayed',
       'waiting',
       'prioritized',
-      'paused',
     )) as unknown as JobCounts & { prioritized: number };
     return { ...counts, waiting: counts.waiting + counts.prioritized };
   }
@@ -225,10 +224,9 @@ export class JobRepository {
     return count / AI_INTERPRETATION_RATE_WINDOW_MINUTES;
   }
 
-  // BullMQ's queue client is the shared ioredis connection; commands BullMQ
-  // itself does not use (zadd, zcount, ...) are forwarded to it unchanged.
+  // BullMQ 6 exposes the shared Redis connection through its backend.
   private getRedisClient(): Promise<Redis> {
-    return this.getQueue(QueueName.ImageInterpretation).client as unknown as Promise<Redis>;
+    return this.getQueue(QueueName.ImageInterpretation).getBackend().client as unknown as Promise<Redis>;
   }
 
   private getQueueName(name: JobName) {

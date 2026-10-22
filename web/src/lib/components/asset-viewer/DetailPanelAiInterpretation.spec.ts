@@ -74,27 +74,41 @@ describe('DetailPanelAiInterpretation', () => {
     renderPanel();
 
     const panel = await screen.findByTestId('ai-interpretation');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByTestId('ai-interpretation-status')).toHaveTextContent('Completed');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByTestId('ai-interpretation-title')).toHaveTextContent('Indoor family gathering');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(panel).toHaveTextContent('A candid indoor photograph of a group of adults and children.');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByTestId('ai-interpretation-summary')).toHaveTextContent(
       'The image appears to capture a relaxed domestic moment.',
     );
 
     const details = screen.getByTestId('ai-interpretation-notable-details');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(details).toHaveTextContent('Woman wearing a patterned hijab seated on sofa');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(details).toHaveTextContent('HIGH');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(details).toHaveTextContent('LOW');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(details).toHaveTextContent('Indicates cultural dress and suggests a domestic setting');
 
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByText('family gathering · living room')).toBeInTheDocument();
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByTestId('ai-interpretation-inference')).toHaveTextContent('Muse-Glimmer-30B');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByTestId('ai-interpretation-inference')).toHaveTextContent('UD-Q3_K_XL');
 
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByRole('button', { name: 'Uncertainties (2)' })).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByText('The identities of the people are unknown.')).toBeNull();
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(panel).not.toHaveTextContent('An indoor living room scene with several people.');
     expect(screen.queryByRole('button', { name: 'Raw JSON' })).not.toBeNull();
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(panel).not.toHaveTextContent('schemaVersion');
   });
 
@@ -108,15 +122,19 @@ describe('DetailPanelAiInterpretation', () => {
     expect(screen.queryByText('Identifications')).toBeNull();
 
     await user.click(screen.getByRole('button', { name: 'Uncertainties (2)' }));
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByText('The exact location is not visible.')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Visual analysis' }));
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByText('The composition is centered on the sofa group.')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Context and significance' }));
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByText('Likely a family or social visit.')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Literal description' }));
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByText('An indoor living room scene with several people.')).toBeInTheDocument();
   });
 
@@ -127,18 +145,26 @@ describe('DetailPanelAiInterpretation', () => {
     renderPanel();
 
     const panel = await screen.findByTestId('ai-interpretation');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(panel).not.toHaveTextContent(runKey);
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(panel).not.toHaveTextContent('unsloth/Muse-Glimmer-30B-GGUF');
 
     await user.click(screen.getByRole('button', { name: 'Technical details' }));
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByText('unsloth/Muse-Glimmer-30B-GGUF')).toBeInTheDocument();
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByText('image-interpretation-1.0.0')).toBeInTheDocument();
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByText(runKey)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Raw JSON' }));
     const pre = panel.querySelector('pre');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(pre).toHaveClass('max-h-96', 'overflow-auto');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(pre).toHaveTextContent('schemaVersion');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(pre).toHaveTextContent('promptVersion');
   });
 
@@ -155,6 +181,7 @@ describe('DetailPanelAiInterpretation', () => {
     await screen.findByTestId('ai-interpretation');
     await user.click(screen.getByRole('button', { name: 'Raw JSON' }));
 
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByTestId('ai-interpretation')).toHaveTextContent('<script>alert(1)</script>');
     expect(screen.getByTestId('ai-interpretation').querySelector('script')).toBeNull();
   });
@@ -179,8 +206,10 @@ describe('DetailPanelAiInterpretation', () => {
     renderPanel();
 
     const panel = await screen.findByTestId('ai-interpretation');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByTestId('ai-interpretation-status')).toHaveTextContent('Failed');
     expect(screen.queryByTestId('ai-interpretation-title')).toBeNull();
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(panel).toHaveTextContent('Model endpoint unreachable');
   });
 
@@ -211,6 +240,7 @@ describe('DetailPanelAiInterpretation', () => {
     renderPanel();
 
     await screen.findByTestId('ai-interpretation');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
     expect(screen.getByTestId('ai-interpretation-title')).toHaveTextContent('Indoor family gathering');
     expect(screen.queryByText('Older interpretation')).toBeNull();
   });
