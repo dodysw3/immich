@@ -343,7 +343,6 @@ select
       ) as agg
   ) as "people"
 from
-
   (
     select
       count(*) as "total",
