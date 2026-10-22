@@ -29,6 +29,7 @@ import { AssetEditRepository } from 'src/repositories/asset-edit.repository.js';
 import { AssetFileRepository } from 'src/repositories/asset-file.repository.js';
 import { AssetJobRepository } from 'src/repositories/asset-job.repository.js';
 import { AssetRepository } from 'src/repositories/asset.repository.js';
+import { AuthChallengeRepository } from 'src/repositories/auth-challenge.repository.js';
 import { ClusterGroupRepository } from 'src/repositories/cluster-group.repository.js';
 import { ConfigRepository } from 'src/repositories/config.repository.js';
 import { CronRepository } from 'src/repositories/cron.repository.js';
@@ -54,6 +55,7 @@ import { OAuthRepository } from 'src/repositories/oauth.repository.js';
 import { OcrRepository } from 'src/repositories/ocr.repository.js';
 import { PartnerRepository } from 'src/repositories/partner.repository.js';
 import { PdfRepository } from 'src/repositories/pdf.repository.js';
+import { PasskeyRepository } from 'src/repositories/passkey.repository.js';
 import { PersonUserRepository } from 'src/repositories/person-user.repository.js';
 import { PersonRepository } from 'src/repositories/person.repository.js';
 import { PluginRepository } from 'src/repositories/plugin.repository.js';
@@ -75,6 +77,7 @@ import { UserRepository } from 'src/repositories/user.repository.js';
 import { VersionHistoryRepository } from 'src/repositories/version-history.repository.js';
 import { VideoStreamRepository } from 'src/repositories/video-stream.repository.js';
 import { ViewRepository } from 'src/repositories/view-repository.js';
+import { WebAuthnRepository } from 'src/repositories/webauthn.repository.js';
 import { WebsocketRepository } from 'src/repositories/websocket.repository.js';
 import { WorkflowRepository } from 'src/repositories/workflow.repository.js';
 import { DB } from 'src/schema/index.js';
@@ -248,6 +251,7 @@ export type ServiceOverrides = {
   assetEdit: AssetEditRepository;
   assetFile: AssetFileRepository;
   assetJob: AssetJobRepository;
+  authChallenge: AuthChallengeRepository;
   clusterGroup: ClusterGroupRepository;
   config: ConfigRepository;
   cron: CronRepository;
@@ -273,6 +277,7 @@ export type ServiceOverrides = {
   pdf: PdfRepository;
   oauth: OAuthRepository;
   partner: PartnerRepository;
+  passkey: PasskeyRepository;
   person: PersonRepository;
   personUser: PersonUserRepository;
   plugin: PluginRepository;
@@ -294,6 +299,7 @@ export type ServiceOverrides = {
   versionHistory: VersionHistoryRepository;
   videoStream: VideoStreamRepository;
   view: ViewRepository;
+  webAuthn: WebAuthnRepository;
   websocket: WebsocketRepository;
   workflow: WorkflowRepository;
 };
@@ -337,6 +343,7 @@ export const getMocks = () => {
     assetEdit: automock(AssetEditRepository),
     assetFile: automock(AssetFileRepository),
     assetJob: automock(AssetJobRepository),
+    authChallenge: automock(AuthChallengeRepository),
     clusterGroup: automock(ClusterGroupRepository),
     app: automock(AppRepository, { strict: false }),
     config: newConfigRepositoryMock(),
@@ -362,6 +369,7 @@ export const getMocks = () => {
     pdf: automock(PdfRepository, { strict: false }),
     oauth: automock(OAuthRepository, { args: [loggerMock] }),
     partner: automock(PartnerRepository, { strict: false }),
+    passkey: automock(PasskeyRepository),
     person: automock(PersonRepository, { strict: false }),
     personUser: automock(PersonUserRepository, { strict: false }),
     plugin: automock(PluginRepository, { strict: true, args: [databaseMock, loggerMock] }),
@@ -386,6 +394,7 @@ export const getMocks = () => {
     versionHistory: automock(VersionHistoryRepository),
     videoStream: automock(VideoStreamRepository, { strict: false }),
     view: automock(ViewRepository),
+    webAuthn: automock(WebAuthnRepository),
     // eslint-disable-next-line no-sparse-arrays
     websocket: automock(WebsocketRepository, { args: [, loggerMock], strict: false }),
     workflow: automock(WorkflowRepository, { strict: true }),
@@ -415,6 +424,7 @@ export const newTestService = <T extends BaseService>(
     overrides.assetEdit || (mocks.assetEdit as As<AssetEditRepository>),
     overrides.assetFile || (mocks.assetFile as As<AssetFileRepository>),
     overrides.assetJob || (mocks.assetJob as As<AssetJobRepository>),
+    overrides.authChallenge || (mocks.authChallenge as As<AuthChallengeRepository>),
     overrides.clusterGroup || (mocks.clusterGroup as As<ClusterGroupRepository>),
     overrides.config || (mocks.config as As<ConfigRepository> as ConfigRepository),
     overrides.cron || (mocks.cron as As<CronRepository>),
@@ -439,6 +449,7 @@ export const newTestService = <T extends BaseService>(
     overrides.ocr || (mocks.ocr as As<OcrRepository>),
     overrides.pdf || (mocks.pdf as As<PdfRepository>),
     overrides.partner || (mocks.partner as As<PartnerRepository>),
+    overrides.passkey || (mocks.passkey as As<PasskeyRepository>),
     overrides.person || (mocks.person as As<PersonRepository>),
     overrides.personUser || (mocks.personUser as As<PersonUserRepository>),
     overrides.plugin || (mocks.plugin as As<PluginRepository>),
@@ -460,6 +471,7 @@ export const newTestService = <T extends BaseService>(
     overrides.versionHistory || (mocks.versionHistory as As<VersionHistoryRepository>),
     overrides.videoStream || (mocks.videoStream as As<VideoStreamRepository>),
     overrides.view || (mocks.view as As<ViewRepository>),
+    overrides.webAuthn || (mocks.webAuthn as As<WebAuthnRepository>),
     overrides.websocket || (mocks.websocket as As<WebsocketRepository>),
     overrides.workflow || (mocks.workflow as As<WorkflowRepository>),
   );

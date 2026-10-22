@@ -35,6 +35,7 @@ import { NotificationService } from 'src/services/notification.service.js';
 import { OcrService } from 'src/services/ocr.service.js';
 import { PartnerService } from 'src/services/partner.service.js';
 import { PdfService } from 'src/services/pdf.service.js';
+import { PasskeyService } from 'src/services/passkey.service.js';
 import { PersonService } from 'src/services/person.service.js';
 import { PluginService } from 'src/services/plugin.service.js';
 import { QueueService } from 'src/services/queue.service.js';
@@ -99,6 +100,7 @@ export const services = [
   PdfService,
   ClusterGroupService,
   PartnerService,
+  PasskeyService,
   PersonService,
   PluginService,
   QueueService,

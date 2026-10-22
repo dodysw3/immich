@@ -10,6 +10,7 @@ import { AssetEditRepository } from 'src/repositories/asset-edit.repository.js';
 import { AssetFileRepository } from 'src/repositories/asset-file.repository.js';
 import { AssetJobRepository } from 'src/repositories/asset-job.repository.js';
 import { AssetRepository } from 'src/repositories/asset.repository.js';
+import { AuthChallengeRepository } from 'src/repositories/auth-challenge.repository.js';
 import { ClusterGroupRepository } from 'src/repositories/cluster-group.repository.js';
 import { ConfigRepository } from 'src/repositories/config.repository.js';
 import { CronRepository } from 'src/repositories/cron.repository.js';
@@ -35,6 +36,7 @@ import { OAuthRepository } from 'src/repositories/oauth.repository.js';
 import { OcrRepository } from 'src/repositories/ocr.repository.js';
 import { PartnerRepository } from 'src/repositories/partner.repository.js';
 import { PdfRepository } from 'src/repositories/pdf.repository.js';
+import { PasskeyRepository } from 'src/repositories/passkey.repository.js';
 import { PersonUserRepository } from 'src/repositories/person-user.repository.js';
 import { PersonRepository } from 'src/repositories/person.repository.js';
 import { PluginRepository } from 'src/repositories/plugin.repository.js';
@@ -56,6 +58,7 @@ import { UserRepository } from 'src/repositories/user.repository.js';
 import { VersionHistoryRepository } from 'src/repositories/version-history.repository.js';
 import { VideoStreamRepository } from 'src/repositories/video-stream.repository.js';
 import { ViewRepository } from 'src/repositories/view-repository.js';
+import { WebAuthnRepository } from 'src/repositories/webauthn.repository.js';
 import { WebsocketRepository } from 'src/repositories/websocket.repository.js';
 import { WorkflowRepository } from 'src/repositories/workflow.repository.js';
 
@@ -72,6 +75,7 @@ export const repositories = [
   AssetEditRepository,
   AssetFileRepository,
   AssetJobRepository,
+  AuthChallengeRepository,
   ConfigRepository,
   CronRepository,
   CryptoRepository,
@@ -97,6 +101,7 @@ export const repositories = [
   PdfRepository,
   ClusterGroupRepository,
   PartnerRepository,
+  PasskeyRepository,
   PersonRepository,
   PersonUserRepository,
   PluginRepository,
@@ -118,6 +123,7 @@ export const repositories = [
   ViewRepository,
   VersionHistoryRepository,
   VideoStreamRepository,
+  WebAuthnRepository,
   WebsocketRepository,
   WorkflowRepository,
 ];

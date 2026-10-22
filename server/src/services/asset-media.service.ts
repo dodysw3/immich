@@ -19,7 +19,7 @@ import {
   UploadFieldName,
 } from 'src/dtos/asset-media.dto.js';
 import { AssetAnnotatedOriginalDto, AssetDownloadOriginalDto } from 'src/dtos/asset.dto.js';
-import { AuthDto } from 'src/dtos/auth.dto.js';
+import { AuthDto, isEditedOnly, isMetadataHidden } from 'src/dtos/auth.dto.js';
 import { mapFaces } from 'src/dtos/person.dto.js';
 import {
   AssetFileType,
@@ -51,6 +51,8 @@ export class AssetMediaService extends BaseService {
     if (!checksum) {
       return;
     }
+
+    await this.requireAccess({ auth, permission: Permission.AssetUpload, ids: [auth.user.id] });
 
     const assetId = await this.assetRepository.getUploadAssetIdByChecksum(auth.user.id, fromChecksum(checksum));
     if (!assetId) {
@@ -233,13 +235,9 @@ export class AssetMediaService extends BaseService {
   async downloadOriginal(auth: AuthDto, id: string, dto: AssetDownloadOriginalDto): Promise<ImmichFileResponse> {
     await this.requireAccess({ auth, permission: Permission.AssetDownload, ids: [id] });
 
-    if (auth.sharedLink) {
-      dto.edited = true;
-    }
-
     const { originalPath, originalFileName, editedPath } = await this.assetRepository.getForOriginal(
       id,
-      dto.edited ?? false,
+      isEditedOnly(auth, dto.edited),
     );
 
     const path = editedPath ?? originalPath!;
@@ -308,18 +306,11 @@ export class AssetMediaService extends BaseService {
       throw new BadRequestException('May not request original file');
     }
 
-    if (auth.sharedLink) {
-      dto.edited = true;
-    }
-
+    const edited = isEditedOnly(auth, dto.edited);
     const size = (dto.size ?? AssetMediaSize.THUMBNAIL) as unknown as AssetFileType;
-    const { originalPath, originalFileName, path } = await this.assetRepository.getForThumbnail(
-      id,
-      size,
-      dto.edited ?? false,
-    );
+    const { originalPath, originalFileName, path } = await this.assetRepository.getForThumbnail(id, size, edited);
 
-    if (size === AssetFileType.FullSize && mimeTypes.isWebSupportedImage(originalPath) && !dto.edited) {
+    if (size === AssetFileType.FullSize && mimeTypes.isWebSupportedImage(originalPath) && !edited) {
       // use original file for web supported images
       return { targetSize: 'original' };
     }
@@ -334,8 +325,7 @@ export class AssetMediaService extends BaseService {
       throw new NotFoundException('Asset media not found');
     }
 
-    const fileNameBase =
-      auth.sharedLink && !auth.sharedLink.showExif ? id : getFileNameWithoutExtension(originalFileName);
+    const fileNameBase = isMetadataHidden(auth) ? id : getFileNameWithoutExtension(originalFileName);
     const fileName = `${fileNameBase}_${size}${getFilenameExtension(path)}`;
 
     return new ImmichFileResponse({
@@ -400,7 +390,7 @@ export class AssetMediaService extends BaseService {
       return;
     }
 
-    const album = await this.albumRepository.getById(sharedLink.albumId, { withAssets: false });
+    const album = await this.albumRepository.getById(sharedLink.albumId);
     if (!album) {
       return;
     }
