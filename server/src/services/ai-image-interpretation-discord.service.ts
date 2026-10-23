@@ -109,6 +109,7 @@ export class AiImageInterpretationDiscordService {
         originalFileName: asset.originalFileName,
         photoDate: getPhotoDate(asset),
         result: run.result,
+        model: run.model,
         thumbnail,
         waitingCount,
         eta,
@@ -127,7 +128,7 @@ export class AiImageInterpretationDiscordService {
     }
 
     this.logger.log(
-      `Sent AI interpretation Discord alert for ${assetId}/${runKey} (remaining in queue: ${waitingCount}, ETA: ${eta})`,
+      `Sent AI interpretation Discord alert for ${assetId}/${runKey} (model: ${run.model}, remaining in queue: ${waitingCount}, ETA: ${eta})`,
     );
     return JobStatus.Success;
   }

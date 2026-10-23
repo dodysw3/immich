@@ -21,6 +21,7 @@ export type AiInterpretationDiscordAlert = {
   photoDate: string;
   waitingCount: number;
   eta: string;
+  model: string;
   result: MuseInterpretationResult;
   thumbnail?: AiInterpretationDiscordThumbnail;
 };
@@ -109,6 +110,7 @@ export const buildAiInterpretationDiscordPayload = ({
   originalFileName,
   photoDate,
   result,
+  model,
   thumbnail,
   waitingCount,
   eta,
@@ -127,6 +129,11 @@ export const buildAiInterpretationDiscordPayload = ({
       {
         name: 'Filename',
         value: truncate(originalFileName, DISCORD_FIELD_VALUE_LIMIT) || 'Unknown filename',
+        inline: true,
+      },
+      {
+        name: 'Model',
+        value: truncate(model, DISCORD_FIELD_VALUE_LIMIT) || 'Unknown model',
         inline: true,
       },
       {

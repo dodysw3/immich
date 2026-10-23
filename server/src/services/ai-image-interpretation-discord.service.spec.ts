@@ -116,6 +116,7 @@ describe(AiImageInterpretationDiscordService.name, () => {
       originalFileName: 'IMG_1234.JPG',
       photoDate: '2026-09-13T05:10:59.000Z',
       result,
+      model: 'model',
       eta: expect.stringMatching(/^~11m \(around /),
       thumbnail: {
         buffer: Buffer.from('thumbnail'),
@@ -126,7 +127,7 @@ describe(AiImageInterpretationDiscordService.name, () => {
     });
     expect(dependencies.logger.log).toHaveBeenCalledWith(
       expect.stringMatching(
-        /Sent AI interpretation Discord alert for asset-1\/[a-f0-9]+ \(remaining in queue: 37, ETA: ~11m \(around /,
+        /Sent AI interpretation Discord alert for asset-1\/[a-f0-9]+ \(model: model, remaining in queue: 37, ETA: ~11m \(around /,
       ),
     );
   });
