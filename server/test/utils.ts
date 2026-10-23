@@ -54,8 +54,8 @@ import { NotificationRepository } from 'src/repositories/notification.repository
 import { OAuthRepository } from 'src/repositories/oauth.repository.js';
 import { OcrRepository } from 'src/repositories/ocr.repository.js';
 import { PartnerRepository } from 'src/repositories/partner.repository.js';
-import { PdfRepository } from 'src/repositories/pdf.repository.js';
 import { PasskeyRepository } from 'src/repositories/passkey.repository.js';
+import { PdfRepository } from 'src/repositories/pdf.repository.js';
 import { PersonUserRepository } from 'src/repositories/person-user.repository.js';
 import { PersonRepository } from 'src/repositories/person.repository.js';
 import { PluginRepository } from 'src/repositories/plugin.repository.js';
