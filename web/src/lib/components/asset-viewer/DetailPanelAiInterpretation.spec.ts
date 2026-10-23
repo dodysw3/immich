@@ -213,6 +213,41 @@ describe('DetailPanelAiInterpretation', () => {
     expect(panel).toHaveTextContent('Model endpoint unreachable');
   });
 
+  it('hides the model identity while the run is still queued', async () => {
+    vi.mocked(getAssetMetadataByKey).mockResolvedValue(
+      documentWith({
+        [runKey]: {
+          model: 'unsloth/Muse-Glimmer-30B-GGUF',
+          quant: 'UD-Q3_K_XL',
+          promptVersion: 'image-interpretation-1.2.0',
+          status: 'queued',
+          trigger: 'upload',
+          requestedAt: '2026-10-23T10:20:26.000Z',
+        },
+      }),
+    );
+    const user = userEvent.setup();
+
+    renderPanel();
+
+    const panel = await screen.findByTestId('ai-interpretation');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
+    expect(screen.getByTestId('ai-interpretation-status')).toHaveTextContent('Queued');
+    expect(screen.queryByTestId('ai-interpretation-inference')).toBeNull();
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
+    expect(panel).not.toHaveTextContent('Muse-Glimmer-30B');
+
+    await user.click(screen.getByRole('button', { name: 'Technical details' }));
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
+    expect(screen.getByText('upload')).toBeInTheDocument();
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
+    expect(screen.getByText(runKey)).toBeInTheDocument();
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
+    expect(panel).not.toHaveTextContent('unsloth/Muse-Glimmer-30B-GGUF');
+    // @ts-expect-error pending a type fix: https://github.com/testing-library/jest-dom/pull/742/changes
+    expect(panel).not.toHaveTextContent('image-interpretation-1.2.0');
+  });
+
   it('hides entirely when there are no runs', async () => {
     vi.mocked(getAssetMetadataByKey).mockResolvedValue(documentWith({}));
 

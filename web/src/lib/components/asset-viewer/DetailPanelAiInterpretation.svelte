@@ -340,7 +340,13 @@
       return [];
     }
 
-    const model = [run.model && displayModelName(run.model), run.quant].filter((part): part is string => !!part);
+    // A queued run was only claimed: its identity is what the server plans to
+    // serve (and a router backend may override it anyway), so it stays hidden
+    // until inference actually begins.
+    const model =
+      run.status === 'queued'
+        ? []
+        : [run.model && displayModelName(run.model), run.quant].filter((part): part is string => !!part);
     const usage = [
       run.metrics?.durationMs === undefined ? undefined : formatDuration(run.metrics.durationMs),
       (() => {
@@ -383,14 +389,16 @@
     }
 
     const rows: TechRow[] = [];
-    if (run.model) {
-      rows.push({ label: $t('ai_model'), value: run.model });
-    }
-    if (run.quant) {
-      rows.push({ label: $t('quantization'), value: run.quant });
-    }
-    if (run.promptVersion) {
-      rows.push({ label: $t('prompt_version'), value: run.promptVersion });
+    if (run.status !== 'queued') {
+      if (run.model) {
+        rows.push({ label: $t('ai_model'), value: run.model });
+      }
+      if (run.quant) {
+        rows.push({ label: $t('quantization'), value: run.quant });
+      }
+      if (run.promptVersion) {
+        rows.push({ label: $t('prompt_version'), value: run.promptVersion });
+      }
     }
     if (inputLine) {
       rows.push({ label: $t('input'), value: inputLine });
