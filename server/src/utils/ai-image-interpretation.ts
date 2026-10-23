@@ -56,6 +56,14 @@ Use the shortest natural wording that stays useful in every field. Prefer "Peopl
 export const createAiInterpretationRunKey = (model: string, quant: string, promptVersion: string): string =>
   createHash('sha256').update(`${model}\n${quant}\n${promptVersion}`, 'utf8').digest('hex');
 
+// Hosted-router identity quant: marks results served by a remote hosted model
+// (the manual "Interpret image (public)" path) as opposed to a locally
+// quantized GGUF.
+export const AI_INTERPRETATION_HOSTED_QUANT = 'hosted';
+
+export const createAiInterpretationPublicRunKey = (publicModel: string, promptVersion: string): string =>
+  createAiInterpretationRunKey(publicModel, AI_INTERPRETATION_HOSTED_QUANT, promptVersion);
+
 // Failed runs retry with exponentially increasing delays, capped at one day,
 // with no attempt limit: an endpoint that is down for hours (or a model being
 // re-tuned) must eventually converge without ever hammering it. The dispatch

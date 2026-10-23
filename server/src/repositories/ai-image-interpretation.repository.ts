@@ -20,6 +20,14 @@ export type AiInterpretationIdentity = {
   promptVersion: string;
 };
 
+export type AiInterpretationClaimOptions = {
+  // Manual public re-runs must go through even over a completed run: the claim
+  // resets it to `queued` (result kept until overwritten) so the same identity
+  // can be re-interpreted on demand.
+  resetCompleted?: boolean;
+  trigger?: 'upload' | 'manual-public';
+};
+
 export type AiInterpretationClaim =
   | { alreadyExists: true; runKey: string; run: AiInterpretationRun }
   | { alreadyExists: false; runKey: string; run: AiInterpretationRun };
@@ -53,12 +61,13 @@ export class AiImageInterpretationRepository {
     assetId: string,
     identity: AiInterpretationIdentity,
     requestedAt = new Date(),
+    options?: AiInterpretationClaimOptions,
   ): Promise<AiInterpretationClaim> {
     const runKey = createAiInterpretationRunKey(identity.model, identity.quant, identity.promptVersion);
     const run: AiInterpretationRun = {
       ...identity,
       status: 'queued',
-      trigger: 'upload',
+      trigger: options?.trigger ?? 'upload',
       requestedAt: requestedAt.toISOString(),
     };
 
@@ -70,15 +79,19 @@ export class AiImageInterpretationRepository {
       if (existingRun) {
         // A failed run never blocks a new trigger: the claim resets it to
         // `queued` (preserving the attempt history) so manual interpretations
-        // and upload-driven retries stay possible. Queued, running, and
-        // completed runs remain single-delivery.
-        if (existingRun.status !== 'failed') {
+        // and upload-driven retries stay possible. With resetCompleted a
+        // completed run resets too (manual re-run of the same identity).
+        // Queued and running runs remain single-delivery.
+        const resettable =
+          existingRun.status === 'failed' || (options?.resetCompleted === true && existingRun.status === 'completed');
+        if (!resettable) {
           return { alreadyExists: true, runKey, run: existingRun };
         }
 
         const requeued: AiInterpretationRun = {
           ...existingRun,
           status: 'queued',
+          trigger: options?.trigger ?? existingRun.trigger,
           requestedAt: requestedAt.toISOString(),
           startedAt: undefined,
           nextAttemptAt: undefined,
@@ -111,6 +124,7 @@ export class AiImageInterpretationRepository {
     input: AiInterpretationInput,
     result: MuseInterpretationResult,
     metrics: AiInterpretationMetrics,
+    served?: { model: string; quant: string },
     finishedAt = new Date(),
   ): Promise<boolean> {
     const next = await this.updateRun(assetId, runKey, (run) => {
@@ -118,8 +132,17 @@ export class AiImageInterpretationRepository {
         return;
       }
 
+      // The claim records the configured identity; `served` overwrites it with
+      // what actually generated this result (a hybrid-proxy router backend), so
+      // provenance surfaces (record, Discord, detail panel) name the true model.
+      const identity =
+        served && (served.model !== run.model || served.quant !== run.quant)
+          ? { model: served.model, quant: served.quant }
+          : {};
+
       return {
         ...run,
+        ...identity,
         status: 'completed',
         finishedAt: finishedAt.toISOString(),
         input,

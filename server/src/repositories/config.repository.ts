@@ -146,6 +146,8 @@ export interface EnvData {
     apiKey?: string;
     model: string;
     quant: string;
+    publicUrl?: string;
+    publicModel: string;
     promptVersion: string;
     timeoutMs: number;
     maxEdge: number;
@@ -434,6 +436,11 @@ const getEnv = (): EnvData => {
       apiKey: dto.IMMICH_AI_IMAGE_INTERPRETATION_API_KEY,
       model: dto.IMMICH_AI_IMAGE_INTERPRETATION_MODEL || 'unsloth/Muse-Glimmer-30B-GGUF',
       quant: dto.IMMICH_AI_IMAGE_INTERPRETATION_QUANT || 'UD-Q3_K_XL',
+      // Manual-only "Interpret image (public)" endpoint: a hosted router model
+      // the user explicitly sends individual images to (training consent is
+      // per-image by construction). Unset = the menu action is rejected.
+      publicUrl: dto.IMMICH_AI_IMAGE_INTERPRETATION_PUBLIC_URL,
+      publicModel: dto.IMMICH_AI_IMAGE_INTERPRETATION_PUBLIC_MODEL || 'mai/muse-spark-1.3-contributor',
       promptVersion: dto.IMMICH_AI_IMAGE_INTERPRETATION_PROMPT_VERSION || 'image-interpretation-1.2.0',
       timeoutMs: dto.IMMICH_AI_IMAGE_INTERPRETATION_TIMEOUT_MS || 15 * 60 * 1000,
       maxEdge: dto.IMMICH_AI_IMAGE_INTERPRETATION_MAX_EDGE || 1600,

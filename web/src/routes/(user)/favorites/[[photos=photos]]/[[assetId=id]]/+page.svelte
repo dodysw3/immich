@@ -87,6 +87,10 @@
         onAssetDelete={(assetIds) => timelineManager.removeAssets(assetIds)}
         onUndoDelete={(assets) => timelineManager.upsertAssets(assets)}
       />
+
+      <hr />
+      <ActionMenuItem action={Actions.InterpretImageJob} />
+      <ActionMenuItem action={Actions.InterpretImagePublicJob} />
     </ButtonContextMenu>
   </AssetSelectControlBar>
 {/if}

@@ -489,6 +489,10 @@
           {#if assetMultiSelectManager.isAllUserOwned}
             <DeleteAssets menuItem onAssetDelete={handleRemoveAssets} onUndoDelete={handleUndoRemoveAssets} />
           {/if}
+
+          <hr />
+          <ActionMenuItem action={Actions.InterpretImageJob} />
+          <ActionMenuItem action={Actions.InterpretImagePublicJob} />
         </ButtonContextMenu>
       </AssetSelectControlBar>
     {:else}

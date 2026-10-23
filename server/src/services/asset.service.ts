@@ -41,6 +41,7 @@ import {
 } from 'src/enum.js';
 import { BaseService } from 'src/services/base.service.js';
 import { requireElevatedPermission } from 'src/utils/access.js';
+import { createAiInterpretationPublicRunKey } from 'src/utils/ai-image-interpretation.js';
 import {
   getAssetFiles,
   getDimensions,
@@ -510,6 +511,30 @@ export class AssetService extends BaseService {
           // Explicit "interpret now" intent from the photo viewer — queue
           // ahead of uploads (2) and the bulk script backlog (3).
           jobs.push({ name: JobName.AssetInterpretImage, data: { id, priority: 1 } });
+          break;
+        }
+
+        case AssetJobName.INTERPRET_IMAGE_PUBLIC: {
+          // Explicit per-image opt-in to run this asset through the hosted
+          // router model (training consent given by the action itself). The
+          // runKey routes delivery to the public endpoint and keeps the BullMQ
+          // job id distinct from any local interpretation job for the asset.
+          const interpretationEnv = this.configRepository.getEnv().aiImageInterpretation;
+          if (!interpretationEnv.publicUrl) {
+            throw new BadRequestException('Public AI interpretation endpoint is not configured');
+          }
+
+          jobs.push({
+            name: JobName.AssetInterpretImage,
+            data: {
+              id,
+              runKey: createAiInterpretationPublicRunKey(
+                interpretationEnv.publicModel,
+                interpretationEnv.promptVersion,
+              ),
+              priority: 1,
+            },
+          });
           break;
         }
 

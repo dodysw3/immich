@@ -80,6 +80,7 @@ export enum AssetJobName {
   REFRESH_METADATA = 'refresh-metadata',
   REGENERATE_THUMBNAIL = 'regenerate-thumbnail',
   INTERPRET_IMAGE = 'interpret-image',
+  INTERPRET_IMAGE_PUBLIC = 'interpret-image-public',
   TRANSCODE_VIDEO = 'transcode-video',
 }
 

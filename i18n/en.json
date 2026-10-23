@@ -1282,7 +1282,9 @@
   "input": "Input",
   "integrity_checks": "Integrity Checks",
   "interpret_image": "Interpret image",
+  "interpret_image_public": "Interpret image (public)",
   "interpreting_image": "Interpreting image",
+  "interpreting_image_public": "Interpreting image with public model",
   "interval": {
     "day_at_onepm": "Every day at 1pm",
     "hours": "Every {hours, plural, one {hour} other {{hours, number} hours}}",

@@ -402,6 +402,8 @@
               <DeleteAssets menuItem {onAssetDelete} onUndoDelete={onSearchQueryUpdate} />
               <hr />
               <ActionMenuItem action={Actions.RegenerateThumbnailJob} />
+              <ActionMenuItem action={Actions.InterpretImageJob} />
+              <ActionMenuItem action={Actions.InterpretImagePublicJob} />
               <ActionMenuItem action={Actions.RefreshMetadataJob} />
               <ActionMenuItem action={Actions.TranscodeVideoJob} />
             </ButtonContextMenu>

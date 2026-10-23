@@ -284,6 +284,10 @@
               <ActionMenuItem action={Actions.Tag} />
             {/if}
             <DeleteAssets menuItem {onAssetDelete} />
+
+            <hr />
+            <ActionMenuItem action={Actions.InterpretImageJob} />
+            <ActionMenuItem action={Actions.InterpretImagePublicJob} />
           </ButtonContextMenu>
         {:else}
           <DownloadAction />

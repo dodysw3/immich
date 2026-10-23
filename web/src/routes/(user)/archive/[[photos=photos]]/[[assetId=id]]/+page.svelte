@@ -1,5 +1,6 @@
 <script lang="ts">
   import UserPageLayout from '$lib/components/layouts/UserPageLayout.svelte';
+  import ActionMenuItem from '$lib/components/ActionMenuItem.svelte';
   import ButtonContextMenu from '$lib/components/shared-components/context-menu/ButtonContextMenu.svelte';
   import EmptyPlaceholder from '$lib/components/shared-components/EmptyPlaceholder.svelte';
   import ArchiveAction from '$lib/components/timeline/actions/ArchiveAction.svelte';
@@ -78,6 +79,10 @@
       <DownloadAction menuItem />
       <SetVisibilityAction menuItem onVisibilitySet={handleSetVisibility} />
       <DeleteAssets menuItem onAssetDelete={(assetIds) => timelineManager.removeAssets(assetIds)} />
+
+      <hr />
+      <ActionMenuItem action={Actions.InterpretImageJob} />
+      <ActionMenuItem action={Actions.InterpretImagePublicJob} />
     </ButtonContextMenu>
   </AssetSelectControlBar>
 {/if}

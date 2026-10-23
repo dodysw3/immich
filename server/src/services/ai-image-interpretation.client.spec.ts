@@ -88,6 +88,7 @@ describe(AiImageInterpretationClient.name, () => {
       promptTokens: 12,
       completionTokens: 34,
       backend: 'local',
+      model: 'unsloth/Muse-Glimmer-30B-GGUF',
     });
 
     const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -158,6 +159,7 @@ describe(AiImageInterpretationClient.name, () => {
       promptTokens: 12,
       completionTokens: 34,
       backend: 'local',
+      model: 'unsloth/Muse-Glimmer-30B-GGUF',
     });
   });
 
@@ -245,6 +247,57 @@ describe(AiImageInterpretationClient.name, () => {
       { backend: 'remote' },
       expect.anything(),
     );
+  });
+
+  it('routes the request to an overridden endpoint and labels the backend accordingly', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ choices: [{ message: { content: lineContract(result) } }] }),
+    });
+
+    // eslint-disable-next-line unicorn/prefer-https -- the public hybrid route is HTTP by design
+    const url = 'http://host.docker.internal:51900/public/v1';
+    await expect(
+      client.interpret(Buffer.from('preview'), {
+        model: 'mai/muse-spark-1.3-contributor',
+        url,
+        backendLabel: 'public-spark',
+      }),
+    ).resolves.toMatchObject({ backend: 'public-spark', model: 'mai/muse-spark-1.3-contributor' });
+
+    const [requestUrl, request] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(requestUrl).toBe(`${url}/chat/completions`);
+    expect(JSON.parse(request.body as string).model).toBe('mai/muse-spark-1.3-contributor');
+    expect(telemetryRepository.jobs.recordCounter).toHaveBeenCalledWith(
+      'immich.ai.interpretation.requests',
+      1,
+      { backend: 'public-spark', outcome: 'success' },
+      expect.anything(),
+    );
+  });
+
+  it('takes the served model from the proxy model header, falling back to config', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      headers: {
+        get: (name: string) => (name.toLowerCase() === 'x-ai-model' ? 'mai/muse-spark-1.3-contributor' : null),
+      },
+      json: vi.fn().mockResolvedValue({
+        choices: [{ message: { content: lineContract(result) } }],
+        usage: { prompt_tokens: 12, completion_tokens: 34 },
+      }),
+    });
+    await expect(client.interpret(Buffer.from('preview'))).resolves.toMatchObject({
+      model: 'mai/muse-spark-1.3-contributor',
+    });
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ choices: [{ message: { content: lineContract(result) } }] }),
+    });
+    await expect(client.interpret(Buffer.from('preview'))).resolves.toMatchObject({
+      model: 'unsloth/Muse-Glimmer-30B-GGUF',
+    });
   });
 
   it('defaults the backend to local when no proxy header is present', async () => {

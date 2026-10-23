@@ -48,6 +48,7 @@ export type AiImageInterpretationResponse = {
   promptTokens?: number;
   completionTokens?: number;
   backend: string;
+  model: string;
 };
 
 type InterpretationOutcome = 'success' | AiImageInterpretationClientError['code'];
@@ -60,9 +61,16 @@ export class AiImageInterpretationClient {
     private telemetryRepository: TelemetryRepository,
   ) {}
 
-  async interpret(image: Buffer, overrides?: { model?: string }): Promise<AiImageInterpretationResponse> {
+  async interpret(
+    image: Buffer,
+    // `url` routes a single request to a different endpoint than the configured
+    // one (the manual public-model path); `backendLabel` is the telemetry label
+    // used when the response carries no x-ai-backend header.
+    overrides?: { model?: string; url?: string; backendLabel?: string },
+  ): Promise<AiImageInterpretationResponse> {
     const config = this.configRepository.getEnv().aiImageInterpretation;
-    if (!config.url) {
+    const url = overrides?.url ?? config.url;
+    if (!url) {
       throw new AiImageInterpretationClientError('endpoint_error', 'AI interpretation endpoint is not configured');
     }
 
@@ -74,10 +82,10 @@ export class AiImageInterpretationClient {
     // endpoint config, which in this deployment is always the local rig; a
     // mid-flight connection death is genuinely unattributable and also lands
     // here (proxy 502s do carry the header, via add_header ... always).
-    let backend = 'local';
+    let backend = overrides?.backendLabel ?? 'local';
 
     try {
-      const response = await undiciFetch(`${config.url.replace(/\/$/, '')}/chat/completions`, {
+      const response = await undiciFetch(`${url.replace(/\/$/, '')}/chat/completions`, {
         method: 'POST',
         signal: controller.signal,
         dispatcher: interpretDispatcher,
@@ -117,6 +125,10 @@ export class AiImageInterpretationClient {
       // read before the !ok check: a proxy 502 (rented instance down) carries
       // the header, and those failures must land on the remote series
       backend = response.headers?.get('x-ai-backend') ?? backend;
+      // The hybrid's remote-router adapters (im-ai-remote) stamp the model that
+      // actually served the response; the llama backends don't, and there the
+      // model sent in the request IS what served.
+      const model = response.headers?.get('x-ai-model') ?? overrides?.model ?? config.model;
 
       if (!response.ok) {
         this.logger.warn(
@@ -183,7 +195,7 @@ export class AiImageInterpretationClient {
       }
 
       this.logger.debug(
-        `AI interpretation completed in ${Date.now() - startedAt}ms (prompt tokens: ${usage?.prompt_tokens ?? 'unknown'}, completion tokens: ${usage?.completion_tokens ?? 'unknown'}, backend: ${backend})`,
+        `AI interpretation completed in ${Date.now() - startedAt}ms (model: ${model}, prompt tokens: ${usage?.prompt_tokens ?? 'unknown'}, completion tokens: ${usage?.completion_tokens ?? 'unknown'}, backend: ${backend})`,
       );
       this.recordRequest(backend, 'success', Date.now() - startedAt);
       return {
@@ -191,6 +203,7 @@ export class AiImageInterpretationClient {
         promptTokens: usage?.prompt_tokens,
         completionTokens: usage?.completion_tokens,
         backend,
+        model,
       };
     } catch (error) {
       // normalize first, then record the FINAL outcome (an abort that becomes

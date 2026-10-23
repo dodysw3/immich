@@ -1,13 +1,14 @@
 import { type AssetFaceResponseDto, AssetJobName, AssetTypeEnum, getAssetInfo, runAssetJobs } from '@immich/sdk';
 import { toastManager } from '@immich/ui';
 import { vitest } from 'vitest';
+import { assetMultiSelectManager } from '$lib/managers/asset-multi-select-manager.svelte';
 import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
 import { authManager } from '$lib/managers/auth-manager.svelte';
-import { getAssetActions, handleDownloadAsset } from '$lib/services/asset.service';
+import { getAssetActions, getAssetBulkActions, handleDownloadAsset } from '$lib/services/asset.service';
 import { faceManager } from '$lib/stores/face.svelte';
 import { downloadUrl, getAssetAnnotatedUrl, setSharedLink } from '$lib/utils';
 import { getFormatter } from '$lib/utils/i18n';
-import { assetFactory } from '@test-data/factories/asset-factory';
+import { assetFactory, timelineAssetFactory } from '@test-data/factories/asset-factory';
 import { personFactory } from '@test-data/factories/person-factory';
 import { preferencesFactory } from '@test-data/factories/preferences-factory';
 import { sharedLinkFactory } from '@test-data/factories/shared-link-factory';
@@ -97,6 +98,93 @@ describe('AssetService', () => {
         assetJobsDto: { name: AssetJobName.InterpretImage, assetIds: [asset.id] },
       });
       expect(toastManager.primary).toHaveBeenCalledWith('interpreting image');
+    });
+
+    it('should allow an owner to manually request public image interpretation', async () => {
+      const ownerId = 'owner';
+      const user = userAdminFactory.build({ id: ownerId });
+      const asset = assetFactory.build({ ownerId, type: AssetTypeEnum.Image, isTrashed: false });
+      const formatter = vitest.fn().mockReturnValue('interpreting image with public model');
+      authManager.setUser(user);
+      vitest.mocked(getFormatter).mockResolvedValue(formatter);
+
+      const assetActions = getAssetActions(() => '', asset);
+      expect(assetActions.InterpretImagePublicJob.$if?.()).toStrictEqual(true);
+
+      await assetActions.InterpretImagePublicJob.onAction({
+        action: assetActions.InterpretImagePublicJob,
+        event: new MouseEvent('click'),
+      });
+
+      expect(runAssetJobs).toHaveBeenCalledWith({
+        assetJobsDto: { name: AssetJobName.InterpretImagePublic, assetIds: [asset.id] },
+      });
+      expect(toastManager.primary).toHaveBeenCalledWith('interpreting image with public model');
+    });
+  });
+
+  describe('getAssetBulkActions', () => {
+    it('should interpret owned images in the selection', async () => {
+      const user = userAdminFactory.build();
+      authManager.setUser(user);
+      const asset = timelineAssetFactory.build({ ownerId: user.id, isImage: true, isVideo: false });
+      assetMultiSelectManager.selectAssets([asset]);
+      const formatter = vitest.fn().mockReturnValue('interpreting image');
+      vitest.mocked(getFormatter).mockResolvedValue(formatter);
+
+      const actions = getAssetBulkActions(() => '');
+      expect(actions.InterpretImageJob.$if?.()).toStrictEqual(true);
+      expect(actions.InterpretImagePublicJob.$if?.()).toStrictEqual(true);
+
+      await actions.InterpretImageJob.onAction({ action: actions.InterpretImageJob, event: new MouseEvent('click') });
+
+      expect(runAssetJobs).toHaveBeenCalledWith({
+        assetJobsDto: { name: AssetJobName.InterpretImage, assetIds: [asset.id] },
+      });
+      expect(toastManager.primary).toHaveBeenCalledWith('interpreting image');
+      expect(assetMultiSelectManager.selectionActive).toStrictEqual(false);
+    });
+
+    it('should hide the interpret actions for video-only and trashed selections', () => {
+      const user = userAdminFactory.build();
+      authManager.setUser(user);
+
+      assetMultiSelectManager.selectAssets([
+        timelineAssetFactory.build({ ownerId: user.id, isImage: false, isVideo: true }),
+      ]);
+      let actions = getAssetBulkActions(() => '');
+      expect(actions.InterpretImageJob.$if?.()).toStrictEqual(false);
+      expect(actions.InterpretImagePublicJob.$if?.()).toStrictEqual(false);
+
+      assetMultiSelectManager.clear();
+      assetMultiSelectManager.selectAssets([timelineAssetFactory.build({ ownerId: user.id, isTrashed: true })]);
+      actions = getAssetBulkActions(() => '');
+      expect(actions.InterpretImageJob.$if?.()).toStrictEqual(false);
+      expect(actions.InterpretImagePublicJob.$if?.()).toStrictEqual(false);
+    });
+
+    it('should show the interpret actions for mixed selections but only submit owned assets', async () => {
+      const user = userAdminFactory.build();
+      authManager.setUser(user);
+      const owned = timelineAssetFactory.build({ ownerId: user.id, isImage: true, isVideo: false });
+      const partnerOwned = timelineAssetFactory.build({ ownerId: 'partner-owner', isImage: true, isVideo: false });
+      const video = timelineAssetFactory.build({ ownerId: user.id, isImage: false, isVideo: true });
+      assetMultiSelectManager.selectAssets([owned, partnerOwned, video]);
+      vitest.mocked(getFormatter).mockResolvedValue(vitest.fn());
+
+      const actions = getAssetBulkActions(() => '');
+      expect(actions.InterpretImagePublicJob.$if?.()).toStrictEqual(true);
+
+      await actions.InterpretImagePublicJob.onAction({
+        action: actions.InterpretImagePublicJob,
+        event: new MouseEvent('click'),
+      });
+
+      // All owned assets ride along (matching the other bulk job actions);
+      // videos are skipped server-side by the interpretation eligibility check.
+      expect(runAssetJobs).toHaveBeenCalledWith({
+        assetJobsDto: { name: AssetJobName.InterpretImagePublic, assetIds: [owned.id, video.id] },
+      });
     });
   });
 

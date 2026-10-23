@@ -13,10 +13,12 @@ import {
 } from 'src/enum.js';
 import { AssetStats } from 'src/repositories/asset.repository.js';
 import { AssetService } from 'src/services/asset.service.js';
+import { createAiInterpretationPublicRunKey } from 'src/utils/ai-image-interpretation.js';
 import { AssetFactory } from 'test/factories/asset.factory.js';
 import { AuthFactory } from 'test/factories/auth.factory.js';
 import { authStub } from 'test/fixtures/auth.stub.js';
 import { getForAsset, getForAssetDeletion } from 'test/mappers.js';
+import { mockEnvData } from 'test/repositories/config.repository.mock.js';
 import { factory, newUuid } from 'test/small.factory.js';
 import { ServiceMocks, makeStream, newTestService } from 'test/utils.js';
 
@@ -809,6 +811,39 @@ describe(AssetService.name, () => {
       expect(mocks.job.queueAll).toHaveBeenCalledWith([
         { name: JobName.AssetInterpretImage, data: { id: 'asset-1', priority: 1 } },
       ]);
+    });
+
+    it('should run the public image interpretation job with the hosted run key', async () => {
+      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set(['asset-1']));
+      const { publicModel, promptVersion } = mockEnvData({}).aiImageInterpretation;
+
+      await sut.run(authStub.admin, { assetIds: ['asset-1'], name: AssetJobName.INTERPRET_IMAGE_PUBLIC });
+
+      expect(mocks.job.queueAll).toHaveBeenCalledWith([
+        {
+          name: JobName.AssetInterpretImage,
+          data: {
+            id: 'asset-1',
+            runKey: createAiInterpretationPublicRunKey(publicModel, promptVersion),
+            priority: 1,
+          },
+        },
+      ]);
+    });
+
+    it('should reject the public image interpretation job when no public endpoint is configured', async () => {
+      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set(['asset-1']));
+      const env = mockEnvData({});
+      mocks.config.getEnv.mockReturnValue({
+        ...env,
+        aiImageInterpretation: { ...env.aiImageInterpretation, publicUrl: undefined },
+      });
+
+      await expect(
+        sut.run(authStub.admin, { assetIds: ['asset-1'], name: AssetJobName.INTERPRET_IMAGE_PUBLIC }),
+      ).rejects.toThrowError(BadRequestException);
+
+      expect(mocks.job.queueAll).not.toHaveBeenCalled();
     });
 
     it('should run the transcode video', async () => {

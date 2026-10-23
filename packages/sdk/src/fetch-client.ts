@@ -8913,6 +8913,7 @@ export enum AssetJobName {
     RefreshMetadata = "refresh-metadata",
     RegenerateThumbnail = "regenerate-thumbnail",
     InterpretImage = "interpret-image",
+    InterpretImagePublic = "interpret-image-public",
     TranscodeVideo = "transcode-video"
 }
 export enum PersonUserRole {

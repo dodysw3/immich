@@ -23,6 +23,7 @@ import {
   mdiDatabaseRefreshOutline,
   mdiDownload,
   mdiDownloadBox,
+  mdiEarth,
   mdiFaceRecognition,
   mdiHeadSyncOutline,
   mdiHeart,
@@ -146,6 +147,20 @@ export const getAssetBulkActions = ($t: MessageFormatter, album?: AlbumResponseD
     onAction: () => onAction(AssetJobName.RegenerateThumbnail),
   };
 
+  const InterpretImageJob: ActionItem = {
+    title: $t('interpret_image'),
+    icon: mdiBrain,
+    $if: () => ownedAssets.some((asset) => asset.isImage && !asset.isTrashed),
+    onAction: () => onAction(AssetJobName.InterpretImage),
+  };
+
+  const InterpretImagePublicJob: ActionItem = {
+    title: $t('interpret_image_public'),
+    icon: mdiEarth,
+    $if: () => ownedAssets.some((asset) => asset.isImage && !asset.isTrashed),
+    onAction: () => onAction(AssetJobName.InterpretImagePublic),
+  };
+
   const TranscodeVideoJob: ActionItem = {
     title: $t('refresh_encoded_videos'),
     icon: mdiCogRefreshOutline,
@@ -161,6 +176,8 @@ export const getAssetBulkActions = ($t: MessageFormatter, album?: AlbumResponseD
     RefreshFacesJob,
     RefreshMetadataJob,
     RegenerateThumbnailJob,
+    InterpretImageJob,
+    InterpretImagePublicJob,
     TranscodeVideoJob,
   };
 };
@@ -394,6 +411,13 @@ export const getAssetActions = (
     onAction: () => handleRunAssetJob({ name: AssetJobName.InterpretImage, assetIds: [asset.id] }),
   };
 
+  const InterpretImagePublicJob: ActionItem = {
+    title: $t('interpret_image_public'),
+    icon: mdiEarth,
+    $if: () => asset.type === AssetTypeEnum.Image && !asset.isTrashed,
+    onAction: () => handleRunAssetJob({ name: AssetJobName.InterpretImagePublic, assetIds: [asset.id] }),
+  };
+
   const TranscodeVideoJob: ActionItem = {
     title: $t('refresh_encoded_videos'),
     icon: mdiCogRefreshOutline,
@@ -430,6 +454,7 @@ export const getAssetActions = (
     RefreshMetadataJob,
     RegenerateThumbnailJob,
     InterpretImageJob,
+    InterpretImagePublicJob,
     TranscodeVideoJob,
   };
 };
@@ -582,6 +607,7 @@ const getAssetJobMessage = ($t: MessageFormatter, job: AssetJobName) => {
     [AssetJobName.RefreshMetadata]: $t('refreshing_metadata'),
     [AssetJobName.RegenerateThumbnail]: $t('regenerating_thumbnails'),
     [AssetJobName.InterpretImage]: $t('interpreting_image'),
+    [AssetJobName.InterpretImagePublic]: $t('interpreting_image_public'),
     [AssetJobName.TranscodeVideo]: $t('refreshing_encoded_video'),
   };
 

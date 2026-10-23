@@ -197,6 +197,8 @@ describe('getEnv', () => {
         apiKey: undefined,
         model: 'unsloth/Muse-Glimmer-30B-GGUF',
         quant: 'UD-Q3_K_XL',
+        publicUrl: undefined,
+        publicModel: 'mai/muse-spark-1.3-contributor',
         promptVersion: 'image-interpretation-1.2.0',
         timeoutMs: 900_000,
         maxEdge: 1600,

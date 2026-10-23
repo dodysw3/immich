@@ -512,6 +512,10 @@
           onAssetDelete={(assetIds) => handleDeleteAssets(assetIds)}
           onUndoDelete={(assets) => handleUndoDeleteAssets(assets)}
         />
+
+        <hr />
+        <ActionMenuItem action={Actions.InterpretImageJob} />
+        <ActionMenuItem action={Actions.InterpretImagePublicJob} />
       </ButtonContextMenu>
     </AssetSelectControlBar>
   {:else}

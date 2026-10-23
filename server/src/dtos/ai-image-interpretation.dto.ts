@@ -70,7 +70,9 @@ const AiInterpretationRunSchema = z
     quant: z.string().min(1),
     promptVersion: z.string().min(1),
     status: AiInterpretationRunStatusSchema,
-    trigger: z.literal('upload'),
+    // 'manual-public' = the viewer's explicit "Interpret image (public)" action,
+    // which sends this image to the hosted router model the user opted into.
+    trigger: z.enum(['upload', 'manual-public']),
     requestedAt: z.iso.datetime({ offset: true }),
     startedAt: z.iso.datetime({ offset: true }).optional(),
     finishedAt: z.iso.datetime({ offset: true }).optional(),

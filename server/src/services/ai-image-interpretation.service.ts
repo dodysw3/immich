@@ -6,7 +6,10 @@ import type { JobOf } from 'src/types.js';
 import { OnEvent, OnJob } from 'src/decorators.js';
 import { AiInterpretationInput, AiInterpretationMetrics } from 'src/dtos/ai-image-interpretation.dto.js';
 import { AssetFileType, AssetType, AssetVisibility, ImmichWorker, JobName, JobStatus, QueueName } from 'src/enum.js';
-import { AiImageInterpretationRepository } from 'src/repositories/ai-image-interpretation.repository.js';
+import {
+  AiImageInterpretationRepository,
+  type AiInterpretationIdentity,
+} from 'src/repositories/ai-image-interpretation.repository.js';
 import { AssetJobRepository } from 'src/repositories/asset-job.repository.js';
 import { AssetRepository } from 'src/repositories/asset.repository.js';
 import { ConfigRepository } from 'src/repositories/config.repository.js';
@@ -17,7 +20,11 @@ import {
   AiImageInterpretationClient,
   AiImageInterpretationClientError,
 } from 'src/services/ai-image-interpretation.client.js';
-import { createAiInterpretationJobId } from 'src/utils/ai-image-interpretation.js';
+import {
+  AI_INTERPRETATION_HOSTED_QUANT,
+  createAiInterpretationJobId,
+  createAiInterpretationPublicRunKey,
+} from 'src/utils/ai-image-interpretation.js';
 import { getAssetFile } from 'src/utils/asset.util.js';
 import { getConfig } from 'src/utils/config.js';
 import { isDuplicateDetectionEnabled } from 'src/utils/misc.js';
@@ -98,6 +105,23 @@ export class AiImageInterpretationService {
         this.logger.debug(`Skipping manual AI interpretation request for ${assetId}`);
         return JobStatus.Skipped;
       }
+    } else if (runKey === createAiInterpretationPublicRunKey(config.publicModel, config.promptVersion)) {
+      // Manual "Interpret image (public)" delivery: (re-)claim the hosted
+      // identity, forcing a completed run back to queued so re-running works.
+      // Ineligible assets skip without creating a run (no retry loop).
+      if (!(await this.isInterpretationEligible(assetId))) {
+        this.logger.debug(`Skipping public AI interpretation request for ${assetId}: asset not eligible`);
+        return JobStatus.Skipped;
+      }
+
+      const claim = await this.interpretationRepository.claim(assetId, this.publicIdentity(config), new Date(), {
+        resetCompleted: true,
+        trigger: 'manual-public',
+      });
+      if (claim.alreadyExists && claim.run.status === 'running') {
+        this.logger.debug(`Skipping concurrent public AI interpretation delivery for ${assetId}`);
+        return JobStatus.Skipped;
+      }
     }
 
     const startedAt = Date.now();
@@ -126,18 +150,24 @@ export class AiImageInterpretationService {
         throw new AiImageInterpretationClientError('preview_missing', 'Generated image preview is unavailable');
       }
 
+      // The manual public run must actually call the hosted model: copying a
+      // duplicate sibling's result (most often a local one) would defeat the
+      // explicit per-image opt-in this run represents.
+      const isPublic = run.quant === AI_INTERPRETATION_HOSTED_QUANT && run.model === config.publicModel;
+
       // Upload-sourced deliveries come from the duplicate-detection completion
       // event, so their analysis is final by construction. Everything else
       // (manual actions, ops scripts, retry requeues) waits out the analysis
-      // instead of interpreting against a still-changing duplicate group.
-      if (source !== 'upload' && (await this.isDuplicateAnalysisPending(assetId))) {
+      // instead of interpreting against a still-changing duplicate group —
+      // except public runs, which never copy and so gain nothing from waiting.
+      if (!isPublic && source !== 'upload' && (await this.isDuplicateAnalysisPending(assetId))) {
         const failure = { code: 'duplicates_pending', message: 'Duplicate detection has not completed yet' } as const;
         await this.interpretationRepository.fail(assetId, runKey, failure, { durationMs: Date.now() - startedAt });
         this.logger.debug(`Deferring AI interpretation for ${assetId} until duplicate detection completes`);
         return JobStatus.Success;
       }
 
-      const copySource = await this.interpretationRepository.findCopySource(assetId, runKey);
+      const copySource = isPublic ? null : await this.interpretationRepository.findCopySource(assetId, runKey);
       if (copySource) {
         completed = await this.interpretationRepository.completeCopy(assetId, runKey, copySource, {
           durationMs: Date.now() - startedAt,
@@ -153,13 +183,22 @@ export class AiImageInterpretationService {
         input = prepared.input;
         const response = await this.client.interpret(prepared.buffer, {
           model: run.model,
+          ...(isPublic && { url: config.publicUrl, backendLabel: 'public-spark' }),
         });
 
-        completed = await this.interpretationRepository.complete(assetId, runKey, input, response.result, {
-          durationMs: Date.now() - startedAt,
-          promptTokens: response.promptTokens,
-          completionTokens: response.completionTokens,
-        });
+        const served = response.model === run.model ? undefined : { model: response.model, quant: 'hosted' as const };
+        completed = await this.interpretationRepository.complete(
+          assetId,
+          runKey,
+          input,
+          response.result,
+          {
+            durationMs: Date.now() - startedAt,
+            promptTokens: response.promptTokens,
+            completionTokens: response.completionTokens,
+          },
+          served,
+        );
       }
     } catch (error) {
       const failure = this.asFailure(error);
@@ -214,19 +253,30 @@ export class AiImageInterpretationService {
     return JobStatus.Success;
   }
 
-  private async claimMissingRun(assetId: string): Promise<string | undefined> {
+  // The hosted ("public") run identity: the same prompt as local runs, but the
+  // hosted router model the user manually opts into per image. `hosted` quant
+  // distinguishes it from locally quantized GGUF identities.
+  private publicIdentity(config: { publicModel: string; promptVersion: string }): AiInterpretationIdentity {
+    return { model: config.publicModel, quant: AI_INTERPRETATION_HOSTED_QUANT, promptVersion: config.promptVersion };
+  }
+
+  private async isInterpretationEligible(assetId: string): Promise<boolean> {
     const config = this.configRepository.getEnv().aiImageInterpretation;
     if (!config.enabled) {
-      return;
+      return false;
     }
 
     const asset = await this.assetJobRepository.getForGenerateThumbnailJob(assetId);
     if (!asset || asset.type !== AssetType.Image || asset.visibility === AssetVisibility.Hidden) {
-      return;
+      return false;
     }
 
-    const preview = getAssetFile(asset.files, AssetFileType.Preview, { isEdited: false });
-    if (!preview) {
+    return !!getAssetFile(asset.files, AssetFileType.Preview, { isEdited: false });
+  }
+
+  private async claimMissingRun(assetId: string): Promise<string | undefined> {
+    const config = this.configRepository.getEnv().aiImageInterpretation;
+    if (!(await this.isInterpretationEligible(assetId))) {
       return;
     }
 

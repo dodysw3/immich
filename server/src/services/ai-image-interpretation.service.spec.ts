@@ -17,6 +17,7 @@ import {
   AiImageInterpretationClientError,
 } from 'src/services/ai-image-interpretation.client.js';
 import { AiImageInterpretationService } from 'src/services/ai-image-interpretation.service.js';
+import { createAiInterpretationPublicRunKey } from 'src/utils/ai-image-interpretation.js';
 import { clearConfigCache } from 'src/utils/config.js';
 import { AssetFactory } from 'test/factories/asset.factory.js';
 
@@ -25,6 +26,9 @@ const config = {
   enabled: true,
   // eslint-disable-next-line unicorn/prefer-https -- the local host-gateway endpoint is HTTP by design
   url: 'http://host.docker.internal:8888/v1',
+  // eslint-disable-next-line unicorn/prefer-https -- the public hybrid route is HTTP by design
+  publicUrl: 'http://host.docker.internal:51900/public/v1',
+  publicModel: 'mai/muse-spark-1.3-contributor',
   model: 'model-a',
   quant: 'quant-a',
   promptVersion: 'prompt-a',
@@ -34,6 +38,8 @@ const config = {
   concurrency: 1,
   discord: { webhookUrl: 'https://discord.com/api/webhooks/123/token', includeThumbnail: true },
 };
+
+const publicRunKey = createAiInterpretationPublicRunKey(config.publicModel, config.promptVersion);
 
 const makeService = () => {
   const dependencies = {
@@ -108,6 +114,25 @@ const service_preparePreview = (service: AiImageInterpretationService) => {
     input: { source: 'preview', width: 100, height: 80, mimeType: 'image/jpeg' },
   });
   return internals;
+};
+
+const makePublicRun = (
+  service: AiImageInterpretationService,
+  dependencies: ReturnType<typeof makeService>['dependencies'],
+) => {
+  dependencies.interpretationRepository.transitionToRunning.mockResolvedValue(true);
+  dependencies.interpretationRepository.get.mockResolvedValue({
+    schemaVersion: 1,
+    runs: {
+      [publicRunKey]: { model: config.publicModel, quant: 'hosted', promptVersion: config.promptVersion },
+    },
+  } as AiInterpretationDocument);
+  const asset = AssetFactory.from({ type: AssetType.Image, visibility: AssetVisibility.Timeline })
+    .files([AssetFileType.Preview])
+    .build();
+  dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue(asset);
+  service_preparePreview(service);
+  return { asset };
 };
 
 describe(AiImageInterpretationService.name, () => {
@@ -535,5 +560,94 @@ describe(AiImageInterpretationService.name, () => {
     await expect(service.handleReconcile()).resolves.toBe(JobStatus.Success);
 
     expect(dependencies.jobRepository.queue).not.toHaveBeenCalled();
+  });
+
+  describe('public (hosted model) runs', () => {
+    it('re-claims with resetCompleted, routes to the public endpoint, and never copies from duplicates', async () => {
+      const { service, dependencies } = makeService();
+      makePublicRun(service, dependencies);
+      // A duplicate sibling with a completed (local) result must be ignored.
+      dependencies.interpretationRepository.findCopySource.mockResolvedValue({
+        assetId: 'asset-2',
+        runKey,
+        result: {} as never,
+        model: config.model,
+        quant: config.quant,
+        promptVersion: config.promptVersion,
+      });
+      // Duplicate analysis still pending: the public run does not wait on it.
+      dependencies.assetRepository.getDuplicateAnalysisState.mockResolvedValue({
+        stackId: null,
+        visibility: AssetVisibility.Timeline,
+        duplicatesDetectedAt: null,
+      });
+      dependencies.interpretationRepository.claim.mockResolvedValue({
+        alreadyExists: false,
+        runKey: publicRunKey,
+        run: {},
+      } as never);
+      dependencies.client.interpret.mockResolvedValue({ result: {} as never, model: config.publicModel });
+      dependencies.interpretationRepository.complete.mockResolvedValue(true);
+
+      await expect(service.handleInterpretation({ id: 'asset-1', runKey: publicRunKey } as never)).resolves.toBe(
+        JobStatus.Success,
+      );
+
+      expect(dependencies.interpretationRepository.claim).toHaveBeenCalledWith(
+        'asset-1',
+        { model: config.publicModel, quant: 'hosted', promptVersion: config.promptVersion },
+        expect.any(Date),
+        { resetCompleted: true, trigger: 'manual-public' },
+      );
+      expect(dependencies.interpretationRepository.findCopySource).not.toHaveBeenCalled();
+      expect(dependencies.client.interpret).toHaveBeenCalledWith(Buffer.from('preview'), {
+        model: config.publicModel,
+        url: config.publicUrl,
+        backendLabel: 'public-spark',
+      });
+      expect(dependencies.interpretationRepository.fail).not.toHaveBeenCalled();
+    });
+
+    it('skips without claiming when the asset is not eligible', async () => {
+      const { service, dependencies } = makeService();
+      dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue(
+        AssetFactory.from({ visibility: AssetVisibility.Hidden }).build(),
+      );
+
+      await expect(service.handleInterpretation({ id: 'asset-1', runKey: publicRunKey } as never)).resolves.toBe(
+        JobStatus.Skipped,
+      );
+
+      expect(dependencies.interpretationRepository.claim).not.toHaveBeenCalled();
+      expect(dependencies.interpretationRepository.transitionToRunning).not.toHaveBeenCalled();
+    });
+
+    it('skips a public delivery while another one is still running', async () => {
+      const { service, dependencies } = makeService();
+      makePublicRun(service, dependencies);
+      dependencies.interpretationRepository.claim.mockResolvedValue({
+        alreadyExists: true,
+        runKey: publicRunKey,
+        run: { status: 'running' },
+      } as never);
+
+      await expect(service.handleInterpretation({ id: 'asset-1', runKey: publicRunKey } as never)).resolves.toBe(
+        JobStatus.Skipped,
+      );
+
+      expect(dependencies.client.interpret).not.toHaveBeenCalled();
+    });
+
+    it('routes local runs to the local endpoint even when a public endpoint is configured', async () => {
+      const { service, dependencies } = makeService();
+      makeRunningAsset(service, dependencies);
+      dependencies.client.interpret.mockResolvedValue({ result: {} as never, model: config.model });
+      dependencies.interpretationRepository.complete.mockResolvedValue(true);
+
+      await expect(service.handleInterpretation({ id: 'asset-1', runKey } as never)).resolves.toBe(JobStatus.Success);
+
+      expect(dependencies.client.interpret).toHaveBeenCalledWith(Buffer.from('preview'), { model: config.model });
+      expect(dependencies.interpretationRepository.claim).not.toHaveBeenCalled();
+    });
   });
 });

@@ -145,6 +145,10 @@
             onUndoDelete={(assets) => timelineManager.upsertAssets(assets)}
           />
           <SetVisibilityAction menuItem onVisibilitySet={handleSetVisibility} />
+
+          <hr />
+          <ActionMenuItem action={Actions.InterpretImageJob} />
+          <ActionMenuItem action={Actions.InterpretImagePublicJob} />
         </ButtonContextMenu>
       </AssetSelectControlBar>
     </div>

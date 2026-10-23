@@ -22337,6 +22337,7 @@
           "refresh-metadata",
           "regenerate-thumbnail",
           "interpret-image",
+          "interpret-image-public",
           "transcode-video"
         ],
         "type": "string"
