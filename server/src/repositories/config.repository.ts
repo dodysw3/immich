@@ -148,6 +148,7 @@ export interface EnvData {
     quant: string;
     publicUrl?: string;
     publicModel: string;
+    publicConcurrency: number;
     promptVersion: string;
     timeoutMs: number;
     maxEdge: number;
@@ -441,6 +442,9 @@ const getEnv = (): EnvData => {
       // per-image by construction). Unset = the menu action is rejected.
       publicUrl: dto.IMMICH_AI_IMAGE_INTERPRETATION_PUBLIC_URL,
       publicModel: dto.IMMICH_AI_IMAGE_INTERPRETATION_PUBLIC_MODEL || 'mai/muse-spark-1.3-contributor',
+      // Matches the im-ai-remote adapter's spark slot cap: public jobs must
+      // never occupy the main interpretation pool that serves local+remote.
+      publicConcurrency: dto.IMMICH_AI_IMAGE_INTERPRETATION_PUBLIC_CONCURRENCY || 8,
       promptVersion: dto.IMMICH_AI_IMAGE_INTERPRETATION_PROMPT_VERSION || 'image-interpretation-1.2.0',
       timeoutMs: dto.IMMICH_AI_IMAGE_INTERPRETATION_TIMEOUT_MS || 15 * 60 * 1000,
       maxEdge: dto.IMMICH_AI_IMAGE_INTERPRETATION_MAX_EDGE || 1600,

@@ -24545,6 +24545,7 @@
           "AssetGenerateThumbnailsQueueAll",
           "AssetGenerateThumbnails",
           "AssetInterpretImage",
+          "AssetInterpretImagePublic",
           "AssetInterpretationReconcile",
           "AiInterpretSearchSync",
           "AiInterpretSearchReconcile",
@@ -28359,6 +28360,7 @@
           "integrityCheck",
           "editor",
           "imageInterpretation",
+          "imageInterpretationPublic",
           "aiInterpretSearch"
         ],
         "type": "string"
@@ -28515,6 +28517,9 @@
           "imageInterpretation": {
             "$ref": "#/components/schemas/QueueResponseLegacyDto"
           },
+          "imageInterpretationPublic": {
+            "$ref": "#/components/schemas/QueueResponseLegacyDto"
+          },
           "integrityCheck": {
             "$ref": "#/components/schemas/QueueResponseLegacyDto"
           },
@@ -28567,6 +28572,7 @@
           "faceDetection",
           "facialRecognition",
           "imageInterpretation",
+          "imageInterpretationPublic",
           "integrityCheck",
           "library",
           "metadataExtraction",

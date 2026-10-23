@@ -551,6 +551,29 @@ describe(AiImageInterpretationService.name, () => {
     });
   });
 
+  it('reconciles public runs through the dedicated public queue', async () => {
+    const { service, dependencies } = makeService();
+    dependencies.interpretationRepository.failStale.mockResolvedValue(0);
+    dependencies.interpretationRepository.findDueRetries.mockResolvedValue([
+      { assetId: 'asset-1', runKey: publicRunKey },
+    ]);
+    dependencies.interpretationRepository.requeue.mockResolvedValue(true);
+
+    await expect(service.handleReconcile()).resolves.toBe(JobStatus.Success);
+
+    const [, hasPendingJob] = dependencies.interpretationRepository.failStale.mock.calls[0];
+    dependencies.jobRepository.jobExists.mockResolvedValueOnce(true);
+    await expect(hasPendingJob('asset-1', publicRunKey)).resolves.toBe(true);
+    expect(dependencies.jobRepository.jobExists).toHaveBeenCalledWith(
+      QueueName.ImageInterpretationPublic,
+      `asset-1/${publicRunKey}`,
+    );
+    expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
+      name: JobName.AssetInterpretImagePublic,
+      data: { id: 'asset-1', runKey: publicRunKey, priority: 1 },
+    });
+  });
+
   it('skips due retries that another trigger already requeued', async () => {
     const { service, dependencies } = makeService();
     dependencies.interpretationRepository.failStale.mockResolvedValue(0);
@@ -563,7 +586,7 @@ describe(AiImageInterpretationService.name, () => {
   });
 
   describe('public (hosted model) runs', () => {
-    it('re-claims with resetCompleted, routes to the public endpoint, and never copies from duplicates', async () => {
+    it('claims the hosted identity, routes to the public endpoint, and never copies from duplicates', async () => {
       const { service, dependencies } = makeService();
       makePublicRun(service, dependencies);
       // A duplicate sibling with a completed (local) result must be ignored.
@@ -597,7 +620,7 @@ describe(AiImageInterpretationService.name, () => {
         'asset-1',
         { model: config.publicModel, quant: 'hosted', promptVersion: config.promptVersion },
         expect.any(Date),
-        { resetCompleted: true, trigger: 'manual-public' },
+        { trigger: 'manual-public' },
       );
       expect(dependencies.interpretationRepository.findCopySource).not.toHaveBeenCalled();
       expect(dependencies.client.interpret).toHaveBeenCalledWith(Buffer.from('preview'), {
@@ -622,6 +645,57 @@ describe(AiImageInterpretationService.name, () => {
       expect(dependencies.interpretationRepository.transitionToRunning).not.toHaveBeenCalled();
     });
 
+    it('handles deliveries on the dedicated public queue with the hosted identity', async () => {
+      const { service, dependencies } = makeService();
+      makePublicRun(service, dependencies);
+      dependencies.interpretationRepository.claim.mockResolvedValue({
+        alreadyExists: false,
+        runKey: publicRunKey,
+        run: {},
+      } as never);
+      dependencies.client.interpret.mockResolvedValue({ result: {} as never, model: config.publicModel });
+      dependencies.interpretationRepository.complete.mockResolvedValue(true);
+
+      await expect(
+        service.handleInterpretationPublic({ id: 'asset-1', runKey: publicRunKey, priority: 1 } as never),
+      ).resolves.toBe(JobStatus.Success);
+
+      expect(dependencies.interpretationRepository.claim).toHaveBeenCalledWith(
+        'asset-1',
+        { model: config.publicModel, quant: 'hosted', promptVersion: config.promptVersion },
+        expect.any(Date),
+        { trigger: 'manual-public' },
+      );
+      expect(dependencies.client.interpret).toHaveBeenCalledWith(Buffer.from('preview'), {
+        model: config.publicModel,
+        url: config.publicUrl,
+        backendLabel: 'public-spark',
+      });
+    });
+
+    it('derives the public run key when a public job arrives without one', async () => {
+      const { service, dependencies } = makeService();
+      makePublicRun(service, dependencies);
+      dependencies.interpretationRepository.claim.mockResolvedValue({
+        alreadyExists: false,
+        runKey: publicRunKey,
+        run: {},
+      } as never);
+      dependencies.client.interpret.mockResolvedValue({ result: {} as never, model: config.publicModel });
+      dependencies.interpretationRepository.complete.mockResolvedValue(true);
+
+      await expect(service.handleInterpretationPublic({ id: 'asset-1' } as never)).resolves.toBe(JobStatus.Success);
+
+      expect(dependencies.interpretationRepository.claim).toHaveBeenCalledWith(
+        'asset-1',
+        { model: config.publicModel, quant: 'hosted', promptVersion: config.promptVersion },
+        expect.any(Date),
+        { trigger: 'manual-public' },
+      );
+      expect(dependencies.interpretationRepository.claim.mock.calls[0][0]).toBe('asset-1');
+      expect(dependencies.interpretationRepository.transitionToRunning).toHaveBeenCalledWith('asset-1', publicRunKey);
+    });
+
     it('skips a public delivery while another one is still running', async () => {
       const { service, dependencies } = makeService();
       makePublicRun(service, dependencies);
@@ -635,6 +709,23 @@ describe(AiImageInterpretationService.name, () => {
         JobStatus.Skipped,
       );
 
+      expect(dependencies.client.interpret).not.toHaveBeenCalled();
+    });
+
+    it('skips a public delivery when the same model+prompt run already completed', async () => {
+      const { service, dependencies } = makeService();
+      makePublicRun(service, dependencies);
+      dependencies.interpretationRepository.claim.mockResolvedValue({
+        alreadyExists: true,
+        runKey: publicRunKey,
+        run: { status: 'completed' },
+      } as never);
+
+      await expect(service.handleInterpretation({ id: 'asset-1', runKey: publicRunKey } as never)).resolves.toBe(
+        JobStatus.Skipped,
+      );
+
+      expect(dependencies.interpretationRepository.transitionToRunning).not.toHaveBeenCalled();
       expect(dependencies.client.interpret).not.toHaveBeenCalled();
     });
 

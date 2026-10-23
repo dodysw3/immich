@@ -517,15 +517,15 @@ export class AssetService extends BaseService {
         case AssetJobName.INTERPRET_IMAGE_PUBLIC: {
           // Explicit per-image opt-in to run this asset through the hosted
           // router model (training consent given by the action itself). The
-          // runKey routes delivery to the public endpoint and keeps the BullMQ
-          // job id distinct from any local interpretation job for the asset.
+          // dedicated public queue keeps these jobs off the main pool, so a
+          // bulk selection can never starve the local+remote legs.
           const interpretationEnv = this.configRepository.getEnv().aiImageInterpretation;
           if (!interpretationEnv.publicUrl) {
             throw new BadRequestException('Public AI interpretation endpoint is not configured');
           }
 
           jobs.push({
-            name: JobName.AssetInterpretImage,
+            name: JobName.AssetInterpretImagePublic,
             data: {
               id,
               runKey: createAiInterpretationPublicRunKey(

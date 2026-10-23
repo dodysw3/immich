@@ -359,7 +359,8 @@ export class JobRepository {
       case JobName.PdfProcessQueueAll: {
         return { jobId: JobName.PdfProcessQueueAll };
       }
-      case JobName.AssetInterpretImage: {
+      case JobName.AssetInterpretImage:
+      case JobName.AssetInterpretImagePublic: {
         return {
           jobId: item.data.runKey ? createAiInterpretationJobId(item.data.id, item.data.runKey) : item.data.id,
           priority: item.data.priority,

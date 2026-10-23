@@ -100,9 +100,11 @@ export class QueueService extends BaseService {
       const concurrency =
         queueName === QueueName.ImageInterpretation
           ? this.configRepository.getEnv().aiImageInterpretation.concurrency
-          : this.isConcurrentQueue(queueName)
-            ? config.job[queueName].concurrency
-            : 1;
+          : queueName === QueueName.ImageInterpretationPublic
+            ? this.configRepository.getEnv().aiImageInterpretation.publicConcurrency
+            : this.isConcurrentQueue(queueName)
+              ? config.job[queueName].concurrency
+              : 1;
       this.logger.debug(`Setting ${queueName} concurrency to ${concurrency}`);
       this.jobRepository.setConcurrency(queueName, concurrency);
     }
@@ -271,6 +273,7 @@ export class QueueService extends BaseService {
       QueueName.DuplicateDetection,
       QueueName.BackupDatabase,
       QueueName.ImageInterpretation,
+      QueueName.ImageInterpretationPublic,
       QueueName.AiInterpretSearch,
     ].includes(name);
   }

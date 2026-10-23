@@ -821,7 +821,7 @@ describe(AssetService.name, () => {
 
       expect(mocks.job.queueAll).toHaveBeenCalledWith([
         {
-          name: JobName.AssetInterpretImage,
+          name: JobName.AssetInterpretImagePublic,
           data: {
             id: 'asset-1',
             runKey: createAiInterpretationPublicRunKey(publicModel, promptVersion),

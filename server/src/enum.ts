@@ -873,6 +873,7 @@ export enum QueueName {
   IntegrityCheck = 'integrityCheck',
   Editor = 'editor',
   ImageInterpretation = 'imageInterpretation',
+  ImageInterpretationPublic = 'imageInterpretationPublic',
   AiInterpretSearch = 'aiInterpretSearch',
 }
 
@@ -905,6 +906,7 @@ export enum JobName {
   AssetGenerateThumbnailsQueueAll = 'AssetGenerateThumbnailsQueueAll',
   AssetGenerateThumbnails = 'AssetGenerateThumbnails',
   AssetInterpretImage = 'AssetInterpretImage',
+  AssetInterpretImagePublic = 'AssetInterpretImagePublic',
   AssetInterpretationReconcile = 'AssetInterpretationReconcile',
   AiInterpretSearchSync = 'AiInterpretSearchSync',
   AiInterpretSearchReconcile = 'AiInterpretSearchReconcile',

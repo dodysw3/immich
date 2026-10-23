@@ -213,6 +213,7 @@ export type ConcurrentQueueName = Exclude<
   | QueueName.DuplicateDetection
   | QueueName.BackupDatabase
   | QueueName.ImageInterpretation
+  | QueueName.ImageInterpretationPublic
   | QueueName.AiInterpretSearch
 >;
 
@@ -373,6 +374,7 @@ export type JobItem =
   | { name: JobName.AssetGenerateThumbnailsQueueAll; data: IBaseJob }
   | { name: JobName.AssetGenerateThumbnails; data: IEntityJob }
   | { name: JobName.AssetInterpretImage; data: IAssetInterpretationJob }
+  | { name: JobName.AssetInterpretImagePublic; data: IAssetInterpretationJob }
   | { name: JobName.AssetInterpretationReconcile; data?: IBaseJob }
   | { name: JobName.AiInterpretSearchSync; data: IEntityJob }
   | { name: JobName.AiInterpretSearchReconcile; data?: IBaseJob }

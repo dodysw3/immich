@@ -155,37 +155,6 @@ describe(AiImageInterpretationRepository.name, () => {
     expect(await repository.fail('asset-1', claim.runKey, { code: 'late', message: 'late failure' })).toBeNull();
   });
 
-  it('resets a completed run on resetCompleted and adopts the new trigger', async () => {
-    const { repository } = makeRepository();
-    const claim = await repository.claim('asset-1', identity, new Date('2026-09-11T00:00:00.000Z'));
-    await repository.transitionToRunning('asset-1', claim.runKey);
-    await repository.complete('asset-1', claim.runKey, input, result, metrics);
-
-    const rerun = await repository.claim('asset-1', identity, new Date('2026-09-11T02:00:00.000Z'), {
-      resetCompleted: true,
-      trigger: 'manual-public',
-    });
-    expect(rerun).toEqual(
-      expect.objectContaining({
-        alreadyExists: false,
-        runKey: claim.runKey,
-        run: expect.objectContaining({ status: 'queued', trigger: 'manual-public', result }),
-      }),
-    );
-  });
-
-  it('keeps a queued run single-delivery even on resetCompleted', async () => {
-    const { repository } = makeRepository();
-    const claim = await repository.claim('asset-1', identity, new Date('2026-09-11T00:00:00.000Z'));
-    await repository.transitionToRunning('asset-1', claim.runKey);
-    await repository.complete('asset-1', claim.runKey, input, result, metrics);
-    await repository.claim('asset-1', identity, new Date('2026-09-11T01:00:00.000Z'), { resetCompleted: true });
-
-    await expect(
-      repository.claim('asset-1', identity, new Date('2026-09-11T02:00:00.000Z'), { resetCompleted: true }),
-    ).resolves.toEqual(expect.objectContaining({ alreadyExists: true }));
-  });
-
   it('requeues a failed run on claim with attempt history preserved', async () => {
     const { repository } = makeRepository();
     const claim = await repository.claim('asset-1', identity, new Date('2026-09-11T00:00:00.000Z'));

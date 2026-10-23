@@ -98,6 +98,7 @@ export const EnvSchema = z
     IMMICH_AI_IMAGE_INTERPRETATION_URL: z.string().url().optional(),
     IMMICH_AI_IMAGE_INTERPRETATION_PUBLIC_URL: z.string().url().optional(),
     IMMICH_AI_IMAGE_INTERPRETATION_PUBLIC_MODEL: z.string().min(1).optional(),
+    IMMICH_AI_IMAGE_INTERPRETATION_PUBLIC_CONCURRENCY: z.coerce.number().int().min(1).optional(),
     IMMICH_AI_IMAGE_INTERPRETATION_API_KEY: z.string().min(1).optional(),
     IMMICH_AI_IMAGE_INTERPRETATION_MODEL: z.string().min(1).optional(),
     IMMICH_AI_IMAGE_INTERPRETATION_QUANT: z.string().min(1).optional(),

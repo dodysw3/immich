@@ -1891,6 +1891,7 @@ export type QueuesResponseLegacyDto = {
     faceDetection: QueueResponseLegacyDto;
     facialRecognition: QueueResponseLegacyDto;
     imageInterpretation: QueueResponseLegacyDto;
+    imageInterpretationPublic: QueueResponseLegacyDto;
     integrityCheck: QueueResponseLegacyDto;
     library: QueueResponseLegacyDto;
     metadataExtraction: QueueResponseLegacyDto;
@@ -8990,6 +8991,7 @@ export enum QueueName {
     IntegrityCheck = "integrityCheck",
     Editor = "editor",
     ImageInterpretation = "imageInterpretation",
+    ImageInterpretationPublic = "imageInterpretationPublic",
     AiInterpretSearch = "aiInterpretSearch"
 }
 export enum QueueCommand {
@@ -9051,6 +9053,7 @@ export enum JobName {
     AssetGenerateThumbnailsQueueAll = "AssetGenerateThumbnailsQueueAll",
     AssetGenerateThumbnails = "AssetGenerateThumbnails",
     AssetInterpretImage = "AssetInterpretImage",
+    AssetInterpretImagePublic = "AssetInterpretImagePublic",
     AssetInterpretationReconcile = "AssetInterpretationReconcile",
     AiInterpretSearchSync = "AiInterpretSearchSync",
     AiInterpretSearchReconcile = "AiInterpretSearchReconcile",

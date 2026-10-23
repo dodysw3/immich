@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import sharp from 'sharp';
 import type { ArgOf } from 'src/repositories/event.repository.js';
-import type { JobOf } from 'src/types.js';
+import type { IAssetInterpretationJob, JobOf } from 'src/types.js';
 import { OnEvent, OnJob } from 'src/decorators.js';
 import { AiInterpretationInput, AiInterpretationMetrics } from 'src/dtos/ai-image-interpretation.dto.js';
 import { AssetFileType, AssetType, AssetVisibility, ImmichWorker, JobName, JobStatus, QueueName } from 'src/enum.js';
@@ -92,22 +92,40 @@ export class AiImageInterpretationService {
   }
 
   @OnJob({ name: JobName.AssetInterpretImage, queue: QueueName.ImageInterpretation })
-  async handleInterpretation({
-    id: assetId,
-    runKey: requestedRunKey,
-    source,
-  }: JobOf<JobName.AssetInterpretImage>): Promise<JobStatus> {
+  async handleInterpretation(job: JobOf<JobName.AssetInterpretImage>): Promise<JobStatus> {
+    return this.deliver(job, false);
+  }
+
+  @OnJob({ name: JobName.AssetInterpretImagePublic, queue: QueueName.ImageInterpretationPublic })
+  async handleInterpretationPublic(job: JobOf<JobName.AssetInterpretImagePublic>): Promise<JobStatus> {
+    return this.deliver(job, true);
+  }
+
+  // `forcePublic` marks deliveries riding the dedicated public queue: they
+  // claim the hosted identity directly instead of falling back to the local
+  // claim path, and the queue keeps them off the main worker pool so a bulk
+  // public selection cannot starve local+remote interpretation.
+  private async deliver(
+    { id: assetId, runKey: requestedRunKey, source }: IAssetInterpretationJob,
+    forcePublic: boolean,
+  ): Promise<JobStatus> {
     const config = this.configRepository.getEnv().aiImageInterpretation;
     let runKey = requestedRunKey;
+    if (!runKey && forcePublic) {
+      runKey = createAiInterpretationPublicRunKey(config.publicModel, config.promptVersion);
+    }
     if (!runKey) {
       runKey = await this.claimMissingRun(assetId);
       if (!runKey) {
         this.logger.debug(`Skipping manual AI interpretation request for ${assetId}`);
         return JobStatus.Skipped;
       }
-    } else if (runKey === createAiInterpretationPublicRunKey(config.publicModel, config.promptVersion)) {
-      // Manual "Interpret image (public)" delivery: (re-)claim the hosted
-      // identity, forcing a completed run back to queued so re-running works.
+    } else if (forcePublic || runKey === createAiInterpretationPublicRunKey(config.publicModel, config.promptVersion)) {
+      // Manual "Interpret image (public)" delivery: claim the hosted identity.
+      // The runKey encodes model + prompt version, so a completed run means
+      // this asset already carries a public interpretation of the same
+      // identity — skip it instead of re-sending the image. Bumping the
+      // public model or prompt version changes the runKey and re-runs.
       // Ineligible assets skip without creating a run (no retry loop).
       if (!(await this.isInterpretationEligible(assetId))) {
         this.logger.debug(`Skipping public AI interpretation request for ${assetId}: asset not eligible`);
@@ -115,11 +133,12 @@ export class AiImageInterpretationService {
       }
 
       const claim = await this.interpretationRepository.claim(assetId, this.publicIdentity(config), new Date(), {
-        resetCompleted: true,
         trigger: 'manual-public',
       });
-      if (claim.alreadyExists && claim.run.status === 'running') {
-        this.logger.debug(`Skipping concurrent public AI interpretation delivery for ${assetId}`);
+      if (claim.alreadyExists && (claim.run.status === 'running' || claim.run.status === 'completed')) {
+        this.logger.debug(
+          `Skipping public AI interpretation delivery for ${assetId}: ${claim.run.status} run already exists`,
+        );
         return JobStatus.Skipped;
       }
     }
@@ -325,12 +344,21 @@ export class AiImageInterpretationService {
   }
 
   private async reconcile() {
-    const timeoutMs = this.configRepository.getEnv().aiImageInterpretation.timeoutMs;
+    const config = this.configRepository.getEnv().aiImageInterpretation;
+    const timeoutMs = config.timeoutMs;
     const now = Date.now();
     // A queued run is only declared lost when its BullMQ job no longer exists
     // (e.g. queue state wiped); waiting behind a long backlog is not loss.
+    const publicRunKey = createAiInterpretationPublicRunKey(config.publicModel, config.promptVersion);
     const failed = await this.interpretationRepository.failStale(new Date(now - timeoutMs), (assetId, runKey) =>
-      this.jobRepository.jobExists(QueueName.ImageInterpretation, createAiInterpretationJobId(assetId, runKey)),
+      // Public runs live in their own queue (and legacy pre-split public jobs
+      // in the old one are deliberately NOT seen here): checking only the
+      // run's own queue marks them orphaned so the reconcile re-dispatches
+      // them through the public queue.
+      this.jobRepository.jobExists(
+        runKey === publicRunKey ? QueueName.ImageInterpretationPublic : QueueName.ImageInterpretation,
+        createAiInterpretationJobId(assetId, runKey),
+      ),
     );
     if (failed > 0) {
       this.logger.log(`Marked ${failed} stale AI interpretation run(s) as failed`);
@@ -345,10 +373,12 @@ export class AiImageInterpretationService {
       }
 
       // Retry re-adds keep the upload-path tier; tier 1 stays reserved for
-      // explicit "interpret now" actions.
+      // explicit "interpret now" actions. Public runs return to their
+      // dedicated queue so retries cannot occupy the main pool either.
+      const isPublic = runKey === publicRunKey;
       await this.jobRepository.queue({
-        name: JobName.AssetInterpretImage,
-        data: { id: assetId, runKey, priority: 2 },
+        name: isPublic ? JobName.AssetInterpretImagePublic : JobName.AssetInterpretImage,
+        data: { id: assetId, runKey, priority: isPublic ? 1 : 2 },
       });
       dispatched++;
     }

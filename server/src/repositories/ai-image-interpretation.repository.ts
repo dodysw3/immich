@@ -21,10 +21,6 @@ export type AiInterpretationIdentity = {
 };
 
 export type AiInterpretationClaimOptions = {
-  // Manual public re-runs must go through even over a completed run: the claim
-  // resets it to `queued` (result kept until overwritten) so the same identity
-  // can be re-interpreted on demand.
-  resetCompleted?: boolean;
   trigger?: 'upload' | 'manual-public';
 };
 
@@ -79,12 +75,9 @@ export class AiImageInterpretationRepository {
       if (existingRun) {
         // A failed run never blocks a new trigger: the claim resets it to
         // `queued` (preserving the attempt history) so manual interpretations
-        // and upload-driven retries stay possible. With resetCompleted a
-        // completed run resets too (manual re-run of the same identity).
-        // Queued and running runs remain single-delivery.
-        const resettable =
-          existingRun.status === 'failed' || (options?.resetCompleted === true && existingRun.status === 'completed');
-        if (!resettable) {
+        // and upload-driven retries stay possible. Queued, running, and
+        // completed runs remain single-delivery.
+        if (existingRun.status !== 'failed') {
           return { alreadyExists: true, runKey, run: existingRun };
         }
 
