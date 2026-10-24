@@ -97,7 +97,13 @@ export class TimelineDay {
 
   sortAssets(sortOrder: AssetOrder = AssetOrder.Desc) {
     const sortFn = plainDateTimeCompare.bind(undefined, sortOrder === AssetOrder.Asc);
-    this.viewerAssets.sort((a, b) => sortFn(a.asset.fileCreatedAt, b.asset.fileCreatedAt));
+    // The id tie-break keeps identical-timestamp assets in a deterministic order;
+    // retrieveRange's timelinePositionCompare mirrors it to pick the walk direction.
+    this.viewerAssets.sort(
+      (a, b) =>
+        sortFn(a.asset.fileCreatedAt, b.asset.fileCreatedAt) ||
+        (a.asset.id < b.asset.id ? -1 : a.asset.id > b.asset.id ? 1 : 0),
+    );
   }
 
   getFirstAsset() {

@@ -1,6 +1,11 @@
 import { AssetOrder, AssetOrderBy, type AssetResponseDto } from '@immich/sdk';
 import { DateTime } from 'luxon';
-import { getOrderingDate, plainDateTimeCompare, type TimelineYearMonth } from '$lib/utils/timeline-util';
+import {
+  getOrderingDate,
+  plainDateTimeCompare,
+  type TimelineDateTime,
+  type TimelineYearMonth,
+} from '$lib/utils/timeline-util';
 import { TimelineManager } from '../timeline-manager.svelte';
 import type { TimelineMonth } from '../timeline-month.svelte';
 import type { AssetDescriptor, Direction, TimelineAsset } from '../types';
@@ -114,6 +119,43 @@ async function getAssetByYearOffset(timelineManager: TimelineManager, month: Tim
   }
 }
 
+// retrieveRange picks the walk direction by comparing the two endpoints, so this
+// comparison must agree with the order the iterator actually yields: months and
+// days are bucketed by the ordering date's calendar day, while assets within a
+// day are sorted by fileCreatedAt with an id tie-break (timeline-day.sortAssets).
+// Comparing the full ordering timestamp instead inverts the endpoints whenever
+// two assets share a timestamp (or a day) but sort differently — the walk then
+// never reaches the end asset and selects everything to the end of the timeline
+// (upstream issue #23322). Positive ⇔ `a` comes first in iteration order.
+function timelinePositionCompare(
+  descending: boolean,
+  orderBy: AssetOrderBy,
+  a: TimelineAsset,
+  b: TimelineAsset,
+): number {
+  const dayCompare = plainDateTimeCompare(
+    descending,
+    toCalendarDay(getOrderingDate(a, orderBy)),
+    toCalendarDay(getOrderingDate(b, orderBy)),
+  );
+  if (dayCompare !== 0) {
+    return dayCompare;
+  }
+  const fileCreatedCompare = plainDateTimeCompare(descending, a.fileCreatedAt, b.fileCreatedAt);
+  if (fileCreatedCompare !== 0) {
+    return fileCreatedCompare;
+  }
+  // Mirrors sortAssets' tie-break: smaller id first, regardless of direction.
+  return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
+}
+
+function toCalendarDay(dateTime: TimelineDateTime): TimelineDateTime {
+  return { ...dateTime, hour: 0, minute: 0, second: 0, millisecond: 0 };
+}
+
+const isMonthEarlierThan = (a: TimelineYearMonth, b: TimelineYearMonth) =>
+  a.year < b.year || (a.year === b.year && a.month < b.month);
+
 export async function retrieveRange(timelineManager: TimelineManager, start: AssetDescriptor, end: AssetDescriptor) {
   let { asset: startAsset, timelineMonth: startTimelineMonth } =
     findTimelineMonthForAsset(timelineManager, start.id) ?? {};
@@ -126,29 +168,30 @@ export async function retrieveRange(timelineManager: TimelineManager, start: Ass
   }
   const assetOrder: AssetOrder = timelineManager.getAssetOrder();
   const orderBy: AssetOrderBy = timelineManager.getOrderBy();
-  if (
-    plainDateTimeCompare(
-      assetOrder === AssetOrder.Desc,
-      getOrderingDate(startAsset, orderBy),
-      getOrderingDate(endAsset, orderBy),
-    ) < 0
-  ) {
+  if (timelinePositionCompare(assetOrder === AssetOrder.Desc, orderBy, startAsset, endAsset) < 0) {
     [startAsset, endAsset] = [endAsset, startAsset];
-    // eslint-disable-next-line no-useless-assignment
     [startTimelineMonth, endTimelineMonth] = [endTimelineMonth, startTimelineMonth];
   }
 
   const range: TimelineAsset[] = [];
-  const startTimelineDay = startTimelineMonth.findTimelineDayForAsset(startAsset);
-  for await (const targetAsset of timelineManager.assetsIterator({
-    startTimelineMonth,
-    startTimelineDay,
-    startAsset,
-  })) {
-    range.push(targetAsset);
-    if (targetAsset.id === endAsset.id) {
+  let startTimelineDay = startTimelineMonth.findTimelineDayForAsset(startAsset);
+  for (const timelineMonth of timelineManager.timelineMonthIterator({ startTimelineMonth, direction: 'earlier' })) {
+    // The walk goes toward earlier months, so once we pass the end asset's month
+    // it can never be reached — a mis-decided direction above (e.g. ordering keys
+    // the bucket payload doesn't carry) would otherwise consume the rest of the
+    // timeline. Stop there instead; this caps the damage at the end asset's month.
+    if (isMonthEarlierThan(timelineMonth.yearMonth, endTimelineMonth.yearMonth)) {
       break;
     }
+    await timelineManager.loadTimelineMonth(timelineMonth.yearMonth, { cancelable: false });
+    for (const targetAsset of timelineMonth.assetsIterator({ startTimelineDay, startAsset, direction: 'earlier' })) {
+      range.push(targetAsset);
+      if (targetAsset.id === endAsset.id) {
+        return range;
+      }
+    }
+    startTimelineDay = undefined;
+    startAsset = undefined;
   }
   return range;
 }

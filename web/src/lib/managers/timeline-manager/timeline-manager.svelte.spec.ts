@@ -926,5 +926,101 @@ describe('TimelineManager', () => {
       expect(ids).toContain(assetB.id);
       expect(ids).not.toContain(assetC.id);
     });
+
+    it('selects only the twin pair when assets share localDateTime but differ in fileCreatedAt', async () => {
+      // Regression for the shift-select wrap-around (upstream #23322): two sources
+      // can produce assets with the exact same localDateTime while fileCreatedAt
+      // differs (e.g. a Flickr export with a baked-in timezone offset). The server
+      // orders the bucket by localDateTime day, then fileCreatedAt, and the client
+      // trusts that order (preSorted) — so the direction decision must use the same
+      // keys. Comparing the full localDateTime instead ties on the pair, starts the
+      // walk on the wrong side, and selects every older asset on the timeline.
+      const timelineManager = new TimelineManager();
+      const ownerId = 'owner-id';
+
+      // Server order: localDateTime day desc, then fileCreatedAt desc — the twin's
+      // Flickr export carries a -5h offset, so it sorts above the anchor while both
+      // land on the same local day.
+      const bucketAssets: TimeBucketAssetResponseDto = {
+        id: ['twin', 'anchor', 'older'],
+        visibility: [AssetVisibility.Timeline, AssetVisibility.Timeline, AssetVisibility.Timeline],
+        isFavorite: [false, false, false],
+        isImage: [true, true, true],
+        isTrashed: [false, false, false],
+        livePhotoVideoId: [null, null, null],
+        fileCreatedAt: ['2014-10-10T22:47:46.200Z', '2014-10-10T17:47:46.200Z', '2014-10-05T00:00:00.000Z'],
+        localOffsetHours: [-5, 0, 0],
+        createdAt: ['2014-10-10T22:47:46.200Z', '2014-10-10T17:47:46.200Z', '2014-10-05T00:00:00.000Z'],
+        ownerId: [ownerId, ownerId, ownerId],
+        projectionType: [null, null, null],
+        ratio: [1.5, 1.5, 1.5],
+        stack: [null, null, null],
+        thumbhash: ['twin-hash', 'anchor-hash', 'older-hash'],
+        duration: [null, null, null],
+      };
+
+      sdkMock.getTimeBuckets.mockResolvedValue([{ count: 3, timeBucket: '2014-10-01T00:00:00.000Z' }]);
+      sdkMock.getTimeBucket.mockResolvedValue(bucketAssets);
+      await timelineManager.updateViewport({ width: 1588, height: 1000 });
+      await timelineManager.loadTimelineMonth({ year: 2014, month: 10 });
+
+      const range = await timelineManager.retrieveRange({ id: 'anchor' }, { id: 'twin' });
+      expect(range.map((asset) => asset.id)).toEqual(['twin', 'anchor']);
+
+      const reverse = await timelineManager.retrieveRange({ id: 'twin' }, { id: 'anchor' });
+      expect(reverse.map((asset) => asset.id)).toEqual(['twin', 'anchor']);
+    });
+
+    it('caps the range walk at the end asset month when the end asset cannot be reached', async () => {
+      // Pathological tie the client cannot mirror: assets sharing both the
+      // localDateTime day and fileCreatedAt are ordered server-side by
+      // originalFileName, which the bucket payload does not carry. When the id
+      // tie-break then picks the wrong walk start, the walk never reaches the
+      // end asset — it must stop at the end asset's month instead of consuming
+      // every older asset on the timeline.
+      const timelineManager = new TimelineManager();
+      const ownerId = 'owner-id';
+
+      const buildBucket = (ids: string[], fileCreatedAt: string[]): TimeBucketAssetResponseDto => ({
+        id: ids,
+        visibility: ids.map(() => AssetVisibility.Timeline),
+        isFavorite: ids.map(() => false),
+        isImage: ids.map(() => true),
+        isTrashed: ids.map(() => false),
+        livePhotoVideoId: ids.map(() => null),
+        fileCreatedAt,
+        localOffsetHours: ids.map(() => 0),
+        createdAt: [...fileCreatedAt],
+        ownerId: ids.map(() => ownerId),
+        projectionType: ids.map(() => null),
+        ratio: ids.map(() => 1.5),
+        stack: ids.map(() => null),
+        thumbhash: ids.map((id) => `${id}-hash`),
+        duration: ids.map(() => null),
+      });
+
+      // Server order within 2024-05-10 is by originalFileName desc: 'zzz-twin'
+      // first. The id tie-break wrongly starts the walk at 'anchor' (index 1),
+      // so 'zzz-twin' is never reached.
+      const mayBucket = buildBucket(
+        ['zzz-twin', 'anchor', 'same-month-older'],
+        ['2024-05-10T12:00:00.000Z', '2024-05-10T12:00:00.000Z', '2024-05-01T00:00:00.000Z'],
+      );
+      const aprilBucket = buildBucket(['april-asset'], ['2024-04-01T00:00:00.000Z']);
+
+      sdkMock.getTimeBuckets.mockResolvedValue([
+        { count: 3, timeBucket: '2024-05-01T00:00:00.000Z' },
+        { count: 1, timeBucket: '2024-04-01T00:00:00.000Z' },
+      ]);
+      sdkMock.getTimeBucket.mockImplementation(({ timeBucket }) =>
+        Promise.resolve(timeBucket === '2024-05-01T00:00:00.000Z' ? mayBucket : aprilBucket),
+      );
+      await timelineManager.updateViewport({ width: 1588, height: 1000 });
+      await timelineManager.loadTimelineMonth({ year: 2024, month: 5 });
+
+      const range = await timelineManager.retrieveRange({ id: 'anchor' }, { id: 'zzz-twin' });
+      expect(range.map((asset) => asset.id)).toEqual(['anchor', 'same-month-older']);
+      expect(range.map((asset) => asset.id)).not.toContain('april-asset');
+    });
   });
 });
