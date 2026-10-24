@@ -39,6 +39,7 @@ const resetEnv = () => {
     'IMMICH_AI_IMAGE_INTERPRETATION_MAX_EDGE',
     'IMMICH_AI_IMAGE_INTERPRETATION_MAX_PIXELS',
     'IMMICH_AI_IMAGE_INTERPRETATION_CONCURRENCY',
+    'IMMICH_AI_IMAGE_INTERPRETATION_SKIP_IF_INTERPRETED',
     'IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_WEBHOOK_URL',
     'IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_INCLUDE_THUMBNAIL',
 
@@ -205,6 +206,7 @@ describe('getEnv', () => {
         maxEdge: 1600,
         maxPixels: 16_000_000,
         concurrency: 1,
+        skipIfInterpreted: true,
         discord: { webhookUrl: undefined, includeThumbnail: true },
       });
     });

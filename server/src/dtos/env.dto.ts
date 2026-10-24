@@ -107,6 +107,7 @@ export const EnvSchema = z
     IMMICH_AI_IMAGE_INTERPRETATION_MAX_EDGE: z.coerce.number().int().min(1).optional(),
     IMMICH_AI_IMAGE_INTERPRETATION_MAX_PIXELS: z.coerce.number().int().min(1).optional(),
     IMMICH_AI_IMAGE_INTERPRETATION_CONCURRENCY: z.coerce.number().int().min(1).optional(),
+    IMMICH_AI_IMAGE_INTERPRETATION_SKIP_IF_INTERPRETED: stringBool.optional(),
     IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_WEBHOOK_URL: z.preprocess(
       (value) => (value === '' ? undefined : value),
       discordWebhookUrl.optional(),

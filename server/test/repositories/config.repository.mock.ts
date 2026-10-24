@@ -126,6 +126,8 @@ export const envData: EnvData = {
     maxEdge: 1600,
     maxPixels: 16_000_000,
     concurrency: 1,
+    // Test mock keeps pre-flag behavior: deliveries never skip on existing runs.
+    skipIfInterpreted: false,
     discord: { includeThumbnail: true },
   },
 

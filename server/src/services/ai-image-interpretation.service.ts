@@ -110,6 +110,20 @@ export class AiImageInterpretationService {
     forcePublic: boolean,
   ): Promise<JobStatus> {
     const config = this.configRepository.getEnv().aiImageInterpretation;
+    // Backlog-sweep compute saver: a delivery for an asset that already
+    // carries any completed run (older prompt version, another model, a
+    // public-spark run) is skipped instead of re-interpreted — public
+    // deliveries included, since multi-select "Interpret image (public)"
+    // cannot assume the user knows which assets are already interpreted.
+    // Checked before claiming so a skipped delivery leaves no run record.
+    // To force a re-interpretation (either lane), turn the flag off.
+    if (config.skipIfInterpreted && (await this.hasCompletedInterpretation(assetId))) {
+      // Log level (not debug): during the backlog sweep this is the only
+      // visible signal that compute is being saved — skipped deliveries
+      // produce no run record, alert, or metric.
+      this.logger.log(`Skipping AI interpretation for ${assetId}: asset already has a completed interpretation`);
+      return JobStatus.Skipped;
+    }
     let runKey = requestedRunKey;
     if (!runKey && forcePublic) {
       runKey = createAiInterpretationPublicRunKey(config.publicModel, config.promptVersion);
@@ -279,6 +293,18 @@ export class AiImageInterpretationService {
     return { model: config.publicModel, quant: AI_INTERPRETATION_HOSTED_QUANT, promptVersion: config.promptVersion };
   }
 
+  // Any completed run in the asset's own document counts — copied runs and
+  // public-spark runs included; failed or in-flight runs of other identities
+  // never block.
+  private async hasCompletedInterpretation(assetId: string): Promise<boolean> {
+    const document = await this.interpretationRepository.get(assetId);
+    if (!document) {
+      return false;
+    }
+
+    return Object.values(document.runs).some((run) => run.status === 'completed');
+  }
+
   private async isInterpretationEligible(assetId: string): Promise<boolean> {
     const config = this.configRepository.getEnv().aiImageInterpretation;
     if (!config.enabled) {
@@ -367,6 +393,14 @@ export class AiImageInterpretationService {
     const due = await this.interpretationRepository.findDueRetries(new Date());
     let dispatched = 0;
     for (const { assetId, runKey } of due) {
+      // Without this guard a failed run for an already-interpreted asset would
+      // churn forever: requeue → delivery skipped → orphaned queued run →
+      // failStale marks it failed → due again. Leaving it failed (retry stays
+      // past-due) is stable, and reprocessing unblocks as soon as the flag is
+      // turned off.
+      if (config.skipIfInterpreted && (await this.hasCompletedInterpretation(assetId))) {
+        continue;
+      }
       const requeued = await this.interpretationRepository.requeue(assetId, runKey);
       if (!requeued) {
         continue;

@@ -154,6 +154,7 @@ export interface EnvData {
     maxEdge: number;
     maxPixels: number;
     concurrency: number;
+    skipIfInterpreted: boolean;
     discord: {
       webhookUrl?: string;
       includeThumbnail: boolean;
@@ -450,6 +451,12 @@ const getEnv = (): EnvData => {
       maxEdge: dto.IMMICH_AI_IMAGE_INTERPRETATION_MAX_EDGE || 1600,
       maxPixels: dto.IMMICH_AI_IMAGE_INTERPRETATION_MAX_PIXELS || 16_000_000,
       concurrency: dto.IMMICH_AI_IMAGE_INTERPRETATION_CONCURRENCY || 1,
+      // Backlog-sweep compute saver: while on, ALL deliveries skip any asset
+      // that already carries a completed interpretation run (any model,
+      // quant, or prompt version) — "Interpret image (public)" included,
+      // since multi-select cannot assume the user knows which assets are
+      // already interpreted. Turn off to let re-interpretation through.
+      skipIfInterpreted: dto.IMMICH_AI_IMAGE_INTERPRETATION_SKIP_IF_INTERPRETED ?? true,
       discord: {
         webhookUrl: dto.IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_WEBHOOK_URL,
         includeThumbnail: dto.IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_INCLUDE_THUMBNAIL ?? true,

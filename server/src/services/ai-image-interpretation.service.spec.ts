@@ -135,6 +135,13 @@ const makePublicRun = (
   return { asset };
 };
 
+const enableSkipFlag = (dependencies: ReturnType<typeof makeService>['dependencies']) => {
+  dependencies.configRepository.getEnv.mockReturnValue({
+    aiImageInterpretation: { ...config, skipIfInterpreted: true },
+    aiInterpretSearch: { enabled: false },
+  });
+};
+
 describe(AiImageInterpretationService.name, () => {
   beforeEach(() => {
     clearConfigCache();
@@ -583,6 +590,209 @@ describe(AiImageInterpretationService.name, () => {
     await expect(service.handleReconcile()).resolves.toBe(JobStatus.Success);
 
     expect(dependencies.jobRepository.queue).not.toHaveBeenCalled();
+  });
+
+  describe('skipIfInterpreted (backlog compute saver)', () => {
+    it('skips a main-queue delivery before claiming when any completed run exists for the asset', async () => {
+      const { service, dependencies } = makeService();
+      enableSkipFlag(dependencies);
+      // A completed run from another identity (here: a public-spark run) is
+      // enough to skip — model, quant, and prompt version do not matter.
+      dependencies.interpretationRepository.get.mockResolvedValue({
+        schemaVersion: 1,
+        runs: {
+          [publicRunKey]: {
+            model: config.publicModel,
+            quant: 'hosted',
+            promptVersion: config.promptVersion,
+            trigger: 'manual-public',
+            requestedAt: new Date().toISOString(),
+            status: 'completed',
+          },
+        },
+      } as AiInterpretationDocument);
+
+      await expect(service.handleInterpretation({ id: 'asset-1' } as never)).resolves.toBe(JobStatus.Skipped);
+
+      expect(dependencies.interpretationRepository.claim).not.toHaveBeenCalled();
+      expect(dependencies.interpretationRepository.transitionToRunning).not.toHaveBeenCalled();
+      expect(dependencies.client.interpret).not.toHaveBeenCalled();
+      expect(dependencies.interpretationRepository.complete).not.toHaveBeenCalled();
+    });
+
+    it('delivers normally when the asset only has non-completed runs', async () => {
+      const { service, dependencies } = makeService();
+      enableSkipFlag(dependencies);
+      dependencies.interpretationRepository.get.mockResolvedValue({
+        schemaVersion: 1,
+        runs: {
+          legacy: {
+            model: 'model-old',
+            quant: 'quant-old',
+            promptVersion: 'prompt-old',
+            trigger: 'upload',
+            requestedAt: new Date().toISOString(),
+            status: 'failed',
+            error: { code: 'timeout', message: 'timed out' },
+          },
+          [runKey]: {
+            model: config.model,
+            quant: config.quant,
+            promptVersion: config.promptVersion,
+            trigger: 'upload',
+            requestedAt: new Date().toISOString(),
+            status: 'queued',
+          },
+        },
+      } as AiInterpretationDocument);
+      dependencies.interpretationRepository.claim.mockResolvedValue({
+        alreadyExists: false,
+        runKey,
+        run: { model: config.model, quant: config.quant, promptVersion: config.promptVersion },
+      });
+      dependencies.interpretationRepository.transitionToRunning.mockResolvedValue(true);
+      dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue(
+        AssetFactory.from({ type: AssetType.Image, visibility: AssetVisibility.Timeline })
+          .files([AssetFileType.Preview])
+          .build(),
+      );
+      service_preparePreview(service);
+      dependencies.client.interpret.mockResolvedValue({
+        result: { title: 't' } as never,
+        model: config.model,
+        promptTokens: 1,
+        completionTokens: 1,
+      });
+      dependencies.interpretationRepository.complete.mockResolvedValue(true);
+
+      await expect(service.handleInterpretation({ id: 'asset-1' } as never)).resolves.toBe(JobStatus.Success);
+
+      expect(dependencies.interpretationRepository.complete).toHaveBeenCalled();
+      expect(dependencies.client.interpret).toHaveBeenCalled();
+    });
+
+    it('gates public deliveries on the flag as well', async () => {
+      const { service, dependencies } = makeService();
+      enableSkipFlag(dependencies);
+      // A completed run from any identity is enough to skip the public
+      // delivery too: multi-select "Interpret image (public)" cannot assume
+      // the user knows which assets are already interpreted.
+      dependencies.interpretationRepository.get.mockResolvedValue({
+        schemaVersion: 1,
+        runs: {
+          [runKey]: {
+            model: config.model,
+            quant: config.quant,
+            promptVersion: config.promptVersion,
+            trigger: 'upload',
+            requestedAt: new Date().toISOString(),
+            status: 'completed',
+          },
+        },
+      } as AiInterpretationDocument);
+
+      await expect(service.handleInterpretationPublic({ id: 'asset-1', runKey: publicRunKey } as never)).resolves.toBe(
+        JobStatus.Skipped,
+      );
+
+      expect(dependencies.interpretationRepository.claim).not.toHaveBeenCalled();
+      expect(dependencies.interpretationRepository.transitionToRunning).not.toHaveBeenCalled();
+      expect(dependencies.client.interpret).not.toHaveBeenCalled();
+    });
+
+    it('still delivers public runs for assets without completed runs while the flag is on', async () => {
+      const { service, dependencies } = makeService();
+      enableSkipFlag(dependencies);
+      dependencies.interpretationRepository.get.mockResolvedValue({
+        schemaVersion: 1,
+        runs: {
+          [publicRunKey]: {
+            model: config.publicModel,
+            quant: 'hosted',
+            promptVersion: config.promptVersion,
+            trigger: 'manual-public',
+            requestedAt: new Date().toISOString(),
+            status: 'queued',
+          },
+        },
+      } as AiInterpretationDocument);
+      dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue(
+        AssetFactory.from({ type: AssetType.Image, visibility: AssetVisibility.Timeline })
+          .files([AssetFileType.Preview])
+          .build(),
+      );
+      service_preparePreview(service);
+      dependencies.interpretationRepository.claim.mockResolvedValue({
+        alreadyExists: false,
+        runKey: publicRunKey,
+        run: { model: config.publicModel, quant: 'hosted', promptVersion: config.promptVersion },
+      });
+      dependencies.interpretationRepository.transitionToRunning.mockResolvedValue(true);
+      dependencies.client.interpret.mockResolvedValue({
+        result: { title: 't' } as never,
+        model: config.publicModel,
+        promptTokens: 1,
+        completionTokens: 1,
+      });
+      dependencies.interpretationRepository.complete.mockResolvedValue(true);
+
+      await expect(service.handleInterpretationPublic({ id: 'asset-1', runKey: publicRunKey } as never)).resolves.toBe(
+        JobStatus.Success,
+      );
+
+      expect(dependencies.client.interpret).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ url: config.publicUrl }),
+      );
+    });
+
+    it('leaves due retries un-requeued for already-interpreted assets but requeues the rest', async () => {
+      const { service, dependencies } = makeService();
+      enableSkipFlag(dependencies);
+      dependencies.interpretationRepository.failStale.mockResolvedValue(0);
+      dependencies.interpretationRepository.findDueRetries.mockResolvedValue([
+        { assetId: 'asset-interpreted', runKey },
+        { assetId: 'asset-fresh', runKey },
+      ]);
+      dependencies.interpretationRepository.get
+        .mockResolvedValueOnce({
+          schemaVersion: 1,
+          runs: {
+            other: {
+              model: 'model-old',
+              quant: 'quant-old',
+              promptVersion: 'prompt-old',
+              trigger: 'upload',
+              requestedAt: new Date().toISOString(),
+              status: 'completed',
+            },
+          },
+        } as AiInterpretationDocument)
+        .mockResolvedValueOnce({
+          schemaVersion: 1,
+          runs: {
+            [runKey]: {
+              model: config.model,
+              quant: config.quant,
+              promptVersion: config.promptVersion,
+              trigger: 'upload',
+              requestedAt: new Date().toISOString(),
+              status: 'failed',
+              error: { code: 'timeout', message: 'timed out' },
+            },
+          },
+        } as AiInterpretationDocument);
+      dependencies.interpretationRepository.requeue.mockResolvedValue(true);
+
+      await expect(service.handleReconcile()).resolves.toBe(JobStatus.Success);
+
+      expect(dependencies.interpretationRepository.requeue).toHaveBeenCalledTimes(1);
+      expect(dependencies.jobRepository.queue).toHaveBeenCalledTimes(1);
+      expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
+        name: JobName.AssetInterpretImage,
+        data: { id: 'asset-fresh', runKey, priority: 2 },
+      });
+    });
   });
 
   describe('public (hosted model) runs', () => {
