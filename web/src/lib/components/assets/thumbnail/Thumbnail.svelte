@@ -81,6 +81,13 @@
   let width = $derived(thumbnailSize || thumbnailWidth || 235);
   let height = $derived(thumbnailSize || thumbnailHeight || 235);
 
+  // Image.svelte only loads the first src it receives, so key the thumbnail on the
+  // full URL to remount it when the cache key changes (e.g. after edits regenerate
+  // the thumbhash).
+  let thumbnailUrl = $derived(
+    getAssetMediaUrl({ id: asset.id, size: AssetMediaSize.Thumbnail, cacheKey: asset.thumbhash }),
+  );
+
   let assetOwner = $derived(albumUsers?.find((user) => user.id === asset.ownerId) ?? null);
 
   const onIconClickedHandler = (e?: MouseEvent) => {
@@ -237,21 +244,23 @@
 >
   <div class="group absolute inset-y-0" style:width="inherit" style:height="inherit">
     <div class={['absolute size-full bg-transparent transition-transform select-none', { 'scale-[0.85]': selected }]}>
-      <ImageThumbnail
-        class={['absolute group-focus-visible:rounded-lg', imageClass]}
-        brokenAssetClass={['z-1 absolute group-focus-visible:rounded-lg', brokenAssetClass]}
-        url={getAssetMediaUrl({ id: asset.id, size: AssetMediaSize.Thumbnail, cacheKey: asset.thumbhash })}
-        altText={$getAltText(asset)}
-        widthStyle="{width}px"
-        heightStyle="{height}px"
-        curve={selected}
-        onComplete={(errored) => {
-          const rect = element?.getBoundingClientRect();
-          skipFade = !rect || rect.bottom < 0 || rect.top > window.innerHeight;
-          loaded = true;
-          thumbError = errored;
-        }}
-      />
+      {#key thumbnailUrl}
+        <ImageThumbnail
+          class={['absolute group-focus-visible:rounded-lg', imageClass]}
+          brokenAssetClass={['z-1 absolute group-focus-visible:rounded-lg', brokenAssetClass]}
+          url={thumbnailUrl}
+          altText={$getAltText(asset)}
+          widthStyle="{width}px"
+          heightStyle="{height}px"
+          curve={selected}
+          onComplete={(errored) => {
+            const rect = element?.getBoundingClientRect();
+            skipFade = !rect || rect.bottom < 0 || rect.top > window.innerHeight;
+            loaded = true;
+            thumbError = errored;
+          }}
+        />
+      {/key}
       {#if asset.isVideo}
         <div class="pointer-events-none absolute size-full group-focus-visible:rounded-lg">
           <VideoThumbnail

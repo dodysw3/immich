@@ -170,6 +170,50 @@ export class EditManager {
     }
   }
 
+  async #rotateAsset(assetId: string, angle: 90 | -90): Promise<AssetResponseDto> {
+    const normalizedAngle = ((angle % 360) + 360) % 360;
+
+    const currentEdits = await getAssetEdits({ id: assetId });
+    let currentRotation = 0;
+    const editsWithoutRotate: EditActions = [];
+
+    for (const edit of currentEdits.edits) {
+      const rotateAngle = getRotateAngle(edit);
+      if (rotateAngle === undefined) {
+        editsWithoutRotate.push(edit);
+        continue;
+      }
+
+      currentRotation += rotateAngle;
+    }
+
+    const nextRotation = (((currentRotation + normalizedAngle) % 360) + 360) % 360;
+    const edits: EditActions =
+      nextRotation === 0
+        ? editsWithoutRotate
+        : [...editsWithoutRotate, { action: AssetEditAction.Rotate, parameters: { angle: nextRotation } }];
+
+    const editCompleted = waitForWebsocketEvent('AssetEditReadyV2', (event) => event.asset.id === assetId, 10_000);
+
+    await (edits.length === 0
+      ? removeAssetEdits({ id: assetId })
+      : editAsset({
+          id: assetId,
+          assetEditsCreateDto: {
+            edits,
+          },
+        }));
+
+    await editCompleted;
+
+    eventManager.emit('AssetEditsApplied', assetId);
+
+    const updatedAsset = await getAssetInfo({ id: assetId });
+    eventManager.emit('AssetUpdate', updatedAsset);
+
+    return updatedAsset;
+  }
+
   async applyInstantRotate(asset: AssetResponseDto, angle: 90 | -90): Promise<boolean> {
     if (this.isApplyingEdits) {
       return false;
@@ -177,48 +221,10 @@ export class EditManager {
 
     this.isApplyingEdits = true;
 
-    const assetId = asset.id;
     const t = await getFormatter();
-    const normalizedAngle = ((angle % 360) + 360) % 360;
 
     try {
-      const currentEdits = await getAssetEdits({ id: assetId });
-      let currentRotation = 0;
-      const editsWithoutRotate: EditActions = [];
-
-      for (const edit of currentEdits.edits) {
-        const rotateAngle = getRotateAngle(edit);
-        if (rotateAngle === undefined) {
-          editsWithoutRotate.push(edit);
-          continue;
-        }
-
-        currentRotation += rotateAngle;
-      }
-
-      const nextRotation = (((currentRotation + normalizedAngle) % 360) + 360) % 360;
-      const edits: EditActions =
-        nextRotation === 0
-          ? editsWithoutRotate
-          : [...editsWithoutRotate, { action: AssetEditAction.Rotate, parameters: { angle: nextRotation } }];
-
-      const editCompleted = waitForWebsocketEvent('AssetEditReadyV2', (event) => event.asset.id === assetId, 10_000);
-
-      await (edits.length === 0
-        ? removeAssetEdits({ id: assetId })
-        : editAsset({
-            id: assetId,
-            assetEditsCreateDto: {
-              edits,
-            },
-          }));
-
-      await editCompleted;
-
-      eventManager.emit('AssetEditsApplied', assetId);
-
-      const updatedAsset = await getAssetInfo({ id: assetId });
-      eventManager.emit('AssetUpdate', updatedAsset);
+      await this.#rotateAsset(asset.id, angle);
 
       toastManager.success(t('editor_edits_applied_success'));
       this.hasAppliedEdits = true;
@@ -229,6 +235,41 @@ export class EditManager {
       return false;
     } finally {
       this.isApplyingEdits = false;
+    }
+  }
+
+  async applyInstantRotateBulk(assets: { id: string }[], angle: 90 | -90): Promise<void> {
+    if (this.isApplyingEdits || assets.length === 0) {
+      return;
+    }
+
+    this.isApplyingEdits = true;
+
+    const t = await getFormatter();
+    let succeeded = 0;
+    let failed = 0;
+
+    try {
+      for (const { id } of assets) {
+        try {
+          await this.#rotateAsset(id, angle);
+          succeeded++;
+        } catch {
+          failed++;
+        }
+      }
+    } finally {
+      this.isApplyingEdits = false;
+    }
+
+    if (failed === 0) {
+      toastManager.success(t('rotated_count', { values: { count: succeeded } }));
+    } else if (succeeded === 0) {
+      toastManager.danger(t('editor_edits_applied_error'));
+    } else {
+      toastManager.warning(
+        t('rotated_count_of_total', { values: { successCount: succeeded, totalCount: assets.length } }),
+      );
     }
   }
 }

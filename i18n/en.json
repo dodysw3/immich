@@ -1916,6 +1916,8 @@
   "role_viewer": "Viewer",
   "rotate_api_key_prompt": "Are you sure you want to rotate this API key? The current key will stop working immediately.",
   "rotate_key": "Rotate key",
+  "rotated_count": "{count, plural, other {Rotated #}}",
+  "rotated_count_of_total": "Rotated {successCount} out of {totalCount}",
   "run_id": "Run ID",
   "running": "Running",
   "save": "Save",

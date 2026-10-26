@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   eventEmit: vi.fn(),
   toastSuccess: vi.fn(),
   toastDanger: vi.fn(),
+  toastWarning: vi.fn(),
   formatter: vi.fn((key: string) => key),
 }));
 
@@ -56,6 +57,7 @@ vi.mock('@immich/ui', () => ({
   toastManager: {
     success: mocks.toastSuccess,
     danger: mocks.toastDanger,
+    warning: mocks.toastWarning,
   },
 }));
 
@@ -163,5 +165,61 @@ describe('EditManager.applyInstantRotate', () => {
     expect(result).toBe(true);
     expect(mocks.removeAssetEdits).toHaveBeenCalledWith({ id: asset.id });
     expect(mocks.editAsset).not.toHaveBeenCalled();
+  });
+});
+
+describe('EditManager.applyInstantRotateBulk', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.waitForWebsocketEvent.mockResolvedValue(undefined);
+    mocks.editAsset.mockResolvedValue(undefined);
+    mocks.getAssetEdits.mockResolvedValue({ edits: [] });
+    mocks.getAssetInfo.mockImplementation(async ({ id }: { id: string }) => createAsset(id));
+  });
+
+  it('rotates each asset and shows a single count toast', async () => {
+    const manager = new EditManager();
+    await manager.applyInstantRotateBulk([createAsset('a'), createAsset('b')], 90);
+
+    expect(mocks.editAsset).toHaveBeenCalledTimes(2);
+    expect(mocks.eventEmit).toHaveBeenCalledWith('AssetEditsApplied', 'a');
+    expect(mocks.eventEmit).toHaveBeenCalledWith('AssetUpdate', createAsset('b'));
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('rotated_count');
+    expect(mocks.formatter).toHaveBeenCalledWith('rotated_count', { values: { count: 2 } });
+    expect(mocks.toastDanger).not.toHaveBeenCalled();
+    expect(mocks.toastWarning).not.toHaveBeenCalled();
+    expect(manager.isApplyingEdits).toBe(false);
+  });
+
+  it('continues after a failure and shows a partial toast', async () => {
+    mocks.editAsset.mockRejectedValueOnce(new Error('edit failed'));
+
+    const manager = new EditManager();
+    await manager.applyInstantRotateBulk([createAsset('a'), createAsset('b')], -90);
+
+    expect(mocks.toastWarning).toHaveBeenCalledWith('rotated_count_of_total');
+    expect(mocks.formatter).toHaveBeenCalledWith('rotated_count_of_total', {
+      values: { successCount: 1, totalCount: 2 },
+    });
+    expect(manager.isApplyingEdits).toBe(false);
+  });
+
+  it('shows the error toast when every rotation fails', async () => {
+    mocks.editAsset.mockRejectedValue(new Error('edit failed'));
+
+    const manager = new EditManager();
+    await manager.applyInstantRotateBulk([createAsset('a'), createAsset('b')], 90);
+
+    expect(mocks.toastDanger).toHaveBeenCalledWith('editor_edits_applied_error');
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.toastWarning).not.toHaveBeenCalled();
+  });
+
+  it('does nothing for an empty selection', async () => {
+    const manager = new EditManager();
+    await manager.applyInstantRotateBulk([], 90);
+
+    expect(mocks.editAsset).not.toHaveBeenCalled();
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
   });
 });
