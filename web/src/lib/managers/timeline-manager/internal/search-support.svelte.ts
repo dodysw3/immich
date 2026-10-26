@@ -166,20 +166,43 @@ export async function retrieveRange(timelineManager: TimelineManager, start: Ass
   if (!endTimelineMonth || !endAsset) {
     return [];
   }
+  const startId = startAsset.id;
+  const endId = endAsset.id;
+  const startDay = startTimelineMonth.findTimelineDayForAsset(startAsset);
+  const endDay = endTimelineMonth.findTimelineDayForAsset(endAsset);
+
+  // When both endpoints share a day, resolve the range positionally from that
+  // day's actual asset order. Endpoints tying on both the ordering date and
+  // fileCreatedAt (e.g. cross-library duplicates) are ordered server-side by
+  // originalFileName, which the bucket payload does not carry — and which is
+  // arbitrary when even the names match — so no key comparison can predict
+  // their order.
+  if (startDay && startDay === endDay) {
+    const assets = startDay.getAssets();
+    const startIndex = assets.findIndex((asset) => asset.id === startId);
+    const endIndex = assets.findIndex((asset) => asset.id === endId);
+    if (startIndex !== -1 && endIndex !== -1) {
+      const [from, to] = startIndex <= endIndex ? [startIndex, endIndex] : [endIndex, startIndex];
+      return assets.slice(from, to + 1);
+    }
+  }
+
   const assetOrder: AssetOrder = timelineManager.getAssetOrder();
   const orderBy: AssetOrderBy = timelineManager.getOrderBy();
+  let swapped = false;
   if (timelinePositionCompare(assetOrder === AssetOrder.Desc, orderBy, startAsset, endAsset) < 0) {
     [startAsset, endAsset] = [endAsset, startAsset];
     [startTimelineMonth, endTimelineMonth] = [endTimelineMonth, startTimelineMonth];
+    swapped = true;
   }
 
   const range: TimelineAsset[] = [];
-  let startTimelineDay = startTimelineMonth.findTimelineDayForAsset(startAsset);
+  let startTimelineDay = swapped ? endDay : startDay;
   for (const timelineMonth of timelineManager.timelineMonthIterator({ startTimelineMonth, direction: 'earlier' })) {
     // The walk goes toward earlier months, so once we pass the end asset's month
-    // it can never be reached — a mis-decided direction above (e.g. ordering keys
-    // the bucket payload doesn't carry) would otherwise consume the rest of the
-    // timeline. Stop there instead; this caps the damage at the end asset's month.
+    // it can never be reached — a mis-decided direction above would otherwise
+    // consume the rest of the timeline. Stop there instead; this caps the damage
+    // at the end asset's month.
     if (isMonthEarlierThan(timelineMonth.yearMonth, endTimelineMonth.yearMonth)) {
       break;
     }

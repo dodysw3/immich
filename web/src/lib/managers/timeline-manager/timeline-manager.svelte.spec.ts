@@ -889,6 +889,24 @@ describe('TimelineManager', () => {
   });
 
   describe('retrieveRange', () => {
+    const buildBucket = (ids: string[], fileCreatedAt: string[]): TimeBucketAssetResponseDto => ({
+      id: ids,
+      visibility: ids.map(() => AssetVisibility.Timeline),
+      isFavorite: ids.map(() => false),
+      isImage: ids.map(() => true),
+      isTrashed: ids.map(() => false),
+      livePhotoVideoId: ids.map(() => null),
+      fileCreatedAt,
+      localOffsetHours: ids.map(() => 0),
+      createdAt: [...fileCreatedAt],
+      ownerId: ids.map(() => 'owner-id'),
+      projectionType: ids.map(() => null),
+      ratio: ids.map(() => 1.5),
+      stack: ids.map(() => null),
+      thumbhash: ids.map((id) => `${id}-hash`),
+      duration: ids.map(() => null),
+    });
+
     it('uses createdAt ordering in the Recently Added view (orderBy=CreatedAt)', async () => {
       // Simulate the "Recently Added" bug: two assets whose localDateTime order is
       // the reverse of their createdAt (upload) order. Before the fix, retrieveRange
@@ -971,37 +989,18 @@ describe('TimelineManager', () => {
       expect(reverse.map((asset) => asset.id)).toEqual(['twin', 'anchor']);
     });
 
-    it('caps the range walk at the end asset month when the end asset cannot be reached', async () => {
-      // Pathological tie the client cannot mirror: assets sharing both the
-      // localDateTime day and fileCreatedAt are ordered server-side by
-      // originalFileName, which the bucket payload does not carry. When the id
-      // tie-break then picks the wrong walk start, the walk never reaches the
-      // end asset — it must stop at the end asset's month instead of consuming
-      // every older asset on the timeline.
+    it('resolves fully-tied twins positionally when the id order differs from the server order', async () => {
+      // Endpoints sharing both the localDateTime day and fileCreatedAt are
+      // ordered server-side by originalFileName, which the bucket payload does
+      // not carry — and when even the names match (cross-library duplicates),
+      // the server's own order is arbitrary. Falling back to the id tie-break
+      // picks the wrong walk start, the end asset is never reached, and every
+      // older asset in the month gets selected (prod: shift-range between two
+      // 2005 duplicate twins pulled in 1,099 assets). Same-day ranges are
+      // resolved positionally from the day's actual array instead.
       const timelineManager = new TimelineManager();
-      const ownerId = 'owner-id';
 
-      const buildBucket = (ids: string[], fileCreatedAt: string[]): TimeBucketAssetResponseDto => ({
-        id: ids,
-        visibility: ids.map(() => AssetVisibility.Timeline),
-        isFavorite: ids.map(() => false),
-        isImage: ids.map(() => true),
-        isTrashed: ids.map(() => false),
-        livePhotoVideoId: ids.map(() => null),
-        fileCreatedAt,
-        localOffsetHours: ids.map(() => 0),
-        createdAt: [...fileCreatedAt],
-        ownerId: ids.map(() => ownerId),
-        projectionType: ids.map(() => null),
-        ratio: ids.map(() => 1.5),
-        stack: ids.map(() => null),
-        thumbhash: ids.map((id) => `${id}-hash`),
-        duration: ids.map(() => null),
-      });
-
-      // Server order within 2024-05-10 is by originalFileName desc: 'zzz-twin'
-      // first. The id tie-break wrongly starts the walk at 'anchor' (index 1),
-      // so 'zzz-twin' is never reached.
+      // Server order within 2024-05-10 puts 'zzz-twin' (larger id) first.
       const mayBucket = buildBucket(
         ['zzz-twin', 'anchor', 'same-month-older'],
         ['2024-05-10T12:00:00.000Z', '2024-05-10T12:00:00.000Z', '2024-05-01T00:00:00.000Z'],
@@ -1018,9 +1017,40 @@ describe('TimelineManager', () => {
       await timelineManager.updateViewport({ width: 1588, height: 1000 });
       await timelineManager.loadTimelineMonth({ year: 2024, month: 5 });
 
+      // Anchoring at the later-in-array twin and shift-clicking the first one.
       const range = await timelineManager.retrieveRange({ id: 'anchor' }, { id: 'zzz-twin' });
-      expect(range.map((asset) => asset.id)).toEqual(['anchor', 'same-month-older']);
-      expect(range.map((asset) => asset.id)).not.toContain('april-asset');
+      const ids = range.map((asset) => asset.id);
+      expect(ids).toEqual(['zzz-twin', 'anchor']);
+      expect(ids).not.toContain('same-month-older');
+      expect(ids).not.toContain('april-asset');
+
+      const reverse = await timelineManager.retrieveRange({ id: 'zzz-twin' }, { id: 'anchor' });
+      expect(reverse.map((asset) => asset.id)).toEqual(['zzz-twin', 'anchor']);
+    });
+
+    it('walks day by day across a month for cross-day ranges', async () => {
+      // Different-day endpoints are decided by the day key (the actual bucket
+      // grouping key) and collected by walking the month — the path that used
+      // to consume the whole timeline when the direction was misjudged.
+      const timelineManager = new TimelineManager();
+
+      const bucket = buildBucket(
+        ['newest', 'may-12', 'may-1-late', 'may-1-early'],
+        [
+          '2024-05-12T08:00:00.000Z',
+          '2024-05-12T07:00:00.000Z',
+          '2024-05-01T10:00:00.000Z',
+          '2024-05-01T09:00:00.000Z',
+        ],
+      );
+
+      sdkMock.getTimeBuckets.mockResolvedValue([{ count: 4, timeBucket: '2024-05-01T00:00:00.000Z' }]);
+      sdkMock.getTimeBucket.mockResolvedValue(bucket);
+      await timelineManager.updateViewport({ width: 1588, height: 1000 });
+      await timelineManager.loadTimelineMonth({ year: 2024, month: 5 });
+
+      const range = await timelineManager.retrieveRange({ id: 'may-1-early' }, { id: 'newest' });
+      expect(range.map((asset) => asset.id)).toEqual(['newest', 'may-12', 'may-1-late', 'may-1-early']);
     });
   });
 });
