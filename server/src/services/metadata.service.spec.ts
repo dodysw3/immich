@@ -1460,6 +1460,31 @@ describe(MetadataService.name, () => {
       ]);
     });
 
+    it('should skip importing a metadata region already covered by a detected face', async () => {
+      // the default region (0, 0.2)-(0.2, 0.6) sits inside the ML face box — importing it
+      // would create a wrapped duplicate of the same face (loose region, tight ML box)
+      const asset = AssetFactory.from()
+        .face({
+          sourceType: SourceType.MachineLearning,
+          imageWidth: 1000,
+          imageHeight: 100,
+          boundingBoxX1: 0,
+          boundingBoxY1: 10,
+          boundingBoxX2: 300,
+          boundingBoxY2: 80,
+        })
+        .build();
+      mocks.assetJob.getForMetadataExtraction.mockResolvedValue(getForMetadataExtraction(asset));
+      mocks.systemMetadata.get.mockResolvedValue({ metadata: { faces: { import: true } } });
+      mockReadTags(makeFaceTags({ Name: 'Dody' }));
+      mocks.person.getDistinctNames.mockResolvedValue([]);
+
+      await sut.handleMetadataExtraction({ id: asset.id });
+
+      expect(mocks.person.refreshFaces).not.toHaveBeenCalled();
+      expect(mocks.person.createAll).not.toHaveBeenCalled();
+    });
+
     it('should assign metadata face tags to existing persons', async () => {
       const asset = AssetFactory.create();
       const person = PersonFactory.create();

@@ -1580,6 +1580,33 @@ describe(PersonService.name, () => {
       expect(mocks.person.reassignFaces).not.toHaveBeenCalled();
     });
 
+    it('should add embedding to a loose metadata face wrapping the detection', async () => {
+      // loose region (50,50)-(250,250) around the tight detection (100,100)-(200,200):
+      // IoU is only 0.25, but the inner box is fully contained and centered, so the
+      // detection must match the stored face instead of creating a wrapped duplicate
+      const face = AssetFaceFactory.create({
+        sourceType: SourceType.Exif,
+        boundingBoxX1: 50,
+        boundingBoxY1: 50,
+        boundingBoxX2: 250,
+        boundingBoxY2: 250,
+      });
+      const asset = AssetFactory.from().face(face).file({ type: AssetFileType.Preview }).exif().build();
+      mocks.machineLearning.detectFaces.mockResolvedValue({
+        faces: [{ boundingBox: { x1: 100, y1: 100, x2: 200, y2: 200 }, embedding: '[1, 2, 3, 4]', score: 0.9 }],
+        imageHeight: 500,
+        imageWidth: 400,
+        gpuFallback: false,
+      });
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
+      mocks.person.refreshFaces.mockResolvedValue();
+
+      await sut.handleDetectFaces({ id: asset.id });
+
+      expect(mocks.person.refreshFaces).toHaveBeenCalledWith([], [], [{ faceId: face.id, embedding: '[1, 2, 3, 4]' }]);
+      expect(mocks.job.queueAll).not.toHaveBeenCalled();
+    });
+
     it('should not add embedding to non-matching metadata face', async () => {
       const assetId = newUuid();
       const face = AssetFaceFactory.create({ assetId, sourceType: SourceType.Exif });

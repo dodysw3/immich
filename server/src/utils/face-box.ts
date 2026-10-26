@@ -30,7 +30,7 @@ export const isWrappedDuplicate = (a: Box, b: Box): boolean => {
   const outer = area(a) >= area(b) ? a : b;
   const inner = outer === a ? b : a;
   const outerArea = area(outer);
-  if (outerArea <= 0 || outer.x2 - outer.x1 <= 0 || outer.y2 - outer.y1 <= 0) {
+  if (outerArea <= 0 || outer.x2 <= outer.x1 || outer.y2 <= outer.y1) {
     return false;
   }
 
