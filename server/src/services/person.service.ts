@@ -58,6 +58,7 @@ import { BaseService } from 'src/services/base.service.js';
 import { getDimensions, getMyPartnerIds } from 'src/utils/asset.util.js';
 import { asDateString, asDateTimeString } from 'src/utils/date.js';
 import { ImmichFileResponse } from 'src/utils/file.js';
+import { isWrappedDuplicate } from 'src/utils/face-box.js';
 import { isHttpException } from 'src/utils/logger.js';
 import { mimeTypes } from 'src/utils/mime-types.js';
 import { batched, findOrFail, hasSomeDefined, isFacialRecognitionEnabled } from 'src/utils/misc.js';
@@ -545,12 +546,7 @@ export class PersonService extends BaseService {
           x2: (face.boundingBoxX2 * storageDims.width) / faceWidth,
           y2: (face.boundingBoxY2 * storageDims.height) / faceHeight,
         };
-        // containment catches wrapped duplicates — a loose box fully around a tight box of
-        // the same face — whose IoU stays below 0.5 (e.g. exif-imported region vs ML box)
-        return (
-          this.boundingBoxIou(storedBox, boundingBox) > 0.5 ||
-          this.boundingBoxIoMin(storedBox, boundingBox) >= 0.9
-        );
+        return this.boundingBoxIou(storedBox, boundingBox) > 0.5 || isWrappedDuplicate(storedBox, boundingBox);
       });
 
       if (match) {
@@ -836,7 +832,7 @@ export class PersonService extends BaseService {
         }
         if (
           this.boundingBoxIou(sorted[i].boundingBox, sorted[j].boundingBox) > iouThreshold ||
-          this.boundingBoxIoMin(sorted[i].boundingBox, sorted[j].boundingBox) >= 0.9
+          isWrappedDuplicate(sorted[i].boundingBox, sorted[j].boundingBox)
         ) {
           suppressed.add(j);
         }
@@ -858,22 +854,6 @@ export class PersonService extends BaseService {
     const union = area1 + area2 - intersection;
 
     return union > 0 ? intersection / union : 0;
-  }
-
-  // intersection over the smaller box's area — 1.0 when one box fully wraps the other;
-  // catches wrapped duplicates that IoU misses (loose box around a tight box of same face)
-  private boundingBoxIoMin(a: BoundingBox, b: BoundingBox): number {
-    const x1 = Math.max(a.x1, b.x1);
-    const y1 = Math.max(a.y1, b.y1);
-    const x2 = Math.min(a.x2, b.x2);
-    const y2 = Math.min(a.y2, b.y2);
-
-    const intersection = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
-    const area1 = (a.x2 - a.x1) * (a.y2 - a.y1);
-    const area2 = (b.x2 - b.x1) * (b.y2 - b.y1);
-    const smaller = Math.min(area1, area2);
-
-    return smaller > 0 ? intersection / smaller : 0;
   }
 
   @OnJob({ name: JobName.FacialRecognitionQueueAll, queue: QueueName.FacialRecognition })

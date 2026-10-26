@@ -32,6 +32,7 @@ import { BaseService } from 'src/services/base.service.js';
 import { getAssetFiles } from 'src/utils/asset.util.js';
 import { isAssetChecksumConstraint } from 'src/utils/database.js';
 import { mergeTimeZone } from 'src/utils/date.js';
+import { isWrappedDuplicate } from 'src/utils/face-box.js';
 import { mimeTypes } from 'src/utils/mime-types.js';
 import { batched, isFaceImportEnabled } from 'src/utils/misc.js';
 import { upsertTags } from 'src/utils/tag.js';
@@ -125,21 +126,6 @@ const getLensModel = (exifTags: ImmichTags): string | null => {
     return null;
   }
   return lensModel || null;
-};
-
-// intersection over the smaller box's area — 1.0 when one box fully wraps the other;
-// catches wrapped duplicates (loose metadata region around a tight detected box) that IoU misses
-const boxesIoMin = (
-  a: { x1: number; y1: number; x2: number; y2: number },
-  b: { x1: number; y1: number; x2: number; y2: number },
-): number => {
-  const x1 = Math.max(a.x1, b.x1);
-  const y1 = Math.max(a.y1, b.y1);
-  const x2 = Math.min(a.x2, b.x2);
-  const y2 = Math.min(a.y2, b.y2);
-  const intersection = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
-  const smaller = Math.min((a.x2 - a.x1) * (a.y2 - a.y1), (b.x2 - b.x1) * (b.y2 - b.y1));
-  return smaller > 0 ? intersection / smaller : 0;
 };
 
 type ImmichTagsWithFaces = ImmichTags & { RegionInfo: NonNullable<ImmichTags['RegionInfo']> };
@@ -975,7 +961,7 @@ export class MetadataService extends BaseService {
       const H = Number(region.Area.H);
 
       const regionBox = { x1: X - W / 2, y1: Y - H / 2, x2: X + W / 2, y2: Y + H / 2 };
-      if (detectedBoxes.some((box) => boxesIoMin(regionBox, box) >= 0.9)) {
+      if (detectedBoxes.some((box) => isWrappedDuplicate(regionBox, box))) {
         this.logger.debugFn(
           () => `Skipping region '${region.Name}' for asset ${asset.id}: covered by an existing detected face`,
         );
