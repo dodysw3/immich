@@ -14,6 +14,7 @@ import { LoggingRepository } from 'src/repositories/logging.repository.js';
 import {
   AI_INTERPRETATION_RATE_WINDOW_MINUTES,
   AI_INTERPRETATION_RATE_WINDOW_MS,
+  type AiInterpretationLane,
   createAiInterpretationJobId,
 } from 'src/utils/ai-image-interpretation.js';
 import { ImmichStartupError, getKeyByValue, getMethodNames } from 'src/utils/misc.js';
@@ -26,10 +27,15 @@ type JobMapItem = {
 };
 
 const WORKER_WATCH_INTERVAL_MS = 30_000;
-// Sorted set of AI interpretation completion timestamps (score = epoch ms),
-// shared through Redis so the rate reflects aggregate throughput of every
-// worker, not just the process reading it.
-const AI_INTERPRETATION_COMPLETIONS_KEY = 'immich:ai-interpretation:completions';
+// Per-lane sorted sets of AI interpretation completion timestamps (score =
+// epoch ms), shared through Redis so each lane's rate reflects aggregate
+// throughput of every worker, not just the process reading it. Local and
+// public-spark completions are kept apart: their serving speeds differ by an
+// order of magnitude, and a blended rate makes both lanes' ETAs wrong.
+const AI_INTERPRETATION_COMPLETIONS_KEYS: Record<AiInterpretationLane, string> = {
+  local: 'immich:ai-interpretation:completions:local',
+  public: 'immich:ai-interpretation:completions:public',
+};
 
 @Injectable()
 export class JobRepository {
@@ -205,22 +211,25 @@ export class JobRepository {
     return { ...counts, waiting: counts.waiting + counts.prioritized };
   }
 
-  async recordAiInterpretationCompletion(assetId: string, runKey: string, completedAt = new Date()): Promise<void> {
+  async recordAiInterpretationCompletion(
+    assetId: string,
+    runKey: string,
+    lane: AiInterpretationLane,
+    completedAt = new Date(),
+  ): Promise<void> {
     const client = await this.getRedisClient();
-    await client.zadd(
-      AI_INTERPRETATION_COMPLETIONS_KEY,
-      completedAt.getTime(),
-      `${completedAt.getTime()}:${assetId}:${runKey}`,
-    );
-    await client.pexpire(AI_INTERPRETATION_COMPLETIONS_KEY, AI_INTERPRETATION_RATE_WINDOW_MS * 2);
+    const key = AI_INTERPRETATION_COMPLETIONS_KEYS[lane];
+    await client.zadd(key, completedAt.getTime(), `${completedAt.getTime()}:${assetId}:${runKey}`);
+    await client.pexpire(key, AI_INTERPRETATION_RATE_WINDOW_MS * 2);
   }
 
-  /** Completions per minute over the trailing rate window. */
-  async getAiInterpretationCompletionRate(now = new Date()): Promise<number> {
+  /** Completions per minute over the trailing rate window, for one lane. */
+  async getAiInterpretationCompletionRate(lane: AiInterpretationLane, now = new Date()): Promise<number> {
     const client = await this.getRedisClient();
+    const key = AI_INTERPRETATION_COMPLETIONS_KEYS[lane];
     const windowStart = now.getTime() - AI_INTERPRETATION_RATE_WINDOW_MS;
-    await client.zremrangebyscore(AI_INTERPRETATION_COMPLETIONS_KEY, '-inf', `(${windowStart}`);
-    const count = await client.zcount(AI_INTERPRETATION_COMPLETIONS_KEY, windowStart, '+inf');
+    await client.zremrangebyscore(key, '-inf', `(${windowStart}`);
+    const count = await client.zcount(key, windowStart, '+inf');
     return count / AI_INTERPRETATION_RATE_WINDOW_MINUTES;
   }
 

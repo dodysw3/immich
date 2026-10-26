@@ -19,7 +19,11 @@ import {
   AiInterpretationDiscordAlertError,
   AiInterpretationDiscordThumbnail,
 } from 'src/services/ai-image-interpretation-discord.client.js';
-import { formatAiInterpretationQueueEta } from 'src/utils/ai-image-interpretation.js';
+import {
+  AiInterpretationLane,
+  createAiInterpretationPublicRunKey,
+  formatAiInterpretationQueueEta,
+} from 'src/utils/ai-image-interpretation.js';
 import { getAssetFile } from 'src/utils/asset.util.js';
 import { getConfig } from 'src/utils/config.js';
 import { getFilenameExtension } from 'src/utils/file.js';
@@ -97,8 +101,18 @@ export class AiImageInterpretationDiscordService {
 
     const thumbnail = discordConfig.includeThumbnail ? await this.loadThumbnail(assetId, asset.files) : undefined;
     const externalDomain = await this.getExternalDomain();
-    const { waiting: waitingCount } = await this.jobRepository.getJobCounts(QueueName.ImageInterpretation);
-    const completionsPerMinute = await this.jobRepository.getAiInterpretationCompletionRate();
+    // The alert reports the lane the run actually rode: the hosted identity
+    // lives in the dedicated public queue, everything else in the main one.
+    // Each lane's depth and completion rate are read separately — the spark
+    // lane serves an order of magnitude faster, and blending the rates made
+    // both ETAs wrong.
+    const { publicModel, promptVersion } = this.configRepository.getEnv().aiImageInterpretation;
+    const isPublicLane = runKey === createAiInterpretationPublicRunKey(publicModel, promptVersion);
+    const lane: AiInterpretationLane = isPublicLane ? 'public' : 'local';
+    const { waiting: waitingCount } = await this.jobRepository.getJobCounts(
+      isPublicLane ? QueueName.ImageInterpretationPublic : QueueName.ImageInterpretation,
+    );
+    const completionsPerMinute = await this.jobRepository.getAiInterpretationCompletionRate(lane);
     const eta = formatAiInterpretationQueueEta(waitingCount, completionsPerMinute);
 
     try {
@@ -111,6 +125,7 @@ export class AiImageInterpretationDiscordService {
         result: run.result,
         model: run.model,
         thumbnail,
+        lane,
         waitingCount,
         eta,
       });
@@ -128,7 +143,9 @@ export class AiImageInterpretationDiscordService {
     }
 
     this.logger.log(
-      `Sent AI interpretation Discord alert for ${assetId}/${runKey} (model: ${run.model}, remaining in queue: ${waitingCount}, ETA: ${eta})`,
+      `Sent AI interpretation Discord alert for ${assetId}/${runKey} (model: ${run.model}, remaining in ${
+        lane === 'public' ? 'public-spark' : 'local'
+      } queue: ${waitingCount}, ETA: ${eta})`,
     );
     return JobStatus.Success;
   }

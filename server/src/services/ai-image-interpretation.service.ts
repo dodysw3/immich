@@ -116,6 +116,7 @@ export class AiImageInterpretationService {
     forcePublic: boolean,
   ): Promise<JobStatus> {
     const config = this.configRepository.getEnv().aiImageInterpretation;
+    const publicRunKey = createAiInterpretationPublicRunKey(config.publicModel, config.promptVersion);
     // Backlog-sweep compute saver: a delivery for an asset that already
     // carries any completed run (older prompt version, another model, a
     // public-spark run) is skipped instead of re-interpreted — public
@@ -142,7 +143,7 @@ export class AiImageInterpretationService {
         this.logger.debug(`Skipping manual AI interpretation request for ${assetId}`);
         return JobStatus.Skipped;
       }
-    } else if (forcePublic || runKey === createAiInterpretationPublicRunKey(config.publicModel, config.promptVersion)) {
+    } else if (forcePublic || runKey === publicRunKey) {
       // Manual "Interpret image (public)" delivery: claim the hosted identity.
       // The runKey encodes model + prompt version, so a completed run means
       // this asset already carries a public interpretation of the same
@@ -258,7 +259,13 @@ export class AiImageInterpretationService {
 
     if (completed) {
       try {
-        await this.jobRepository.recordAiInterpretationCompletion(assetId, runKey);
+        // The lane feeds the per-lane completion-rate ledger backing the queue
+        // ETAs (log + Discord) — blending the lanes made both estimates wrong.
+        await this.jobRepository.recordAiInterpretationCompletion(
+          assetId,
+          runKey,
+          runKey === publicRunKey ? 'public' : 'local',
+        );
       } catch (error) {
         this.logger.warn(
           `Failed to record AI interpretation completion sample for ${assetId}/${runKey}: ${

@@ -107,19 +107,28 @@ describe(JobRepository.name, () => {
     });
   });
 
-  it('records AI interpretation completion timestamps with a bounded TTL', async () => {
+  it('records AI interpretation completion timestamps per lane with a bounded TTL', async () => {
     const redis = { zadd: vi.fn().mockResolvedValue(1), pexpire: vi.fn().mockResolvedValue(1) };
     const repository = makeRepositoryWithRedis(redis);
     const completedAt = new Date('2026-09-26T23:00:00.000Z');
 
-    await repository.recordAiInterpretationCompletion('asset-1', 'run-a', completedAt);
+    await repository.recordAiInterpretationCompletion('asset-1', 'run-a', 'local', completedAt);
+    await repository.recordAiInterpretationCompletion('asset-1', 'run-b', 'public', completedAt);
 
-    expect(redis.zadd).toHaveBeenCalledWith(
-      'immich:ai-interpretation:completions',
+    expect(redis.zadd).toHaveBeenNthCalledWith(
+      1,
+      'immich:ai-interpretation:completions:local',
       completedAt.getTime(),
       `${completedAt.getTime()}:asset-1:run-a`,
     );
-    expect(redis.pexpire).toHaveBeenCalledWith('immich:ai-interpretation:completions', 10 * 60_000);
+    expect(redis.zadd).toHaveBeenNthCalledWith(
+      2,
+      'immich:ai-interpretation:completions:public',
+      completedAt.getTime(),
+      `${completedAt.getTime()}:asset-1:run-b`,
+    );
+    expect(redis.pexpire).toHaveBeenCalledWith('immich:ai-interpretation:completions:local', 10 * 60_000);
+    expect(redis.pexpire).toHaveBeenCalledWith('immich:ai-interpretation:completions:public', 10 * 60_000);
   });
 
   it('derives the AI interpretation completion rate from the trailing five-minute window', async () => {
@@ -130,15 +139,15 @@ describe(JobRepository.name, () => {
     const repository = makeRepositoryWithRedis(redis);
     const now = new Date('2026-09-26T23:00:00.000Z');
 
-    await expect(repository.getAiInterpretationCompletionRate(now)).resolves.toBe(3.4);
+    await expect(repository.getAiInterpretationCompletionRate('public', now)).resolves.toBe(3.4);
 
     expect(redis.zremrangebyscore).toHaveBeenCalledWith(
-      'immich:ai-interpretation:completions',
+      'immich:ai-interpretation:completions:public',
       '-inf',
       `(${now.getTime() - 5 * 60_000}`,
     );
     expect(redis.zcount).toHaveBeenCalledWith(
-      'immich:ai-interpretation:completions',
+      'immich:ai-interpretation:completions:public',
       now.getTime() - 5 * 60_000,
       '+inf',
     );

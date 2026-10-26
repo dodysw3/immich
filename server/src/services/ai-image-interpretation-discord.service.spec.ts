@@ -14,8 +14,11 @@ import {
   AiInterpretationDiscordAlertError,
 } from 'src/services/ai-image-interpretation-discord.client.js';
 import { AiImageInterpretationDiscordService } from 'src/services/ai-image-interpretation-discord.service.js';
+import { createAiInterpretationPublicRunKey } from 'src/utils/ai-image-interpretation.js';
 
 const runKey = 'a'.repeat(64);
+const publicModel = 'mai/muse-spark-1.3-contributor';
+const publicRunKey = createAiInterpretationPublicRunKey(publicModel, 'image-interpretation-1.2.0');
 const result: MuseInterpretationResult = {
   title: 'A quiet platform',
   literal_description: '',
@@ -58,6 +61,8 @@ const makeService = () => {
     configRepository: {
       getEnv: vi.fn().mockReturnValue({
         aiImageInterpretation: {
+          publicModel,
+          promptVersion: 'image-interpretation-1.2.0',
           discord: { webhookUrl: 'https://discord.com/api/webhooks/123/token', includeThumbnail: true },
         },
       }),
@@ -107,7 +112,7 @@ describe(AiImageInterpretationDiscordService.name, () => {
     expect(dependencies.assetJobRepository.getForAiInterpretationDiscordAlert).toHaveBeenCalledWith('asset-1');
     expect(dependencies.userRepository.get).toHaveBeenCalledWith('owner-1', { withDeleted: false });
     expect(dependencies.jobRepository.getJobCounts).toHaveBeenCalledWith(QueueName.ImageInterpretation);
-    expect(dependencies.jobRepository.getAiInterpretationCompletionRate).toHaveBeenCalled();
+    expect(dependencies.jobRepository.getAiInterpretationCompletionRate).toHaveBeenCalledWith('local');
     expect(dependencies.storageRepository.readFile).toHaveBeenCalledWith('/data/thumbs/photo.webp');
     expect(dependencies.discordClient.send).toHaveBeenCalledWith({
       accountName: 'Cangka',
@@ -117,6 +122,7 @@ describe(AiImageInterpretationDiscordService.name, () => {
       photoDate: '2026-09-13T05:10:59.000Z',
       result,
       model: 'model',
+      lane: 'local',
       eta: expect.stringMatching(/^~11m \(around /),
       thumbnail: {
         buffer: Buffer.from('thumbnail'),
@@ -127,9 +133,37 @@ describe(AiImageInterpretationDiscordService.name, () => {
     });
     expect(dependencies.logger.log).toHaveBeenCalledWith(
       expect.stringMatching(
-        /Sent AI interpretation Discord alert for asset-1\/[a-f0-9]+ \(model: model, remaining in queue: 37, ETA: ~11m \(around /,
+        /Sent AI interpretation Discord alert for asset-1\/[a-f0-9]+ \(model: model, remaining in local queue: 37, ETA: ~11m \(around /,
       ),
     );
+  });
+
+  it('reports the public-spark lane for hosted runs with the public queue depth and rate', async () => {
+    const { service, dependencies } = makeService();
+    dependencies.interpretationRepository.get.mockResolvedValue({
+      schemaVersion: 1,
+      runs: {
+        [publicRunKey]: {
+          model: publicModel,
+          quant: 'hosted',
+          promptVersion: 'image-interpretation-1.2.0',
+          status: 'completed',
+          trigger: 'manual-public',
+          requestedAt: '2026-09-12T11:00:00.000Z',
+          finishedAt: '2026-09-12T12:00:00.000Z',
+          result,
+        },
+      },
+    } satisfies AiInterpretationDocument);
+
+    await expect(service.handleAlert({ assetId: 'asset-1', runKey: publicRunKey })).resolves.toBe(JobStatus.Success);
+
+    expect(dependencies.jobRepository.getJobCounts).toHaveBeenCalledWith(QueueName.ImageInterpretationPublic);
+    expect(dependencies.jobRepository.getAiInterpretationCompletionRate).toHaveBeenCalledWith('public');
+    expect(dependencies.discordClient.send).toHaveBeenCalledWith(
+      expect.objectContaining({ lane: 'public', model: publicModel, waitingCount: 37 }),
+    );
+    expect(dependencies.logger.log).toHaveBeenCalledWith(expect.stringMatching(/remaining in public-spark queue: 37/));
   });
 
   it('reports an unknown ETA when the completion window is empty and a drained queue when nothing waits', async () => {

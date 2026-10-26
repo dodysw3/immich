@@ -90,6 +90,13 @@ export const isAiInterpretationDocument = (value: unknown) => AiInterpretationDo
 export const AI_INTERPRETATION_RATE_WINDOW_MINUTES = 5;
 export const AI_INTERPRETATION_RATE_WINDOW_MS = AI_INTERPRETATION_RATE_WINDOW_MINUTES * 60_000;
 
+// The two serving lanes: the main queue's local (or burst-rented hybrid)
+// endpoint and the dedicated public queue's hosted muse-spark router. Their
+// throughputs differ by an order of magnitude, so the completion-rate ledger
+// and every queue-depth ETA are tracked per lane — a blended rate divides one
+// lane's backlog by the other lane's speed and makes both ETAs wrong.
+export type AiInterpretationLane = 'local' | 'public';
+
 const formatEtaDuration = (minutes: number): string => {
   if (minutes < 1) {
     return '<1m';

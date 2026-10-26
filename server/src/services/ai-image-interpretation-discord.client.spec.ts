@@ -26,6 +26,7 @@ const makeAlert = (overrides: Partial<AiInterpretationDiscordAlert> = {}): AiInt
   photoDate: '2020-04-05T06:07:08.000Z',
   waitingCount: 42,
   eta: '~11m (around Sep 26, 11:11 PM GMT+7)',
+  lane: 'local',
   model: 'unsloth/Muse-Glimmer-30B-GGUF',
   result,
   ...overrides,
@@ -79,8 +80,8 @@ describe(AiImageInterpretationDiscordClient.name, () => {
         { name: 'Immich account', value: 'Cangka', inline: true },
         { name: 'Filename', value: 'IMG_1234.JPG', inline: true },
         { name: 'Model', value: 'unsloth/Muse-Glimmer-30B-GGUF', inline: true },
-        { name: 'AI interpretations waiting', value: '42', inline: true },
-        { name: 'Queue ETA', value: '~11m (around Sep 26, 11:11 PM GMT+7)', inline: true },
+        { name: 'AI interpretations waiting (local)', value: '42', inline: true },
+        { name: 'Queue ETA (local)', value: '~11m (around Sep 26, 11:11 PM GMT+7)', inline: true },
       ],
     });
   });
@@ -100,8 +101,23 @@ describe(AiImageInterpretationDiscordClient.name, () => {
     });
     expect(payload.embeds[0]).not.toHaveProperty('url');
     expect(payload.embeds[0].fields[3]).toEqual({
-      name: 'AI interpretations waiting',
+      name: 'AI interpretations waiting (local)',
       value: '0',
+      inline: true,
+    });
+  });
+
+  it('labels the queue fields with the public-spark lane for hosted runs', () => {
+    const payload = buildAiInterpretationDiscordPayload(makeAlert({ lane: 'public', waitingCount: 3 }));
+
+    expect(payload.embeds[0].fields[3]).toEqual({
+      name: 'AI interpretations waiting (public-spark)',
+      value: '3',
+      inline: true,
+    });
+    expect(payload.embeds[0].fields[4]).toEqual({
+      name: 'Queue ETA (public-spark)',
+      value: '~11m (around Sep 26, 11:11 PM GMT+7)',
       inline: true,
     });
   });

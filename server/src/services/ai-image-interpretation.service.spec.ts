@@ -359,7 +359,11 @@ describe(AiImageInterpretationService.name, () => {
       copySource,
       expect.objectContaining({ durationMs: expect.any(Number) }),
     );
-    expect(dependencies.jobRepository.recordAiInterpretationCompletion).toHaveBeenCalledWith('asset-1', runKey);
+    expect(dependencies.jobRepository.recordAiInterpretationCompletion).toHaveBeenCalledWith(
+      'asset-1',
+      runKey,
+      'local',
+    );
     expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
       name: JobName.AiInterpretSearchSync,
       data: { id: 'asset-1' },
@@ -408,7 +412,7 @@ describe(AiImageInterpretationService.name, () => {
     );
     expect(dependencies.interpretationRepository.transitionToRunning).toHaveBeenCalledWith(asset.id, runKey);
     expect(dependencies.client.interpret).toHaveBeenCalledWith(Buffer.from('preview'), { model: config.model });
-    expect(dependencies.jobRepository.recordAiInterpretationCompletion).toHaveBeenCalledWith(asset.id, runKey);
+    expect(dependencies.jobRepository.recordAiInterpretationCompletion).toHaveBeenCalledWith(asset.id, runKey, 'local');
     expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
       name: JobName.SendAiInterpretationDiscordAlert,
       data: { assetId: asset.id, runKey },
@@ -757,6 +761,11 @@ describe(AiImageInterpretationService.name, () => {
       expect(dependencies.client.interpret).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ url: config.publicUrl }),
+      );
+      expect(dependencies.jobRepository.recordAiInterpretationCompletion).toHaveBeenCalledWith(
+        'asset-1',
+        publicRunKey,
+        'public',
       );
     });
 

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { MuseInterpretationResult } from 'src/dtos/ai-image-interpretation.dto.js';
 import { ConfigRepository } from 'src/repositories/config.repository.js';
+import { AiInterpretationLane } from 'src/utils/ai-image-interpretation.js';
 
 const DISCORD_TITLE_LIMIT = 256;
 const DISCORD_DESCRIPTION_LIMIT = 4096;
@@ -21,6 +22,7 @@ export type AiInterpretationDiscordAlert = {
   photoDate: string;
   waitingCount: number;
   eta: string;
+  lane: AiInterpretationLane;
   model: string;
   result: MuseInterpretationResult;
   thumbnail?: AiInterpretationDiscordThumbnail;
@@ -112,11 +114,15 @@ export const buildAiInterpretationDiscordPayload = ({
   result,
   model,
   thumbnail,
+  lane,
   waitingCount,
   eta,
 }: AiInterpretationDiscordAlert): DiscordWebhookPayload => {
   const title = truncate(result.title, DISCORD_TITLE_LIMIT) || 'AI interpretation complete';
   const summary = truncate(result.archive_summary || result.interpretation, DISCORD_DESCRIPTION_LIMIT);
+  // The queue stats are lane-specific (the local and public-spark queues drain
+  // at very different speeds), so the fields name the lane they describe.
+  const laneLabel = lane === 'public' ? 'public-spark' : 'local';
   const embed: DiscordEmbed = {
     title,
     color: 0x42_50_af,
@@ -137,12 +143,12 @@ export const buildAiInterpretationDiscordPayload = ({
         inline: true,
       },
       {
-        name: 'AI interpretations waiting',
+        name: `AI interpretations waiting (${laneLabel})`,
         value: String(waitingCount),
         inline: true,
       },
       {
-        name: 'Queue ETA',
+        name: `Queue ETA (${laneLabel})`,
         value: truncate(eta, DISCORD_FIELD_VALUE_LIMIT) || 'Unknown',
         inline: true,
       },
