@@ -157,11 +157,16 @@ describe(AiImageInterpretationService.name, () => {
 
     await service.onDuplicateDetectionCompleted({ assetId: asset.id });
 
-    expect(dependencies.interpretationRepository.claim).toHaveBeenCalledWith(asset.id, {
-      model: config.model,
-      quant: config.quant,
-      promptVersion: config.promptVersion,
-    });
+    expect(dependencies.interpretationRepository.claim).toHaveBeenCalledWith(
+      asset.id,
+      {
+        model: config.model,
+        quant: config.quant,
+        promptVersion: config.promptVersion,
+      },
+      expect.any(Date),
+      undefined,
+    );
     expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
       name: JobName.AssetInterpretImage,
       data: { id: asset.id, runKey, source: 'upload', priority: 2 },
@@ -391,11 +396,16 @@ describe(AiImageInterpretationService.name, () => {
 
     await expect(service.handleInterpretation({ id: asset.id } as never)).resolves.toBe(JobStatus.Success);
 
-    expect(dependencies.interpretationRepository.claim).toHaveBeenCalledWith(asset.id, {
-      model: config.model,
-      quant: config.quant,
-      promptVersion: config.promptVersion,
-    });
+    expect(dependencies.interpretationRepository.claim).toHaveBeenCalledWith(
+      asset.id,
+      {
+        model: config.model,
+        quant: config.quant,
+        promptVersion: config.promptVersion,
+      },
+      expect.any(Date),
+      undefined,
+    );
     expect(dependencies.interpretationRepository.transitionToRunning).toHaveBeenCalledWith(asset.id, runKey);
     expect(dependencies.client.interpret).toHaveBeenCalledWith(Buffer.from('preview'), { model: config.model });
     expect(dependencies.jobRepository.recordAiInterpretationCompletion).toHaveBeenCalledWith(asset.id, runKey);
@@ -528,8 +538,10 @@ describe(AiImageInterpretationService.name, () => {
     const { service, dependencies } = makeService();
     dependencies.interpretationRepository.failStale.mockResolvedValue(2);
     dependencies.interpretationRepository.findDueRetries.mockResolvedValue([
-      { assetId: 'asset-1', runKey },
-      { assetId: 'asset-2', runKey },
+      // Fresh upload: retries re-enter the upload band (2)…
+      { assetId: 'asset-1', runKey, assetCreatedAt: new Date() },
+      // …while an old-library asset drops to the bulk band (3).
+      { assetId: 'asset-2', runKey, assetCreatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
     ]);
     dependencies.interpretationRepository.requeue.mockResolvedValue(true);
 
@@ -554,7 +566,7 @@ describe(AiImageInterpretationService.name, () => {
     });
     expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
       name: JobName.AssetInterpretImage,
-      data: { id: 'asset-2', runKey, priority: 2 },
+      data: { id: 'asset-2', runKey, priority: 3 },
     });
   });
 
@@ -562,7 +574,7 @@ describe(AiImageInterpretationService.name, () => {
     const { service, dependencies } = makeService();
     dependencies.interpretationRepository.failStale.mockResolvedValue(0);
     dependencies.interpretationRepository.findDueRetries.mockResolvedValue([
-      { assetId: 'asset-1', runKey: publicRunKey },
+      { assetId: 'asset-1', runKey: publicRunKey, assetCreatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
     ]);
     dependencies.interpretationRepository.requeue.mockResolvedValue(true);
 
@@ -584,7 +596,9 @@ describe(AiImageInterpretationService.name, () => {
   it('skips due retries that another trigger already requeued', async () => {
     const { service, dependencies } = makeService();
     dependencies.interpretationRepository.failStale.mockResolvedValue(0);
-    dependencies.interpretationRepository.findDueRetries.mockResolvedValue([{ assetId: 'asset-1', runKey }]);
+    dependencies.interpretationRepository.findDueRetries.mockResolvedValue([
+      { assetId: 'asset-1', runKey, assetCreatedAt: new Date() },
+    ]);
     dependencies.interpretationRepository.requeue.mockResolvedValue(false);
 
     await expect(service.handleReconcile()).resolves.toBe(JobStatus.Success);
@@ -751,8 +765,8 @@ describe(AiImageInterpretationService.name, () => {
       enableSkipFlag(dependencies);
       dependencies.interpretationRepository.failStale.mockResolvedValue(0);
       dependencies.interpretationRepository.findDueRetries.mockResolvedValue([
-        { assetId: 'asset-interpreted', runKey },
-        { assetId: 'asset-fresh', runKey },
+        { assetId: 'asset-interpreted', runKey, assetCreatedAt: new Date() },
+        { assetId: 'asset-fresh', runKey, assetCreatedAt: new Date() },
       ]);
       dependencies.interpretationRepository.get
         .mockResolvedValueOnce({

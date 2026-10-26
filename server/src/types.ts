@@ -345,6 +345,9 @@ export interface IAssetInterpretationJob extends IEntityJob {
   runKey?: string;
   /** Queue tier: 1 = interactive "interpret now", 2 = upload default, 3 = bulk script backlog. */
   priority?: 1 | 2 | 3;
+  /** Bulk-script deliveries (queue-ai-interpretation.sh) mark themselves so run
+   * provenance and retry tiering do not misattribute them to the upload path. */
+  origin?: 'script';
 }
 
 export interface IAiInterpretationDiscordAlertJob {

@@ -213,20 +213,24 @@ describe(AiImageInterpretationRepository.name, () => {
     const rows = [
       {
         assetId: 'asset-due',
+        createdAt: new Date('2025-10-11T00:00:00.000Z'),
         value: { schemaVersion: 1, runs: { [runKey]: run('failed', '2026-09-11T01:00:00.000Z') } },
       },
       {
         assetId: 'asset-future',
+        createdAt: new Date('2025-10-11T00:00:00.000Z'),
         value: { schemaVersion: 1, runs: { [runKey]: run('failed', '2026-09-11T03:00:00.000Z') } },
       },
       {
         assetId: 'asset-running',
+        createdAt: new Date('2025-10-11T00:00:00.000Z'),
         value: { schemaVersion: 1, runs: { [runKey]: run('running', '2026-09-11T01:00:00.000Z') } },
       },
     ];
     const db = {
       transaction: () => ({ execute: (callback: (transaction: unknown) => Promise<unknown>) => callback(db) }),
       selectFrom: vi.fn().mockReturnValue({
+        innerJoin: vi.fn().mockReturnThis(),
         select: vi.fn().mockReturnThis(),
         where: vi.fn().mockReturnThis(),
         execute: vi.fn().mockResolvedValue(rows),
@@ -235,7 +239,7 @@ describe(AiImageInterpretationRepository.name, () => {
     const repository = new AiImageInterpretationRepository(db as never);
 
     await expect(repository.findDueRetries(new Date('2026-09-11T02:00:00.000Z'))).resolves.toEqual([
-      { assetId: 'asset-due', runKey },
+      { assetId: 'asset-due', runKey, assetCreatedAt: new Date('2025-10-11T00:00:00.000Z') },
     ]);
   });
 

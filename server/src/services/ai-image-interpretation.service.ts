@@ -8,6 +8,7 @@ import { AiInterpretationInput, AiInterpretationMetrics } from 'src/dtos/ai-imag
 import { AssetFileType, AssetType, AssetVisibility, ImmichWorker, JobName, JobStatus, QueueName } from 'src/enum.js';
 import {
   AiImageInterpretationRepository,
+  type AiInterpretationClaimOptions,
   type AiInterpretationIdentity,
 } from 'src/repositories/ai-image-interpretation.repository.js';
 import { AssetJobRepository } from 'src/repositories/asset-job.repository.js';
@@ -39,6 +40,11 @@ type PreparedPreview = {
 // hostile file — those get clamped by the maxEdge resize instead of failing.
 // Only decode bombs above sharp's own default ceiling still fail hard.
 const MAX_DECODE_PIXELS = 268_402_689;
+
+// A main-queue retry only re-enters the upload band (2) while its asset is
+// young enough to plausibly be a fresh upload's failing delivery; older assets
+// drop to the bulk-script band (3) so failure cycles cannot re-flood tier 2.
+const UPLOAD_RETRY_MAX_ASSET_AGE_MS = 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class AiImageInterpretationService {
@@ -106,7 +112,7 @@ export class AiImageInterpretationService {
   // claim path, and the queue keeps them off the main worker pool so a bulk
   // public selection cannot starve local+remote interpretation.
   private async deliver(
-    { id: assetId, runKey: requestedRunKey, source }: IAssetInterpretationJob,
+    { id: assetId, runKey: requestedRunKey, source, origin }: IAssetInterpretationJob,
     forcePublic: boolean,
   ): Promise<JobStatus> {
     const config = this.configRepository.getEnv().aiImageInterpretation;
@@ -129,7 +135,9 @@ export class AiImageInterpretationService {
       runKey = createAiInterpretationPublicRunKey(config.publicModel, config.promptVersion);
     }
     if (!runKey) {
-      runKey = await this.claimMissingRun(assetId);
+      // Bulk-script deliveries (origin: 'script') must not masquerade as upload
+      // claims — the trigger feeds run provenance and retry tiering.
+      runKey = await this.claimMissingRun(assetId, origin === 'script' ? { trigger: 'script' } : undefined);
       if (!runKey) {
         this.logger.debug(`Skipping manual AI interpretation request for ${assetId}`);
         return JobStatus.Skipped;
@@ -319,17 +327,22 @@ export class AiImageInterpretationService {
     return !!getAssetFile(asset.files, AssetFileType.Preview, { isEdited: false });
   }
 
-  private async claimMissingRun(assetId: string): Promise<string | undefined> {
+  private async claimMissingRun(assetId: string, options?: AiInterpretationClaimOptions): Promise<string | undefined> {
     const config = this.configRepository.getEnv().aiImageInterpretation;
     if (!(await this.isInterpretationEligible(assetId))) {
       return;
     }
 
-    const claim = await this.interpretationRepository.claim(assetId, {
-      model: config.model,
-      quant: config.quant,
-      promptVersion: config.promptVersion,
-    });
+    const claim = await this.interpretationRepository.claim(
+      assetId,
+      {
+        model: config.model,
+        quant: config.quant,
+        promptVersion: config.promptVersion,
+      },
+      new Date(),
+      options,
+    );
     return claim.alreadyExists ? undefined : claim.runKey;
   }
 
@@ -392,7 +405,7 @@ export class AiImageInterpretationService {
 
     const due = await this.interpretationRepository.findDueRetries(new Date());
     let dispatched = 0;
-    for (const { assetId, runKey } of due) {
+    for (const { assetId, runKey, assetCreatedAt } of due) {
       // Without this guard a failed run for an already-interpreted asset would
       // churn forever: requeue → delivery skipped → orphaned queued run →
       // failStale marks it failed → due again. Leaving it failed (retry stays
@@ -406,13 +419,18 @@ export class AiImageInterpretationService {
         continue;
       }
 
-      // Retry re-adds keep the upload-path tier; tier 1 stays reserved for
-      // explicit "interpret now" actions. Public runs return to their
-      // dedicated queue so retries cannot occupy the main pool either.
+      // Tier 1 stays reserved for explicit "interpret now" actions, and public
+      // runs return to their dedicated queue so retries cannot occupy the main
+      // pool. Main-queue retries only re-enter the upload band (2) while their
+      // asset is young enough to be a fresh upload's failing delivery (tier 2
+      // is FIFO: an old-library run re-added there sits behind every newer
+      // upload — at backlog scale it re-flooded tier 2 wholesale and new
+      // uploads stopped being prompt). Older assets drop to the bulk band (3).
       const isPublic = runKey === publicRunKey;
+      const isFreshUpload = Date.now() - assetCreatedAt.getTime() < UPLOAD_RETRY_MAX_ASSET_AGE_MS;
       await this.jobRepository.queue({
         name: isPublic ? JobName.AssetInterpretImagePublic : JobName.AssetInterpretImage,
-        data: { id: assetId, runKey, priority: isPublic ? 1 : 2 },
+        data: { id: assetId, runKey, priority: isPublic ? 1 : isFreshUpload ? 2 : 3 },
       });
       dispatched++;
     }

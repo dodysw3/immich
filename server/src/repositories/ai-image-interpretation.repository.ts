@@ -21,7 +21,7 @@ export type AiInterpretationIdentity = {
 };
 
 export type AiInterpretationClaimOptions = {
-  trigger?: 'upload' | 'manual-public';
+  trigger?: 'upload' | 'manual-public' | 'script';
 };
 
 export type AiInterpretationClaim =
@@ -293,19 +293,20 @@ export class AiImageInterpretationRepository {
     return next !== null;
   }
 
-  async findDueRetries(cutoff: Date): Promise<Array<{ assetId: string; runKey: string }>> {
+  async findDueRetries(cutoff: Date): Promise<Array<{ assetId: string; runKey: string; assetCreatedAt: Date }>> {
     const rows = await this.db
       .selectFrom('asset_metadata')
-      .select(['assetId', 'value'])
-      .where('key', '=', AssetMetadataKey.AiInterpretationV1)
+      .innerJoin('asset', 'asset.id', 'asset_metadata.assetId')
+      .select(['asset_metadata.assetId', 'asset_metadata.value', 'asset.createdAt'])
+      .where('asset_metadata.key', '=', AssetMetadataKey.AiInterpretationV1)
       .execute();
 
-    const due: Array<{ assetId: string; runKey: string }> = [];
+    const due: Array<{ assetId: string; runKey: string; assetCreatedAt: Date }> = [];
     for (const row of rows) {
       const document = this.parseDocument(row.value);
       for (const [runKey, run] of Object.entries(document.runs)) {
         if (run.status === 'failed' && run.nextAttemptAt && new Date(run.nextAttemptAt) <= cutoff) {
-          due.push({ assetId: row.assetId, runKey });
+          due.push({ assetId: row.assetId, runKey, assetCreatedAt: row.createdAt });
         }
       }
     }

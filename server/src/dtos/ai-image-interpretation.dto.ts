@@ -72,7 +72,9 @@ const AiInterpretationRunSchema = z
     status: AiInterpretationRunStatusSchema,
     // 'manual-public' = the viewer's explicit "Interpret image (public)" action,
     // which sends this image to the hosted router model the user opted into.
-    trigger: z.enum(['upload', 'manual-public']),
+    // 'script' = first claimed by a bulk ops-script delivery
+    // (queue-ai-interpretation.sh enqueues with origin: 'script').
+    trigger: z.enum(['upload', 'manual-public', 'script']),
     requestedAt: z.iso.datetime({ offset: true }),
     startedAt: z.iso.datetime({ offset: true }).optional(),
     finishedAt: z.iso.datetime({ offset: true }).optional(),
