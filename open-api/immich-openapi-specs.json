@@ -34787,6 +34787,14 @@
       },
       "TimeBucketAssetResponseDto": {
         "properties": {
+          "aiInterpretationTitle": {
+            "description": "Array of AI interpretation titles (most recent completed run per asset, null when the asset was never interpreted)",
+            "items": {
+              "nullable": true,
+              "type": "string"
+            },
+            "type": "array"
+          },
           "city": {
             "description": "Array of city names extracted from EXIF GPS data",
             "items": {

@@ -145,6 +145,8 @@ export const alwaysLoadOriginalFile = persisted<boolean>('always-load-original-f
 
 export const playVideoThumbnailOnHover = persisted<boolean>('play-video-thumbnail-on-hover', true, {});
 
+export const showInterpretationTitles = persisted<boolean>('show-interpretation-titles', false, {});
+
 export const loopVideo = persisted<boolean>('loop-video', true, {});
 
 export const autoPlayVideo = persisted<boolean>('auto-play-video', true, {});

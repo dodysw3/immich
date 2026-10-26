@@ -3,7 +3,7 @@
   import { authManager } from '$lib/managers/auth-manager.svelte';
   import type { TimelineAsset } from '$lib/managers/timeline-manager/types';
   import { mediaQueryManager } from '$lib/stores/media-query-manager.svelte';
-  import { locale, playVideoThumbnailOnHover } from '$lib/stores/preferences.store';
+  import { locale, playVideoThumbnailOnHover, showInterpretationTitles } from '$lib/stores/preferences.store';
   import { getAssetMediaUrl, getAssetPlaybackUrl } from '$lib/utils';
   import { moveFocus } from '$lib/utils/focus-util';
   import { currentUrlReplaceAssetId } from '$lib/utils/navigation';
@@ -324,6 +324,20 @@
               { 'rounded-xl group-focus-visible:rounded-lg': selected },
             ]}
           ></div>
+        {/if}
+
+        <!-- AI interpretation title overlay -->
+        {#if $showInterpretationTitles && asset.aiInterpretationTitle}
+          <div
+            class="pointer-events-none absolute inset-x-0 bottom-0 z-2 bg-linear-to-t from-black/75 via-black/40 to-transparent px-1.5 pt-6 pb-1.5"
+          >
+            <p
+              class="text-white-shadow line-clamp-3 text-[11px] leading-snug font-medium break-words text-white"
+              data-testid="interpretation-title"
+            >
+              {asset.aiInterpretationTitle}
+            </p>
+          </div>
         {/if}
 
         <!-- Favorite asset star -->

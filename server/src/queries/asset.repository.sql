@@ -415,6 +415,24 @@ with
       ) as "ratio",
       "asset_exif"."city",
       "asset_exif"."country",
+      (
+        select
+          r.value -> 'result' ->> 'title'
+        from
+          asset_metadata am,
+          jsonb_each(am.value -> 'runs') r
+        where
+          am."assetId" = asset.id
+          and am.key = $2
+          and r.value ->> 'status' = 'completed'
+        order by
+          coalesce(
+            r.value ->> 'finishedAt',
+            r.value ->> 'requestedAt'
+          ) desc
+        limit
+          1
+      ) as "aiInterpretationTitle",
       "stack"
     from
       "asset"
@@ -427,14 +445,14 @@ with
         where
           "stacked"."stackId" = "asset"."stackId"
           and "stacked"."deletedAt" is null
-          and "stacked"."visibility" = $2
+          and "stacked"."visibility" = $3
         group by
           "stacked"."stackId"
       ) as "stacked_assets" on true
     where
       "asset"."deletedAt" is null
       and "asset"."visibility" in ('archive', 'timeline')
-      and date_trunc('MONTH', "localDateTime" AT TIME ZONE 'UTC') AT TIME ZONE 'UTC' = $3
+      and date_trunc('MONTH', "localDateTime" AT TIME ZONE 'UTC') AT TIME ZONE 'UTC' = $4
       and not exists (
         select
         from
@@ -467,6 +485,7 @@ with
       coalesce(array_agg("thumbhash"), '{}') as "thumbhash",
       coalesce(array_agg("city"), '{}') as "city",
       coalesce(array_agg("country"), '{}') as "country",
+      coalesce(array_agg("aiInterpretationTitle"), '{}') as "aiInterpretationTitle",
       coalesce(json_agg("stack"), '[]') as "stack"
     from
       "cte"

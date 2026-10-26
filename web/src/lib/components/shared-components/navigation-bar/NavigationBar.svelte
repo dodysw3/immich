@@ -13,9 +13,10 @@
   import { getGlobalActions } from '$lib/services/app.service';
   import { mediaQueryManager } from '$lib/stores/media-query-manager.svelte';
   import { notificationManager } from '$lib/stores/notification-manager.svelte';
+  import { showInterpretationTitles } from '$lib/stores/preferences.store';
   import { sidebarStore } from '$lib/stores/sidebar.svelte';
   import { ActionButton, Button, IconButton, Logo } from '@immich/ui';
-  import { mdiBellBadge, mdiBellOutline, mdiMagnify, mdiMenu, mdiTrayArrowUp } from '@mdi/js';
+  import { mdiBellBadge, mdiBellOutline, mdiMagnify, mdiMenu, mdiTextRecognition, mdiTrayArrowUp } from '@mdi/js';
   import { onMount } from 'svelte';
   import { t } from 'svelte-i18n';
   import ThemeButton from '../ThemeButton.svelte';
@@ -117,6 +118,20 @@
             aria-label={$t('upload')}
             icon={mdiTrayArrowUp}
             class="lg:hidden"
+          />
+        {/if}
+
+        {#if !page.url.pathname.includes('/admin')}
+          <IconButton
+            color={$showInterpretationTitles ? 'primary' : 'secondary'}
+            shape="round"
+            variant="ghost"
+            size="medium"
+            icon={mdiTextRecognition}
+            onclick={() => showInterpretationTitles.update((value) => !value)}
+            title={$t('show_interpretation_titles')}
+            aria-label={$t('show_interpretation_titles')}
+            aria-pressed={$showInterpretationTitles}
           />
         {/if}
 

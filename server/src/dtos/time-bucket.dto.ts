@@ -122,6 +122,12 @@ const TimeBucketAssetResponseSchema = z
       .array(z.number().meta({ format: 'double' }).nullable())
       .optional()
       .describe('Array of longitude coordinates extracted from EXIF GPS data'),
+    aiInterpretationTitle: z
+      .array(z.string().nullable())
+      .optional()
+      .describe(
+        'Array of AI interpretation titles (most recent completed run per asset, null when the asset was never interpreted)',
+      ),
   })
   .meta({ id: 'TimeBucketAssetResponseDto' });
 

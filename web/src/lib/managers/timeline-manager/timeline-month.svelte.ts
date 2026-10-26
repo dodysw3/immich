@@ -184,6 +184,7 @@ export class TimelineMonth {
       );
 
       const timelineAsset: TimelineAsset = {
+        aiInterpretationTitle: bucketAssets.aiInterpretationTitle?.[i] ?? null,
         city: bucketAssets.city?.[i] ?? null,
         country: bucketAssets.country?.[i] ?? null,
         duration: bucketAssets.duration[i],

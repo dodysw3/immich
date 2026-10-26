@@ -1,8 +1,9 @@
 import { render } from '@testing-library/svelte';
 import { getIntersectionObserverMock } from '$lib/__mocks__/intersection-observer.mock';
 import Thumbnail from '$lib/components/assets/thumbnail/Thumbnail.svelte';
+import { showInterpretationTitles } from '$lib/stores/preferences.store';
 import { getTabbable } from '$lib/utils/focus-util';
-import { assetFactory } from '@test-data/factories/asset-factory';
+import { assetFactory, timelineAssetFactory } from '@test-data/factories/asset-factory';
 
 vi.mock('$lib/utils/navigation', () => ({
   currentUrlReplaceAssetId: vi.fn(),
@@ -58,5 +59,32 @@ describe('Thumbnail component', () => {
 
     const thumbhash = sut.getByTestId('thumbhash');
     expect(thumbhash).not.toBeFalsy();
+  });
+
+  it('hides the interpretation title overlay when the toggle is off', () => {
+    showInterpretationTitles.set(false);
+    const asset = timelineAssetFactory.build({ aiInterpretationTitle: 'Sunset over the bay' });
+    const sut = render(Thumbnail, { asset });
+
+    expect(sut.queryByTestId('interpretation-title')).toBeNull();
+    showInterpretationTitles.set(false);
+  });
+
+  it('shows the interpretation title overlay when the toggle is on and the asset is interpreted', () => {
+    showInterpretationTitles.set(true);
+    const asset = timelineAssetFactory.build({ aiInterpretationTitle: 'Sunset over the bay' });
+    const sut = render(Thumbnail, { asset });
+
+    expect(sut.getByTestId('interpretation-title').textContent).toContain('Sunset over the bay');
+    showInterpretationTitles.set(false);
+  });
+
+  it('omits the interpretation title overlay for uninterpreted assets even when enabled', () => {
+    showInterpretationTitles.set(true);
+    const asset = timelineAssetFactory.build({ aiInterpretationTitle: null });
+    const sut = render(Thumbnail, { asset });
+
+    expect(sut.queryByTestId('interpretation-title')).toBeNull();
+    showInterpretationTitles.set(false);
   });
 });

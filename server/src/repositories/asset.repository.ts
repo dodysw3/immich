@@ -19,6 +19,7 @@ import { Chunked, ChunkedArray, DummyValue, GenerateSql } from 'src/decorators.j
 import { type AuthDto, isMetadataHidden } from 'src/dtos/auth.dto.js';
 import {
   AssetFileType,
+  AssetMetadataKey,
   AssetOrder,
   AssetOrderBy,
   AssetStatus,
@@ -918,6 +919,21 @@ export class AssetRepository {
               .as('ratio'),
           ])
           .$if(!isMetadataHidden(auth), (qb) => qb.select(['asset_exif.city', 'asset_exif.country']))
+          .$if(!isMetadataHidden(auth), (qb) =>
+            qb.select([
+              // Title from the most recent completed interpretation run, matching
+              // findCopySource's recency tiebreak; null when never interpreted.
+              sql<string | null>`(
+                select r.value -> 'result' ->> 'title'
+                from asset_metadata am, jsonb_each(am.value -> 'runs') r
+                where am."assetId" = asset.id
+                  and am.key = ${AssetMetadataKey.AiInterpretationV1}
+                  and r.value ->> 'status' = 'completed'
+                order by coalesce(r.value ->> 'finishedAt', r.value ->> 'requestedAt') desc
+                limit 1
+              )`.as('aiInterpretationTitle'),
+            ]),
+          )
           .$if(!!options.withCoordinates, (qb) => qb.select(['asset_exif.latitude', 'asset_exif.longitude']))
           .where('asset.deletedAt', options.isTrashed ? 'is not' : 'is', null)
           .$if(options.visibility === undefined, withDefaultVisibility)
@@ -1019,6 +1035,7 @@ export class AssetRepository {
             qb.select((eb) => [
               eb.fn.coalesce(eb.fn('array_agg', ['city']), sql.lit('{}')).as('city'),
               eb.fn.coalesce(eb.fn('array_agg', ['country']), sql.lit('{}')).as('country'),
+              eb.fn.coalesce(eb.fn('array_agg', ['aiInterpretationTitle']), sql.lit('{}')).as('aiInterpretationTitle'),
             ]),
           )
           .$if(!!options.withCoordinates, (qb) =>
