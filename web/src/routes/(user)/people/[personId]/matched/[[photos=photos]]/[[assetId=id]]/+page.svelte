@@ -286,6 +286,7 @@
             <DeleteAssets menuItem {onAssetDelete} />
 
             <hr />
+            <ActionMenuItem action={Actions.RefreshFacesJob} />
             <ActionMenuItem action={Actions.InterpretImageJob} />
             <ActionMenuItem action={Actions.InterpretImagePublicJob} />
           </ButtonContextMenu>

@@ -215,6 +215,7 @@ export type ConcurrentQueueName = Exclude<
   | QueueName.ImageInterpretation
   | QueueName.ImageInterpretationPublic
   | QueueName.AiInterpretSearch
+  | QueueName.VideoFaceScan
 >;
 
 export type Jobs = { [K in JobItem['name']]: (JobItem & { name: K })['data'] };
@@ -408,6 +409,7 @@ export type JobItem =
   // Facial Recognition
   | { name: JobName.AssetDetectFacesQueueAll; data: IBaseJob }
   | { name: JobName.AssetDetectFaces; data: IEntityJob }
+  | { name: JobName.AssetVideoFaceScan; data: IEntityJob & { budgetOverride?: number } }
   | { name: JobName.FacialRecognitionQueueAll; data: IFacialRecognitionQueueAll }
   | { name: JobName.FacialRecognition; data: IDeferrableJob }
   | { name: JobName.PersonGenerateThumbnail; data: IPersonJob }

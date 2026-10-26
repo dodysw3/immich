@@ -170,6 +170,20 @@ export interface EnvData {
     minScore: number;
   };
 
+  videoFaceScan: {
+    enabled: boolean;
+    // analyzed-frame cap per run (resource contract; dry-run CLI can exceed)
+    framesBudget: number;
+    // cumulative wall-clock deadline per run, including decode
+    deadlineMs: number;
+    // within-video grouping threshold (0.55 = cross-video-verified default)
+    groupThreshold: number;
+    exemplarMerge: boolean;
+    minGapMs: number;
+    saturation: number;
+    identitiesCap: number;
+  };
+
   noColor: boolean;
   nodeVersion?: string;
 }
@@ -470,6 +484,22 @@ const getEnv = (): EnvData => {
       model: dto.IMMICH_AI_INTERPRET_SEARCH_MODEL || 'bge-m3-Q8_0',
       timeoutMs: dto.IMMICH_AI_INTERPRET_SEARCH_TIMEOUT_MS || 30_000,
       minScore: dto.IMMICH_AI_INTERPRET_SEARCH_MIN_SCORE ?? 0.4,
+    },
+
+    // Multi-frame video face discovery. Manual per-video trigger only; the
+    // queue runs at concurrency 1. Thresholds are bench-tuned (see
+    // immich-app/video-face-bench): 0.55+exemplar-merge keeps full recall on
+    // both verified corpus videos; 0.6+merge false-merges on 480p without the
+    // same-frame guard.
+    videoFaceScan: {
+      enabled: dto.IMMICH_VIDEO_FACE_SCAN_ENABLED ?? true,
+      framesBudget: dto.IMMICH_VIDEO_FACE_SCAN_FRAMES_BUDGET || 64,
+      deadlineMs: dto.IMMICH_VIDEO_FACE_SCAN_DEADLINE_MS || 120_000,
+      groupThreshold: dto.IMMICH_VIDEO_FACE_SCAN_GROUP_THRESHOLD ?? 0.55,
+      exemplarMerge: dto.IMMICH_VIDEO_FACE_SCAN_EXEMPLAR_MERGE ?? true,
+      minGapMs: dto.IMMICH_VIDEO_FACE_SCAN_MIN_GAP_MS || 1500,
+      saturation: dto.IMMICH_VIDEO_FACE_SCAN_SATURATION || 6,
+      identitiesCap: dto.IMMICH_VIDEO_FACE_SCAN_IDENTITIES_CAP || 30,
     },
 
     noColor: !!dto.NO_COLOR,

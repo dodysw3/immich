@@ -118,6 +118,7 @@
     <ActionButton action={Actions.Edit} />
 
     {#if isOwner}
+      <ActionButton action={Actions.RefreshFacesJob} />
       <DeleteAction {asset} {onAction} {preAction} {onUndoDelete} />
     {/if}
 
@@ -168,6 +169,7 @@
         {#if isOwner}
           <hr />
           <ActionMenuItem action={Actions.RefreshFacesJob} />
+          <ActionMenuItem action={Actions.ScanVideoFacesJob} />
           <ActionMenuItem action={Actions.RefreshMetadataJob} />
           <ActionMenuItem action={Actions.RegenerateThumbnailJob} />
           <ActionMenuItem action={Actions.InterpretImageJob} />

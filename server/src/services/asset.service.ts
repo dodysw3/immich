@@ -497,6 +497,17 @@ export class AssetService extends BaseService {
           break;
         }
 
+        case AssetJobName.SCAN_VIDEO_FACES: {
+          // multi-frame discovery is a per-video owner action; validated here
+          // (type + ownership) and again in the job handler
+          const [asset] = await this.assetRepository.getByIds([id]);
+          if (!asset || asset.ownerId !== auth.user.id || asset.type !== AssetType.Video) {
+            throw new BadRequestException('Video face scan requires owned video assets');
+          }
+          jobs.push({ name: JobName.AssetVideoFaceScan, data: { id } });
+          break;
+        }
+
         case AssetJobName.REFRESH_METADATA: {
           jobs.push({ name: JobName.AssetExtractMetadata, data: { id } });
           break;

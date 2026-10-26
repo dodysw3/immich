@@ -35,6 +35,7 @@
   import UserAvatar from '../shared-components/UserAvatar.svelte';
   import AlbumListItemDetails from './AlbumListItemDetails.svelte';
   import DetailPanelPeople from '$lib/components/asset-viewer/DetailPanelPeople.svelte';
+  import DetailPanelVideoFaces from '$lib/components/asset-viewer/DetailPanelVideoFaces.svelte';
   import { faceManager } from '$lib/stores/face.svelte';
 
   interface Props {
@@ -155,6 +156,9 @@
     <DetailPanelDescription {asset} {isOwner} />
     <DetailPanelRating {asset} {isOwner} />
     <DetailPanelPeople {asset} {isOwner} {previousRoute} />
+    {#if asset.type === AssetTypeEnum.Video}
+      <DetailPanelVideoFaces {asset} />
+    {/if}
     {#if asset.type === AssetTypeEnum.Image}
       <DetailPanelAiInterpretation {asset} />
     {/if}

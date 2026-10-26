@@ -94,6 +94,11 @@ export class AssetFaceTable {
   @Column({ default: SourceType.MachineLearning, enum: asset_face_source_type })
   sourceType!: Generated<SourceType>;
 
+  // Video face scan: presentation timestamp (ms) of the representative frame.
+  // Null for photos and preview-derived video faces.
+  @Column({ type: 'integer', nullable: true })
+  frameTimeMs!: number | null;
+
   @DeleteDateColumn()
   deletedAt!: Timestamp | null;
 

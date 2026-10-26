@@ -138,6 +138,17 @@ export const envData: EnvData = {
     minScore: 0.4,
   },
 
+  videoFaceScan: {
+    enabled: true,
+    framesBudget: 32,
+    deadlineMs: 60_000,
+    groupThreshold: 0.55,
+    exemplarMerge: true,
+    minGapMs: 1500,
+    saturation: 6,
+    identitiesCap: 30,
+  },
+
   noColor: false,
 };
 

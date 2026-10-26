@@ -193,6 +193,8 @@ export const getQueueName = derived(t, ($t) => {
       [QueueName.IntegrityCheck]: 'Integrity check',
       [QueueName.ImageInterpretation]: $t('admin.ai_image_interpretation'),
       [QueueName.AiInterpretSearch]: 'AI interpretation search',
+      [QueueName.ImageInterpretationPublic]: 'AI image interpretation (public)',
+      [QueueName.VideoFaceScan]: 'Video face scan',
     };
 
     return names[name];

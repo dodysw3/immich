@@ -26,6 +26,7 @@ import {
   mdiEarth,
   mdiFaceRecognition,
   mdiHeadSyncOutline,
+  mdiVideoOutline,
   mdiHeart,
   mdiHeartOutline,
   mdiImageRefreshOutline,
@@ -132,6 +133,7 @@ export const getAssetBulkActions = ($t: MessageFormatter, album?: AlbumResponseD
   const RefreshFacesJob: ActionItem = {
     title: $t('refresh_faces'),
     icon: mdiHeadSyncOutline,
+    $if: () => ownedAssets.length > 0,
     onAction: () => onAction(AssetJobName.RefreshFaces),
   };
 
@@ -392,6 +394,13 @@ export const getAssetActions = (
     onAction: () => handleRunAssetJob({ name: AssetJobName.RefreshFaces, assetIds: [asset.id] }),
   };
 
+  const ScanVideoFacesJob: ActionItem = {
+    title: $t('scan_video_faces'),
+    icon: mdiVideoOutline,
+    $if: () => asset.type === AssetTypeEnum.Video && !asset.isTrashed,
+    onAction: () => handleRunAssetJob({ name: AssetJobName.ScanVideoFaces, assetIds: [asset.id] }),
+  };
+
   const RefreshMetadataJob: ActionItem = {
     title: $t('refresh_metadata'),
     icon: mdiDatabaseRefreshOutline,
@@ -451,6 +460,7 @@ export const getAssetActions = (
     ViewInTimeline,
     ViewSimilar,
     RefreshFacesJob,
+    ScanVideoFacesJob,
     RefreshMetadataJob,
     RegenerateThumbnailJob,
     InterpretImageJob,
@@ -603,6 +613,7 @@ const handleRemoveAssetsFromAlbum = async (assetIds: string[], album: AlbumRespo
 
 const getAssetJobMessage = ($t: MessageFormatter, job: AssetJobName) => {
   const messages: Record<AssetJobName, string> = {
+    [AssetJobName.ScanVideoFaces]: $t('scanning_video_faces'),
     [AssetJobName.RefreshFaces]: $t('refreshing_faces'),
     [AssetJobName.RefreshMetadata]: $t('refreshing_metadata'),
     [AssetJobName.RegenerateThumbnail]: $t('regenerating_thumbnails'),

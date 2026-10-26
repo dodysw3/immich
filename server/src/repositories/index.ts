@@ -39,6 +39,7 @@ import { PasskeyRepository } from 'src/repositories/passkey.repository.js';
 import { PdfRepository } from 'src/repositories/pdf.repository.js';
 import { PersonUserRepository } from 'src/repositories/person-user.repository.js';
 import { PersonRepository } from 'src/repositories/person.repository.js';
+import { VideoFaceRepository } from 'src/repositories/video-face.repository.js';
 import { PluginRepository } from 'src/repositories/plugin.repository.js';
 import { ProcessRepository } from 'src/repositories/process.repository.js';
 import { SearchRepository } from 'src/repositories/search.repository.js';
@@ -103,6 +104,7 @@ export const repositories = [
   PartnerRepository,
   PasskeyRepository,
   PersonRepository,
+  VideoFaceRepository,
   PersonUserRepository,
   PluginRepository,
   ProcessRepository,

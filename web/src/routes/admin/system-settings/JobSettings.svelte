@@ -58,6 +58,8 @@
     [QueueName.IntegrityCheck]: $t('integrity_checks'),
     [QueueName.ImageInterpretation]: $t('admin.ai_image_interpretation'),
     [QueueName.AiInterpretSearch]: 'AI interpretation search',
+    [QueueName.ImageInterpretationPublic]: $t('admin.ai_image_interpretation_public'),
+    [QueueName.VideoFaceScan]: $t('admin.video_face_scan'),
   });
 </script>
 

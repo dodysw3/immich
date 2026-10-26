@@ -275,6 +275,7 @@ export class QueueService extends BaseService {
       QueueName.ImageInterpretation,
       QueueName.ImageInterpretationPublic,
       QueueName.AiInterpretSearch,
+      QueueName.VideoFaceScan,
     ].includes(name);
   }
 

@@ -539,17 +539,17 @@ export class PersonService extends BaseService {
       const match = asset.faces.find((face) => {
         const faceWidth = face.imageWidth || storageDims.width;
         const faceHeight = face.imageHeight || storageDims.height;
+        const storedBox = {
+          x1: (face.boundingBoxX1 * storageDims.width) / faceWidth,
+          y1: (face.boundingBoxY1 * storageDims.height) / faceHeight,
+          x2: (face.boundingBoxX2 * storageDims.width) / faceWidth,
+          y2: (face.boundingBoxY2 * storageDims.height) / faceHeight,
+        };
+        // containment catches wrapped duplicates — a loose box fully around a tight box of
+        // the same face — whose IoU stays below 0.5 (e.g. exif-imported region vs ML box)
         return (
-          this.iou(
-            {
-              ...face,
-              boundingBoxX1: (face.boundingBoxX1 * storageDims.width) / faceWidth,
-              boundingBoxY1: (face.boundingBoxY1 * storageDims.height) / faceHeight,
-              boundingBoxX2: (face.boundingBoxX2 * storageDims.width) / faceWidth,
-              boundingBoxY2: (face.boundingBoxY2 * storageDims.height) / faceHeight,
-            },
-            boundingBox,
-          ) > 0.5
+          this.boundingBoxIou(storedBox, boundingBox) > 0.5 ||
+          this.boundingBoxIoMin(storedBox, boundingBox) >= 0.9
         );
       });
 
@@ -578,7 +578,10 @@ export class PersonService extends BaseService {
         embeddings.push({ faceId, embedding });
       }
     }
-    const faceIdsToRemove = [...mlFaceIds];
+    // video-scan-published representatives are reconciled by a re-scan, not
+    // by the preview-frame refresh path — never sweep them here
+    const videoPublished = (await this.personRepository.getVideoPublishedFaceIds(asset.id)) ?? [];
+    const faceIdsToRemove = [...mlFaceIds].filter((faceId) => !videoPublished.includes(faceId));
 
     if (facesToAdd.length > 0 || faceIdsToRemove.length > 0 || embeddings.length > 0) {
       await this.personRepository.refreshFaces(facesToAdd, faceIdsToRemove, embeddings);
@@ -599,23 +602,6 @@ export class PersonService extends BaseService {
     await this.assetRepository.upsertJobStatus({ assetId: asset.id, facesRecognizedAt: new Date() });
 
     return JobStatus.Success;
-  }
-
-  private iou(
-    face: { boundingBoxX1: number; boundingBoxY1: number; boundingBoxX2: number; boundingBoxY2: number },
-    newBox: BoundingBox,
-  ): number {
-    const x1 = Math.max(face.boundingBoxX1, newBox.x1);
-    const y1 = Math.max(face.boundingBoxY1, newBox.y1);
-    const x2 = Math.min(face.boundingBoxX2, newBox.x2);
-    const y2 = Math.min(face.boundingBoxY2, newBox.y2);
-
-    const intersection = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
-    const area1 = (face.boundingBoxX2 - face.boundingBoxX1) * (face.boundingBoxY2 - face.boundingBoxY1);
-    const area2 = (newBox.x2 - newBox.x1) * (newBox.y2 - newBox.y1);
-    const union = area1 + area2 - intersection;
-
-    return intersection / union;
   }
 
   /**
@@ -848,7 +834,10 @@ export class PersonService extends BaseService {
         if (suppressed.has(j)) {
           continue;
         }
-        if (this.boundingBoxIou(sorted[i].boundingBox, sorted[j].boundingBox) > iouThreshold) {
+        if (
+          this.boundingBoxIou(sorted[i].boundingBox, sorted[j].boundingBox) > iouThreshold ||
+          this.boundingBoxIoMin(sorted[i].boundingBox, sorted[j].boundingBox) >= 0.9
+        ) {
           suppressed.add(j);
         }
       }
@@ -869,6 +858,22 @@ export class PersonService extends BaseService {
     const union = area1 + area2 - intersection;
 
     return union > 0 ? intersection / union : 0;
+  }
+
+  // intersection over the smaller box's area — 1.0 when one box fully wraps the other;
+  // catches wrapped duplicates that IoU misses (loose box around a tight box of same face)
+  private boundingBoxIoMin(a: BoundingBox, b: BoundingBox): number {
+    const x1 = Math.max(a.x1, b.x1);
+    const y1 = Math.max(a.y1, b.y1);
+    const x2 = Math.min(a.x2, b.x2);
+    const y2 = Math.min(a.y2, b.y2);
+
+    const intersection = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+    const area1 = (a.x2 - a.x1) * (a.y2 - a.y1);
+    const area2 = (b.x2 - b.x1) * (b.y2 - b.y1);
+    const smaller = Math.min(area1, area2);
+
+    return smaller > 0 ? intersection / smaller : 0;
   }
 
   @OnJob({ name: JobName.FacialRecognitionQueueAll, queue: QueueName.FacialRecognition })

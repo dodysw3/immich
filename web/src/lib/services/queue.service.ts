@@ -32,6 +32,8 @@ import {
   mdiTrashCanOutline,
   mdiTrayFull,
   mdiVideo,
+  mdiVideoOutline,
+  mdiEarth,
 } from '@mdi/js';
 import type { MessageFormatter } from 'svelte-i18n';
 import { goto } from '$app/navigation';
@@ -258,6 +260,16 @@ export const asQueueItem = ($t: MessageFormatter, queue: { name: QueueName }): Q
     [QueueName.ImageInterpretation]: {
       icon: mdiImageSearch,
       title: $t('admin.ai_image_interpretation'),
+    },
+    [QueueName.ImageInterpretationPublic]: {
+      icon: mdiEarth,
+      title: $t('admin.ai_image_interpretation_public'),
+      subtitle: $t('admin.ai_image_interpretation_public_description'),
+    },
+    [QueueName.VideoFaceScan]: {
+      icon: mdiVideoOutline,
+      title: $t('admin.video_face_scan'),
+      subtitle: $t('admin.video_face_scan_description'),
     },
     [QueueName.AiInterpretSearch]: {
       icon: mdiImageSearch,

@@ -5198,6 +5198,121 @@
         "x-immich-state": "Stable"
       }
     },
+    "/assets/{id}/video-faces": {
+      "get": {
+        "description": "Per-identity faces from the multi-frame video scan: first observed, sightings, and the latest run outcome for coverage display.",
+        "operationId": "getVideoFaces",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoFacesResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "List faces discovered in a video",
+        "tags": [
+          "Assets"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v3.3.0",
+            "state": "Added"
+          }
+        ],
+        "x-immich-permission": "asset.read"
+      }
+    },
+    "/assets/{id}/video-faces/{faceId}/thumbnail": {
+      "get": {
+        "description": "Crops the identity representative frame at its timestamp. WebP, cacheable per face until re-scan.",
+        "operationId": "getFaceThumbnail",
+        "parameters": [
+          {
+            "name": "faceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Face crop from its representative frame",
+        "tags": [
+          "Assets"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v3.3.0",
+            "state": "Added"
+          }
+        ],
+        "x-immich-permission": "asset.read"
+      }
+    },
     "/assets/{id}/video/playback": {
       "get": {
         "description": "Streams the video file for the specified asset. This endpoint also supports byte range requests.",
@@ -22333,6 +22448,7 @@
       "AssetJobName": {
         "description": "Job name",
         "enum": [
+          "scan-video-faces",
           "refresh-faces",
           "refresh-metadata",
           "regenerate-thumbnail",
@@ -24531,6 +24647,7 @@
         "enum": [
           "AssetDelete",
           "AssetDeleteCheck",
+          "AssetVideoFaceScan",
           "AssetDetectFacesQueueAll",
           "AssetDetectFaces",
           "AssetDetectDuplicatesQueueAll",
@@ -28361,7 +28478,8 @@
           "editor",
           "imageInterpretation",
           "imageInterpretationPublic",
-          "aiInterpretSearch"
+          "aiInterpretSearch",
+          "videoFaceScan"
         ],
         "type": "string"
       },
@@ -28559,6 +28677,9 @@
           "videoConversion": {
             "$ref": "#/components/schemas/QueueResponseLegacyDto"
           },
+          "videoFaceScan": {
+            "$ref": "#/components/schemas/QueueResponseLegacyDto"
+          },
           "workflow": {
             "$ref": "#/components/schemas/QueueResponseLegacyDto"
           }
@@ -28586,6 +28707,7 @@
           "storageTemplateMigration",
           "thumbnailGeneration",
           "videoConversion",
+          "videoFaceScan",
           "workflow"
         ],
         "type": "object"
@@ -36070,6 +36192,171 @@
           "webm"
         ],
         "type": "string"
+      },
+      "VideoFaceDto": {
+        "properties": {
+          "assetFaceId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "bestFrameMs": {
+            "description": "Timestamp of the representative frame",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "firstObservedMs": {
+            "description": "Earliest sighting timestamp",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "flagged": {
+            "description": "Single sighting below the stricter quality bar",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+            "type": "string"
+          },
+          "lastObservedMs": {
+            "description": "Latest sighting timestamp",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "personGroupId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "personName": {
+            "description": "Owner's person name, if assigned or matched",
+            "nullable": true,
+            "type": "string"
+          },
+          "sightingCount": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "sightings": {
+            "items": {
+              "properties": {
+                "score": {
+                  "description": "Detection score",
+                  "type": "number"
+                },
+                "timeMs": {
+                  "description": "Decoded presentation timestamp of the sighting",
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "timeMs",
+                "score"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "assetFaceId",
+          "bestFrameMs",
+          "firstObservedMs",
+          "flagged",
+          "id",
+          "lastObservedMs",
+          "personGroupId",
+          "personName",
+          "sightingCount",
+          "sightings"
+        ],
+        "type": "object"
+      },
+      "VideoFaceRunDto": {
+        "properties": {
+          "configHash": {
+            "type": "string"
+          },
+          "durationMs": {
+            "description": "Video timeline duration",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "finishedAt": {
+            "nullable": true,
+            "type": "string"
+          },
+          "firstSampledMs": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "framesAnalyzed": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "identities": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "lastSampledMs": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "outcome": {
+            "enum": [
+              "saturated",
+              "budget_exhausted",
+              "deadline",
+              "decode_failed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "configHash",
+          "durationMs",
+          "finishedAt",
+          "firstSampledMs",
+          "framesAnalyzed",
+          "identities",
+          "lastSampledMs",
+          "outcome"
+        ],
+        "type": "object"
+      },
+      "VideoFacesResponseDto": {
+        "properties": {
+          "faces": {
+            "items": {
+              "$ref": "#/components/schemas/VideoFaceDto"
+            },
+            "type": "array"
+          },
+          "run": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/VideoFaceRunDto"
+              }
+            ],
+            "description": "Latest scan run, null when never scanned",
+            "nullable": true
+          }
+        },
+        "required": [
+          "faces",
+          "run"
+        ],
+        "type": "object"
       },
       "WorkflowCreateDto": {
         "properties": {

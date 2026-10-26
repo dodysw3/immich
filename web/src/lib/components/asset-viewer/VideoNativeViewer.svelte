@@ -324,6 +324,16 @@
     }
   });
 
+  // click-to-seek from the video face strip: seek to the observed sighting
+  $effect(() => {
+    const seekMs = assetViewerManager.videoSeekRequestMs;
+    if (seekMs !== null && videoPlayer) {
+      videoPlayer.currentTime = seekMs / 1000;
+      videoPlayer.dispatchEvent(new Event('timeupdate'));
+      assetViewerManager.clearVideoSeekRequest();
+    }
+  });
+
   // The time is only refreshed on HLS fragment decode by default,
   // so manually emit events on seek to update it immediately.
   const onSeeking = (event: Event) => event.currentTarget?.dispatchEvent(new Event('timeupdate'));

@@ -155,6 +155,7 @@
         />
         <SetVisibilityAction menuItem onVisibilitySet={handleSetVisibility} />
         <hr />
+        <ActionMenuItem action={Actions.RefreshFacesJob} />
         <ActionMenuItem action={Actions.RegenerateThumbnailJob} />
         <ActionMenuItem action={Actions.InterpretImageJob} />
         <ActionMenuItem action={Actions.InterpretImagePublicJob} />

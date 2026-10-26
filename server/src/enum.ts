@@ -875,6 +875,7 @@ export enum QueueName {
   ImageInterpretation = 'imageInterpretation',
   ImageInterpretationPublic = 'imageInterpretationPublic',
   AiInterpretSearch = 'aiInterpretSearch',
+  VideoFaceScan = 'videoFaceScan',
 }
 
 export const QueueNameSchema = z.enum(QueueName).describe('Queue name').meta({ id: 'QueueName' });
@@ -892,6 +893,7 @@ export const QueueJobStatusSchema = z.enum(QueueJobStatus).describe('Queue job s
 export enum JobName {
   AssetDelete = 'AssetDelete',
   AssetDeleteCheck = 'AssetDeleteCheck',
+  AssetVideoFaceScan = 'AssetVideoFaceScan',
   AssetDetectFacesQueueAll = 'AssetDetectFacesQueueAll',
   AssetDetectFaces = 'AssetDetectFaces',
   AssetDetectDuplicatesQueueAll = 'AssetDetectDuplicatesQueueAll',

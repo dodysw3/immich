@@ -166,6 +166,7 @@
         <DeleteAssets menuItem onAssetDelete={triggerAssetUpdate} onUndoDelete={triggerAssetUpdate} />
         <hr />
 
+        <ActionMenuItem action={Actions.RefreshFacesJob} />
         <ActionMenuItem action={Actions.RegenerateThumbnailJob} />
         <ActionMenuItem action={Actions.InterpretImageJob} />
         <ActionMenuItem action={Actions.InterpretImagePublicJob} />

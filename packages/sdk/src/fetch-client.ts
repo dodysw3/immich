@@ -1486,6 +1486,44 @@ export type AssetOcrResponseDto = {
     /** Normalized y coordinate of box corner 4 (0-1) */
     y4: number;
 };
+export type VideoFaceDto = {
+    assetFaceId: string | null;
+    /** Timestamp of the representative frame */
+    bestFrameMs: number;
+    /** Earliest sighting timestamp */
+    firstObservedMs: number;
+    /** Single sighting below the stricter quality bar */
+    flagged: boolean;
+    id: string;
+    /** Latest sighting timestamp */
+    lastObservedMs: number;
+    personGroupId: string | null;
+    /** Owner's person name, if assigned or matched */
+    personName: string | null;
+    sightingCount: number;
+    sightings: {
+        /** Detection score */
+        score: number;
+        /** Decoded presentation timestamp of the sighting */
+        timeMs: number;
+    }[];
+};
+export type VideoFaceRunDto = {
+    configHash: string;
+    /** Video timeline duration */
+    durationMs: number;
+    finishedAt: string | null;
+    firstSampledMs: number;
+    framesAnalyzed: number;
+    identities: number;
+    lastSampledMs: number;
+    outcome: Outcome;
+};
+export type VideoFacesResponseDto = {
+    faces: VideoFaceDto[];
+    /** Latest scan run, null when never scanned */
+    run: (VideoFaceRunDto) | null;
+};
 export type SignUpDto = {
     /** User email */
     email: string;
@@ -1905,6 +1943,7 @@ export type QueuesResponseLegacyDto = {
     storageTemplateMigration: QueueResponseLegacyDto;
     thumbnailGeneration: QueueResponseLegacyDto;
     videoConversion: QueueResponseLegacyDto;
+    videoFaceScan: QueueResponseLegacyDto;
     workflow: QueueResponseLegacyDto;
 };
 export type JobCreateDto = {
@@ -5337,6 +5376,33 @@ export function viewAsset({ edited, id, key, size, slug }: {
         size,
         slug
     }))}`, {
+        ...opts
+    }));
+}
+/**
+ * List faces discovered in a video
+ */
+export function getVideoFaces({ id }: {
+    id: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: VideoFacesResponseDto;
+    }>(`/assets/${encodeURIComponent(id)}/video-faces`, {
+        ...opts
+    }));
+}
+/**
+ * Face crop from its representative frame
+ */
+export function getFaceThumbnail({ faceId, id }: {
+    faceId: string;
+    id: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchBlob<{
+        status: 200;
+        data: Blob;
+    }>(`/assets/${encodeURIComponent(id)}/video-faces/${encodeURIComponent(faceId)}/thumbnail`, {
         ...opts
     }));
 }
@@ -8910,6 +8976,7 @@ export enum AssetRejectReason {
     UnsupportedFormat = "unsupported-format"
 }
 export enum AssetJobName {
+    ScanVideoFaces = "scan-video-faces",
     RefreshFaces = "refresh-faces",
     RefreshMetadata = "refresh-metadata",
     RegenerateThumbnail = "regenerate-thumbnail",
@@ -8942,6 +9009,12 @@ export enum AssetMediaSize {
     Fullsize = "fullsize",
     Preview = "preview",
     Thumbnail = "thumbnail"
+}
+export enum Outcome {
+    Saturated = "saturated",
+    BudgetExhausted = "budget_exhausted",
+    Deadline = "deadline",
+    DecodeFailed = "decode_failed"
 }
 export enum Mode {
     Replace = "replace",
@@ -8992,7 +9065,8 @@ export enum QueueName {
     Editor = "editor",
     ImageInterpretation = "imageInterpretation",
     ImageInterpretationPublic = "imageInterpretationPublic",
-    AiInterpretSearch = "aiInterpretSearch"
+    AiInterpretSearch = "aiInterpretSearch",
+    VideoFaceScan = "videoFaceScan"
 }
 export enum QueueCommand {
     Start = "start",
@@ -9039,6 +9113,7 @@ export enum QueueJobStatus {
 export enum JobName {
     AssetDelete = "AssetDelete",
     AssetDeleteCheck = "AssetDeleteCheck",
+    AssetVideoFaceScan = "AssetVideoFaceScan",
     AssetDetectFacesQueueAll = "AssetDetectFacesQueueAll",
     AssetDetectFaces = "AssetDetectFaces",
     AssetDetectDuplicatesQueueAll = "AssetDetectDuplicatesQueueAll",

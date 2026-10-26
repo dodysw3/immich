@@ -140,6 +140,7 @@ describe(QueueService.name, () => {
         [QueueName.ImageInterpretation]: expected,
         [QueueName.ImageInterpretationPublic]: expected,
         [QueueName.AiInterpretSearch]: expected,
+        [QueueName.VideoFaceScan]: expected,
       });
     });
   });

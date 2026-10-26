@@ -100,6 +100,7 @@ import {
   VideoStreamSessionTable,
   VideoStreamVariantTable,
 } from 'src/schema/tables/video-stream.table.js';
+import { VideoFaceRunTable, VideoFaceSightingTable, VideoFaceTable } from 'src/schema/tables/video-face.table.js';
 import { WorkflowLogTable } from 'src/schema/tables/workflow-log.table.js';
 import { WorkflowStepTable } from 'src/schema/tables/workflow-step.table.js';
 import { WorkflowTable } from 'src/schema/tables/workflow.table.js';
@@ -175,6 +176,9 @@ export class ImmichDatabase {
     VideoStreamSessionTable,
     VideoStreamVariantTable,
     VideoStreamSegmentTable,
+    VideoFaceRunTable,
+    VideoFaceTable,
+    VideoFaceSightingTable,
     PluginTable,
     PluginMethodTable,
     WorkflowTable,
@@ -319,6 +323,9 @@ export interface DB {
   video_stream_session: VideoStreamSessionTable;
   video_stream_variant: VideoStreamVariantTable;
   video_stream_segment: VideoStreamSegmentTable;
+  video_face_run: VideoFaceRunTable;
+  video_face: VideoFaceTable;
+  video_face_sighting: VideoFaceSightingTable;
 
   plugin: PluginTable;
   plugin_method: PluginMethodTable;

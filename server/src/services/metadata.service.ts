@@ -127,6 +127,21 @@ const getLensModel = (exifTags: ImmichTags): string | null => {
   return lensModel || null;
 };
 
+// intersection over the smaller box's area — 1.0 when one box fully wraps the other;
+// catches wrapped duplicates (loose metadata region around a tight detected box) that IoU misses
+const boxesIoMin = (
+  a: { x1: number; y1: number; x2: number; y2: number },
+  b: { x1: number; y1: number; x2: number; y2: number },
+): number => {
+  const x1 = Math.max(a.x1, b.x1);
+  const y1 = Math.max(a.y1, b.y1);
+  const x2 = Math.min(a.x2, b.x2);
+  const y2 = Math.min(a.y2, b.y2);
+  const intersection = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+  const smaller = Math.min((a.x2 - a.x1) * (a.y2 - a.y1), (b.x2 - b.x1) * (b.y2 - b.y1));
+  return smaller > 0 ? intersection / smaller : 0;
+};
+
 type ImmichTagsWithFaces = ImmichTags & { RegionInfo: NonNullable<ImmichTags['RegionInfo']> };
 
 type Dates = {
@@ -904,7 +919,16 @@ export class MetadataService extends BaseService {
       id: string;
       ownerId: string;
       clusterGroupId: string;
-      faces: { id: string; sourceType: SourceType }[];
+      faces: {
+        id: string;
+        sourceType: SourceType;
+        imageWidth: number;
+        imageHeight: number;
+        boundingBoxX1: number;
+        boundingBoxY1: number;
+        boundingBoxX2: number;
+        boundingBoxY2: number;
+      }[];
       originalPath: string;
     },
     tags: ImmichTags,
@@ -925,6 +949,18 @@ export class MetadataService extends BaseService {
     const imageWidth = adjustedRegionInfo.AppliedToDimensions.W;
     const imageHeight = adjustedRegionInfo.AppliedToDimensions.H;
 
+    // metadata regions are typically loose; when one covers a face Immich already has (ML
+    // detection or a manual box), importing it creates a wrapped duplicate whose IoU sits
+    // below the 0.5 refresh threshold — skip regions that overlap an existing face
+    const detectedBoxes = asset.faces
+      .filter((face) => face.sourceType !== SourceType.Exif && face.imageWidth > 0 && face.imageHeight > 0)
+      .map((face) => ({
+        x1: face.boundingBoxX1 / face.imageWidth,
+        y1: face.boundingBoxY1 / face.imageHeight,
+        x2: face.boundingBoxX2 / face.imageWidth,
+        y2: face.boundingBoxY2 / face.imageHeight,
+      }));
+
     for (const region of adjustedRegionInfo.RegionList) {
       if (!region.Name) {
         continue;
@@ -937,6 +973,14 @@ export class MetadataService extends BaseService {
       const Y = Number(region.Area.Y);
       const W = Number(region.Area.W);
       const H = Number(region.Area.H);
+
+      const regionBox = { x1: X - W / 2, y1: Y - H / 2, x2: X + W / 2, y2: Y + H / 2 };
+      if (detectedBoxes.some((box) => boxesIoMin(regionBox, box) >= 0.9)) {
+        this.logger.debugFn(
+          () => `Skipping region '${region.Name}' for asset ${asset.id}: covered by an existing detected face`,
+        );
+        continue;
+      }
 
       const face = {
         id: this.cryptoRepository.randomUUID(),

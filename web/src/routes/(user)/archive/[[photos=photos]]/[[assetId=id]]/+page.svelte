@@ -81,6 +81,7 @@
       <DeleteAssets menuItem onAssetDelete={(assetIds) => timelineManager.removeAssets(assetIds)} />
 
       <hr />
+      <ActionMenuItem action={Actions.RefreshFacesJob} />
       <ActionMenuItem action={Actions.InterpretImageJob} />
       <ActionMenuItem action={Actions.InterpretImagePublicJob} />
     </ButtonContextMenu>

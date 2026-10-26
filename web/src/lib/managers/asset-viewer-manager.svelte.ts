@@ -57,6 +57,8 @@ class AssetViewerManager extends BaseEventManager<Events> {
   #viewState = $state<boolean>(false);
   #highlightedFaces = $state<Faces[]>([]);
   #showingHiddenPeople = $state(false);
+  // click-to-seek from the video face strip; consumed by VideoNativeViewer
+  #videoSeekRequestMs = $state<number | null>(null);
   gridScrollTarget = $state<AssetGridRouteSearchParams | null | undefined>();
 
   get asset() {
@@ -235,6 +237,18 @@ class AssetViewerManager extends BaseEventManager<Events> {
 
   get isShowingHiddenPeople() {
     return this.#showingHiddenPeople;
+  }
+
+  get videoSeekRequestMs() {
+    return this.#videoSeekRequestMs;
+  }
+
+  requestVideoSeek(timeMs: number) {
+    this.#videoSeekRequestMs = timeMs;
+  }
+
+  clearVideoSeekRequest() {
+    this.#videoSeekRequestMs = null;
   }
 
   toggleHiddenPeople() {

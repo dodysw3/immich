@@ -317,7 +317,16 @@ export class PersonRepository {
   }
 
   async deleteFaces({ sourceType }: DeleteFacesOptions): Promise<void> {
-    await this.db.deleteFrom('asset_face').where('asset_face.sourceType', '=', sourceType).execute();
+    // video-scan-published representatives survive library-wide force refresh
+    await this.db
+      .deleteFrom('asset_face')
+      .where('asset_face.sourceType', '=', sourceType)
+      .where((eb) =>
+        eb.not(
+          eb.exists(eb.selectFrom('video_face').whereRef('video_face.assetFaceId', '=', 'asset_face.id').selectAll()),
+        ),
+      )
+      .execute();
   }
 
   @GenerateSql({ params: [DummyValue.UUID, SourceType.MachineLearning] })
@@ -334,6 +343,17 @@ export class PersonRepository {
       .executeTakeFirst();
 
     return Number(result.numDeletedRows ?? 0);
+  }
+
+  /** asset_face ids published by the video face scan for one asset (refresh guard). */
+  async getVideoPublishedFaceIds(assetId: string): Promise<string[]> {
+    const rows = await this.db
+      .selectFrom('video_face')
+      .select('video_face.assetFaceId')
+      .where('video_face.assetId', '=', assetId)
+      .where('video_face.assetFaceId', 'is not', null)
+      .execute();
+    return rows.map((row) => row.assetFaceId).filter((id): id is string => id !== null);
   }
 
   async deleteFacesByAssetId(assetId: string, sourceType: SourceType): Promise<void> {
