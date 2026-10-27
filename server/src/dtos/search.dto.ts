@@ -44,6 +44,11 @@ const BaseSearchSchema = z.object({
   make: z.string().nullable().optional().describe('Filter by camera make').meta(DEPRECATED_FLAT_FIELD),
   model: z.string().nullable().optional().describe('Filter by camera model').meta(DEPRECATED_FLAT_FIELD),
   lensModel: z.string().nullable().optional().describe('Filter by lens model').meta(DEPRECATED_FLAT_FIELD),
+  hasAiInterpretation: z
+    .boolean()
+    .optional()
+    .describe('Filter by presence of a completed AI image interpretation')
+    .meta(DEPRECATED_FLAT_FIELD),
   isNotInAlbum: z.boolean().optional().describe('Filter assets not in any album').meta(DEPRECATED_FLAT_FIELD),
   personIds: z.array(z.uuidv4()).optional().describe('Filter by person IDs').meta(DEPRECATED_FLAT_FIELD),
   tagIds: z.array(z.uuidv4()).nullish().describe('Filter by tag IDs').meta(DEPRECATED_FLAT_FIELD),
@@ -253,6 +258,7 @@ const searchFilterBranchShape = {
   isMotion: BoolFilterSchema,
   isOffline: BoolFilterSchema,
   isEncoded: BoolFilterSchema,
+  hasAiInterpretation: BoolFilterSchema.describe('Whether any AI image interpretation has completed with a result'),
   hasAlbums: BoolFilterSchema,
   hasPeople: BoolFilterSchema,
   hasTags: BoolFilterSchema,

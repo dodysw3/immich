@@ -209,6 +209,8 @@
       queryAssetId: $t('query_asset_id'),
       ocr: $t('ocr'),
       ai: $t('ai'),
+      hasAiInterpretation: $t('ai_interpretation'),
+      withStacked: $t('include_stacked_images'),
     };
     return keyMap[key] || key;
   }
@@ -297,6 +299,8 @@
                 {#await getTagNames(value) then tagNames}
                   {tagNames}
                 {/await}
+              {:else if searchKey === 'hasAiInterpretation'}
+                {value ? $t('completed') : $t('without_ai_interpretation')}
               {:else if searchKey === 'rating'}
                 {$t('rating_count', { values: { count: value ?? 0 } })}
               {:else if value === null || value === ''}

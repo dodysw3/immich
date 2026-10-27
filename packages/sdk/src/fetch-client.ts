@@ -2653,6 +2653,8 @@ export type SearchFilterBranch = {
     description?: StringPatternFilter;
     encodedVideoPath?: StringFilter;
     fileSizeInBytes?: NumberFilter;
+    /** Whether any AI image interpretation has completed with a result */
+    hasAiInterpretation?: BoolFilter;
     hasAlbums?: BoolFilter;
     hasPeople?: BoolFilter;
     hasTags?: BoolFilter;
@@ -2687,6 +2689,8 @@ export type SearchFilter = {
     description?: StringPatternFilter;
     encodedVideoPath?: StringFilter;
     fileSizeInBytes?: NumberFilter;
+    /** Whether any AI image interpretation has completed with a result */
+    hasAiInterpretation?: BoolFilter;
     hasAlbums?: BoolFilter;
     hasPeople?: BoolFilter;
     hasTags?: BoolFilter;
@@ -2737,6 +2741,8 @@ export type MetadataSearchDto = {
     /** Filter by encoded video file path */
     encodedVideoPath?: string;
     filter?: SearchFilter;
+    /** Filter by presence of a completed AI image interpretation */
+    hasAiInterpretation?: boolean;
     /** Filter by asset ID */
     id?: string;
     /** Filter by encoded status */
@@ -2864,6 +2870,8 @@ export type RandomSearchDto = {
     /** Filter by creation date (before) */
     createdBefore?: string;
     filter?: SearchFilter;
+    /** Filter by presence of a completed AI image interpretation */
+    hasAiInterpretation?: boolean;
     /** Filter by encoded status */
     isEncoded?: boolean;
     /** Filter by favorite status */
@@ -2929,6 +2937,8 @@ export type SmartSearchDto = {
     /** Filter by creation date (before) */
     createdBefore?: string;
     filter?: SearchFilter;
+    /** Filter by presence of a completed AI image interpretation */
+    hasAiInterpretation?: boolean;
     /** Filter by encoded status */
     isEncoded?: boolean;
     /** Filter by favorite status */
@@ -3000,6 +3010,8 @@ export type StatisticsSearchDto = {
     /** Filter by description text */
     description?: string;
     filter?: SearchFilter;
+    /** Filter by presence of a completed AI image interpretation */
+    hasAiInterpretation?: boolean;
     /** Filter by encoded status */
     isEncoded?: boolean;
     /** Filter by favorite status */
@@ -7212,12 +7224,13 @@ export function getExploreData(opts?: Oazapfts.RequestOpts) {
 /**
  * Search large assets
  */
-export function searchLargeAssets({ albumIds, city, country, createdAfter, createdBefore, isEncoded, isFavorite, isMotion, isNotInAlbum, isOffline, lensModel, libraryId, make, minFileSize, model, ocr, personIds, rating, size, state, tagIds, takenAfter, takenBefore, trashedAfter, trashedBefore, $type, updatedAfter, updatedBefore, visibility, withDeleted, withExif }: {
+export function searchLargeAssets({ albumIds, city, country, createdAfter, createdBefore, hasAiInterpretation, isEncoded, isFavorite, isMotion, isNotInAlbum, isOffline, lensModel, libraryId, make, minFileSize, model, ocr, personIds, rating, size, state, tagIds, takenAfter, takenBefore, trashedAfter, trashedBefore, $type, updatedAfter, updatedBefore, visibility, withDeleted, withExif }: {
     albumIds?: string[];
     city?: string | null;
     country?: string | null;
     createdAfter?: string;
     createdBefore?: string;
+    hasAiInterpretation?: boolean;
     isEncoded?: boolean;
     isFavorite?: boolean;
     isMotion?: boolean;
@@ -7254,6 +7267,7 @@ export function searchLargeAssets({ albumIds, city, country, createdAfter, creat
         country,
         createdAfter,
         createdBefore,
+        hasAiInterpretation,
         isEncoded,
         isFavorite,
         isMotion,

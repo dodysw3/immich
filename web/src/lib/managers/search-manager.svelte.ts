@@ -69,6 +69,7 @@ class SearchManager {
       ocr: searchQuery.ocr,
       ai: 'ai' in searchQuery ? searchQuery.ai : undefined,
       queryType,
+      withStacked: searchQuery.withStacked,
       queryAssetId: 'queryAssetId' in searchQuery ? searchQuery.queryAssetId : undefined,
       personIds: new SvelteSet('personIds' in searchQuery ? searchQuery.personIds : []),
       tagIds:
@@ -94,6 +95,7 @@ class SearchManager {
       display: {
         isArchive: searchQuery.visibility === AssetVisibility.Archive,
         isFavorite: searchQuery.isFavorite ?? false,
+        withoutAiInterpretation: searchQuery.hasAiInterpretation === false,
         isNotInAlbum: 'isNotInAlbum' in searchQuery && (searchQuery.isNotInAlbum ?? false),
       },
       mediaType:
@@ -117,6 +119,7 @@ class SearchManager {
     const query = this.filter.query || undefined;
 
     return {
+      withStacked: this.filter.withStacked,
       query: this.filter.queryType === 'smart' ? query : undefined,
       queryAssetId: this.filter.queryAssetId || undefined,
       ocr: this.filter.queryType === 'ocr' ? query : undefined,
@@ -138,6 +141,9 @@ class SearchManager {
         : undefined,
       visibility: this.filter.display.isArchive ? AssetVisibility.Archive : undefined,
       isFavorite: this.filter.display.isFavorite || undefined,
+      // Keep false to filter unfinished assets; undefined removes the filter.
+      // eslint-disable-next-line unicorn/prefer-logical-operator-over-ternary
+      hasAiInterpretation: this.filter.display.withoutAiInterpretation ? false : undefined,
       isNotInAlbum: this.filter.display.isNotInAlbum || undefined,
       personIds: this.filter.personIds.size > 0 ? [...this.filter.personIds] : undefined,
       tagIds: this.filter.tagIds === null ? null : this.filter.tagIds.size > 0 ? [...this.filter.tagIds] : undefined,

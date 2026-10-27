@@ -41,6 +41,7 @@ export interface SearchStatusOptions {
   isMotion?: boolean;
   isOffline?: boolean;
   isNotInAlbum?: boolean;
+  hasAiInterpretation?: boolean;
   type?: AssetType;
   status?: AssetStatus;
   withArchived?: boolean;

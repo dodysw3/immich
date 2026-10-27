@@ -51,6 +51,7 @@ export type SearchDateFilter = {
 
 export type SearchDisplayFilters = {
   isNotInAlbum: boolean;
+  withoutAiInterpretation: boolean;
   isArchive: boolean;
   isFavorite: boolean;
 };
@@ -62,6 +63,7 @@ export type SearchLocationFilter = {
 };
 
 export type SearchFilter = {
+  withStacked?: boolean;
   query: string;
   ocr?: string;
   ai?: string;

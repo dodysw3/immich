@@ -1,6 +1,6 @@
 import { Kysely } from 'kysely';
 import { SearchSuggestionType } from 'src/dtos/search.dto.js';
-import { AlbumUserRole, AssetOrder, AssetVisibility, SearchOrderField } from 'src/enum.js';
+import { AlbumUserRole, AssetMetadataKey, AssetOrder, AssetType, AssetVisibility, SearchOrderField } from 'src/enum.js';
 import { AccessRepository } from 'src/repositories/access.repository.js';
 import { AssetRepository } from 'src/repositories/asset.repository.js';
 import { DatabaseRepository } from 'src/repositories/database.repository.js';
@@ -79,6 +79,89 @@ describe(SearchService.name, () => {
     await expect(sut.searchLargeAssets(auth, { size: 250 })).resolves.toEqual([
       expect.objectContaining({ id: visibleAsset.id }),
     ]);
+  });
+
+  describe('AI interpretation filter', () => {
+    it('should page unfinished images and exclude completed results, other users, videos, and trash', async () => {
+      const { sut, ctx } = setup();
+      const { user } = await ctx.newUser();
+      const auth = factory.auth({ user: { id: user.id } });
+      const unfinished: string[] = [];
+      const completed: string[] = [];
+
+      for (const status of [
+        undefined,
+        'queued',
+        'running',
+        'failed',
+        'completed-without-result',
+        'completed',
+        'mixed',
+      ]) {
+        const { asset } = await ctx.newAsset({ ownerId: user.id, type: AssetType.Image });
+        await ctx.newExif({ assetId: asset.id, fileSizeInByte: 1000 });
+        const hasResult = status === 'completed' || status === 'mixed';
+        (hasResult ? completed : unfinished).push(asset.id);
+        if (status) {
+          await ctx.newMetadata({
+            assetId: asset.id,
+            key: AssetMetadataKey.AiInterpretationV1,
+            value: {
+              schemaVersion: 1,
+              runs: {
+                oldModel: {
+                  status: hasResult || status === 'completed-without-result' ? 'completed' : status,
+                  ...(hasResult && { result: { title: 'An interpreted image' } }),
+                },
+                ...(status === 'mixed' && { newModel: { status: 'failed' } }),
+              },
+            },
+          });
+        }
+      }
+
+      const { user: otherUser } = await ctx.newUser();
+      for (const options of [
+        { ownerId: otherUser.id, type: AssetType.Image },
+        { ownerId: user.id, type: AssetType.Video },
+        { ownerId: user.id, type: AssetType.Image, deletedAt: new Date() },
+        { ownerId: user.id, type: AssetType.Image, visibility: AssetVisibility.Archive },
+        { ownerId: user.id, type: AssetType.Image, visibility: AssetVisibility.Locked },
+      ]) {
+        const { asset } = await ctx.newAsset(options);
+        await ctx.newExif({ assetId: asset.id, fileSizeInByte: 1000 });
+      }
+
+      const found: string[] = [];
+      for (let page = 1; page <= 3; page++) {
+        const result = await sut.searchMetadata(auth, {
+          type: AssetType.Image,
+          visibility: AssetVisibility.Timeline,
+          hasAiInterpretation: false,
+          withStacked: true,
+          size: 2,
+          page,
+        });
+        found.push(...result.assets.items.map(({ id }) => id));
+        expect(result.assets.nextPage).toBe(page < 3 ? String(page + 1) : null);
+      }
+      expect(found.toSorted()).toEqual(unfinished.toSorted());
+
+      const result = await sut.searchMetadata(auth, { hasAiInterpretation: true, size: 250 });
+      expect(result.assets.items.map(({ id }) => id).toSorted()).toEqual(completed.toSorted());
+
+      const structured = await sut.searchMetadata(auth, {
+        filter: {
+          type: { eq: AssetType.Image },
+          visibility: { eq: AssetVisibility.Timeline },
+          hasAiInterpretation: { eq: false },
+          trashedAt: { eq: null },
+        },
+        withStacked: true,
+        size: 250,
+      });
+      expect(structured.assets.items.map(({ id }) => id).toSorted()).toEqual(unfinished.toSorted());
+    });
   });
 
   describe('searchStatistics', () => {

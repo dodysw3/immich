@@ -20,6 +20,12 @@
       <SearchButton checked active={filters.isNotInAlbum} onclick={() => (filters.isNotInAlbum = !filters.isNotInAlbum)}
         >{$t('search_filter_display_option_not_in_album')}</SearchButton
       >
+      <SearchButton
+        checked
+        active={filters.withoutAiInterpretation}
+        onclick={() => (filters.withoutAiInterpretation = !filters.withoutAiInterpretation)}
+        >{$t('without_ai_interpretation')}</SearchButton
+      >
     </div>
   </fieldset>
 </div>

@@ -34,6 +34,7 @@ import {
 } from 'src/dtos/search.dto.js';
 import {
   AssetFileType,
+  AssetMetadataKey,
   AssetOrder,
   AssetOrderBy,
   AssetVisibility,
@@ -450,6 +451,12 @@ export function searchAssetBuilderLegacy(kysely: Kysely<DB>, options: AssetSearc
     .$if(options.tagIds === null, (qb) =>
       qb.where((eb) => eb.not(eb.exists((eb) => eb.selectFrom('tag_asset').whereRef('assetId', '=', 'asset.id')))),
     )
+    .$if(options.hasAiInterpretation !== undefined, (qb) =>
+      qb.where((eb) => {
+        const completed = eb.exists(completedAiInterpretations(eb));
+        return options.hasAiInterpretation ? completed : eb.not(completed);
+      }),
+    )
     .$if(!!options.personIds && options.personIds.length > 0, (qb) => hasPeople(qb, options.personIds!))
     .$if(!!options.createdBefore, (qb) => qb.where('asset.createdAt', '<=', options.createdBefore!))
     .$if(!!options.createdAfter, (qb) => qb.where('asset.createdAt', '>=', options.createdAfter!))
@@ -724,6 +731,15 @@ function checksumPredicates(eb: AssetExpressionBuilder, filter: StringFilter = {
   });
 }
 
+// Metadata is created at claim time, before interpretation finishes. Only a
+// completed run with a result counts, regardless of model or prompt version.
+const completedAiInterpretations = (eb: AssetExpressionBuilder) =>
+  eb
+    .selectFrom('asset_metadata')
+    .whereRef('asset_metadata.assetId', '=', 'asset.id')
+    .where('asset_metadata.key', '=', AssetMetadataKey.AiInterpretationV1)
+    .where(sql<SqlBool>`asset_metadata.value @? '$.runs.* ? (@.status == "completed" && @.result.type() == "object")'`);
+
 const encodedVideoFiles = (eb: AssetExpressionBuilder) =>
   eb
     .selectFrom('asset_file')
@@ -755,6 +771,7 @@ function branchPredicates(eb: AssetExpressionBuilder, branch: SearchFilterBranch
     ...(branch.isOffline ? [eb('asset.isOffline', '=', branch.isOffline.eq)] : []),
     ...(branch.isMotion ? [eb('asset.livePhotoVideoId', branch.isMotion.eq ? 'is not' : 'is', null)] : []),
     ...existsPredicates(eb, branch.isEncoded, () => encodedVideoFiles(eb)),
+    ...existsPredicates(eb, branch.hasAiInterpretation, () => completedAiInterpretations(eb)),
     ...existsPredicates(eb, branch.hasAlbums, () => albumAssets(eb)),
     ...existsPredicates(eb, branch.hasPeople, () => visibleFaces(eb)),
     ...existsPredicates(eb, branch.hasTags, () => tagAssets(eb)),

@@ -2,18 +2,25 @@
   import AppDownloadModal from '$lib/modals/AppDownloadModal.svelte';
   import ObtainiumConfigModal from '$lib/modals/ObtainiumConfigModal.svelte';
   import { Route } from '$lib/route';
+  import { AssetTypeEnum } from '@immich/sdk';
   import { Icon, modalManager, Text } from '@immich/ui';
   import {
     mdiCellphoneArrowDownVariant,
     mdiContentDuplicate,
     mdiCrosshairsGps,
     mdiImageSizeSelectLarge,
+    mdiImageSearchOutline,
     mdiLinkEdit,
     mdiStateMachine,
   } from '@mdi/js';
   import { t } from 'svelte-i18n';
 
   const links = [
+    {
+      href: Route.search({ type: AssetTypeEnum.Image, hasAiInterpretation: false, withStacked: true }),
+      icon: mdiImageSearchOutline,
+      label: $t('review_images_without_ai_interpretation'),
+    },
     { href: Route.duplicatesUtility(), icon: mdiContentDuplicate, label: $t('review_duplicates') },
     { href: Route.largeFileUtility(), icon: mdiImageSizeSelectLarge, label: $t('review_large_files') },
     { href: Route.geolocationUtility(), icon: mdiCrosshairsGps, label: $t('manage_geolocation') },
