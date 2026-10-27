@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 from immich_model.constants import FACE_DETECTION_SIZE as DET_SIZE
 from numpy.typing import NDArray
+from PIL import ExifTags, ImageOps
 from PIL import Image as PilImage
 from PIL.Image import Image
 
@@ -79,6 +80,9 @@ class FaceDetector(InferenceModel[FaceDetectionOptions]):
         gpu_fallback = False
         session = self.session
 
+        if options.verify_boxes is not None:
+            return self._verify_stored(image, options.verify_boxes, options.verify_image_size)
+
         if options.tiled:
             scores, boxes, kps = self._detect_tiled(
                 image, options.min_score, options.tile_size, options.tile_overlap, options.max_tiles
@@ -133,6 +137,56 @@ class FaceDetector(InferenceModel[FaceDetectionOptions]):
             if near.any():
                 verify_scores[i] = scores[near].max()
         return verify_scores
+
+    def _verify_stored(
+        self,
+        image: Image,
+        stored: tuple[tuple[float, float, float, float], ...],
+        stored_size: tuple[int, int] | None,
+    ) -> FaceDetectionOutput:
+        """Re-score faces stored earlier, without detecting.
+
+        Stored boxes are in the upright original, which PIL only yields after applying EXIF
+        orientation. The decoded image is used as is or transposed, whichever has the stored
+        aspect ratio; when both do (a 180° turn, or a square photo) both are scored and the
+        better fit wins. `verifyScores` is left out when no orientation fits, or when nearly
+        every box finds no face at its centre, which means the boxes do not line up with the
+        image; the caller then must not act on the faces.
+        """
+        boxes = np.array(stored, dtype=np.float32).reshape(-1, 4)
+        output: FaceDetectionOutput = {
+            "boxes": boxes,
+            "scores": np.zeros(boxes.shape[0], dtype=np.float32),
+            "landmarks": np.zeros((boxes.shape[0], 5, 2), dtype=np.float32),
+            "gpuFallback": False,
+        }
+        if boxes.shape[0] == 0 or stored_size is None:
+            return output
+
+        width, height = stored_size
+        orientation = image.getexif().get(ExifTags.Base.Orientation, 1)
+        candidates = [image] if orientation in (None, 1) else [ImageOps.exif_transpose(image), image]
+        fitting = [c for c in candidates if abs(c.width / c.height - width / height) <= 0.02 * width / height]
+        if not fitting:
+            log.warning("Stored face boxes fit no orientation of the %dx%d image", image.width, image.height)
+            return output
+
+        best: NDArray[np.float32] | None = None
+        for candidate in fitting:
+            scale = np.array([candidate.width / width, candidate.height / height] * 2, dtype=np.float32)
+            scores = self._verify_scores(candidate, boxes * scale, self.session)
+            if best is None or scores.sum() > best.sum():
+                best = scores
+        assert best is not None
+
+        if boxes.shape[0] >= 3 and (best == 0).mean() >= 0.8:
+            log.warning(
+                "Stored face boxes do not line up with the image: %d of %d find no face", (best == 0).sum(), len(best)
+            )
+            return output
+
+        output["verifyScores"] = best
+        return output
 
     def _detect_tiled(
         self,

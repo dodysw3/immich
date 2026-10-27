@@ -474,6 +474,7 @@ export const IntegrityReportSchema = z
 
 export enum ManualJobName {
   PersonCleanup = 'person-cleanup',
+  FaceRecheck = 'face-recheck',
   TagCleanup = 'tag-cleanup',
   UserCleanup = 'user-cleanup',
   MemoryCleanup = 'memory-cleanup',
@@ -896,6 +897,8 @@ export enum JobName {
   AssetVideoFaceScan = 'AssetVideoFaceScan',
   AssetDetectFacesQueueAll = 'AssetDetectFacesQueueAll',
   AssetDetectFaces = 'AssetDetectFaces',
+  FaceRecheckQueueAll = 'FaceRecheckQueueAll',
+  FaceRecheck = 'FaceRecheck',
   AssetDetectDuplicatesQueueAll = 'AssetDetectDuplicatesQueueAll',
   AssetDetectDuplicates = 'AssetDetectDuplicates',
   AssetEditThumbnailGeneration = 'AssetEditThumbnailGeneration',

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Insertable } from 'kysely';
 import { isUndefined, omitBy } from 'lodash-es';
+import type { SystemConfig } from 'src/dtos/config.dto.js';
 import type { JobItem, JobOf } from 'src/types.js';
 import { Chunked, OnJob } from 'src/decorators.js';
 import { BulkIdErrorReason, BulkIdResponseDto } from 'src/dtos/asset-ids.response.dto.js';
@@ -453,6 +454,120 @@ export class PersonService extends BaseService {
     }
 
     return JobStatus.Success;
+  }
+
+  // Re-checks faces already stored, in place: unlike a detection refresh, a face is never removed
+  // just because detection would not find it again today (a different preview, tiling trigger
+  // or model since it was stored), only when its own crop fails the re-check.
+  @OnJob({ name: JobName.FaceRecheckQueueAll, queue: QueueName.FaceDetection })
+  async handleQueueFaceRecheck(): Promise<JobStatus> {
+    const { machineLearning } = await this.getConfig({ withCache: false });
+    if (!isFacialRecognitionEnabled(machineLearning) || machineLearning.facialRecognition.minVerifyScore <= 0) {
+      return JobStatus.Skipped;
+    }
+
+    for await (const rows of batched(this.personRepository.streamAssetIdsForFaceRecheck())) {
+      await this.jobRepository.queueAll(
+        rows.map(({ assetId }) => ({ name: JobName.FaceRecheck, data: { id: assetId } })),
+      );
+    }
+
+    return JobStatus.Success;
+  }
+
+  @OnJob({ name: JobName.FaceRecheck, queue: QueueName.FaceDetection })
+  async handleFaceRecheck({ id }: JobOf<JobName.FaceRecheck>): Promise<JobStatus> {
+    const { machineLearning } = await this.getConfig({ withCache: true });
+    const minVerifyScore = machineLearning.facialRecognition.minVerifyScore;
+    if (!isFacialRecognitionEnabled(machineLearning) || minVerifyScore <= 0) {
+      return JobStatus.Skipped;
+    }
+
+    const faces = await this.personRepository.getFacesForRecheck(id);
+    if (faces.length === 0) {
+      return JobStatus.Skipped;
+    }
+
+    // all faces of one asset share its storage space; a mismatch means rows stored at different
+    // rescalings, and the boxes are then re-checked in the first one's
+    const [{ originalPath, imageWidth: width, imageHeight: height }] = faces;
+    const boxes = faces.map((face) => ({
+      x1: (face.boundingBoxX1 * width) / (face.imageWidth || width),
+      y1: (face.boundingBoxY1 * height) / (face.imageHeight || height),
+      x2: (face.boundingBoxX2 * width) / (face.imageWidth || width),
+      y2: (face.boundingBoxY2 * height) / (face.imageHeight || height),
+    }));
+    const scores = await this.machineLearningRepository.verifyStoredFaces(
+      originalPath,
+      machineLearning.facialRecognition,
+      { boxes, width, height },
+    );
+    if (!scores) {
+      this.logger.warn(`Could not line up the stored faces of asset ${id} with its original; left unchanged`);
+      return JobStatus.Skipped;
+    }
+
+    // An old stored box can sit off its face, so a real face may fail on it. A face failing on its
+    // stored box keeps the score of a fresh detection that passes the re-check where it is, and is
+    // only removed when no such detection overlaps it.
+    const failingIndexes = faces.flatMap((_, i) => (scores[i] < minVerifyScore ? [i] : []));
+    if (failingIndexes.length > 0) {
+      const found = await this.detectPassingFaces(id, machineLearning.facialRecognition);
+      for (const i of failingIndexes) {
+        const match = found.find((fresh) => this.boundingBoxIou(boxes[i], this.toBoxIn(fresh, width, height)) > 0.3);
+        if (match) {
+          scores[i] = match.verifyScore;
+        }
+      }
+    }
+
+    await this.personRepository.refreshFaces(
+      [],
+      [],
+      [],
+      faces.map((face, i) => ({ faceId: face.id, verifyScore: scores[i] })),
+    );
+    const failing = faces.filter((_, i) => scores[i] < minVerifyScore).map((face) => face.id);
+    const deleted = await this.personRepository.deleteFacesFailingRecheck(failing);
+    if (failing.length > 0) {
+      this.logger.log(
+        `Removed ${deleted} of ${faces.length} stored faces that failed the re-check (score < ${minVerifyScore}) in asset ${id}` +
+          (deleted < failing.length ? `; kept ${failing.length - deleted} as a named person's last faces` : ''),
+      );
+    }
+
+    return JobStatus.Success;
+  }
+
+  /** Fresh preview-pass detections that pass the re-check, as normalized boxes in storage space. */
+  private async detectPassingFaces(
+    id: string,
+    facialRecognition: SystemConfig['machineLearning']['facialRecognition'],
+  ): Promise<{ x1: number; y1: number; x2: number; y2: number; verifyScore: number }[]> {
+    const asset = await this.assetJobRepository.getForDetectFacesJob(id);
+    if (!asset?.previewFile) {
+      return [];
+    }
+    const detected = await this.machineLearningRepository.detectFaces(asset.previewFile.path, {
+      ...facialRecognition,
+      verify: true,
+    });
+    const { faces, dimensions } = this.toStorageSpace(
+      detected.faces.filter(({ verifyScore }) => (verifyScore ?? 0) >= facialRecognition.minVerifyScore),
+      { imageWidth: detected.imageWidth, imageHeight: detected.imageHeight },
+      asset,
+    );
+    return faces.map(({ boundingBox, verifyScore }) => ({
+      x1: boundingBox.x1 / dimensions.width,
+      y1: boundingBox.y1 / dimensions.height,
+      x2: boundingBox.x2 / dimensions.width,
+      y2: boundingBox.y2 / dimensions.height,
+      verifyScore: verifyScore ?? 0,
+    }));
+  }
+
+  private toBoxIn(box: { x1: number; y1: number; x2: number; y2: number }, width: number, height: number) {
+    return { x1: box.x1 * width, y1: box.y1 * height, x2: box.x2 * width, y2: box.y2 * height };
   }
 
   @OnJob({ name: JobName.AssetDetectFaces, queue: QueueName.FaceDetection })

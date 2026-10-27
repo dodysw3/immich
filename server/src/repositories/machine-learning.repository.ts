@@ -83,7 +83,17 @@ export type FacialRecognitionResponse = { [ModelTask.FACIAL_RECOGNITION]: Face[]
     gpuFallback: boolean;
   };
 export type DetectedFaces = { faces: Face[] } & VisualResponse;
-export type MachineLearningRequest = ClipVisualRequest | ClipTextualRequest | FacialRecognitionRequest | OcrRequest;
+// detection only: re-score stored boxes instead of detecting (see verifyStoredFaces)
+export type FaceVerifyRequest = {
+  [ModelTask.FACIAL_RECOGNITION]: {
+    [ModelType.DETECTION]: ModelOptions & {
+      options: { minScore: number; verifyBoxes: number[][]; verifyImageSize: [number, number] };
+    };
+  };
+};
+
+export type MachineLearningRequest =
+  ClipVisualRequest | ClipTextualRequest | FacialRecognitionRequest | FaceVerifyRequest | OcrRequest;
 export type TextEncodingOptions = ModelOptions & { language?: string };
 export type UnlimitedOcrOptions = { url: string; apiKey?: string; timeoutMs: number };
 
@@ -234,6 +244,36 @@ export class MachineLearningRepository {
       imageWidth: response.imageWidth,
       faces: response[ModelTask.FACIAL_RECOGNITION],
     };
+  }
+
+  /**
+   * Re-check stored faces without detecting: one score per box, or undefined when the ML
+   * service could not line the boxes up with the image (or predates the option).
+   * Boxes are in the pixel space of the upright original, `width` x `height`.
+   */
+  async verifyStoredFaces(
+    imagePath: string,
+    { modelName, minScore }: FaceDetectionOptions,
+    { boxes, width, height }: { boxes: BoundingBox[]; width: number; height: number },
+  ): Promise<number[] | undefined> {
+    const request: FaceVerifyRequest = {
+      [ModelTask.FACIAL_RECOGNITION]: {
+        [ModelType.DETECTION]: {
+          modelName,
+          options: {
+            minScore,
+            verifyBoxes: boxes.map(({ x1, y1, x2, y2 }) => [x1, y1, x2, y2]),
+            verifyImageSize: [width, height],
+          },
+        },
+      },
+    };
+    const response = await this.predict<{ [ModelTask.FACIAL_RECOGNITION]: { verifyScores?: number[] } }>(
+      { imagePath },
+      request,
+    );
+    const scores = response[ModelTask.FACIAL_RECOGNITION]?.verifyScores;
+    return scores?.length === boxes.length ? scores : undefined;
   }
 
   async encodeImage(imagePath: string, { modelName }: MachineLearningConfig['clip']) {

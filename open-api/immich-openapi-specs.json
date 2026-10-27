@@ -25091,6 +25091,7 @@
         "description": "Manual job name",
         "enum": [
           "person-cleanup",
+          "face-recheck",
           "tag-cleanup",
           "user-cleanup",
           "memory-cleanup",

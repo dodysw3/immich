@@ -148,6 +148,10 @@ class FaceDetectionOptions(Options):
     max_tiles: Annotated[int, Field(alias="maxTiles")] = 500
     # re-score every detected face on a standard crop around it (see FaceDetector._verify_scores)
     verify: bool = False
+    # skip detection and only re-score these stored boxes (x1, y1, x2, y2), given in the pixel
+    # space of an upright image of verify_image_size (width, height)
+    verify_boxes: Annotated[tuple[tuple[float, float, float, float], ...] | None, Field(alias="verifyBoxes")] = None
+    verify_image_size: Annotated[tuple[int, int] | None, Field(alias="verifyImageSize")] = None
 
 
 @dataclass(frozen=True)

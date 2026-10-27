@@ -30,6 +30,17 @@ import { ServiceMocks, makeStream, newTestService } from 'test/utils.js';
 const PERSON_READ_ROLES = [PersonUserRole.Read, PersonUserRole.Write, PersonUserRole.Admin];
 const PERSON_WRITE_ROLES = [PersonUserRole.Write, PersonUserRole.Admin];
 
+const storedFace = (id: string, x1: number) => ({
+  originalPath: '/photos/a.jpg',
+  id,
+  imageWidth: 4000,
+  imageHeight: 3000,
+  boundingBoxX1: x1,
+  boundingBoxY1: 100,
+  boundingBoxX2: x1 + 100,
+  boundingBoxY2: 200,
+});
+
 const assetWithPreview = (exifImageWidth: number) =>
   AssetFactory.from()
     .file({ type: AssetFileType.Preview })
@@ -1097,6 +1108,96 @@ describe(PersonService.name, () => {
       expect(mocks.storage.unlink).toHaveBeenCalledWith(person.thumbnailPath);
       expect(mocks.database.vacuum).toHaveBeenCalledWith({ analyze: true, table: 'asset_face' });
       expect(mocks.database.vacuum).toHaveBeenCalledWith({ analyze: true, table: 'person' });
+    });
+  });
+
+  describe('handleFaceRecheck', () => {
+    it('should save every score and delete the faces below minVerifyScore', async () => {
+      const [kept, failing] = [newUuid(), newUuid()];
+      mocks.person.getFacesForRecheck.mockResolvedValue([storedFace(kept, 0), storedFace(failing, 500)]);
+      mocks.machineLearning.verifyStoredFaces.mockResolvedValue([0.8, 0.2]);
+      // no preview to detect on again, so nothing can rescue the failing face
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(void 0);
+      mocks.person.deleteFacesFailingRecheck.mockResolvedValue(1);
+
+      await expect(sut.handleFaceRecheck({ id: 'asset-1' })).resolves.toBe(JobStatus.Success);
+
+      expect(mocks.machineLearning.verifyStoredFaces).toHaveBeenCalledWith(
+        '/photos/a.jpg',
+        expect.objectContaining({ modelName: 'buffalo_l' }),
+        {
+          boxes: [
+            { x1: 0, y1: 100, x2: 100, y2: 200 },
+            { x1: 500, y1: 100, x2: 600, y2: 200 },
+          ],
+          width: 4000,
+          height: 3000,
+        },
+      );
+      expect(mocks.person.refreshFaces).toHaveBeenCalledWith(
+        [],
+        [],
+        [],
+        [
+          { faceId: kept, verifyScore: 0.8 },
+          { faceId: failing, verifyScore: 0.2 },
+        ],
+      );
+      expect(mocks.person.deleteFacesFailingRecheck).toHaveBeenCalledWith([failing]);
+    });
+
+    it('should keep a face failing on its stored box when a passing fresh detection overlaps it', async () => {
+      const asset = assetWithPreview(4000);
+      const [rescued, gone] = [newUuid(), newUuid()];
+      mocks.person.getFacesForRecheck.mockResolvedValue([storedFace(rescued, 500), storedFace(gone, 2000)]);
+      mocks.machineLearning.verifyStoredFaces.mockResolvedValue([0.1, 0.1]);
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
+      // the preview is 400x300: a box at 52-62 overlaps the stored 500-600 face; the 0.4 one fails
+      mocks.machineLearning.detectFaces.mockResolvedValue({
+        imageWidth: 400,
+        imageHeight: 300,
+        gpuFallback: false,
+        faces: [
+          { boundingBox: { x1: 52, y1: 10, x2: 62, y2: 20 }, embedding: '[1]', score: 0.9, verifyScore: 0.7 },
+          { boundingBox: { x1: 200, y1: 10, x2: 210, y2: 20 }, embedding: '[2]', score: 0.9, verifyScore: 0.4 },
+        ],
+      });
+      mocks.person.deleteFacesFailingRecheck.mockResolvedValue(1);
+
+      await sut.handleFaceRecheck({ id: asset.id });
+
+      expect(mocks.machineLearning.detectFaces).toHaveBeenCalledWith(
+        asset.files[0].path,
+        expect.objectContaining({ verify: true }),
+      );
+      expect(mocks.person.refreshFaces).toHaveBeenCalledWith(
+        [],
+        [],
+        [],
+        [
+          { faceId: rescued, verifyScore: 0.7 },
+          { faceId: gone, verifyScore: 0.1 },
+        ],
+      );
+      expect(mocks.person.deleteFacesFailingRecheck).toHaveBeenCalledWith([gone]);
+    });
+
+    it('should change nothing when the ML service cannot line the boxes up', async () => {
+      mocks.person.getFacesForRecheck.mockResolvedValue([storedFace(newUuid(), 0)]);
+      mocks.machineLearning.verifyStoredFaces.mockResolvedValue(undefined);
+
+      await expect(sut.handleFaceRecheck({ id: 'asset-1' })).resolves.toBe(JobStatus.Skipped);
+
+      expect(mocks.person.refreshFaces).not.toHaveBeenCalled();
+      expect(mocks.person.deleteFacesFailingRecheck).not.toHaveBeenCalled();
+    });
+
+    it('should skip an asset with no faces awaiting the re-check', async () => {
+      mocks.person.getFacesForRecheck.mockResolvedValue([]);
+
+      await expect(sut.handleFaceRecheck({ id: 'asset-1' })).resolves.toBe(JobStatus.Skipped);
+
+      expect(mocks.machineLearning.verifyStoredFaces).not.toHaveBeenCalled();
     });
   });
 

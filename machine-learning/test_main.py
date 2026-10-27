@@ -1506,6 +1506,59 @@ class TestFaceRecognition:
         # the first face re-detects at the crop centre; the second only finds something off-centre
         assert np.allclose(faces["verifyScores"], [0.65, 0.0], atol=1e-3)
 
+    def test_verify_stored_boxes_scales_them_into_the_image(
+        self, stub_session: Callable[..., mock.Mock], mocker: MockerFixture
+    ) -> None:
+        mocker.patch.object(FaceDetector, "load")
+        face_detector = FaceDetector("buffalo_s", cache_dir="test_cache")
+        session = stub_session((1, 3, 640, 640), outputs=make_scrfd_heads([(39, 39, 0.65)]))
+        face_detector.session = session
+        crop_spy = mocker.spy(face_detector, "_verify_scores")
+
+        # boxes stored for a 1280x960 original, checked on a 640x480 decode of it
+        faces = face_detector.predict(
+            Image.new("RGB", (640, 480)),
+            options=FaceDetectionOptions(verify_boxes=((200, 200, 400, 400),), verify_image_size=(1280, 960)),
+        )
+
+        assert np.allclose(faces["verifyScores"], [0.65], atol=1e-3)
+        assert crop_spy.call_args.args[1].tolist() == [[100, 100, 200, 200]]
+        session.run.assert_called_once()  # no detection pass, one re-check crop
+
+    @pytest.mark.parametrize("size", [None, (300, 900)])  # no size given; an aspect no orientation has
+    def test_verify_stored_boxes_needs_a_fitting_image_size(
+        self, stub_session: Callable[..., mock.Mock], mocker: MockerFixture, size: tuple[int, int] | None
+    ) -> None:
+        mocker.patch.object(FaceDetector, "load")
+        face_detector = FaceDetector("buffalo_s", cache_dir="test_cache")
+        session = stub_session((1, 3, 640, 640), outputs=make_scrfd_heads([(39, 39, 0.65)]))
+        face_detector.session = session
+
+        faces = face_detector.predict(
+            Image.new("RGB", (640, 480)),
+            options=FaceDetectionOptions(verify_boxes=((200, 200, 400, 400),), verify_image_size=size),
+        )
+
+        assert "verifyScores" not in faces
+        session.run.assert_not_called()
+
+    def test_verify_stored_boxes_refuses_boxes_that_do_not_line_up(
+        self, stub_session: Callable[..., mock.Mock], mocker: MockerFixture
+    ) -> None:
+        mocker.patch.object(FaceDetector, "load")
+        face_detector = FaceDetector("buffalo_s", cache_dir="test_cache")
+        # every crop finds its face far from the centre
+        session = stub_session((1, 3, 640, 640), outputs=make_scrfd_heads([(10, 10, 0.9)]))
+        face_detector.session = session
+
+        boxes = ((0, 0, 50, 50), (100, 100, 150, 150), (200, 200, 250, 250))
+        faces = face_detector.predict(
+            Image.new("RGB", (640, 480)),
+            options=FaceDetectionOptions(verify_boxes=boxes, verify_image_size=(640, 480)),
+        )
+
+        assert "verifyScores" not in faces
+
     def test_detection_without_verify_runs_once(
         self, stub_session: Callable[..., mock.Mock], mocker: MockerFixture
     ) -> None:
@@ -1813,15 +1866,15 @@ class TestFaceRecognition:
         face_detector.session = session
 
         # 1280x640 with tile 640, overlap 0.25 (stride 480) -> x positions [0, 480, 640]
-        faces = face_detector.predict(Image.new("RGB", (1280, 640)), options=FaceDetectionOptions(min_score=0.7, tiled=True))
+        faces = face_detector.predict(
+            Image.new("RGB", (1280, 640)), options=FaceDetectionOptions(min_score=0.7, tiled=True)
+        )
 
         assert session.run.call_count == 3
         assert faces["boxes"].shape[0] == 3
         assert faces["gpuFallback"] is False
 
-    def test_tiled_options_are_per_request(
-        self, stub_session: Callable[..., mock.Mock], mocker: MockerFixture
-    ) -> None:
+    def test_tiled_options_are_per_request(self, stub_session: Callable[..., mock.Mock], mocker: MockerFixture) -> None:
         mocker.patch.object(FaceDetector, "load")
         face_detector = FaceDetector("buffalo_s", cache_dir="test_cache")
 
@@ -1830,7 +1883,9 @@ class TestFaceRecognition:
         face_detector.session = session
 
         # tile 640, overlap 0.5 (stride 320) -> x positions [0, 320, 640]
-        face_detector.predict(Image.new("RGB", (1280, 640)), options=FaceDetectionOptions(min_score=0.7, tiled=True, tile_overlap=0.5))
+        face_detector.predict(
+            Image.new("RGB", (1280, 640)), options=FaceDetectionOptions(min_score=0.7, tiled=True, tile_overlap=0.5)
+        )
         assert session.run.call_count == 3
 
         # the request's tiling options must not leak into a request that omits them

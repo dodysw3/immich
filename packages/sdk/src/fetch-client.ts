@@ -9045,6 +9045,7 @@ export enum SourceType {
 }
 export enum ManualJobName {
     PersonCleanup = "person-cleanup",
+    FaceRecheck = "face-recheck",
     TagCleanup = "tag-cleanup",
     UserCleanup = "user-cleanup",
     MemoryCleanup = "memory-cleanup",

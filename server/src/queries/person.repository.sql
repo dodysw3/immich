@@ -114,6 +114,85 @@ where
     )
   )
 
+-- PersonRepository.streamAssetIdsForFaceRecheck
+select distinct
+  "asset_face"."assetId"
+from
+  "asset_face"
+  inner join "asset" on "asset"."id" = "asset_face"."assetId"
+where
+  "asset_face"."sourceType" = $1
+  and "asset_face"."frameTimeMs" is null
+  and "asset_face"."deletedAt" is null
+  and "asset"."deletedAt" is null
+  and "asset"."type" = $2
+  and "asset"."originalPath" ~* '\.(jpe?g|heic|heif|png|webp)$'
+  and not exists (
+    select
+      *
+    from
+      "asset_face_quality"
+    where
+      "asset_face_quality"."faceId" = "asset_face"."id"
+  )
+
+-- PersonRepository.getFacesForRecheck
+select
+  "asset"."originalPath",
+  "asset_face"."id",
+  "asset_face"."imageWidth",
+  "asset_face"."imageHeight",
+  "asset_face"."boundingBoxX1",
+  "asset_face"."boundingBoxY1",
+  "asset_face"."boundingBoxX2",
+  "asset_face"."boundingBoxY2"
+from
+  "asset_face"
+  inner join "asset" on "asset"."id" = "asset_face"."assetId"
+where
+  "asset_face"."sourceType" = $1
+  and "asset_face"."frameTimeMs" is null
+  and "asset_face"."deletedAt" is null
+  and "asset"."deletedAt" is null
+  and "asset"."type" = $2
+  and "asset"."originalPath" ~* '\.(jpe?g|heic|heif|png|webp)$'
+  and not exists (
+    select
+      *
+    from
+      "asset_face_quality"
+    where
+      "asset_face_quality"."faceId" = "asset_face"."id"
+  )
+  and "asset_face"."assetId" = $3
+
+-- PersonRepository.deleteFacesFailingRecheck
+delete from "asset_face"
+where
+  "asset_face"."id" = any ($1::uuid[])
+  and (
+    "asset_face"."personGroupId" is null
+    or not exists (
+      select
+        *
+      from
+        "person"
+      where
+        "person"."personGroupId" = "asset_face"."personGroupId"
+        and "person"."name" != $2
+    )
+    or exists (
+      select
+        *
+      from
+        "asset_face" as "survivor"
+      where
+        "survivor"."personGroupId" = "asset_face"."personGroupId"
+        and "survivor"."deletedAt" is null
+        and not "survivor"."id" = any ($3::uuid[])
+    )
+  )
+
 -- PersonRepository.getAllFaces
 select
   "asset_face".*

@@ -13,7 +13,7 @@ import { InjectKysely } from 'nestjs-kysely';
 import { AssetFace, PersonUser, columns } from 'src/database.js';
 import { Chunked, ChunkedArray, DummyValue, GenerateSql } from 'src/decorators.js';
 import { PersonUserRole } from 'src/dtos/person.dto.js';
-import { AssetFileType, AssetVisibility, SourceType, UserMetadataKey } from 'src/enum.js';
+import { AssetFileType, AssetType, AssetVisibility, SourceType, UserMetadataKey } from 'src/enum.js';
 import { type YearMonthDay } from 'src/repositories/asset.repository.js';
 import { DB } from 'src/schema/index.js';
 import { AssetFaceQualityTable } from 'src/schema/tables/asset-face-quality.table.js';
@@ -374,6 +374,86 @@ export class PersonRepository {
                   ]),
                 ]),
               )
+              .selectAll(),
+          ),
+        ]),
+      )
+      .executeTakeFirst();
+
+    return Number(result.numDeletedRows ?? 0);
+  }
+
+  // the in-place re-check reads the original with PIL, so it covers what PIL decodes; RAW files
+  // and videos keep their faces until they are re-checked some other way
+  private facesAwaitingRecheck() {
+    return this.db
+      .selectFrom('asset_face')
+      .innerJoin('asset', 'asset.id', 'asset_face.assetId')
+      .where('asset_face.sourceType', '=', SourceType.MachineLearning)
+      .where('asset_face.frameTimeMs', 'is', null)
+      .where('asset_face.deletedAt', 'is', null)
+      .where('asset.deletedAt', 'is', null)
+      .where('asset.type', '=', AssetType.Image)
+      .where(sql<SqlBool>`"asset"."originalPath" ~* '\\.(jpe?g|heic|heif|png|webp)$'`)
+      .where((eb) =>
+        eb.not(
+          eb.exists(
+            eb.selectFrom('asset_face_quality').whereRef('asset_face_quality.faceId', '=', 'asset_face.id').selectAll(),
+          ),
+        ),
+      );
+  }
+
+  @GenerateSql({ params: [], stream: true })
+  streamAssetIdsForFaceRecheck() {
+    return this.facesAwaitingRecheck().select('asset_face.assetId').distinct().stream();
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID] })
+  getFacesForRecheck(assetId: string) {
+    return this.facesAwaitingRecheck()
+      .where('asset_face.assetId', '=', assetId)
+      .select([
+        'asset.originalPath',
+        'asset_face.id',
+        'asset_face.imageWidth',
+        'asset_face.imageHeight',
+        'asset_face.boundingBoxX1',
+        'asset_face.boundingBoxY1',
+        'asset_face.boundingBoxX2',
+        'asset_face.boundingBoxY2',
+      ])
+      .execute();
+  }
+
+  /** Deletes faces that failed the re-check, except where that would empty a named person. */
+  @GenerateSql({ params: [[DummyValue.UUID]] })
+  async deleteFacesFailingRecheck(faceIds: string[]): Promise<number> {
+    if (faceIds.length === 0) {
+      return 0;
+    }
+
+    const result = await this.db
+      .deleteFrom('asset_face')
+      .where('asset_face.id', '=', anyUuid(faceIds))
+      .where((eb) =>
+        eb.or([
+          eb('asset_face.personGroupId', 'is', null),
+          eb.not(
+            eb.exists(
+              eb
+                .selectFrom('person')
+                .whereRef('person.personGroupId', '=', 'asset_face.personGroupId')
+                .where('person.name', '!=', '')
+                .selectAll(),
+            ),
+          ),
+          eb.exists(
+            eb
+              .selectFrom('asset_face as survivor')
+              .whereRef('survivor.personGroupId', '=', 'asset_face.personGroupId')
+              .where('survivor.deletedAt', 'is', null)
+              .where((sb) => sb.not(sb('survivor.id', '=', anyUuid(faceIds))))
               .selectAll(),
           ),
         ]),

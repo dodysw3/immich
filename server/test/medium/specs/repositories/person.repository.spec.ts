@@ -296,6 +296,59 @@ describe(PersonRepository.name, () => {
     });
   });
 
+  describe('face re-check', () => {
+    it('should only offer unscored automatic photo faces of decodable originals', async () => {
+      const { ctx, sut } = setup(await getKyselyDB());
+      const { user } = await ctx.newUser();
+      const { asset: photo } = await ctx.newAsset({ ownerId: user.id });
+      const { asset: raw } = await ctx.newAsset({ ownerId: user.id, originalPath: '/photos/x.CR2' });
+      const awaiting = await ctx.newAssetFace({ assetId: photo.id });
+      const scored = await ctx.newAssetFace({ assetId: photo.id });
+      await sut.refreshFaces([], [], [], [{ faceId: scored.assetFace.id, verifyScore: 0.9 }]);
+      await ctx.newAssetFace({ assetId: photo.id, sourceType: SourceType.Manual });
+      await ctx.newAssetFace({ assetId: photo.id, frameTimeMs: 1000 });
+      await ctx.newAssetFace({ assetId: raw.id });
+
+      const faces = await sut.getFacesForRecheck(photo.id);
+      expect(faces.map(({ id }) => id)).toEqual([awaiting.assetFace.id]);
+      expect(faces[0].originalPath).toBe(photo.originalPath);
+      await expect(sut.getFacesForRecheck(raw.id)).resolves.toEqual([]);
+
+      const assetIds = [];
+      for await (const { assetId } of sut.streamAssetIdsForFaceRecheck()) {
+        assetIds.push(assetId);
+      }
+      expect(assetIds).toEqual([photo.id]);
+    });
+
+    it('should delete failing faces but never empty a named person', async () => {
+      const { ctx, sut } = setup(await getKyselyDB());
+      const { user } = await ctx.newUser();
+      const { asset } = await ctx.newAsset({ ownerId: user.id });
+
+      // every face of a named person fails: all are kept
+      const { result: allFail } = await ctx.newPerson({ ownerId: user.id, name: 'All fail' });
+      const keptA = await ctx.newAssetFace({ assetId: asset.id, personGroupId: allFail.personGroupId });
+      const keptB = await ctx.newAssetFace({ assetId: asset.id, personGroupId: allFail.personGroupId });
+      // a named person with a passing face loses the failing one
+      const { result: mixed } = await ctx.newPerson({ ownerId: user.id, name: 'Mixed' });
+      const mixedFail = await ctx.newAssetFace({ assetId: asset.id, personGroupId: mixed.personGroupId });
+      const mixedPass = await ctx.newAssetFace({ assetId: asset.id, personGroupId: mixed.personGroupId });
+      // unnamed and unassigned faces are not protected
+      const { result: unnamed } = await ctx.newPerson({ ownerId: user.id, name: '' });
+      const unnamedFail = await ctx.newAssetFace({ assetId: asset.id, personGroupId: unnamed.personGroupId });
+      const unassignedFail = await ctx.newAssetFace({ assetId: asset.id });
+
+      const failing = [keptA, keptB, mixedFail, unnamedFail, unassignedFail].map(({ assetFace }) => assetFace.id);
+      await expect(sut.deleteFacesFailingRecheck(failing)).resolves.toBe(3);
+
+      const remaining = await ctx.database.selectFrom('asset_face').select('asset_face.id').execute();
+      expect(remaining.map(({ id }) => id).toSorted()).toEqual(
+        [keptA, keptB, mixedPass].map(({ assetFace }) => assetFace.id).toSorted(),
+      );
+    });
+  });
+
   describe('deleteOrphanedClusterGroups', () => {
     it('should delete cluster groups that no longer belong to a user, along with their people', async () => {
       const { ctx, sut } = setup(await getKyselyDB());

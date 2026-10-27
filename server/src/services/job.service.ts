@@ -18,6 +18,10 @@ const asJobItem = (dto: JobCreateDto): JobItem => {
       return { name: JobName.PersonCleanup };
     }
 
+    case ManualJobName.FaceRecheck: {
+      return { name: JobName.FaceRecheckQueueAll };
+    }
+
     case ManualJobName.UserCleanup: {
       return { name: JobName.UserDeleteCheck };
     }
