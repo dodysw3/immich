@@ -73,6 +73,10 @@ import {
 
 const personKey = ({ ownerId, personGroupId }: PersonId) => `${ownerId}/${personGroupId}`;
 
+// Pass-1 floor in preview pixels: a smaller preview crop is too coarse to embed, whatever its
+// size in the original. Held at the value minFaceSize had before it moved to original pixels.
+const PREVIEW_MIN_FACE_SIZE = 22;
+
 @Injectable()
 export class PersonService extends BaseService {
   async getAll(auth: AuthDto, dto: PersonSearchDto): Promise<PeopleResponseDto> {
@@ -480,18 +484,28 @@ export class PersonService extends BaseService {
     const gpuFallbackTag = pass1.gpuFallback ? ' (GPU fallback)' : '';
     this.logger.debug(`Pass 1: ${pass1.faces.length} faces${gpuFallbackTag} detected in ${pass1Ms}ms for asset ${id}`);
 
-    // minFaceSize is measured in the pixel space of the image each pass actually ran on:
-    // pass 1 on the preview file, pass 2 on the tiled source file. It must be applied before
-    // pass-2 boxes are mapped into preview space, whose scale differs from the tiled source.
+    // minFaceSize is measured in original-image pixels, like the stored boxes the nightly cleanup
+    // sweeps by it. Pass 2 runs on the tiled source at (about) that resolution; pass 1 runs on
+    // the downscaled preview, so its faces are also held to a fixed floor in preview pixels,
+    // below which the preview crop is too small to embed. Both must be applied before pass-2
+    // boxes are mapped into preview space, whose scale differs from the tiled source.
     const minFaceSize = machineLearning.facialRecognition.minFaceSize;
+    const imageHeight = pass1.imageHeight;
+    const imageWidth = pass1.imageWidth;
+    const originalMaxDim = Math.max(asset.exifInfo?.exifImageWidth ?? 0, asset.exifInfo?.exifImageHeight ?? 0);
+    const previewScale = Math.max(1, originalMaxDim / Math.max(imageWidth, imageHeight));
     let faces = this.filterUnverifiedFaces(
-      this.filterSmallFaces(pass1.faces, minFaceSize, 'pass 1 (preview)', id),
+      this.filterSmallFaces(
+        this.filterSmallFaces(pass1.faces, PREVIEW_MIN_FACE_SIZE, 'pass 1 (preview)', id),
+        minFaceSize,
+        'pass 1 (preview, in original pixels)',
+        id,
+        previewScale,
+      ),
       minVerifyScore,
       'pass 1 (preview)',
       id,
     );
-    const imageHeight = pass1.imageHeight;
-    const imageWidth = pass1.imageWidth;
 
     const tiling = machineLearning.facialRecognition.tiling;
     if (tiling.enabled && this.shouldRunTiledPass(asset, pass1.faces.length, tiling.triggers)) {
@@ -829,9 +843,11 @@ export class PersonService extends BaseService {
     return null;
   }
 
-  private filterSmallFaces(faces: Face[], minFaceSize: number, pass: string, assetId: string): Face[] {
+  // scale converts a box's pixels into the pixel space minFaceSize is measured in
+  private filterSmallFaces(faces: Face[], minFaceSize: number, pass: string, assetId: string, scale = 1): Face[] {
     const filtered = faces.filter(
-      ({ boundingBox }) => Math.min(boundingBox.x2 - boundingBox.x1, boundingBox.y2 - boundingBox.y1) >= minFaceSize,
+      ({ boundingBox }) =>
+        Math.min(boundingBox.x2 - boundingBox.x1, boundingBox.y2 - boundingBox.y1) * scale >= minFaceSize,
     );
     const removed = faces.length - filtered.length;
     if (removed > 0) {

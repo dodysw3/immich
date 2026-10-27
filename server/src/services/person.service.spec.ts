@@ -30,6 +30,12 @@ import { ServiceMocks, makeStream, newTestService } from 'test/utils.js';
 const PERSON_READ_ROLES = [PersonUserRole.Read, PersonUserRole.Write, PersonUserRole.Admin];
 const PERSON_WRITE_ROLES = [PersonUserRole.Write, PersonUserRole.Admin];
 
+const assetWithPreview = (exifImageWidth: number) =>
+  AssetFactory.from()
+    .file({ type: AssetFileType.Preview })
+    .exif({ exifImageWidth, exifImageHeight: (exifImageWidth * 3) / 4 })
+    .build();
+
 describe(PersonService.name, () => {
   let sut: PersonService;
   let mocks: ServiceMocks;
@@ -1203,6 +1209,38 @@ describe(PersonService.name, () => {
           { faceId: expect.any(String), embedding: '[3, 4, 5, 6]' },
         ],
       );
+    });
+
+    it('should hold preview faces to minFaceSize in original pixels and to the preview floor', async () => {
+      const detect = {
+        imageHeight: 300,
+        imageWidth: 400,
+        gpuFallback: false,
+        faces: [
+          // 25 preview px: 250 original px on a 4000px photo, 25 on a 400px one
+          { boundingBox: { x1: 100, y1: 100, x2: 125, y2: 125 }, embedding: '[1, 2, 3, 4]', score: 0.9 },
+          // 20 preview px: under the preview floor whatever the original size
+          { boundingBox: { x1: 0, y1: 0, x2: 20, y2: 20 }, embedding: '[2, 3, 4, 5]', score: 0.9 },
+        ],
+      };
+      mocks.machineLearning.detectFaces.mockResolvedValue(detect);
+      mocks.person.refreshFaces.mockResolvedValue();
+
+      const large = assetWithPreview(4000);
+      mocks.crypto.randomUUID.mockReturnValueOnce(newUuid());
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(large));
+      await sut.handleDetectFaces({ id: large.id });
+      expect(mocks.person.refreshFaces).toHaveBeenLastCalledWith(
+        [expect.objectContaining({ assetId: large.id })],
+        [],
+        [{ faceId: expect.any(String), embedding: '[1, 2, 3, 4]' }],
+      );
+
+      const small = assetWithPreview(400);
+      mocks.person.refreshFaces.mockClear();
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(small));
+      await sut.handleDetectFaces({ id: small.id });
+      expect(mocks.person.refreshFaces).not.toHaveBeenCalled();
     });
 
     it('should drop faces that fail the re-check in both passes and store the score of kept faces', async () => {
