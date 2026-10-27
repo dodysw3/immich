@@ -4,6 +4,8 @@
   import { shortcuts, type ShortcutOptions } from '$lib/actions/shortcut';
   import type { Action } from '$lib/components/asset-viewer/actions/action';
   import type { AssetCursor } from '$lib/components/asset-viewer/AssetViewer.svelte';
+  import OnEvents from '$lib/components/OnEvents.svelte';
+  import AssetSelectionRotateShortcuts from '$lib/components/assets/AssetSelectionRotateShortcuts.svelte';
   import Thumbnail from '$lib/components/assets/thumbnail/Thumbnail.svelte';
   import { AssetAction } from '$lib/constants';
   import Portal from '$lib/elements/Portal.svelte';
@@ -70,6 +72,28 @@
   }: Props = $props();
 
   const resolvedAssets = $derived(pageMap ? getLoadedAssets(pageMap) : assets);
+
+  // Instant edits emit the updated asset after regenerated media is ready.
+  // Refresh both the thumbnail cache key and dimensions without reloading search.
+  const onAssetUpdate = (asset: AssetResponseDto) => {
+    const lists = [assets, viewerAssets];
+    if (pageMap) {
+      for (const state of Object.values(pageMap)) {
+        if (state.status === 'loaded') {
+          lists.push(state.assets);
+        }
+      }
+    }
+    for (const list of lists) {
+      const index = list?.findIndex(({ id }) => id === asset.id) ?? -1;
+      if (list && index !== -1) {
+        list[index] = asset;
+      }
+    }
+    if (assetInteraction.hasSelectedAsset(asset.id)) {
+      assetInteraction.selectAsset(toTimelineAsset(asset));
+    }
+  };
 
   const navigationAssets = $derived(viewerAssets ?? resolvedAssets);
 
@@ -232,25 +256,6 @@
     const bottom = top + viewport.height + slidingWindowOffset + INTERSECTION_EXPAND_BOTTOM;
     return { top, bottom };
   });
-
-  const updateCurrentAsset = (asset: AssetResponseDto) => {
-    if (pageMap) {
-      for (const state of Object.values(pageMap)) {
-        if (state.status !== 'loaded') {
-          continue;
-        }
-
-        const index = state.assets.findIndex((a) => a.id === asset.id);
-        if (index !== -1) {
-          state.assets[index] = asset;
-          return;
-        }
-      }
-    } else {
-      const index = assets.findIndex((oldAsset) => oldAsset.id === asset.id);
-      assets[index] = asset;
-    }
-  };
 
   const updateSlidingWindow = () => {
     scrollTop = document.scrollingElement?.scrollTop ?? 0;
@@ -609,6 +614,9 @@
   });
 </script>
 
+<OnEvents {onAssetUpdate} />
+<AssetSelectionRotateShortcuts {assetInteraction} />
+
 <svelte:document onselectstart={onSelectStart} use:shortcuts={shortcutList} onscroll={() => updateSlidingWindow()} />
 
 {#if resolvedAssets.length > 0}
@@ -676,7 +684,7 @@
         cursor={assetCursor}
         onAction={handleAction}
         onRandom={handleRandom}
-        onAssetChange={updateCurrentAsset}
+        onAssetChange={onAssetUpdate}
         onClose={() => {
           assetViewerManager.showAssetViewer(false);
           handlePromiseError(navigate({ targetRoute: 'current', assetId: null }));
