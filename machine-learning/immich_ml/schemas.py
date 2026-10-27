@@ -6,7 +6,7 @@ from typing import Annotated, Any, Protocol, TypeAlias
 import numpy as np
 import numpy.typing as npt
 from pydantic import ConfigDict, Field
-from typing_extensions import TypedDict
+from typing_extensions import NotRequired, TypedDict
 
 
 class StrEnum(str, Enum):
@@ -112,12 +112,14 @@ class FaceDetectionOutput(TypedDict):
     scores: npt.NDArray[np.float32]
     landmarks: npt.NDArray[np.float32]
     gpuFallback: bool
+    verifyScores: NotRequired[npt.NDArray[np.float32]]
 
 
 class DetectedFace(TypedDict):
     boundingBox: BoundingBox
     embedding: str
     score: float
+    verifyScore: NotRequired[float]
 
 
 FacialRecognitionOutput = list[DetectedFace]
@@ -144,6 +146,8 @@ class FaceDetectionOptions(Options):
     tile_size: Annotated[int, Field(alias="tileSize")] = 640
     tile_overlap: Annotated[float, Field(alias="tileOverlap")] = 0.25
     max_tiles: Annotated[int, Field(alias="maxTiles")] = 500
+    # re-score every detected face on a standard crop around it (see FaceDetector._verify_scores)
+    verify: bool = False
 
 
 @dataclass(frozen=True)

@@ -30,7 +30,8 @@ export type ModelPayload = { imagePath: string } | { text: string };
 
 type ModelOptions = { modelName: string };
 
-export type FaceDetectionOptions = ModelOptions & { minScore: number };
+// verify: also re-score each face on a standard crop around it (returned as Face.verifyScore)
+export type FaceDetectionOptions = ModelOptions & { minScore: number; verify?: boolean };
 export type FaceDetectionTiledOptions = FaceDetectionOptions & {
   tileSize: number;
   tileOverlap: number;
@@ -65,7 +66,7 @@ export type OcrResponse = { [ModelTask.OCR]: OCR } & VisualResponse;
 
 export type FacialRecognitionRequest = {
   [ModelTask.FACIAL_RECOGNITION]: {
-    [ModelType.DETECTION]: ModelOptions & { options: { minScore: number } };
+    [ModelType.DETECTION]: ModelOptions & { options: { minScore: number; verify?: boolean } };
     [ModelType.RECOGNITION]: ModelOptions;
   };
 };
@@ -74,6 +75,8 @@ export interface Face {
   boundingBox: BoundingBox;
   embedding: string;
   score: number;
+  /** present only when detection ran with `verify` */
+  verifyScore?: number;
 }
 
 export type FacialRecognitionResponse = { [ModelTask.FACIAL_RECOGNITION]: Face[] } & VisualResponse & {
@@ -196,10 +199,10 @@ export class MachineLearningRepository {
     throw new Error(`Machine learning request '${JSON.stringify(config)}' failed for all URLs`);
   }
 
-  async detectFaces(imagePath: string, { modelName, minScore }: FaceDetectionOptions) {
+  async detectFaces(imagePath: string, { modelName, minScore, verify }: FaceDetectionOptions) {
     const request = {
       [ModelTask.FACIAL_RECOGNITION]: {
-        [ModelType.DETECTION]: { modelName, options: { minScore } },
+        [ModelType.DETECTION]: { modelName, options: { minScore, ...(verify && { verify }) } },
         [ModelType.RECOGNITION]: { modelName },
       },
     };
@@ -214,13 +217,13 @@ export class MachineLearningRepository {
 
   async detectFacesTiled(
     imagePath: string,
-    { modelName, minScore, tileSize, tileOverlap, maxTiles }: FaceDetectionTiledOptions,
+    { modelName, minScore, verify, tileSize, tileOverlap, maxTiles }: FaceDetectionTiledOptions,
   ) {
     const request = {
       [ModelTask.FACIAL_RECOGNITION]: {
         [ModelType.DETECTION]: {
           modelName,
-          options: { minScore, tiled: true, tileSize, tileOverlap, maxTiles },
+          options: { minScore, tiled: true, tileSize, tileOverlap, maxTiles, ...(verify && { verify }) },
         },
         [ModelType.RECOGNITION]: { modelName },
       },

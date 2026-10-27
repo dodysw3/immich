@@ -299,6 +299,14 @@ const AdminConfigSchemaWithVisibility = z
             .describe('Minimum number of faces required for recognition')
             .meta({ visibility: User }),
           minFaceSize: z.int().min(1).describe('Minimum bounding box pixel dimension for face recognition'),
+          minVerifyScore: z
+            .number()
+            .min(0)
+            .max(1)
+            .describe(
+              'Minimum detector score when each face is re-checked on a standard crop around it (0 disables the re-check)',
+            )
+            .meta({ format: 'double' }),
           tiling: AdminConfigTilingSchema,
         }).meta({ id: 'AdminConfigFacialRecognitionDto' }),
         ocr: AdminConfigMachineLearningModelSchema.extend({
@@ -728,7 +736,8 @@ export const defaults = Object.freeze<SystemConfig>({
       minScore: 0.7,
       maxDistance: 0.5,
       minFaces: 3,
-      minFaceSize: 22,
+      minFaceSize: 30,
+      minVerifyScore: 0.6,
       tiling: {
         enabled: false,
         tileSize: 640,

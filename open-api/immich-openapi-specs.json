@@ -20364,6 +20364,13 @@
             "minimum": 0.1,
             "type": "number"
           },
+          "minVerifyScore": {
+            "description": "Minimum detector score when each face is re-checked on a standard crop around it (0 disables the re-check)",
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
           "modelName": {
             "description": "Name of the model to use",
             "type": "string"
@@ -20379,6 +20386,7 @@
           "minFaceSize",
           "minFaces",
           "minScore",
+          "minVerifyScore",
           "modelName",
           "tiling"
         ],

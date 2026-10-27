@@ -1482,6 +1482,60 @@ class TestFaceRecognition:
         assert faces["boxes"].tolist() == [[v / 2 for v in expected_box(10, 10)]]
         assert np.allclose(faces["landmarks"][0], expected_landmarks(10, 10) / 2)
 
+    def test_detection_verify_rescores_each_face_on_a_centred_crop(
+        self, stub_session: Callable[..., mock.Mock], mocker: MockerFixture
+    ) -> None:
+        mocker.patch.object(FaceDetector, "load")
+        face_detector = FaceDetector("buffalo_s", cache_dir="test_cache")
+
+        session = stub_session((1, 3, 640, 640))
+        # the 256px verify crop is letterboxed up to 640 (x2.5); a cell-39 box is centred on
+        # canvas 320, i.e. crop 128. A cell-10 box lands near the crop's corner instead.
+        session.run.side_effect = [
+            make_scrfd_heads([(10, 10, 0.9), (50, 50, 0.8)]),
+            make_scrfd_heads([(39, 39, 0.65)]),
+            make_scrfd_heads([(10, 10, 0.9)]),
+        ]
+        face_detector.session = session
+
+        faces = face_detector.predict(
+            Image.new("RGB", (640, 640)), options=FaceDetectionOptions(min_score=0.7, verify=True)
+        )
+
+        assert session.run.call_count == 3
+        # the first face re-detects at the crop centre; the second only finds something off-centre
+        assert np.allclose(faces["verifyScores"], [0.65, 0.0], atol=1e-3)
+
+    def test_detection_without_verify_runs_once(
+        self, stub_session: Callable[..., mock.Mock], mocker: MockerFixture
+    ) -> None:
+        mocker.patch.object(FaceDetector, "load")
+        face_detector = FaceDetector("buffalo_s", cache_dir="test_cache")
+
+        session = stub_session((1, 3, 640, 640), outputs=make_scrfd_heads([(10, 10, 0.9)]))
+        face_detector.session = session
+
+        faces = face_detector.predict(Image.new("RGB", (640, 640)), options=FaceDetectionOptions(min_score=0.7))
+
+        assert "verifyScores" not in faces
+        session.run.assert_called_once()
+
+    def test_recognition_passes_verify_scores_through(self, mocker: MockerFixture) -> None:
+        mocker.patch.object(FaceRecognizer, "load")
+        face_recognizer = FaceRecognizer("buffalo_s", cache_dir="test_cache")
+        boxes = np.array([[0, 0, 10, 10], [20, 20, 30, 30]], dtype=np.float32)
+        detected = {
+            "boxes": boxes,
+            "scores": np.array([0.9, 0.8], dtype=np.float32),
+            "landmarks": np.zeros((2, 5, 2), dtype=np.float32),
+            "gpuFallback": False,
+            "verifyScores": np.array([0.7, 0.1], dtype=np.float32),
+        }
+
+        faces = face_recognizer.postprocess(detected, np.zeros((2, 512), dtype=np.float32))
+
+        assert [float(face["verifyScore"]) for face in faces] == pytest.approx([0.7, 0.1])
+
     def test_recognition(self, stub_session: Callable[..., mock.Mock], mocker: MockerFixture) -> None:
         mocker.patch.object(FaceRecognizer, "load")
         face_recognizer = FaceRecognizer("buffalo_s", cache_dir="test_cache")

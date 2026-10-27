@@ -99,6 +99,11 @@ export class AssetFaceTable {
   @Column({ type: 'integer', nullable: true })
   frameTimeMs!: number | null;
 
+  // Detector score when the face was re-checked on a standard crop around it at detection
+  // time. Null for faces stored before the re-check existed, or detected with it disabled.
+  @Column({ type: 'real', nullable: true })
+  verifyScore!: number | null;
+
   @DeleteDateColumn()
   deletedAt!: Timestamp | null;
 

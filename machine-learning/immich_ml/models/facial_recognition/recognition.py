@@ -62,7 +62,7 @@ class FaceRecognizer(InferenceModel[FaceRecognitionOptions]):
         return embeddings[0] if len(embeddings) == 1 else np.concatenate(embeddings, axis=0)
 
     def postprocess(self, faces: FaceDetectionOutput, embeddings: NDArray[np.float32]) -> FacialRecognitionOutput:
-        return [
+        output: FacialRecognitionOutput = [
             {
                 "boundingBox": {"x1": x1, "y1": y1, "x2": x2, "y2": y2},
                 "embedding": serialize_np_array(embedding),
@@ -70,3 +70,8 @@ class FaceRecognizer(InferenceModel[FaceRecognitionOptions]):
             }
             for (x1, y1, x2, y2), embedding, score in zip(faces["boxes"], embeddings, faces["scores"])
         ]
+        verify_scores = faces.get("verifyScores")
+        if verify_scores is not None:
+            for face, verify_score in zip(output, verify_scores):
+                face["verifyScore"] = verify_score
+        return output

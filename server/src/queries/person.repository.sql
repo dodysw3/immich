@@ -81,6 +81,8 @@ where
     "asset_face"."boundingBoxX2" - "asset_face"."boundingBoxX1" < $1
     or "asset_face"."boundingBoxY2" - "asset_face"."boundingBoxY1" < $2
   )
+  and "asset_face"."sourceType" = $3
+  and "asset_face"."frameTimeMs" is null
   and "asset_face"."deletedAt" is null
 
 -- PersonRepository.getAllFaces

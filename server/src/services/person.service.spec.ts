@@ -1205,6 +1205,126 @@ describe(PersonService.name, () => {
       );
     });
 
+    it('should drop faces that fail the re-check in both passes and store the score of kept faces', async () => {
+      mocks.systemMetadata.get.mockResolvedValue({
+        machineLearning: { facialRecognition: { tiling: { enabled: true, triggers: { minPass1Faces: 1 } } } },
+      });
+      const asset = AssetFactory.from()
+        .file({ type: AssetFileType.Preview })
+        .exif({ exifImageWidth: 4000, exifImageHeight: 3000 })
+        .build();
+      mocks.crypto.randomUUID.mockReturnValueOnce(newUuid()).mockReturnValueOnce(newUuid());
+      mocks.machineLearning.detectFaces.mockResolvedValue({
+        imageHeight: 300,
+        imageWidth: 400,
+        gpuFallback: false,
+        faces: [
+          {
+            boundingBox: { x1: 100, y1: 100, x2: 200, y2: 200 },
+            embedding: '[1, 2, 3, 4]',
+            score: 0.9,
+            verifyScore: 0.8,
+          },
+          { boundingBox: { x1: 0, y1: 0, x2: 60, y2: 60 }, embedding: '[2, 3, 4, 5]', score: 0.85, verifyScore: 0.03 },
+        ],
+      });
+      mocks.machineLearning.detectFacesTiled.mockResolvedValue({
+        imageHeight: 1500,
+        imageWidth: 2000,
+        faces: [
+          {
+            boundingBox: { x1: 1500, y1: 0, x2: 1560, y2: 60 },
+            embedding: '[3, 4, 5, 6]',
+            score: 0.8,
+            verifyScore: 0.6,
+          },
+          {
+            boundingBox: { x1: 0, y1: 1400, x2: 60, y2: 1460 },
+            embedding: '[4, 5, 6, 7]',
+            score: 0.8,
+            verifyScore: 0.59,
+          },
+        ],
+      });
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
+      mocks.person.refreshFaces.mockResolvedValue();
+
+      await sut.handleDetectFaces({ id: asset.id });
+
+      expect(mocks.machineLearning.detectFaces).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ verify: true }),
+      );
+      expect(mocks.machineLearning.detectFacesTiled).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ verify: true }),
+      );
+      expect(mocks.person.refreshFaces).toHaveBeenCalledWith(
+        [expect.objectContaining({ verifyScore: 0.8 }), expect.objectContaining({ verifyScore: 0.6 })],
+        [],
+        [
+          { faceId: expect.any(String), embedding: '[1, 2, 3, 4]' },
+          { faceId: expect.any(String), embedding: '[3, 4, 5, 6]' },
+        ],
+      );
+    });
+
+    it('should not request or apply the re-check when minVerifyScore is 0', async () => {
+      mocks.systemMetadata.get.mockResolvedValue({
+        machineLearning: { facialRecognition: { minVerifyScore: 0 } },
+      });
+      const asset = AssetFactory.from().file({ type: AssetFileType.Preview }).exif().build();
+      mocks.crypto.randomUUID.mockReturnValueOnce(newUuid());
+      mocks.machineLearning.detectFaces.mockResolvedValue({
+        imageHeight: 300,
+        imageWidth: 400,
+        gpuFallback: false,
+        faces: [
+          {
+            boundingBox: { x1: 100, y1: 100, x2: 200, y2: 200 },
+            embedding: '[1, 2, 3, 4]',
+            score: 0.9,
+            verifyScore: 0.01,
+          },
+        ],
+      });
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
+      mocks.person.refreshFaces.mockResolvedValue();
+
+      await sut.handleDetectFaces({ id: asset.id });
+
+      expect(mocks.machineLearning.detectFaces).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ verify: false }),
+      );
+      expect(mocks.person.refreshFaces).toHaveBeenCalledWith(
+        [expect.objectContaining({ assetId: asset.id })],
+        [],
+        [{ faceId: expect.any(String), embedding: '[1, 2, 3, 4]' }],
+      );
+    });
+
+    it('should keep a face the ML service did not re-check', async () => {
+      const asset = AssetFactory.from().file({ type: AssetFileType.Preview }).exif().build();
+      mocks.crypto.randomUUID.mockReturnValueOnce(newUuid());
+      mocks.machineLearning.detectFaces.mockResolvedValue({
+        imageHeight: 300,
+        imageWidth: 400,
+        gpuFallback: false,
+        faces: [{ boundingBox: { x1: 100, y1: 100, x2: 200, y2: 200 }, embedding: '[1, 2, 3, 4]', score: 0.9 }],
+      });
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
+      mocks.person.refreshFaces.mockResolvedValue();
+
+      await sut.handleDetectFaces({ id: asset.id });
+
+      expect(mocks.person.refreshFaces).toHaveBeenCalledWith(
+        [expect.objectContaining({ verifyScore: null })],
+        [],
+        [{ faceId: expect.any(String), embedding: '[1, 2, 3, 4]' }],
+      );
+    });
+
     it('should map tiled detections through rotate edits and merge duplicates', async () => {
       mocks.systemMetadata.get.mockResolvedValue({
         machineLearning: { facialRecognition: { tiling: { enabled: true, triggers: { minPass1Faces: 1 } } } },

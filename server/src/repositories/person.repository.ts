@@ -339,6 +339,10 @@ export class PersonRepository {
           eb(sql`"asset_face"."boundingBoxY2" - "asset_face"."boundingBoxY1"`, '<', minSize),
         ]),
       )
+      // a size rule only applies to automatic photo detections: never to faces a person drew or
+      // tagged, nor to video-scan faces, which follow the scan's own minimum size
+      .where('asset_face.sourceType', '=', SourceType.MachineLearning)
+      .where('asset_face.frameTimeMs', 'is', null)
       .where('asset_face.deletedAt', 'is', null)
       .executeTakeFirst();
 

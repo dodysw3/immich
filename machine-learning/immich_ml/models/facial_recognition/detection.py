@@ -4,16 +4,35 @@ import cv2
 import numpy as np
 from immich_model.constants import FACE_DETECTION_SIZE as DET_SIZE
 from numpy.typing import NDArray
+from PIL import Image as PilImage
 from PIL.Image import Image
 
 from immich_ml.config import log
 from immich_ml.models.base import InferenceModel
 from immich_ml.models.transforms import decode_pil, letterbox, normalize, widen
-from immich_ml.schemas import FaceDetectionOptions, FaceDetectionOutput, ModelSource, ModelTask, ModelType, Shape
+from immich_ml.schemas import (
+    FaceDetectionOptions,
+    FaceDetectionOutput,
+    ModelSession,
+    ModelSource,
+    ModelTask,
+    ModelType,
+    Shape,
+)
 from immich_ml.sessions.ort import OrtSession
 from immich_ml.sessions.policy import ShapePolicy
 
 from ._ops import decode_scrfd, nms
+
+# Verification re-runs the detector on a square crop centred on each face: the box plus
+# VERIFY_PAD of its longer side on every side, resized to VERIFY_SIZE. A real face scores
+# about as high as it did in the full image; texture a tile happened to fire on (walls,
+# foliage, fabric) collapses towards zero. Calibrated against 200 hand-labelled faces.
+VERIFY_SIZE = 256
+VERIFY_PAD = 0.6
+VERIFY_MIN_SCORE = 0.05
+# how far (in crop pixels) a re-detected face's centre may sit from the crop centre
+VERIFY_CENTER_TOLERANCE = 40
 
 
 class FaceDetector(InferenceModel[FaceDetectionOptions]):
@@ -27,7 +46,7 @@ class FaceDetector(InferenceModel[FaceDetectionOptions]):
         super().__init__(model_name, **model_kwargs)
 
     def _run_session(
-        self, image: Image | NDArray[np.uint8], min_score: float, session: OrtSession
+        self, image: Image | NDArray[np.uint8], min_score: float, session: ModelSession
     ) -> tuple[NDArray[np.float32], NDArray[np.float32], NDArray[np.float32]]:
         graph = session.for_shape(self.shape_policy.dims[0])
         canvas, scale = letterbox(image, DET_SIZE)
@@ -58,6 +77,7 @@ class FaceDetector(InferenceModel[FaceDetectionOptions]):
     def _predict(self, inputs: NDArray[np.uint8] | bytes, options: FaceDetectionOptions) -> FaceDetectionOutput:
         image = decode_pil(inputs)
         gpu_fallback = False
+        session = self.session
 
         if options.tiled:
             scores, boxes, kps = self._detect_tiled(
@@ -81,14 +101,38 @@ class FaceDetector(InferenceModel[FaceDetectionOptions]):
                 )
                 scores, boxes, kps = cpu_scores, cpu_boxes, cpu_kps
                 gpu_fallback = True
+                session = self._ensure_cpu_session()
 
         keep = nms(boxes, scores)
-        return {
+        output: FaceDetectionOutput = {
             "boxes": boxes[keep].round(),
             "scores": scores[keep],
             "landmarks": kps[keep].reshape(-1, 5, 2),
             "gpuFallback": gpu_fallback,
         }
+        if options.verify:
+            output["verifyScores"] = self._verify_scores(image, output["boxes"], session)
+        return output
+
+    def _verify_scores(self, image: Image, boxes: NDArray[np.float32], session: ModelSession) -> NDArray[np.float32]:
+        verify_scores = np.zeros(boxes.shape[0], dtype=np.float32)
+        center = VERIFY_SIZE / 2
+        for i, (x1, y1, x2, y2) in enumerate(boxes):
+            side = max(x2 - x1, y2 - y1)
+            half = side / 2 + VERIFY_PAD * side
+            cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
+            # PIL pads a crop that runs past the image edge with black, as the calibration crops did
+            crop = image.crop((int(cx - half), int(cy - half), int(cx + half), int(cy + half))).resize(
+                (VERIFY_SIZE, VERIFY_SIZE), PilImage.Resampling.BICUBIC
+            )
+            scores, found, _ = self._run_session(crop, VERIFY_MIN_SCORE, session)
+            if found.shape[0] == 0:
+                continue
+            centers = (found[:, :2] + found[:, 2:]) / 2
+            near = np.all(np.abs(centers - center) < VERIFY_CENTER_TOLERANCE, axis=1)
+            if near.any():
+                verify_scores[i] = scores[near].max()
+        return verify_scores
 
     def _detect_tiled(
         self,

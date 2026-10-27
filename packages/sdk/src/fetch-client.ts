@@ -261,6 +261,8 @@ export type AdminConfigFacialRecognitionDto = {
     minFaces: number;
     /** Minimum confidence score for face detection */
     minScore: number;
+    /** Minimum detector score when each face is re-checked on a standard crop around it (0 disables the re-check) */
+    minVerifyScore: number;
     /** Name of the model to use */
     modelName: string;
     tiling: AdminConfigTilingDto;

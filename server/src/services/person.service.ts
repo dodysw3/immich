@@ -467,8 +467,14 @@ export class PersonService extends BaseService {
       return JobStatus.Skipped;
     }
 
+    const minVerifyScore = machineLearning.facialRecognition.minVerifyScore;
+    const verify = minVerifyScore > 0;
+
     const pass1Start = Date.now();
-    const pass1 = await this.machineLearningRepository.detectFaces(previewFile.path, machineLearning.facialRecognition);
+    const pass1 = await this.machineLearningRepository.detectFaces(previewFile.path, {
+      ...machineLearning.facialRecognition,
+      verify,
+    });
     const pass1Ms = Date.now() - pass1Start;
     const gpuFallbackTag = pass1.gpuFallback ? ' (GPU fallback)' : '';
     this.logger.debug(`Pass 1: ${pass1.faces.length} faces${gpuFallbackTag} detected in ${pass1Ms}ms for asset ${id}`);
@@ -477,7 +483,12 @@ export class PersonService extends BaseService {
     // pass 1 on the preview file, pass 2 on the tiled source file. It must be applied before
     // pass-2 boxes are mapped into preview space, whose scale differs from the tiled source.
     const minFaceSize = machineLearning.facialRecognition.minFaceSize;
-    let faces = this.filterSmallFaces(pass1.faces, minFaceSize, 'pass 1 (preview)', id);
+    let faces = this.filterUnverifiedFaces(
+      this.filterSmallFaces(pass1.faces, minFaceSize, 'pass 1 (preview)', id),
+      minVerifyScore,
+      'pass 1 (preview)',
+      id,
+    );
     const imageHeight = pass1.imageHeight;
     const imageWidth = pass1.imageWidth;
 
@@ -490,6 +501,7 @@ export class PersonService extends BaseService {
           const pass2 = await this.machineLearningRepository.detectFacesTiled(sourceFile.path, {
             modelName: machineLearning.facialRecognition.modelName,
             minScore: machineLearning.facialRecognition.minScore,
+            verify,
             tileSize: tiling.tileSize,
             tileOverlap: tiling.tileOverlap,
             maxTiles: tiling.maxTiles,
@@ -499,7 +511,12 @@ export class PersonService extends BaseService {
             `Pass 2 (tiled): ${pass2.faces.length} faces from ${sourceFile.path} in ${pass2Ms}ms for asset ${id}`,
           );
 
-          const pass2Faces = this.filterSmallFaces(pass2.faces, minFaceSize, 'pass 2 (tiled source)', id);
+          const pass2Faces = this.filterUnverifiedFaces(
+            this.filterSmallFaces(pass2.faces, minFaceSize, 'pass 2 (tiled source)', id),
+            minVerifyScore,
+            'pass 2 (tiled source)',
+            id,
+          );
           const scaledPass2 = this.mapTiledFaces(pass2Faces, pass2, asset, sourceFile.kind, {
             imageWidth,
             imageHeight,
@@ -534,7 +551,7 @@ export class PersonService extends BaseService {
       asset,
     );
 
-    for (const { boundingBox, embedding } of storedFaces) {
+    for (const { boundingBox, embedding, verifyScore } of storedFaces) {
       // compare in normalized coordinates: legacy rows may be stored in an older rescaling
       // of the same geometry
       const match = asset.faces.find((face) => {
@@ -570,6 +587,7 @@ export class PersonService extends BaseService {
           boundingBoxY1: boundingBox.y1,
           boundingBoxX2: boundingBox.x2,
           boundingBoxY2: boundingBox.y2,
+          verifyScore: verifyScore ?? null,
         });
         embeddings.push({ faceId, embedding });
       }
@@ -810,6 +828,22 @@ export class PersonService extends BaseService {
     if (removed > 0) {
       this.logger.log(
         `Filtered out ${removed} undersized ${pass} faces (min dimension < ${minFaceSize}) in asset ${assetId}`,
+      );
+    }
+    return filtered;
+  }
+
+  // A face without a verifyScore was not re-checked (an ML service that predates the option),
+  // so it is kept rather than treated as failing.
+  private filterUnverifiedFaces(faces: Face[], minVerifyScore: number, pass: string, assetId: string): Face[] {
+    if (minVerifyScore <= 0) {
+      return faces;
+    }
+    const filtered = faces.filter(({ verifyScore }) => verifyScore === undefined || verifyScore >= minVerifyScore);
+    const removed = faces.length - filtered.length;
+    if (removed > 0) {
+      this.logger.log(
+        `Filtered out ${removed} ${pass} faces that failed the re-check (score < ${minVerifyScore}) in asset ${assetId}`,
       );
     }
     return filtered;

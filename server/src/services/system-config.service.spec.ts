@@ -134,7 +134,8 @@ const updatedConfig = Object.freeze<SystemConfig>({
       minScore: 0.7,
       maxDistance: 0.5,
       minFaces: 3,
-      minFaceSize: 22,
+      minFaceSize: 30,
+      minVerifyScore: 0.6,
       tiling: {
         enabled: false,
         tileSize: 640,
