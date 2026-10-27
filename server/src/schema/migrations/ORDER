@@ -108,3 +108,4 @@
 1792517020180-AddUpdateIdIndexes
 1792605500000-AddVideoFaceTables
 1792700000000-AddAssetFaceVerifyScore
+1792800000000-MoveFaceVerifyScoreToQualityTable

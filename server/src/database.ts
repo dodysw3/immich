@@ -285,7 +285,6 @@ export type AssetFace = {
   personGroupId: string | null;
   sourceType: SourceType;
   frameTimeMs: number | null;
-  verifyScore: number | null;
   person?: ShallowDehydrateObject<Person> | null;
   updatedAt: Date;
   updateId: string;

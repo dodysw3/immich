@@ -51,6 +51,7 @@ import {
 import { BoundingBox, Face } from 'src/repositories/machine-learning.repository.js';
 import { PersonId } from 'src/repositories/person.repository.js';
 import { DB } from 'src/schema/index.js';
+import { AssetFaceQualityTable } from 'src/schema/tables/asset-face-quality.table.js';
 import { AssetFaceTable } from 'src/schema/tables/asset-face.table.js';
 import { FaceSearchTable } from 'src/schema/tables/face-search.table.js';
 import { PersonUserTable } from 'src/schema/tables/person-user.table.js';
@@ -534,6 +535,7 @@ export class PersonService extends BaseService {
 
     const facesToAdd: (Insertable<AssetFaceTable> & { id: string })[] = [];
     const embeddings: FaceSearchTable[] = [];
+    const scores: AssetFaceQualityTable[] = [];
     const mlFaceIds = new Set<string>();
     const matchedFaceIds = new Set<string>();
 
@@ -575,6 +577,9 @@ export class PersonService extends BaseService {
           if (!mlFaceIds.delete(match.id)) {
             embeddings.push({ faceId: match.id, embedding });
           }
+          if (verifyScore !== undefined) {
+            scores.push({ faceId: match.id, verifyScore });
+          }
         }
       } else {
         const faceId = this.cryptoRepository.randomUUID();
@@ -587,9 +592,11 @@ export class PersonService extends BaseService {
           boundingBoxY1: boundingBox.y1,
           boundingBoxX2: boundingBox.x2,
           boundingBoxY2: boundingBox.y2,
-          verifyScore: verifyScore ?? null,
         });
         embeddings.push({ faceId, embedding });
+        if (verifyScore !== undefined) {
+          scores.push({ faceId, verifyScore });
+        }
       }
     }
     // video-scan-published representatives are reconciled by a re-scan, not
@@ -597,7 +604,9 @@ export class PersonService extends BaseService {
     const videoPublished = (await this.personRepository.getVideoPublishedFaceIds(asset.id)) ?? [];
     const faceIdsToRemove = [...mlFaceIds].filter((faceId) => !videoPublished.includes(faceId));
 
-    if (facesToAdd.length > 0 || faceIdsToRemove.length > 0 || embeddings.length > 0) {
+    if (scores.length > 0) {
+      await this.personRepository.refreshFaces(facesToAdd, faceIdsToRemove, embeddings, scores);
+    } else if (facesToAdd.length > 0 || faceIdsToRemove.length > 0 || embeddings.length > 0) {
       await this.personRepository.refreshFaces(facesToAdd, faceIdsToRemove, embeddings);
     }
 

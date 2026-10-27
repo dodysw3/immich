@@ -16,6 +16,7 @@ import { PersonUserRole } from 'src/dtos/person.dto.js';
 import { AssetFileType, AssetVisibility, SourceType, UserMetadataKey } from 'src/enum.js';
 import { type YearMonthDay } from 'src/repositories/asset.repository.js';
 import { DB } from 'src/schema/index.js';
+import { AssetFaceQualityTable } from 'src/schema/tables/asset-face-quality.table.js';
 import { AssetFaceTable } from 'src/schema/tables/asset-face.table.js';
 import { FaceSearchTable } from 'src/schema/tables/face-search.table.js';
 import { PersonGroupTable } from 'src/schema/tables/person-group.table.js';
@@ -948,6 +949,7 @@ export class PersonRepository {
     facesToAdd: (Insertable<AssetFaceTable> & { assetId: string })[],
     faceIdsToRemove: string[],
     embeddingsToAdd?: Insertable<FaceSearchTable>[],
+    scoresToSet?: Insertable<AssetFaceQualityTable>[],
   ): Promise<void> {
     let query = this.db;
     if (facesToAdd.length > 0) {
@@ -973,6 +975,18 @@ export class PersonRepository {
           .insertInto('face_search')
           .values(embeddingsToAdd)
           .onConflict((oc) => oc.column('faceId').doUpdateSet((eb) => ({ embedding: eb.ref('excluded.embedding') }))),
+      );
+    }
+
+    if (scoresToSet?.length) {
+      // upsert: a re-detection refreshes the score of a face that already has one
+      (query as any) = query.with('added_scores', (db) =>
+        db
+          .insertInto('asset_face_quality')
+          .values(scoresToSet)
+          .onConflict((oc) =>
+            oc.column('faceId').doUpdateSet((eb) => ({ verifyScore: eb.ref('excluded.verifyScore') })),
+          ),
       );
     }
 

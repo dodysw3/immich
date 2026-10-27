@@ -43,6 +43,7 @@ import { AssetEditAuditTable } from 'src/schema/tables/asset-edit-audit.table.js
 import { AssetEditTable } from 'src/schema/tables/asset-edit.table.js';
 import { AssetExifTable } from 'src/schema/tables/asset-exif.table.js';
 import { AssetFaceAuditTable } from 'src/schema/tables/asset-face-audit.table.js';
+import { AssetFaceQualityTable } from 'src/schema/tables/asset-face-quality.table.js';
 import { AssetFaceTable } from 'src/schema/tables/asset-face.table.js';
 import { AssetFileTable } from 'src/schema/tables/asset-file.table.js';
 import { AssetJobStatusTable } from 'src/schema/tables/asset-job-status.table.js';
@@ -95,12 +96,12 @@ import { UserMetadataAuditTable } from 'src/schema/tables/user-metadata-audit.ta
 import { UserMetadataTable } from 'src/schema/tables/user-metadata.table.js';
 import { UserTable } from 'src/schema/tables/user.table.js';
 import { VersionHistoryTable } from 'src/schema/tables/version-history.table.js';
+import { VideoFaceRunTable, VideoFaceSightingTable, VideoFaceTable } from 'src/schema/tables/video-face.table.js';
 import {
   VideoStreamSegmentTable,
   VideoStreamSessionTable,
   VideoStreamVariantTable,
 } from 'src/schema/tables/video-stream.table.js';
-import { VideoFaceRunTable, VideoFaceSightingTable, VideoFaceTable } from 'src/schema/tables/video-face.table.js';
 import { WorkflowLogTable } from 'src/schema/tables/workflow-log.table.js';
 import { WorkflowStepTable } from 'src/schema/tables/workflow-step.table.js';
 import { WorkflowTable } from 'src/schema/tables/workflow.table.js';
@@ -135,6 +136,7 @@ export class ImmichDatabase {
     ClusterGroupTable,
     ClusterGroupRequestTable,
     FaceSearchTable,
+    AssetFaceQualityTable,
     GeodataPlacesTable,
     IntegrityReportTable,
     LibraryTable,
@@ -262,6 +264,7 @@ export interface DB {
   pdf_search: PdfSearchTable;
 
   face_search: FaceSearchTable;
+  asset_face_quality: AssetFaceQualityTable;
 
   geodata_places: GeodataPlacesTable;
 

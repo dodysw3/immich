@@ -1260,11 +1260,15 @@ describe(PersonService.name, () => {
         expect.objectContaining({ verify: true }),
       );
       expect(mocks.person.refreshFaces).toHaveBeenCalledWith(
-        [expect.objectContaining({ verifyScore: 0.8 }), expect.objectContaining({ verifyScore: 0.6 })],
+        [expect.objectContaining({ assetId: asset.id }), expect.objectContaining({ assetId: asset.id })],
         [],
         [
           { faceId: expect.any(String), embedding: '[1, 2, 3, 4]' },
           { faceId: expect.any(String), embedding: '[3, 4, 5, 6]' },
+        ],
+        [
+          { faceId: expect.any(String), verifyScore: 0.8 },
+          { faceId: expect.any(String), verifyScore: 0.6 },
         ],
       );
     });
@@ -1280,12 +1284,8 @@ describe(PersonService.name, () => {
         imageWidth: 400,
         gpuFallback: false,
         faces: [
-          {
-            boundingBox: { x1: 100, y1: 100, x2: 200, y2: 200 },
-            embedding: '[1, 2, 3, 4]',
-            score: 0.9,
-            verifyScore: 0.01,
-          },
+          // an ML service asked not to re-check returns no verifyScore
+          { boundingBox: { x1: 100, y1: 100, x2: 200, y2: 200 }, embedding: '[1, 2, 3, 4]', score: 0.9 },
         ],
       });
       mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
@@ -1318,8 +1318,9 @@ describe(PersonService.name, () => {
 
       await sut.handleDetectFaces({ id: asset.id });
 
+      // kept, and no score row is written for it
       expect(mocks.person.refreshFaces).toHaveBeenCalledWith(
-        [expect.objectContaining({ verifyScore: null })],
+        [expect.objectContaining({ assetId: asset.id })],
         [],
         [{ faceId: expect.any(String), embedding: '[1, 2, 3, 4]' }],
       );
@@ -1635,6 +1636,27 @@ describe(PersonService.name, () => {
       ]);
       expect(mocks.person.reassignFace).not.toHaveBeenCalled();
       expect(mocks.person.reassignFaces).not.toHaveBeenCalled();
+    });
+
+    it('should save the re-check score of an existing face it detects again, without touching the face', async () => {
+      const asset = AssetFactory.from().face().file({ type: AssetFileType.Preview }).exif().build();
+      const { boundingBoxX1: x1, boundingBoxY1: y1, boundingBoxX2: x2, boundingBoxY2: y2 } = asset.faces[0];
+      mocks.machineLearning.detectFaces.mockResolvedValue({
+        faces: [{ boundingBox: { x1, y1, x2, y2 }, embedding: '[1, 2, 3, 4]', score: 0.9, verifyScore: 0.9 }],
+        imageHeight: asset.faces[0].imageHeight,
+        imageWidth: asset.faces[0].imageWidth,
+        gpuFallback: false,
+      });
+      mocks.assetJob.getForDetectFacesJob.mockResolvedValue(getForDetectedFaces(asset));
+
+      await sut.handleDetectFaces({ id: asset.id });
+
+      expect(mocks.person.refreshFaces).toHaveBeenCalledWith(
+        [],
+        [],
+        [],
+        [{ faceId: asset.faces[0].id, verifyScore: 0.9 }],
+      );
     });
 
     it('should delete an existing face not among the new detected faces', async () => {
