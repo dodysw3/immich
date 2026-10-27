@@ -84,6 +84,35 @@ where
   and "asset_face"."sourceType" = $3
   and "asset_face"."frameTimeMs" is null
   and "asset_face"."deletedAt" is null
+  and (
+    "asset_face"."personGroupId" is null
+    or not exists (
+      select
+        *
+      from
+        "person"
+      where
+        "person"."personGroupId" = "asset_face"."personGroupId"
+        and "person"."name" != $4
+    )
+    or exists (
+      select
+        *
+      from
+        "asset_face" as "survivor"
+      where
+        "survivor"."personGroupId" = "asset_face"."personGroupId"
+        and "survivor"."deletedAt" is null
+        and (
+          "survivor"."sourceType" != $5
+          or "survivor"."frameTimeMs" is not null
+          or (
+            "survivor"."boundingBoxX2" - "survivor"."boundingBoxX1" >= $6
+            and "survivor"."boundingBoxY2" - "survivor"."boundingBoxY1" >= $7
+          )
+        )
+    )
+  )
 
 -- PersonRepository.getAllFaces
 select

@@ -345,6 +345,39 @@ export class PersonRepository {
       .where('asset_face.sourceType', '=', SourceType.MachineLearning)
       .where('asset_face.frameTimeMs', 'is', null)
       .where('asset_face.deletedAt', 'is', null)
+      // never empty a named person: the cleanup that follows would delete them and lose the
+      // name, so when every face of a named person is undersized, all of them are kept
+      .where((eb) =>
+        eb.or([
+          eb('asset_face.personGroupId', 'is', null),
+          eb.not(
+            eb.exists(
+              eb
+                .selectFrom('person')
+                .whereRef('person.personGroupId', '=', 'asset_face.personGroupId')
+                .where('person.name', '!=', '')
+                .selectAll(),
+            ),
+          ),
+          eb.exists(
+            eb
+              .selectFrom('asset_face as survivor')
+              .whereRef('survivor.personGroupId', '=', 'asset_face.personGroupId')
+              .where('survivor.deletedAt', 'is', null)
+              .where((sb) =>
+                sb.or([
+                  sb('survivor.sourceType', '!=', SourceType.MachineLearning),
+                  sb('survivor.frameTimeMs', 'is not', null),
+                  sb.and([
+                    sb(sql`"survivor"."boundingBoxX2" - "survivor"."boundingBoxX1"`, '>=', minSize),
+                    sb(sql`"survivor"."boundingBoxY2" - "survivor"."boundingBoxY1"`, '>=', minSize),
+                  ]),
+                ]),
+              )
+              .selectAll(),
+          ),
+        ]),
+      )
       .executeTakeFirst();
 
     return Number(result.numDeletedRows ?? 0);

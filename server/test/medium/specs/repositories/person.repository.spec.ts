@@ -1,6 +1,6 @@
 import { Kysely } from 'kysely';
 import { PersonUserRole } from 'src/dtos/person.dto.js';
-import { AssetFileType, AssetVisibility, UserMetadataKey } from 'src/enum.js';
+import { AssetFileType, AssetVisibility, SourceType, UserMetadataKey } from 'src/enum.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';
 import { PersonUserRepository } from 'src/repositories/person-user.repository.js';
 import { PersonRepository, type PersonSearchOptions } from 'src/repositories/person.repository.js';
@@ -261,6 +261,38 @@ describe(PersonRepository.name, () => {
 
       const groups = await ctx.database.selectFrom('person_group').select('person_group.id').execute();
       expect(groups.map(({ id }) => id)).toEqual([kept.personGroupId]);
+    });
+  });
+
+  describe('deleteSmallFaces', () => {
+    it('should delete undersized automatic faces but never empty a named person', async () => {
+      const { ctx, sut } = setup(await getKyselyDB());
+      const { user } = await ctx.newUser();
+      const { asset } = await ctx.newAsset({ ownerId: user.id });
+      const small = { boundingBoxX1: 0, boundingBoxY1: 0, boundingBoxX2: 20, boundingBoxY2: 20 };
+      const large = { boundingBoxX1: 100, boundingBoxY1: 100, boundingBoxX2: 200, boundingBoxY2: 200 };
+
+      // a named person whose only faces are small keeps all of them
+      const { result: onlySmall } = await ctx.newPerson({ ownerId: user.id, name: 'Only small' });
+      const keptA = await ctx.newAssetFace({ assetId: asset.id, personGroupId: onlySmall.personGroupId, ...small });
+      const keptB = await ctx.newAssetFace({ assetId: asset.id, personGroupId: onlySmall.personGroupId, ...small });
+      // a named person with a large face loses the small one
+      const { result: mixed } = await ctx.newPerson({ ownerId: user.id, name: 'Mixed' });
+      await ctx.newAssetFace({ assetId: asset.id, personGroupId: mixed.personGroupId, ...small });
+      const mixedLarge = await ctx.newAssetFace({ assetId: asset.id, personGroupId: mixed.personGroupId, ...large });
+      // an unnamed person is not protected
+      const { result: unnamed } = await ctx.newPerson({ ownerId: user.id, name: '' });
+      await ctx.newAssetFace({ assetId: asset.id, personGroupId: unnamed.personGroupId, ...small });
+      // nor is an unassigned face, while a face a person drew is never size-swept
+      await ctx.newAssetFace({ assetId: asset.id, ...small });
+      const manual = await ctx.newAssetFace({ assetId: asset.id, sourceType: SourceType.Manual, ...small });
+
+      await expect(sut.deleteSmallFaces(30)).resolves.toBe(3);
+
+      const remaining = await ctx.database.selectFrom('asset_face').select('asset_face.id').execute();
+      expect(remaining.map(({ id }) => id).toSorted()).toEqual(
+        [keptA, keptB, mixedLarge, manual].map(({ assetFace }) => assetFace.id).toSorted(),
+      );
     });
   });
 
