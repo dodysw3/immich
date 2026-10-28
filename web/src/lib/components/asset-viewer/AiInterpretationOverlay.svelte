@@ -82,11 +82,13 @@
 
   $effect(() => {
     const assetId = asset.id;
-    const isImage = asset.type === AssetTypeEnum.Image;
+    // Videos are interpreted through their generated thumbnail, so their
+    // results render here exactly like image ones.
+    const hasInterpretation = asset.type === AssetTypeEnum.Image || asset.type === AssetTypeEnum.Video;
     const currentRequest = ++requestId;
     metadata = null;
 
-    if (!isImage) {
+    if (!hasInterpretation) {
       return;
     }
 

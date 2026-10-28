@@ -145,7 +145,7 @@ describe('AssetService', () => {
       expect(assetMultiSelectManager.selectionActive).toStrictEqual(false);
     });
 
-    it('should hide the interpret actions for video-only and trashed selections', () => {
+    it('should show the interpret actions for video-only selections but hide them for trashed ones', () => {
       const user = userAdminFactory.build();
       authManager.setUser(user);
 
@@ -153,8 +153,8 @@ describe('AssetService', () => {
         timelineAssetFactory.build({ ownerId: user.id, isImage: false, isVideo: true }),
       ]);
       let actions = getAssetBulkActions(() => '');
-      expect(actions.InterpretImageJob.$if?.()).toStrictEqual(false);
-      expect(actions.InterpretImagePublicJob.$if?.()).toStrictEqual(false);
+      expect(actions.InterpretImageJob.$if?.()).toStrictEqual(true);
+      expect(actions.InterpretImagePublicJob.$if?.()).toStrictEqual(true);
 
       assetMultiSelectManager.clear();
       assetMultiSelectManager.selectAssets([timelineAssetFactory.build({ ownerId: user.id, isTrashed: true })]);
@@ -181,7 +181,7 @@ describe('AssetService', () => {
       });
 
       // All owned assets ride along (matching the other bulk job actions);
-      // videos are skipped server-side by the interpretation eligibility check.
+      // videos are interpreted through their thumbnails like images.
       expect(runAssetJobs).toHaveBeenCalledWith({
         assetJobsDto: { name: AssetJobName.InterpretImagePublic, assetIds: [owned.id, video.id] },
       });

@@ -159,7 +159,7 @@
     {#if asset.type === AssetTypeEnum.Video}
       <DetailPanelVideoFaces {asset} />
     {/if}
-    {#if asset.type === AssetTypeEnum.Image}
+    {#if asset.type === AssetTypeEnum.Image || asset.type === AssetTypeEnum.Video}
       <DetailPanelAiInterpretation {asset} />
     {/if}
 

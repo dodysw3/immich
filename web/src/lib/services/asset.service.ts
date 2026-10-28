@@ -152,14 +152,14 @@ export const getAssetBulkActions = ($t: MessageFormatter, album?: AlbumResponseD
   const InterpretImageJob: ActionItem = {
     title: $t('interpret_image'),
     icon: mdiBrain,
-    $if: () => ownedAssets.some((asset) => asset.isImage && !asset.isTrashed),
+    $if: () => ownedAssets.some((asset) => (asset.isImage || asset.isVideo) && !asset.isTrashed),
     onAction: () => onAction(AssetJobName.InterpretImage),
   };
 
   const InterpretImagePublicJob: ActionItem = {
     title: $t('interpret_image_public'),
     icon: mdiEarth,
-    $if: () => ownedAssets.some((asset) => asset.isImage && !asset.isTrashed),
+    $if: () => ownedAssets.some((asset) => (asset.isImage || asset.isVideo) && !asset.isTrashed),
     onAction: () => onAction(AssetJobName.InterpretImagePublic),
   };
 
@@ -416,14 +416,14 @@ export const getAssetActions = (
   const InterpretImageJob: ActionItem = {
     title: $t('interpret_image'),
     icon: mdiBrain,
-    $if: () => asset.type === AssetTypeEnum.Image && !asset.isTrashed,
+    $if: () => (asset.type === AssetTypeEnum.Image || asset.type === AssetTypeEnum.Video) && !asset.isTrashed,
     onAction: () => handleRunAssetJob({ name: AssetJobName.InterpretImage, assetIds: [asset.id] }),
   };
 
   const InterpretImagePublicJob: ActionItem = {
     title: $t('interpret_image_public'),
     icon: mdiEarth,
-    $if: () => asset.type === AssetTypeEnum.Image && !asset.isTrashed,
+    $if: () => (asset.type === AssetTypeEnum.Image || asset.type === AssetTypeEnum.Video) && !asset.isTrashed,
     onAction: () => handleRunAssetJob({ name: AssetJobName.InterpretImagePublic, assetIds: [asset.id] }),
   };
 

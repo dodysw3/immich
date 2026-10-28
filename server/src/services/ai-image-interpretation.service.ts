@@ -46,6 +46,11 @@ const MAX_DECODE_PIXELS = 268_402_689;
 // drop to the bulk-script band (3) so failure cycles cannot re-flood tier 2.
 const UPLOAD_RETRY_MAX_ASSET_AGE_MS = 24 * 60 * 60 * 1000;
 
+// Videos ride the same pipeline through their generated preview (the ffmpeg
+// thumbnail): the delivery only ever reads the preview file, so any asset type
+// with one qualifies without media-handling changes.
+const isInterpretableAssetType = (type: AssetType) => type === AssetType.Image || type === AssetType.Video;
+
 @Injectable()
 export class AiImageInterpretationService {
   constructor(
@@ -188,7 +193,7 @@ export class AiImageInterpretationService {
       }
 
       const asset = await this.assetJobRepository.getForGenerateThumbnailJob(assetId);
-      if (!asset || asset.type !== AssetType.Image || asset.visibility === AssetVisibility.Hidden) {
+      if (!asset || !isInterpretableAssetType(asset.type) || asset.visibility === AssetVisibility.Hidden) {
         throw new AiImageInterpretationClientError('preview_missing', 'Generated image preview is unavailable');
       }
 
@@ -327,7 +332,7 @@ export class AiImageInterpretationService {
     }
 
     const asset = await this.assetJobRepository.getForGenerateThumbnailJob(assetId);
-    if (!asset || asset.type !== AssetType.Image || asset.visibility === AssetVisibility.Hidden) {
+    if (!asset || !isInterpretableAssetType(asset.type) || asset.visibility === AssetVisibility.Hidden) {
       return false;
     }
 

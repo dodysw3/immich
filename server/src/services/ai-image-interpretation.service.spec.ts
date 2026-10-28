@@ -147,7 +147,7 @@ describe(AiImageInterpretationService.name, () => {
     clearConfigCache();
   });
 
-  it('claims and queues only enabled image uploads with an unedited preview after duplicate analysis', async () => {
+  it('claims and queues enabled image uploads with an unedited preview after duplicate analysis', async () => {
     const { service, dependencies } = makeService();
     const asset = AssetFactory.from({ type: AssetType.Image, visibility: AssetVisibility.Timeline })
       .files([AssetFileType.Preview])
@@ -173,6 +173,49 @@ describe(AiImageInterpretationService.name, () => {
     });
   });
 
+  it('claims and queues video uploads through their generated preview', async () => {
+    const { service, dependencies } = makeService();
+    const asset = AssetFactory.from({ type: AssetType.Video, visibility: AssetVisibility.Timeline })
+      .files([AssetFileType.Preview])
+      .build();
+    dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue(asset);
+    dependencies.interpretationRepository.claim.mockResolvedValue({ alreadyExists: false, runKey, run: {} });
+
+    await service.onDuplicateDetectionCompleted({ assetId: asset.id });
+
+    expect(dependencies.interpretationRepository.claim).toHaveBeenCalledWith(
+      asset.id,
+      {
+        model: config.model,
+        quant: config.quant,
+        promptVersion: config.promptVersion,
+      },
+      expect.any(Date),
+      undefined,
+    );
+    expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
+      name: JobName.AssetInterpretImage,
+      data: { id: asset.id, runKey, source: 'upload', priority: 2 },
+    });
+  });
+
+  it('delivers a video interpretation from its preview thumbnail', async () => {
+    const { service, dependencies } = makeService();
+    makeRunningAsset(service, dependencies);
+    const video = AssetFactory.from({ type: AssetType.Video, visibility: AssetVisibility.Timeline })
+      .files([AssetFileType.Preview])
+      .build();
+    dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue(video);
+    dependencies.client.interpret.mockResolvedValue({ result: {} as never, model: config.model });
+    dependencies.interpretationRepository.complete.mockResolvedValue(true);
+
+    await expect(service.handleInterpretation({ id: video.id, runKey } as never)).resolves.toBe(JobStatus.Success);
+
+    expect(dependencies.client.interpret).toHaveBeenCalledWith(Buffer.from('preview'), { model: config.model });
+    expect(dependencies.interpretationRepository.complete).toHaveBeenCalled();
+    expect(dependencies.interpretationRepository.fail).not.toHaveBeenCalled();
+  });
+
   it('ignores disabled mode, hidden assets, and duplicate claims', async () => {
     const { service, dependencies } = makeService();
     const asset = AssetFactory.from({ visibility: AssetVisibility.Hidden }).files([AssetFileType.Preview]).build();
@@ -192,7 +235,7 @@ describe(AiImageInterpretationService.name, () => {
     dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue({
       ...asset,
       visibility: AssetVisibility.Timeline,
-      type: AssetType.Video,
+      type: AssetType.Audio,
     });
     await service.onDuplicateDetectionCompleted({ assetId: asset.id });
     expect(dependencies.interpretationRepository.claim).not.toHaveBeenCalled();
