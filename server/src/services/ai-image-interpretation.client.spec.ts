@@ -300,6 +300,52 @@ describe(AiImageInterpretationClient.name, () => {
     });
   });
 
+  it('attributes a routing meta-model request to the model named in the response body', async () => {
+    // openrouter/free picks a concrete model per request; the body's `model` is
+    // the only honest attribution.
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        model: 'upstage/solar-pro-3:free',
+        choices: [{ message: { content: lineContract(result) } }],
+        usage: { prompt_tokens: 12, completion_tokens: 34 },
+      }),
+    });
+    await expect(client.interpret(Buffer.from('preview'), { model: 'openrouter/free' })).resolves.toMatchObject({
+      model: 'upstage/solar-pro-3:free',
+    });
+
+    // llama.cpp echoes a body `model` (alias/path) too — for a normal request
+    // the requested model stays authoritative, or local runs would be
+    // re-attributed to whatever string the server echoes.
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        model: '/models/muse-glimmer-30b-iq4_xs.gguf',
+        choices: [{ message: { content: lineContract(result) } }],
+        usage: { prompt_tokens: 12, completion_tokens: 34 },
+      }),
+    });
+    await expect(client.interpret(Buffer.from('preview'))).resolves.toMatchObject({
+      model: 'unsloth/Muse-Glimmer-30B-GGUF',
+    });
+
+    // The proxy's x-ai-model header stays authoritative over the body.
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      headers: {
+        get: (name: string) => (name.toLowerCase() === 'x-ai-model' ? 'mai/muse-spark-1.3-contributor' : null),
+      },
+      json: vi.fn().mockResolvedValue({
+        model: 'upstage/solar-pro-3:free',
+        choices: [{ message: { content: lineContract(result) } }],
+      }),
+    });
+    await expect(client.interpret(Buffer.from('preview'), { model: 'openrouter/free' })).resolves.toMatchObject({
+      model: 'mai/muse-spark-1.3-contributor',
+    });
+  });
+
   it('defaults the backend to local when no proxy header is present', async () => {
     fetchMock.mockResolvedValue({
       ok: true,

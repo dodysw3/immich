@@ -11,9 +11,15 @@ import {
 } from 'src/utils/ai-image-interpretation.js';
 
 type CompletionResponse = {
+  model?: string;
   choices?: Array<{ finish_reason?: string; message?: { content?: string | Array<{ type?: string; text?: string }> } }>;
   usage?: { prompt_tokens?: number; completion_tokens?: number };
 };
+
+// OpenRouter's routing meta-models (openrouter/free, openrouter/auto) choose
+// the concrete backend model per request; the request name is only a routing
+// hint, and the chosen model is reported in the response body's `model`.
+const ROUTING_META_MODEL_PREFIX = 'openrouter/';
 
 // The local VLM endpoint generates the entire completion before sending any
 // bytes, so undici's default 300s headers timeout kills long generations
@@ -73,6 +79,7 @@ export class AiImageInterpretationClient {
     if (!url) {
       throw new AiImageInterpretationClientError('endpoint_error', 'AI interpretation endpoint is not configured');
     }
+    const requestedModel = overrides?.model ?? config.model;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
@@ -94,7 +101,7 @@ export class AiImageInterpretationClient {
           ...(config.apiKey && { Authorization: `Bearer ${config.apiKey}` }),
         },
         body: JSON.stringify({
-          model: overrides?.model ?? config.model,
+          model: requestedModel,
           temperature: 0.2,
           max_tokens: AI_IMAGE_INTERPRETATION_MAX_OUTPUT_TOKENS,
           // Muse-Glimmer is a GLM-family model that "thinks" before answering;
@@ -125,10 +132,6 @@ export class AiImageInterpretationClient {
       // read before the !ok check: a proxy 502 (rented instance down) carries
       // the header, and those failures must land on the remote series
       backend = response.headers?.get('x-ai-backend') ?? backend;
-      // The hybrid's remote-router adapters (im-ai-remote) stamp the model that
-      // actually served the response; the llama backends don't, and there the
-      // model sent in the request IS what served.
-      const model = response.headers?.get('x-ai-model') ?? overrides?.model ?? config.model;
 
       if (!response.ok) {
         this.logger.warn(
@@ -162,6 +165,16 @@ export class AiImageInterpretationClient {
       const usage = payload.usage;
       const finishReason = payload.choices?.[0]?.finish_reason;
       const content = getContent(payload);
+      // The hybrid's remote-router adapters (im-ai-remote) stamp the model that
+      // actually served the response into x-ai-model. A routing meta-model gets
+      // no such header from a direct call, so the body's `model` is the only
+      // honest attribution — trust it there. For any other request the model
+      // sent in the request IS what served: llama.cpp echoes a `model` too, but
+      // its alias/path need not match the configured name, so it must not be
+      // read as a re-attribution.
+      const model =
+        response.headers?.get('x-ai-model') ??
+        (requestedModel.startsWith(ROUTING_META_MODEL_PREFIX) && payload.model ? payload.model : requestedModel);
 
       let decoded: unknown;
       try {
