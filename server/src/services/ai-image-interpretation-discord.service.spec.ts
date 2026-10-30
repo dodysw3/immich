@@ -57,7 +57,7 @@ const alertAsset = {
 
 const makeService = () => {
   const dependencies = {
-    logger: { setContext: vi.fn(), log: vi.fn(), warn: vi.fn() },
+    logger: { setContext: vi.fn(), log: vi.fn(), warn: vi.fn(), debug: vi.fn() },
     configRepository: {
       getEnv: vi.fn().mockReturnValue({
         aiImageInterpretation: {
@@ -117,6 +117,7 @@ describe(AiImageInterpretationDiscordService.name, () => {
     expect(dependencies.discordClient.send).toHaveBeenCalledWith({
       accountName: 'Cangka',
       assetId: 'asset-1',
+      completedAt: '2026-09-12 19:00 GMT+7',
       externalDomain: 'https://photos.example.com',
       originalFileName: 'IMG_1234.JPG',
       photoDate: '2026-09-13T05:10:59.000Z',
@@ -167,28 +168,34 @@ describe(AiImageInterpretationDiscordService.name, () => {
   });
 
   it('reports an unknown ETA when the completion window is empty and a drained queue when nothing waits', async () => {
-    const { service, dependencies } = makeService();
-    dependencies.jobRepository.getAiInterpretationCompletionRate.mockResolvedValue(0);
+    vi.useFakeTimers();
+    try {
+      const { service, dependencies } = makeService();
+      dependencies.jobRepository.getAiInterpretationCompletionRate.mockResolvedValue(0);
 
-    await service.handleAlert({ assetId: 'asset-1', runKey });
+      await service.handleAlert({ assetId: 'asset-1', runKey });
 
-    expect(dependencies.discordClient.send).toHaveBeenCalledWith(
-      expect.objectContaining({ eta: 'unknown (no completions in the last 5 minutes)', waitingCount: 37 }),
-    );
+      expect(dependencies.discordClient.send).toHaveBeenCalledWith(
+        expect.objectContaining({ eta: 'unknown (no completions in the last 5 minutes)', waitingCount: 37 }),
+      );
 
-    dependencies.jobRepository.getJobCounts.mockResolvedValue({
-      active: 0,
-      completed: 0,
-      failed: 0,
-      delayed: 0,
-      waiting: 0,
-      paused: 0,
-    });
-    await service.handleAlert({ assetId: 'asset-1', runKey });
+      vi.advanceTimersByTime(61_000);
+      dependencies.jobRepository.getJobCounts.mockResolvedValue({
+        active: 0,
+        completed: 0,
+        failed: 0,
+        delayed: 0,
+        waiting: 0,
+        paused: 0,
+      });
+      await service.handleAlert({ assetId: 'asset-1', runKey });
 
-    expect(dependencies.discordClient.send).toHaveBeenCalledWith(
-      expect.objectContaining({ eta: 'queue drained', waitingCount: 0 }),
-    );
+      expect(dependencies.discordClient.send).toHaveBeenCalledWith(
+        expect.objectContaining({ eta: 'queue drained', waitingCount: 0 }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('uses the recorded capture instant when the photo has an explicit EXIF timezone', async () => {
@@ -323,5 +330,45 @@ describe(AiImageInterpretationDiscordService.name, () => {
     );
     await expect(service.handleAlert({ assetId: 'asset-1', runKey })).rejects.toBeInstanceOf(UnrecoverableError);
     expect(dependencies.interpretationRepository.get).toHaveBeenCalledTimes(2);
+  });
+
+  it('drops alerts that arrive within a minute of the last sent alert', async () => {
+    const { service, dependencies } = makeService();
+
+    await expect(service.handleAlert({ assetId: 'asset-1', runKey })).resolves.toBe(JobStatus.Success);
+    await expect(service.handleAlert({ assetId: 'asset-1', runKey })).resolves.toBe(JobStatus.Skipped);
+
+    expect(dependencies.discordClient.send).toHaveBeenCalledTimes(1);
+    // The cap fires before any repository reads, so a flood of drops stays cheap.
+    expect(dependencies.interpretationRepository.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends again once the one-per-minute window has elapsed', async () => {
+    vi.useFakeTimers();
+    try {
+      const { service, dependencies } = makeService();
+      await expect(service.handleAlert({ assetId: 'asset-1', runKey })).resolves.toBe(JobStatus.Success);
+
+      vi.advanceTimersByTime(59_000);
+      await expect(service.handleAlert({ assetId: 'asset-1', runKey })).resolves.toBe(JobStatus.Skipped);
+      expect(dependencies.discordClient.send).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(2000);
+      await expect(service.handleAlert({ assetId: 'asset-1', runKey })).resolves.toBe(JobStatus.Success);
+      expect(dependencies.discordClient.send).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not burn the one-per-minute slot when the send fails', async () => {
+    const { service, dependencies } = makeService();
+    dependencies.discordClient.send.mockRejectedValueOnce(
+      new AiInterpretationDiscordAlertError('Discord webhook returned HTTP 503 from discord.com', 'server_error', true),
+    );
+
+    await expect(service.handleAlert({ assetId: 'asset-1', runKey })).rejects.toMatchObject({ code: 'server_error' });
+    await expect(service.handleAlert({ assetId: 'asset-1', runKey })).resolves.toBe(JobStatus.Success);
+    expect(dependencies.discordClient.send).toHaveBeenCalledTimes(2);
   });
 });

@@ -36,6 +36,13 @@ const SUPPORTED_THUMBNAIL_TYPES = new Set<AiInterpretationDiscordThumbnail['cont
   'image/webp',
 ]);
 const DEFAULT_PHOTO_TIME_ZONE = 'Asia/Jakarta';
+const DISCORD_ALERT_MIN_INTERVAL_MS = 60_000;
+const COMPLETED_AT_FORMAT = 'yyyy-MM-dd HH:mm ZZZZ';
+
+const getCompletedAtLabel = (finishedAt: string | undefined) =>
+  DateTime.fromISO(finishedAt ?? new Date().toISOString())
+    .setZone(DEFAULT_PHOTO_TIME_ZONE)
+    .toFormat(COMPLETED_AT_FORMAT);
 
 const getPhotoDate = ({
   dateTimeOriginal,
@@ -76,10 +83,24 @@ export class AiImageInterpretationDiscordService {
     this.logger.setContext(AiImageInterpretationDiscordService.name);
   }
 
+  private lastAlertSentAt = 0;
+
   @OnJob({ name: JobName.SendAiInterpretationDiscordAlert, queue: QueueName.Notification })
   async handleAlert({ assetId, runKey }: JobOf<JobName.SendAiInterpretationDiscordAlert>): Promise<JobStatus> {
     const discordConfig = this.configRepository.getEnv().aiImageInterpretation.discord;
     if (!discordConfig.webhookUrl) {
+      return JobStatus.Skipped;
+    }
+
+    // Bulk batches and duplicate copies complete far faster than anyone reads
+    // their alerts; keep at most one message per minute and drop the rest —
+    // the server log and per-asset records stay complete. The slot is only
+    // reserved once a send is actually attempted, and released again on
+    // failure so a retry is not swallowed by the cap.
+    if (Date.now() - this.lastAlertSentAt < DISCORD_ALERT_MIN_INTERVAL_MS) {
+      this.logger.debug(
+        `Dropped Discord alert for ${assetId}/${runKey}: one alert per ${DISCORD_ALERT_MIN_INTERVAL_MS / 1000}s cap`,
+      );
       return JobStatus.Skipped;
     }
 
@@ -115,10 +136,13 @@ export class AiImageInterpretationDiscordService {
     const completionsPerMinute = await this.jobRepository.getAiInterpretationCompletionRate(lane);
     const eta = formatAiInterpretationQueueEta(waitingCount, completionsPerMinute);
 
+    const previousSentAt = this.lastAlertSentAt;
     try {
+      this.lastAlertSentAt = Date.now();
       await this.discordClient.send({
         accountName: owner.name.trim() || owner.email,
         assetId,
+        completedAt: getCompletedAtLabel(run.finishedAt),
         externalDomain,
         originalFileName: asset.originalFileName,
         photoDate: getPhotoDate(asset),
@@ -130,6 +154,7 @@ export class AiImageInterpretationDiscordService {
         eta,
       });
     } catch (error) {
+      this.lastAlertSentAt = previousSentAt;
       if (error instanceof AiInterpretationDiscordAlertError) {
         if (!error.retryable) {
           throw new UnrecoverableError(error.message);

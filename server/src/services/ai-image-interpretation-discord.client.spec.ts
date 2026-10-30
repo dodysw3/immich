@@ -21,6 +21,7 @@ const result: MuseInterpretationResult = {
 const makeAlert = (overrides: Partial<AiInterpretationDiscordAlert> = {}): AiInterpretationDiscordAlert => ({
   accountName: 'Cangka',
   assetId: 'asset-1',
+  completedAt: '2026-09-26 23:04 WIB',
   externalDomain: 'https://photos.example.com',
   originalFileName: 'IMG_1234.JPG',
   photoDate: '2020-04-05T06:07:08.000Z',
@@ -77,11 +78,11 @@ describe(AiImageInterpretationDiscordClient.name, () => {
       url: 'https://photos.example.com/photos/asset-1',
       timestamp: '2020-04-05T06:07:08.000Z',
       fields: [
-        { name: 'Immich account', value: 'Cangka', inline: true },
-        { name: 'Filename', value: 'IMG_1234.JPG', inline: true },
+        { name: 'User', value: 'Cangka', inline: true },
+        { name: 'File', value: 'IMG_1234.JPG', inline: true },
         { name: 'Model', value: 'unsloth/Muse-Glimmer-30B-GGUF', inline: true },
-        { name: 'AI interpretations waiting (local)', value: '42', inline: true },
-        { name: 'Queue ETA (local)', value: '~11m (around Sep 26, 11:11 PM GMT+7)', inline: true },
+        { name: 'Done', value: '2026-09-26 23:04 WIB', inline: true },
+        { name: 'Queue (local)', value: '42 waiting · ~11m (around Sep 26, 11:11 PM GMT+7)', inline: true },
       ],
     });
   });
@@ -100,24 +101,19 @@ describe(AiImageInterpretationDiscordClient.name, () => {
       description: 'Fallback interpretation',
     });
     expect(payload.embeds[0]).not.toHaveProperty('url');
-    expect(payload.embeds[0].fields[3]).toEqual({
-      name: 'AI interpretations waiting (local)',
-      value: '0',
+    expect(payload.embeds[0].fields[4]).toEqual({
+      name: 'Queue (local)',
+      value: '0 waiting · ~11m (around Sep 26, 11:11 PM GMT+7)',
       inline: true,
     });
   });
 
-  it('labels the queue fields with the public-spark lane for hosted runs', () => {
+  it('labels the queue field with the public-spark lane for hosted runs', () => {
     const payload = buildAiInterpretationDiscordPayload(makeAlert({ lane: 'public', waitingCount: 3 }));
 
-    expect(payload.embeds[0].fields[3]).toEqual({
-      name: 'AI interpretations waiting (public-spark)',
-      value: '3',
-      inline: true,
-    });
     expect(payload.embeds[0].fields[4]).toEqual({
-      name: 'Queue ETA (public-spark)',
-      value: '~11m (around Sep 26, 11:11 PM GMT+7)',
+      name: 'Queue (public-spark)',
+      value: '3 waiting · ~11m (around Sep 26, 11:11 PM GMT+7)',
       inline: true,
     });
   });

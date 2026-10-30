@@ -17,6 +17,7 @@ export type AiInterpretationDiscordThumbnail = {
 export type AiInterpretationDiscordAlert = {
   accountName: string;
   assetId: string;
+  completedAt: string;
   externalDomain?: string;
   originalFileName: string;
   photoDate: string;
@@ -108,6 +109,7 @@ const getAssetUrl = (externalDomain: string | undefined, assetId: string) => {
 export const buildAiInterpretationDiscordPayload = ({
   accountName,
   assetId,
+  completedAt,
   externalDomain,
   originalFileName,
   photoDate,
@@ -121,35 +123,35 @@ export const buildAiInterpretationDiscordPayload = ({
   const title = truncate(result.title, DISCORD_TITLE_LIMIT) || 'AI interpretation complete';
   const summary = truncate(result.archive_summary || result.interpretation, DISCORD_DESCRIPTION_LIMIT);
   // The queue stats are lane-specific (the local and public-spark queues drain
-  // at very different speeds), so the fields name the lane they describe.
+  // at very different speeds), so the field names the lane it describes.
   const laneLabel = lane === 'public' ? 'public-spark' : 'local';
   const embed: DiscordEmbed = {
     title,
     color: 0x42_50_af,
     fields: [
       {
-        name: 'Immich account',
-        value: truncate(accountName, DISCORD_FIELD_VALUE_LIMIT) || 'Unknown account',
+        name: 'User',
+        value: truncate(accountName, DISCORD_FIELD_VALUE_LIMIT) || 'Unknown',
         inline: true,
       },
       {
-        name: 'Filename',
-        value: truncate(originalFileName, DISCORD_FIELD_VALUE_LIMIT) || 'Unknown filename',
+        name: 'File',
+        value: truncate(originalFileName, DISCORD_FIELD_VALUE_LIMIT) || 'Unknown',
         inline: true,
       },
       {
         name: 'Model',
-        value: truncate(model, DISCORD_FIELD_VALUE_LIMIT) || 'Unknown model',
+        value: truncate(model, DISCORD_FIELD_VALUE_LIMIT) || 'Unknown',
         inline: true,
       },
       {
-        name: `AI interpretations waiting (${laneLabel})`,
-        value: String(waitingCount),
+        name: 'Done',
+        value: truncate(completedAt, DISCORD_FIELD_VALUE_LIMIT) || 'Unknown',
         inline: true,
       },
       {
-        name: `Queue ETA (${laneLabel})`,
-        value: truncate(eta, DISCORD_FIELD_VALUE_LIMIT) || 'Unknown',
+        name: `Queue (${laneLabel})`,
+        value: truncate(`${waitingCount} waiting · ${eta}`, DISCORD_FIELD_VALUE_LIMIT) || 'Unknown',
         inline: true,
       },
     ],

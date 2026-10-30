@@ -207,14 +207,14 @@ describe('getEnv', () => {
         maxPixels: 16_000_000,
         concurrency: 1,
         skipIfInterpreted: true,
-        discord: { webhookUrl: undefined, includeThumbnail: true },
+        discord: { webhookUrl: undefined, includeThumbnail: false },
       });
     });
 
     it('should treat an empty Discord webhook URL as disabled', () => {
       process.env.IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_WEBHOOK_URL = '';
 
-      expect(getEnv().aiImageInterpretation.discord).toEqual({ includeThumbnail: true });
+      expect(getEnv().aiImageInterpretation.discord).toEqual({ includeThumbnail: false });
     });
 
     it('should parse the local endpoint settings', () => {
@@ -474,7 +474,13 @@ describe('getEnv', () => {
       process.env.IMMICH_TELEMETRY_EXCLUDE = 'job';
       const { telemetry } = getEnv();
       expect(telemetry.metrics).toEqual(
-        new Set([ImmichTelemetry.Api, ImmichTelemetry.Host, ImmichTelemetry.Io, ImmichTelemetry.Repo]),
+        new Set([
+          ImmichTelemetry.Api,
+          ImmichTelemetry.Host,
+          ImmichTelemetry.Io,
+          ImmichTelemetry.Repo,
+          ImmichTelemetry.Library,
+        ]),
       );
     });
 

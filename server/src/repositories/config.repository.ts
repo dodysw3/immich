@@ -473,7 +473,7 @@ const getEnv = (): EnvData => {
       skipIfInterpreted: dto.IMMICH_AI_IMAGE_INTERPRETATION_SKIP_IF_INTERPRETED ?? true,
       discord: {
         webhookUrl: dto.IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_WEBHOOK_URL,
-        includeThumbnail: dto.IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_INCLUDE_THUMBNAIL ?? true,
+        includeThumbnail: dto.IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_INCLUDE_THUMBNAIL ?? false,
       },
     },
 
