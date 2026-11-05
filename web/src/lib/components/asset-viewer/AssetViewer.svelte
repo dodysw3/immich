@@ -466,17 +466,13 @@
 
   const showFaceButton = $derived(
     $slideshowState === SlideshowState.None &&
-      asset.type === AssetTypeEnum.Image &&
       asset.exifInfo?.projectionType !== ProjectionType.EQUIRECTANGULAR &&
       !assetViewerManager.isShowEditor &&
       faceManager.data.length > 0,
   );
 
   const showOcrButton = $derived(
-    $slideshowState === SlideshowState.None &&
-      asset.type === AssetTypeEnum.Image &&
-      !assetViewerManager.isShowEditor &&
-      ocrManager.hasOcrData,
+    $slideshowState === SlideshowState.None && !assetViewerManager.isShowEditor && ocrManager.hasOcrData,
   );
 
   const aiInterpretationButtonBottom = $derived(24 + (showFaceButton ? 56 : 0) + (showOcrButton ? 56 : 0));
@@ -682,7 +678,7 @@
       </div>
     {/if}
 
-    {#if $slideshowState === SlideshowState.None && asset.type === AssetTypeEnum.Image && !assetViewerManager.isShowEditor}
+    {#if $slideshowState === SlideshowState.None && !assetViewerManager.isShowEditor}
       <AiInterpretationOverlay {asset} buttonBottom={aiInterpretationButtonBottom} />
     {/if}
 

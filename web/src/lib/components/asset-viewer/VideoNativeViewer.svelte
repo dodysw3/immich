@@ -1,5 +1,6 @@
 <script lang="ts">
   import FaceEditor from '$lib/components/asset-viewer/face-editor/FaceEditor.svelte';
+  import BoundingBoxOverlay from '$lib/components/asset-viewer/BoundingBoxOverlay.svelte';
   import VideoRemoteViewer from '$lib/components/asset-viewer/VideoRemoteViewer.svelte';
   import { assetViewerFadeDuration } from '$lib/constants';
   import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
@@ -8,8 +9,10 @@
   import { authManager } from '$lib/managers/auth-manager.svelte';
   import { mediaCapabilitiesManager } from '$lib/managers/media-capabilities-manager.svelte';
   import { autoPlayVideo, lang, loopVideo as loopVideoPreference } from '$lib/stores/preferences.store';
+  import { faceManager } from '$lib/stores/face.svelte';
+  import { ocrManager } from '$lib/stores/ocr.svelte';
   import { getAssetHlsSessionUrl, getAssetHlsUrl, getAssetMediaUrl, getAssetPlaybackUrl } from '$lib/utils';
-  import { AssetMediaSize, type AssetResponseDto } from '@immich/sdk';
+  import { AssetMediaSize, AssetTypeEnum, type AssetResponseDto } from '@immich/sdk';
   import { Icon, LoadingSpinner, shortcuts } from '@immich/ui';
   import {
     mdiCheck,
@@ -317,6 +320,34 @@
 
   let containerWidth = $state(0);
   let containerHeight = $state(0);
+  let containerElement: HTMLDivElement | undefined = $state();
+
+  // Face recognition / OCR overlays over the video content. The boxes are relative
+  // to the preview frame, so they map onto the displayed video rect; read it from
+  // the media element's layout rect (media-chrome sizes it to the asset aspect)
+  // since videoWidth can be 0 in some embedding environments.
+  const overlayVideoElement = $derived(
+    videoPlayer ? (isHlsElement(videoPlayer) ? videoPlayer.nativeEl : videoPlayer) : undefined,
+  );
+  const overlayContentRect = $derived.by(() => {
+    const el = overlayVideoElement;
+    const host = containerElement;
+    if (!el || !host || containerWidth === 0 || containerHeight === 0) {
+      return { width: 0, height: 0, offsetX: 0, offsetY: 0 };
+    }
+
+    const hostRect = host.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    return {
+      width: elRect.width,
+      height: elRect.height,
+      offsetX: elRect.left - hostRect.left,
+      offsetY: elRect.top - hostRect.top,
+    };
+  });
+  const showBoundingBoxOverlay = $derived(
+    asset.type === AssetTypeEnum.Video && (faceManager.data.length > 0 || ocrManager.hasOcrData),
+  );
 
   $effect(() => {
     if (assetViewerManager.isFaceEditMode) {
@@ -364,6 +395,7 @@
   <div
     transition:fade={{ duration: assetViewerFadeDuration }}
     class="flex h-full place-content-center place-items-center select-none"
+    bind:this={containerElement}
     bind:clientWidth={containerWidth}
     bind:clientHeight={containerHeight}
   >
@@ -510,6 +542,16 @@
           {containerHeight}
           {assetId}
         />
+      {/if}
+
+      {#if showBoundingBoxOverlay}
+        <div class="pointer-events-none absolute inset-s-0 top-0 size-full">
+          <BoundingBoxOverlay
+            overlaySize={{ width: overlayContentRect.width, height: overlayContentRect.height }}
+            offsetX={overlayContentRect.offsetX}
+            offsetY={overlayContentRect.offsetY}
+          />
+        </div>
       {/if}
     {/if}
   </div>
