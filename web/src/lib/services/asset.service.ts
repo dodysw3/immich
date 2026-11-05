@@ -25,6 +25,7 @@ import {
   mdiDownloadBox,
   mdiEarth,
   mdiFaceRecognition,
+  mdiFileDocumentOutline,
   mdiHeadSyncOutline,
   mdiVideoOutline,
   mdiHeart,
@@ -388,6 +389,13 @@ export const getAssetActions = (
     onAction: () => goto(Route.search({ queryAssetId: asset.stackPrimaryAssetId ?? asset.id })),
   };
 
+  const OpenDocumentViewer: ActionItem = {
+    title: $t('open_document_viewer'),
+    icon: mdiFileDocumentOutline,
+    $if: () => isOwner && asset.originalMimeType === 'application/pdf' && !asset.isTrashed,
+    onAction: () => goto(Route.viewDocument({ id: asset.id })),
+  };
+
   const RefreshFacesJob: ActionItem = {
     title: $t('refresh_faces'),
     icon: mdiHeadSyncOutline,
@@ -459,6 +467,7 @@ export const getAssetActions = (
     SetProfilePicture,
     ViewInTimeline,
     ViewSimilar,
+    OpenDocumentViewer,
     RefreshFacesJob,
     ScanVideoFacesJob,
     RefreshMetadataJob,
