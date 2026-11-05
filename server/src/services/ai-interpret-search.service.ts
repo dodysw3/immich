@@ -10,7 +10,11 @@ import { AuthDto } from 'src/dtos/auth.dto.js';
 import { AiInterpretSearchDto, AiInterpretSearchItemDto, AiInterpretSearchResponseDto } from 'src/dtos/search.dto.js';
 import { AssetVisibility, ImmichWorker, JobName, JobStatus, QueueName } from 'src/enum.js';
 import { AiImageInterpretationRepository } from 'src/repositories/ai-image-interpretation.repository.js';
-import { AiInterpretBranchRow, AiInterpretSearchRepository } from 'src/repositories/ai-interpret-search.repository.js';
+import {
+  AiInterpretAssetFilters,
+  AiInterpretBranchRow,
+  AiInterpretSearchRepository,
+} from 'src/repositories/ai-interpret-search.repository.js';
 import { ConfigRepository } from 'src/repositories/config.repository.js';
 import { JobRepository } from 'src/repositories/job.repository.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';
@@ -198,9 +202,29 @@ export class AiInterpretSearchService {
     // Both branches are fused from a window that grows with the requested
     // page, so the fused ordering is stable across pages.
     const window = page * size;
+    const assetFilters: AiInterpretAssetFilters = {
+      userIds,
+      visibility,
+      takenAfter: dto.takenAfter,
+      takenBefore: dto.takenBefore,
+      type: dto.type,
+      isFavorite: dto.isFavorite,
+      rating: dto.rating,
+      city: dto.city,
+      state: dto.state,
+      country: dto.country,
+      make: dto.make,
+      model: dto.model,
+      lensModel: dto.lensModel,
+      personIds: dto.personIds,
+      tagIds: dto.tagIds,
+      isNotInAlbum: dto.isNotInAlbum,
+      hasAiInterpretation: dto.hasAiInterpretation,
+      withStacked: dto.withStacked,
+    };
     const [dense, lexical] = await Promise.all([
-      this.repository.searchDense({ limit: window + 1 }, { embedding, userIds, visibility, minScore: config.minScore }),
-      this.repository.searchLexical({ limit: window + 1 }, { q: dto.q, userIds, visibility }),
+      this.repository.searchDense({ limit: window + 1 }, { ...assetFilters, embedding, minScore: config.minScore }),
+      this.repository.searchLexical({ limit: window + 1 }, { ...assetFilters, q: dto.q }),
     ]);
 
     const denseRows = dense.slice(0, window);

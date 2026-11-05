@@ -501,6 +501,22 @@ const AiInterpretSearchSchema = z
     page: z.int().min(1).optional().describe('Page number'),
     size: z.int().min(1).max(1000).default(100).describe('Number of results to return'),
     visibility: AssetVisibilitySchema.optional().describe('Filter by visibility'),
+    takenAfter: isoDatetimeToDate.optional().describe('Filter by taken date (after)'),
+    takenBefore: isoDatetimeToDate.optional().describe('Filter by taken date (before)'),
+    type: AssetTypeSchema.optional().describe('Filter by asset type'),
+    isFavorite: z.boolean().optional().describe('Filter by favorite status'),
+    rating: z.int().min(1).max(5).nullish().describe('Filter by rating (null = unrated)'),
+    city: z.string().nullish().describe('Filter by city name (null = no city)'),
+    state: z.string().nullish().describe('Filter by state/province name (null = no state)'),
+    country: z.string().nullish().describe('Filter by country name (null = no country)'),
+    make: z.string().nullish().describe('Filter by camera make (null = no make)'),
+    model: z.string().nullish().describe('Filter by camera model (null = no model)'),
+    lensModel: z.string().nullish().describe('Filter by lens model (null = no lens)'),
+    personIds: z.array(z.uuidv4()).optional().describe('Filter by person IDs (all must match)'),
+    tagIds: z.array(z.uuidv4()).nullish().describe('Filter by tag IDs (all must match; null = untagged)'),
+    isNotInAlbum: z.boolean().optional().describe('Filter assets not in any album'),
+    hasAiInterpretation: z.boolean().optional().describe('Filter by presence of a completed AI interpretation'),
+    withStacked: z.boolean().optional().describe('Include stacked assets'),
   })
   .meta({ id: 'AiInterpretSearchDto' });
 

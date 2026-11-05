@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AiInterpretationDocument } from 'src/dtos/ai-image-interpretation.dto.js';
-import { JobName, JobStatus } from 'src/enum.js';
+import { AssetType, AssetVisibility, JobName, JobStatus } from 'src/enum.js';
 import { AiInterpretSearchService } from 'src/services/ai-interpret-search.service.js';
 import { createAiInterpretationRunKey } from 'src/utils/ai-image-interpretation.js';
 import { newConfigRepositoryMock } from 'test/repositories/config.repository.mock.js';
@@ -224,6 +224,93 @@ describe(AiInterpretSearchService.name, () => {
       const denseArgs = repository.searchDense.mock.calls[0][1] as { minScore: number; userIds: string[] };
       expect(denseArgs.minScore).toBe(0.55);
       expect(denseArgs.userIds).toEqual(['user-1', 'partner-1']);
+    });
+
+    it('applies taken date filters to both branches', async () => {
+      enable();
+      repository.getAssetsByIds.mockResolvedValue([]);
+
+      const takenAfter = new Date('1990-01-01T00:00:00.000Z');
+      const takenBefore = new Date('2004-01-01T23:59:59.999Z');
+      await sut.searchAiInterpret(auth, { q: 'family', size: 10, takenAfter, takenBefore });
+
+      const denseArgs = repository.searchDense.mock.calls[0][1] as {
+        takenAfter?: Date;
+        takenBefore?: Date;
+      };
+      const lexicalArgs = repository.searchLexical.mock.calls[0][1] as {
+        takenAfter?: Date;
+        takenBefore?: Date;
+      };
+      expect(denseArgs.takenAfter).toBe(takenAfter);
+      expect(denseArgs.takenBefore).toBe(takenBefore);
+      expect(lexicalArgs.takenAfter).toBe(takenAfter);
+      expect(lexicalArgs.takenBefore).toBe(takenBefore);
+    });
+
+    it('omits taken date filters from the branches when not requested', async () => {
+      enable();
+      repository.getAssetsByIds.mockResolvedValue([]);
+
+      await sut.searchAiInterpret(auth, { q: 'family', size: 10 });
+
+      const denseArgs = repository.searchDense.mock.calls[0][1] as { takenAfter?: Date; takenBefore?: Date };
+      const lexicalArgs = repository.searchLexical.mock.calls[0][1] as { takenAfter?: Date; takenBefore?: Date };
+      expect(denseArgs.takenAfter).toBeUndefined();
+      expect(denseArgs.takenBefore).toBeUndefined();
+      expect(lexicalArgs.takenAfter).toBeUndefined();
+      expect(lexicalArgs.takenBefore).toBeUndefined();
+    });
+
+    it('passes metadata filters to both branches', async () => {
+      enable();
+      repository.getAssetsByIds.mockResolvedValue([]);
+
+      const takenBefore = new Date('2004-01-01T23:59:59.999Z');
+      await sut.searchAiInterpret(auth, {
+        q: 'family',
+        size: 10,
+        visibility: AssetVisibility.Timeline,
+        takenBefore,
+        type: AssetType.Image,
+        isFavorite: true,
+        rating: 4,
+        city: 'Jakarta',
+        country: null,
+        make: 'Canon',
+        model: 'EOS R5',
+        lensModel: null,
+        personIds: ['person-1', 'person-2'],
+        tagIds: null,
+        isNotInAlbum: true,
+        hasAiInterpretation: true,
+        withStacked: false,
+      });
+
+      const expected = {
+        userIds: ['user-1'],
+        visibility: AssetVisibility.Timeline,
+        takenBefore,
+        takenAfter: undefined,
+        type: AssetType.Image,
+        isFavorite: true,
+        rating: 4,
+        city: 'Jakarta',
+        state: undefined,
+        country: null,
+        make: 'Canon',
+        model: 'EOS R5',
+        lensModel: null,
+        personIds: ['person-1', 'person-2'],
+        tagIds: null,
+        isNotInAlbum: true,
+        hasAiInterpretation: true,
+        withStacked: false,
+      };
+      for (const call of [repository.searchDense.mock.calls[0], repository.searchLexical.mock.calls[0]]) {
+        const branchArgs = call[1] as Record<string, unknown>;
+        expect(branchArgs).toMatchObject(expected);
+      }
     });
 
     it('paginates with a page-growing fusion window', async () => {

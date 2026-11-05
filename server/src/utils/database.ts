@@ -733,7 +733,7 @@ function checksumPredicates(eb: AssetExpressionBuilder, filter: StringFilter = {
 
 // Metadata is created at claim time, before interpretation finishes. Only a
 // completed run with a result counts, regardless of model or prompt version.
-const completedAiInterpretations = (eb: AssetExpressionBuilder) =>
+export const completedAiInterpretations = (eb: AssetExpressionBuilder) =>
   eb
     .selectFrom('asset_metadata')
     .whereRef('asset_metadata.assetId', '=', 'asset.id')
