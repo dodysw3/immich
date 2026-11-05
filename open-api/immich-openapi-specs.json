@@ -21348,16 +21348,69 @@
       },
       "AiInterpretSearchDto": {
         "properties": {
+          "city": {
+            "description": "Filter by city name (null = no city)",
+            "nullable": true,
+            "type": "string"
+          },
+          "country": {
+            "description": "Filter by country name (null = no country)",
+            "nullable": true,
+            "type": "string"
+          },
+          "hasAiInterpretation": {
+            "description": "Filter by presence of a completed AI interpretation",
+            "type": "boolean"
+          },
+          "isFavorite": {
+            "description": "Filter by favorite status",
+            "type": "boolean"
+          },
+          "isNotInAlbum": {
+            "description": "Filter assets not in any album",
+            "type": "boolean"
+          },
+          "lensModel": {
+            "description": "Filter by lens model (null = no lens)",
+            "nullable": true,
+            "type": "string"
+          },
+          "make": {
+            "description": "Filter by camera make (null = no make)",
+            "nullable": true,
+            "type": "string"
+          },
+          "model": {
+            "description": "Filter by camera model (null = no model)",
+            "nullable": true,
+            "type": "string"
+          },
           "page": {
             "description": "Page number",
             "maximum": 9007199254740991,
             "minimum": 1,
             "type": "integer"
           },
+          "personIds": {
+            "description": "Filter by person IDs (all must match)",
+            "items": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            },
+            "type": "array"
+          },
           "q": {
             "description": "Natural language query against AI interpretations",
             "minLength": 1,
             "type": "string"
+          },
+          "rating": {
+            "description": "Filter by rating (null = unrated)",
+            "maximum": 5,
+            "minimum": 1,
+            "nullable": true,
+            "type": "integer"
           },
           "size": {
             "default": 100,
@@ -21366,9 +21419,46 @@
             "minimum": 1,
             "type": "integer"
           },
+          "state": {
+            "description": "Filter by state/province name (null = no state)",
+            "nullable": true,
+            "type": "string"
+          },
+          "tagIds": {
+            "description": "Filter by tag IDs (all must match; null = untagged)",
+            "items": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "takenAfter": {
+            "description": "Filter by taken date (after)",
+            "example": "2024-01-01T00:00:00.000Z",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "type": "string"
+          },
+          "takenBefore": {
+            "description": "Filter by taken date (before)",
+            "example": "2024-01-01T00:00:00.000Z",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/AssetTypeEnum",
+            "description": "Filter by asset type"
+          },
           "visibility": {
             "$ref": "#/components/schemas/AssetVisibility",
             "description": "Filter by visibility"
+          },
+          "withStacked": {
+            "description": "Include stacked assets",
+            "type": "boolean"
           }
         },
         "required": [
@@ -24683,6 +24773,8 @@
           "AssetVideoFaceScan",
           "AssetDetectFacesQueueAll",
           "AssetDetectFaces",
+          "FaceRecheckQueueAll",
+          "FaceRecheck",
           "AssetDetectDuplicatesQueueAll",
           "AssetDetectDuplicates",
           "AssetEditThumbnailGeneration",

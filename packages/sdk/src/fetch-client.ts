@@ -2522,14 +2522,46 @@ export type QueueJobResponseDto = {
     timestamp: number;
 };
 export type AiInterpretSearchDto = {
+    /** Filter by city name (null = no city) */
+    city?: string | null;
+    /** Filter by country name (null = no country) */
+    country?: string | null;
+    /** Filter by presence of a completed AI interpretation */
+    hasAiInterpretation?: boolean;
+    /** Filter by favorite status */
+    isFavorite?: boolean;
+    /** Filter assets not in any album */
+    isNotInAlbum?: boolean;
+    /** Filter by lens model (null = no lens) */
+    lensModel?: string | null;
+    /** Filter by camera make (null = no make) */
+    make?: string | null;
+    /** Filter by camera model (null = no model) */
+    model?: string | null;
     /** Page number */
     page?: number;
+    /** Filter by person IDs (all must match) */
+    personIds?: string[];
     /** Natural language query against AI interpretations */
     q: string;
+    /** Filter by rating (null = unrated) */
+    rating?: number | null;
     /** Number of results to return */
     size?: number;
+    /** Filter by state/province name (null = no state) */
+    state?: string | null;
+    /** Filter by tag IDs (all must match; null = untagged) */
+    tagIds?: string[] | null;
+    /** Filter by taken date (after) */
+    takenAfter?: string;
+    /** Filter by taken date (before) */
+    takenBefore?: string;
+    /** Filter by asset type */
+    "type"?: AssetTypeEnum;
     /** Filter by visibility */
     visibility?: AssetVisibility;
+    /** Include stacked assets */
+    withStacked?: boolean;
 };
 export type AiInterpretSearchItemDto = {
     asset: AssetResponseDto;
@@ -9135,6 +9167,8 @@ export enum JobName {
     AssetVideoFaceScan = "AssetVideoFaceScan",
     AssetDetectFacesQueueAll = "AssetDetectFacesQueueAll",
     AssetDetectFaces = "AssetDetectFaces",
+    FaceRecheckQueueAll = "FaceRecheckQueueAll",
+    FaceRecheck = "FaceRecheck",
     AssetDetectDuplicatesQueueAll = "AssetDetectDuplicatesQueueAll",
     AssetDetectDuplicates = "AssetDetectDuplicates",
     AssetEditThumbnailGeneration = "AssetEditThumbnailGeneration",
