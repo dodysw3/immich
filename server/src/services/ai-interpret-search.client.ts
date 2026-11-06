@@ -25,10 +25,10 @@ export class AiInterpretSearchClient {
   ) {}
 
   /**
-   * Embed one or more texts against the OpenAI-compatible `/v1/embeddings`
-   * endpoint of the llama-server serving the BGE-M3 embedding model. Returns
-   * one vector per input, in input order.
-   */
+  Embed one or more texts against the OpenAI-compatible `/v1/embeddings`
+  endpoint of the llama-server serving the BGE-M3 embedding model. Returns
+  one vector per input, in input order.
+  */
   async embed(texts: string[]): Promise<number[][]> {
     const config = this.configRepository.getEnv().aiInterpretSearch;
     if (!config.enabled) {

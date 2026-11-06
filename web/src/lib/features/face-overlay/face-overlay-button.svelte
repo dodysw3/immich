@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { faceOverlayStore } from '$lib/features/face-overlay/face-overlay.store.svelte';
+  import { faceOverlayStore } from '#lib/features/face-overlay/face-overlay.store.svelte.ts';
   import { IconButton } from '@immich/ui';
   import { mdiFaceRecognition } from '@mdi/js';
 </script>

@@ -8,8 +8,8 @@
     mdiCellphoneArrowDownVariant,
     mdiContentDuplicate,
     mdiCrosshairsGps,
-    mdiImageSizeSelectLarge,
     mdiImageSearchOutline,
+    mdiImageSizeSelectLarge,
     mdiLinkEdit,
     mdiStateMachine,
   } from '@mdi/js';

@@ -247,10 +247,10 @@ export class MachineLearningRepository {
   }
 
   /**
-   * Re-check stored faces without detecting: one score per box, or undefined when the ML
-   * service could not line the boxes up with the image (or predates the option).
-   * Boxes are in the pixel space of the upright original, `width` x `height`.
-   */
+  Re-check stored faces without detecting: one score per box, or undefined when the ML
+  service could not line the boxes up with the image (or predates the option).
+  Boxes are in the pixel space of the upright original, `width` x `height`.
+  */
   async verifyStoredFaces(
     imagePath: string,
     { modelName, minScore }: FaceDetectionOptions,

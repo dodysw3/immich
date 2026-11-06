@@ -1,12 +1,15 @@
 <script lang="ts">
-  import { goto, preloadData } from '$app/navigation';
-  import { page } from '$app/stores';
-  import { QueryParameter } from '$lib/constants';
-  import { Route } from '$lib/route';
-  import { getFaceLabelCompensation, type FaceOverlayBoundingBox } from '$lib/features/face-overlay/face-overlay.utils';
-  import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
-  import { faceOverlayStore } from '$lib/features/face-overlay/face-overlay.store.svelte';
+  import { QueryParameter } from '#lib/constants.ts';
+  import { faceOverlayStore } from '#lib/features/face-overlay/face-overlay.store.svelte.ts';
+  import {
+    getFaceLabelCompensation,
+    type FaceOverlayBoundingBox,
+  } from '#lib/features/face-overlay/face-overlay.utils.ts';
+  import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
+  import { Route } from '#lib/route.ts';
   import { LoadingSpinner } from '@immich/ui';
+  import { goto, preloadData } from '$app/navigation';
+  import { page } from '$app/state';
 
   type Props = {
     faceBox: FaceOverlayBoundingBox;
@@ -27,7 +30,7 @@
   const getPersonHref = () => {
     const params = new URLSearchParams({
       at: assetId,
-      [QueryParameter.PREVIOUS_ROUTE]: $page.url.pathname,
+      [QueryParameter.PREVIOUS_ROUTE]: page.url.pathname,
     });
     const personPath = Route.viewPerson({ id: faceBox.personId! });
     return `${personPath}?${params.toString()}`;

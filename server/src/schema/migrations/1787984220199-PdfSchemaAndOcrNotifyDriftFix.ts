@@ -1,13 +1,13 @@
 import { Kysely, sql } from 'kysely';
 
 /**
- * Declares fork-specific schema that previously existed only out-of-band, so
- * `immich-admin schema-check` no longer reports drift:
- * - pdf_page FK index expected by sql-tools (`createForeignKeyIndexes`)
- * - `idx_pdf_search_text` gin index registered as a migration override
- * - `notify_ocr_complete()` + `trg_ocr_complete` (pg_notify channel consumed by
- *   the external OCR service) declared in code and registered as overrides
- */
+Declares fork-specific schema that previously existed only out-of-band, so
+`immich-admin schema-check` no longer reports drift:
+- pdf_page FK index expected by sql-tools (`createForeignKeyIndexes`)
+- `idx_pdf_search_text` gin index registered as a migration override
+- `notify_ocr_complete()` + `trg_ocr_complete` (pg_notify channel consumed by
+  the external OCR service) declared in code and registered as overrides
+*/
 export async function up(db: Kysely<any>): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS "pdf_page_assetId_idx" ON "pdf_page" ("assetId");`.execute(db);
 

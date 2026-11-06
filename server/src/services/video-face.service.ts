@@ -102,9 +102,9 @@ export class VideoFaceService {
   }
 
   /**
-   * Dry run: full sampling + grouping pipeline, nothing written to the
-   * library. Caller must `cleanup(result)` when done with frame files.
-   */
+  Dry run: full sampling + grouping pipeline, nothing written to the
+  library. Caller must `cleanup(result)` when done with frame files.
+  */
   async scanDryRun(assetId: string, budgetOverride?: number, overrides: Partial<VideoFaceScanConfig> = {}): Promise<ScanResult> {
     const asset = await this.videoFaceRepository.getScanAsset(assetId);
     if (!asset || asset.type !== AssetType.Video) {
@@ -250,7 +250,8 @@ export class VideoFaceService {
     if (!asset) {
       throw new Error('asset not found');
     }
-    const face = (await this.videoFaceRepository.getVideoFaces(assetId, asset.ownerId)).find((f) => f.id === videoFaceId);
+    const storedFaces = await this.videoFaceRepository.getVideoFaces(assetId, asset.ownerId);
+    const face = storedFaces.find((f) => f.id === videoFaceId);
     if (!face) {
       throw new Error('video face not found');
     }
@@ -313,11 +314,10 @@ export class VideoFaceService {
     let extractions = 0;
     let detections = 0;
     let decodeFailures = 0;
-    let durationMs = 0;
 
     try {
       const probe = await this.mediaRepository.probe(asset.originalPath);
-      durationMs = Math.round((probe.format.duration || 0) * 1000);
+      const durationMs = Math.round((probe.format.duration || 0) * 1000);
       if (durationMs <= 0) {
         outcome = 'decode_failed';
         return {
@@ -431,12 +431,12 @@ export class VideoFaceService {
   }
 
   /**
-   * Publish one representative per global person: representatives matching the
-   * same existing person collapse to the best; each unmatched identity
-   * publishes its own representative (normal recognition + minFaces applies
-   * downstream). Previously published rows that were not re-published are
-   * removed. Returns the number of published face rows.
-   */
+  Publish one representative per global person: representatives matching the
+  same existing person collapse to the best; each unmatched identity
+  publishes its own representative (normal recognition + minFaces applies
+  downstream). Previously published rows that were not re-published are
+  removed. Returns the number of published face rows.
+  */
   private async publish(
     assetId: string,
     clusterGroupId: string,
@@ -457,7 +457,7 @@ export class VideoFaceService {
     const byPerson = new Map<string | null, VideoFaceIdentity[]>();
     const personOf = new Map<VideoFaceIdentity, string | null>();
     for (const identity of publishable) {
-      let personGroupId: string | null = null;
+      let personGroupId: string | null;
       try {
         const [match] = await this.searchRepository.searchFaces({
           clusterGroupId,
@@ -479,7 +479,13 @@ export class VideoFaceService {
       if (personGroupId === null) {
         chosen.push(...group);
       } else {
-        chosen.push(group.reduce((best, i) => (i.bestSizePx * i.bestScore > best.bestSizePx * best.bestScore ? i : best)));
+        let best = group[0];
+        for (const identity of group) {
+          if (identity.bestSizePx * identity.bestScore > best.bestSizePx * best.bestScore) {
+            best = identity;
+          }
+        }
+        chosen.push(best);
       }
     }
 

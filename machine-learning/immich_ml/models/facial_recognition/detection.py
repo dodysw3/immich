@@ -64,9 +64,8 @@ class FaceDetector(InferenceModel[FaceDetectionOptions]):
         return scores[candidates], boxes[candidates] / scale, kps[candidates] / scale
 
     def _is_gpu_session(self) -> bool:
-        try:
-            providers = self.session.providers
-        except AttributeError:
+        providers = getattr(self.session, "providers", None)
+        if providers is None:
             return False
         return any(p in ("CUDAExecutionProvider", "ROCMExecutionProvider") for p in providers)
 

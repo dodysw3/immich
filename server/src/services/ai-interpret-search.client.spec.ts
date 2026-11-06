@@ -22,7 +22,7 @@ describe(AiInterpretSearchClient.name, () => {
       aiInterpretSearch: {
         ...env.aiInterpretSearch,
         enabled: true,
-        // eslint-disable-next-line unicorn/prefer-https -- the local host-gateway endpoint is HTTP by design
+         
         url: 'http://host.docker.internal:8899',
         apiKey: 'secret-key',
         model: 'bge-m3-Q8_0',
@@ -51,7 +51,7 @@ describe(AiInterpretSearchClient.name, () => {
     ]);
 
     const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit];
-    // eslint-disable-next-line unicorn/prefer-https -- the local host-gateway endpoint is HTTP by design
+     
     expect(url).toBe('http://host.docker.internal:8899/v1/embeddings');
     expect(request.headers).toEqual({
       'Content-Type': 'application/json',

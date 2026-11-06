@@ -459,7 +459,8 @@ export class MediaService extends BaseService {
         processInvalidImages: false,
         raw: info,
         edits: [] as never[],
-      };
+        decodingTier: THUMBNAIL_DECODING_TIER,
+      } as const;
       const decoded = { data, info };
       const [thumbhash] = await Promise.all([
         this.mediaRepository.generateThumbhash(decoded, thumbnailOptions),

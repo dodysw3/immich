@@ -14,10 +14,10 @@ interface VideoFaceScanOptions {
 }
 
 /**
- * Dry-run video face scan: runs the full sampling + grouping pipeline for one
- * asset and writes manifest.json + contact-sheet.html. Writes nothing to the
- * library — this is the tuning-experiment surface.
- */
+Dry-run video face scan: runs the full sampling + grouping pipeline for one
+asset and writes manifest.json + contact-sheet.html. Writes nothing to the
+library — this is the tuning-experiment surface.
+*/
 @Command({
   name: 'video-face-scan',
   description: 'Dry-run multi-frame video face scan (manifest + contact sheet, no library writes)',
@@ -48,6 +48,8 @@ export class VideoFaceScanCommand extends CommandRunner {
     if (options.publish) {
       const status = await this.videoFaceService.scanPublish(assetId, options.budget);
       console.log(`published scan status: ${status}`);
+      // CLI command: the exit code IS the output contract for the scan wrapper script.
+      // eslint-disable-next-line unicorn/no-process-exit
       process.exit(status === JobStatus.Success ? 0 : 1);
     }
 
@@ -81,6 +83,7 @@ export class VideoFaceScanCommand extends CommandRunner {
       writeFileSync(sheetPath, await this.contactSheet(result));
       console.log(`outcome=${result.outcome} frames=${result.frames.length} detections=${result.detections} identities=${result.identities.length}`);
       console.log(`wrote ${manifestPath} and ${sheetPath}`);
+      // eslint-disable-next-line unicorn/no-process-exit -- CLI command; see above
       process.exit(0);
     } finally {
       await this.videoFaceService.cleanup(result);
@@ -92,10 +95,12 @@ export class VideoFaceScanCommand extends CommandRunner {
     return path;
   }
 
+  /* eslint-disable unicorn/prefer-native-coercion-functions -- the CLI framework needs a named parse method */
   @Option({ flags: '-b, --budget [frames]', description: 'frame budget override' })
   parseBudget(value: string): number {
-    return Number.parseInt(value, 10);
+    return Number(value);
   }
+  /* eslint-enable unicorn/prefer-native-coercion-functions */
 
   @Option({ flags: '-o, --out [dir]', description: 'output directory (default cwd)' })
   parseOut(dir: string): string {

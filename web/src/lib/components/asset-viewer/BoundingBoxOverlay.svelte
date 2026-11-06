@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { faceOverlayStore } from '$lib/features/face-overlay/face-overlay.store.svelte';
-  import { assetViewerManager, type Faces } from '$lib/managers/asset-viewer-manager.svelte';
-  import { faceManager } from '$lib/stores/face.svelte';
-  import { ocrManager } from '$lib/stores/ocr.svelte';
-  import type { Size } from '$lib/utils/container-utils';
-  import { getOcrBoundingBoxes } from '$lib/utils/ocr-utils';
-  import { getBoundingBox, getFaceLabelStyle, type BoundingBox } from '$lib/utils/people-utils';
+  import { faceOverlayStore } from '#lib/features/face-overlay/face-overlay.store.svelte.ts';
+  import { assetViewerManager, type Faces } from '#lib/managers/asset-viewer-manager.svelte.ts';
+  import { faceManager } from '#lib/stores/face.svelte.ts';
+  import { ocrManager } from '#lib/stores/ocr.svelte.ts';
+  import type { Size } from '#lib/utils/container-utils.ts';
+  import { getOcrBoundingBoxes } from '#lib/utils/ocr-utils.ts';
+  import { getBoundingBox, getFaceLabelStyle, type BoundingBox } from '#lib/utils/people-utils.ts';
   import { onDestroy } from 'svelte';
   import OcrBoundingBox from './OcrBoundingBox.svelte';
 
@@ -132,10 +132,10 @@
     </svg>
   </div>
   {#each boundingBoxes as boundingbox (boundingbox.id)}
-    {@const isActive = assetViewerManager.highlightedFaces.some((f) => f.id === boundingbox.id)}
-    {@const showPersistent = faceOverlayStore.showOverlay && !isActive}
-    {@const displayLabel = boundingbox.referenceLabel ?? boundingbox.name}
-    {@const label = getFaceLabelStyle(displayLabel, boundingbox, boundingBoxes)}
+    {const isActive = $derived(assetViewerManager.highlightedFaces.some((f) => f.id === boundingbox.id))}
+    {const showPersistent = $derived(faceOverlayStore.showOverlay && !isActive)}
+    {const displayLabel = $derived(boundingbox.referenceLabel ?? boundingbox.name)}
+    {const label = $derived(getFaceLabelStyle(displayLabel, boundingbox, boundingBoxes))}
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="pointer-events-auto absolute rounded-lg {isActive &&
@@ -145,9 +145,10 @@
       onpointerleave={() => assetViewerManager.clearHighlightedFaces()}
     >
       {#if isActive && displayLabel}
-        {@const labelAbove =
+        {const labelAbove = $derived(
           boundingbox.top + boundingbox.height + faceLabelOffset > overlaySize.height &&
-          boundingbox.top >= faceLabelOffset}
+            boundingbox.top >= faceLabelOffset,
+        )}
         <div
           aria-hidden="true"
           class="absolute rounded-sm bg-white/90 px-2 py-1 text-sm font-medium whitespace-nowrap text-black shadow-lg"

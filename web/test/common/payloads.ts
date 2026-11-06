@@ -88,6 +88,7 @@ const serverFeatures = (overrides: Partial<ResponseOf<'getServerFeatures'>> = {}
   oauth: false,
   oauthAutoLaunch: false,
   ocr: false,
+  aiInterpretSearch: false,
   passwordLogin: true,
   configFile: false,
   email: false,
@@ -125,6 +126,7 @@ const mediaTypes = (
   video: ['.mov', '.mp4', '.webm', '.mkv'],
   image: ['.jpeg', '.jpg', '.png', '.webp', '.heic', '.gif', '.svg'],
   sidecar: ['.xmp'],
+  pdf: ['.pdf'],
   ...overrides,
 });
 
@@ -191,6 +193,7 @@ const adminConfig = (overrides: Partial<ResponseOf<'getAdminConfig'>> = {}): Res
     library: { concurrency: 5 },
     notifications: { concurrency: 5 },
     ocr: { concurrency: 1 },
+    pdfProcessing: { concurrency: 1 },
     workflow: { concurrency: 5 },
     editor: { concurrency: 2 },
     integrityCheck: { concurrency: 1 },
@@ -201,8 +204,31 @@ const adminConfig = (overrides: Partial<ResponseOf<'getAdminConfig'>> = {}): Res
     urls: ['http://immich-machine-learning:3003'],
     availabilityChecks: { enabled: true, timeout: 2000, interval: 30_000 },
     clip: { enabled: true, modelName: 'ViT-B-32__openai' },
-    duplicateDetection: { enabled: true, maxDistance: 0.01 },
-    facialRecognition: { enabled: true, modelName: 'buffalo_l', minScore: 0.7, maxDistance: 0.5, minFaces: 3 },
+    duplicateDetection: {
+      enabled: true,
+      maxDistance: 0.01,
+      ocrVeto: true,
+      ocrVetoMaxTokenDiff: 4,
+      pdfVeto: true,
+      pdfVetoMaxTokenDiff: 1,
+    },
+    facialRecognition: {
+      enabled: true,
+      modelName: 'buffalo_l',
+      minScore: 0.7,
+      maxDistance: 0.5,
+      minFaces: 3,
+      importNamesFromOtherAccounts: false,
+      minFaceSize: 30,
+      minVerifyScore: 0.6,
+      tiling: {
+        enabled: false,
+        tileSize: 640,
+        tileOverlap: 0.25,
+        maxTiles: 500,
+        triggers: { minPass1Faces: 8, minDimWithFaces: { dim: 3000, faces: 3 } },
+      },
+    },
     ocr: {
       enabled: true,
       modelName: 'PP-OCRv5_mobile',
@@ -303,6 +329,7 @@ const queues = (): ResponseOf<'getQueuesLegacy'> => ({
   migration: idleQueue(),
   notifications: idleQueue(),
   ocr: idleQueue(),
+  pdfProcessing: idleQueue(),
   search: idleQueue(),
   sidecar: idleQueue(),
   smartSearch: idleQueue(),
@@ -310,6 +337,10 @@ const queues = (): ResponseOf<'getQueuesLegacy'> => ({
   thumbnailGeneration: idleQueue(),
   videoConversion: idleQueue(),
   workflow: idleQueue(),
+  imageInterpretation: idleQueue(),
+  imageInterpretationPublic: idleQueue(),
+  aiInterpretSearch: idleQueue(),
+  videoFaceScan: idleQueue(),
 });
 
 const idleQueue = () => ({

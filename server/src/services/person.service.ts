@@ -510,7 +510,7 @@ export class PersonService extends BaseService {
     // An old stored box can sit off its face, so a real face may fail on it. A face failing on its
     // stored box keeps the score of a fresh detection that passes the re-check where it is, and is
     // only removed when no such detection overlaps it.
-    const failingIndexes = faces.flatMap((_, i) => (scores[i] < minVerifyScore ? [i] : []));
+    const failingIndexes = faces.map((_, i) => i).filter((i) => scores[i] < minVerifyScore);
     if (failingIndexes.length > 0) {
       const found = await this.detectPassingFaces(id, machineLearning.facialRecognition);
       for (const i of failingIndexes) {
@@ -553,16 +553,16 @@ export class PersonService extends BaseService {
       verify: true,
     });
     const { faces, dimensions } = this.toStorageSpace(
-      detected.faces.filter(({ verifyScore }) => (verifyScore ?? 0) >= facialRecognition.minVerifyScore),
+      detected.faces.filter(({ verifyScore = 0 }) => verifyScore >= facialRecognition.minVerifyScore),
       { imageWidth: detected.imageWidth, imageHeight: detected.imageHeight },
       asset,
     );
-    return faces.map(({ boundingBox, verifyScore }) => ({
+    return faces.map(({ boundingBox, verifyScore = 0 }) => ({
       x1: boundingBox.x1 / dimensions.width,
       y1: boundingBox.y1 / dimensions.height,
       x2: boundingBox.x2 / dimensions.width,
       y2: boundingBox.y2 / dimensions.height,
-      verifyScore: verifyScore ?? 0,
+      verifyScore,
     }));
   }
 
@@ -759,10 +759,10 @@ export class PersonService extends BaseService {
   }
 
   /**
-   * Maps tiled pass-2 detections from the tiled source file's coordinate space into the
-   * edited preview space that pass 1 (and the stored faces) use, so that mergeFaces can
-   * dedupe a face found by both passes.
-   */
+  Maps tiled pass-2 detections from the tiled source file's coordinate space into the
+  edited preview space that pass 1 (and the stored faces) use, so that mergeFaces can
+  dedupe a face found by both passes.
+  */
   private mapTiledFaces(
     faces: Face[],
     tiled: { imageWidth: number; imageHeight: number },
@@ -846,11 +846,11 @@ export class PersonService extends BaseService {
   }
 
   /**
-   * Converts detected boxes from detection (edited preview) space into storage space:
-   * original-image space, matching manual faces and the edit chain that API responses
-   * (forward transform) and person thumbnail crops (from the original file) apply to
-   * stored boxes.
-   */
+  Converts detected boxes from detection (edited preview) space into storage space:
+  original-image space, matching manual faces and the edit chain that API responses
+  (forward transform) and person thumbnail crops (from the original file) apply to
+  stored boxes.
+  */
   private toStorageSpace(
     faces: Face[],
     detection: { imageWidth: number; imageHeight: number },

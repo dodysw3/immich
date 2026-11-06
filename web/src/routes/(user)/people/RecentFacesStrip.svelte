@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { getRecentlyMatched, AssetMediaSize } from '@immich/sdk';
-  import ImageThumbnail from '$lib/components/assets/thumbnail/ImageThumbnail.svelte';
-  import { getAssetMediaUrl } from '$lib/utils';
+  import ImageThumbnail from '#lib/components/assets/thumbnail/ImageThumbnail.svelte';
+  import { Route } from '#lib/route.ts';
+  import { getAssetMediaUrl } from '#lib/utils.ts';
+  import { AssetMediaSize, getRecentlyMatched } from '@immich/sdk';
   import { goto } from '$app/navigation';
-  import { Route } from '$lib/route';
 
   let items = $state<Awaited<ReturnType<typeof getRecentlyMatched>>['items']>([]);
   let loading = $state(true);

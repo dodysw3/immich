@@ -1,7 +1,7 @@
 <script lang="ts">
-  import Dropdown from '$lib/elements/Dropdown.svelte';
-  import { Route } from '$lib/route';
-  import { PdfDocumentSortBy, SortOrder, pdfDocumentSortSettings } from '$lib/stores/preferences.store';
+  import Dropdown from '#lib/elements/Dropdown.svelte';
+  import { Route } from '#lib/route.ts';
+  import { PdfDocumentSortBy, SortOrder, pdfDocumentSortSettings } from '#lib/stores/preferences.store.ts';
   import { mdiArrowDownThin, mdiArrowUpThin } from '@mdi/js';
 
   interface DocumentItem {
@@ -155,7 +155,7 @@
   </div>
   <div class="grid grid-cols-[repeat(auto-fill,minmax(220px,350px))] justify-center gap-4 md:justify-start">
     {#each sortedItems as item (item.assetId)}
-      {@const createdAt = formatFileDate(item.createdAt)}
+      {const createdAt = $derived(formatFileDate(item.createdAt))}
       <a
         class="flex w-full max-w-[350px] flex-col rounded-xl border border-gray-200 p-3 transition hover:border-primary-400 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-900"
         href={Route.viewDocument({ id: item.assetId })}

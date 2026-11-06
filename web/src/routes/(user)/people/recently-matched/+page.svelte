@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
-  import ControlAppBar from '$lib/components/shared-components/ControlAppBar.svelte';
-  import ImageThumbnail from '$lib/components/assets/thumbnail/ImageThumbnail.svelte';
-  import { Route } from '$lib/route';
-  import { getAssetMediaUrl } from '$lib/utils';
-  import { getRecentlyMatched, AssetMediaSize } from '@immich/sdk';
+  import ImageThumbnail from '#lib/components/assets/thumbnail/ImageThumbnail.svelte';
+  import ControlAppBar from '#lib/components/shared-components/ControlAppBar.svelte';
+  import { Route } from '#lib/route.ts';
+  import { getAssetMediaUrl } from '#lib/utils.ts';
+  import { AssetMediaSize, getRecentlyMatched } from '@immich/sdk';
   import { LoadingSpinner } from '@immich/ui';
   import { mdiArrowLeft } from '@mdi/js';
   import { t } from 'svelte-i18n';
+  import { goto } from '$app/navigation';
   import type { PageData } from './$types';
 
   interface Props {

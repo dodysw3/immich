@@ -307,6 +307,32 @@ const showUndoArchiveToast = (description: string, assets: TimelineAsset[]) => {
   });
 };
 
+export const archiveAssets = async (assets: TimelineAsset[], visibility: AssetVisibility) => {
+  const ids = assets.map(({ id }) => id);
+  const $t = get(t);
+
+  try {
+    if (ids.length > 0) {
+      await updateAssets({
+        assetBulkUpdateDto: { ids, visibility },
+      });
+    }
+
+    if (visibility === AssetVisibility.Archive) {
+      showUndoArchiveToast($t('archived_count', { values: { count: ids.length } }), assets);
+    } else {
+      toastManager.primary($t('unarchived_count', { values: { count: ids.length } }));
+    }
+  } catch (error) {
+    handleError(
+      error,
+      $t('errors.unable_to_archive_unarchive', { values: { archived: visibility === AssetVisibility.Archive } }),
+    );
+  }
+
+  return ids;
+};
+
 const undoArchiveAssets = async (assets: TimelineAsset[]) => {
   const $t = get(t);
   try {

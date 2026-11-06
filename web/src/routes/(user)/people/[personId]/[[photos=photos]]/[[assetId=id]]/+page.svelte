@@ -57,8 +57,8 @@
   import { t } from 'svelte-i18n';
   import { afterNavigate, goto, refreshAll } from '$app/navigation';
   import { page } from '$app/state';
-  import type { PageData } from './$types';
   import RecentlyMatchedStrip from '../../RecentlyMatchedStrip.svelte';
+  import type { PageData } from './$types';
   import EditNameInput from './EditNameInput.svelte';
   import MergeFaceSelector from './MergeFaceSelector.svelte';
   import UnmergeFaceSelector from './UnmergeFaceSelector.svelte';

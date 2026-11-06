@@ -1,11 +1,12 @@
 <script lang="ts">
+  import DetailPanelAiInterpretation from '#lib/components/asset-viewer/DetailPanelAiInterpretation.svelte';
   import DetailPanelDate from '#lib/components/asset-viewer/DetailPanelDate.svelte';
   import DetailPanelDescription from '#lib/components/asset-viewer/DetailPanelDescription.svelte';
-  import DetailPanelAiInterpretation from '#lib/components/asset-viewer/DetailPanelAiInterpretation.svelte';
   import DetailPanelLocation from '#lib/components/asset-viewer/DetailPanelLocation.svelte';
   import DetailPanelPeople from '#lib/components/asset-viewer/DetailPanelPeople.svelte';
   import DetailPanelRating from '#lib/components/asset-viewer/DetailPanelStarRating.svelte';
   import DetailPanelTags from '#lib/components/asset-viewer/DetailPanelTags.svelte';
+  import DetailPanelVideoFaces from '#lib/components/asset-viewer/DetailPanelVideoFaces.svelte';
   import { timeToLoadTheMap } from '#lib/constants.ts';
   import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
   import { authManager } from '#lib/managers/auth-manager.svelte.ts';
@@ -37,7 +38,6 @@
   import PersonSidePanel from '../faces-page/PersonSidePanel.svelte';
   import UserAvatar from '../shared-components/UserAvatar.svelte';
   import AlbumListItemDetails from './AlbumListItemDetails.svelte';
-  import DetailPanelVideoFaces from '#lib/components/asset-viewer/DetailPanelVideoFaces.svelte';
 
   const query = createPreloadedQuery(getPublicConfigQuery);
   const publicConfig = $derived(query.data);

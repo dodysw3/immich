@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { shouldIgnoreEvent } from '$lib/actions/shortcut';
-  import { ProjectionType } from '$lib/constants';
-  import type { AssetMultiSelectManager } from '$lib/managers/asset-multi-select-manager.svelte';
-  import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
-  import { editManager } from '$lib/managers/edit/edit-manager.svelte';
-  import { searchStore } from '$lib/stores/search.svelte';
-  import { handlePromiseError } from '$lib/utils';
+  import { shouldIgnoreEvent } from '#lib/actions/shortcut.ts';
+  import { ProjectionType } from '#lib/constants.ts';
+  import type { AssetMultiSelectManager } from '#lib/managers/asset-multi-select-manager.svelte.ts';
+  import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
+  import { editManager } from '#lib/managers/edit/edit-manager.svelte.ts';
+  import { searchStore } from '#lib/stores/search.svelte.ts';
+  import { handlePromiseError } from '#lib/utils.ts';
   import { isModalOpen } from '@immich/ui';
 
   type Props = {
@@ -31,6 +31,7 @@
     if (
       event.defaultPrevented ||
       shouldIgnoreEvent(event) ||
+      // eslint-disable-next-line tscompat/tscompat -- KeyboardEvent.repeat is Chrome 37+; the rule's Chrome 109 claim is wrong
       event.repeat ||
       searchStore.isSearchEnabled ||
       assetViewerManager.isViewing ||

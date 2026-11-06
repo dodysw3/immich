@@ -2,6 +2,7 @@
   import { shortcut } from '#lib/actions/shortcut.ts';
   import OnEvents from '#lib/components/OnEvents.svelte';
   import { timeBeforeShowLoadingSpinner } from '#lib/constants.ts';
+  import { faceOverlayStore } from '#lib/features/face-overlay/face-overlay.store.svelte.ts';
   import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
   import { eventManager } from '#lib/managers/event-manager.svelte.ts';
   import { languageManager } from '#lib/managers/language-manager.svelte.ts';
@@ -20,7 +21,6 @@
   import { fly } from 'svelte/transition';
   import ImageThumbnail from '../assets/thumbnail/ImageThumbnail.svelte';
   import AssignFaceSidePanel from './AssignFaceSidePanel.svelte';
-  import { faceOverlayStore } from '$lib/features/face-overlay/face-overlay.store.svelte';
 
   interface Props {
     assetId: string;

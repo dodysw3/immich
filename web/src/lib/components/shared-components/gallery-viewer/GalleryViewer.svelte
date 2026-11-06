@@ -1,10 +1,8 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
-  import { SvelteMap, SvelteSet } from 'svelte/reactivity';
   import { shortcuts, type ShortcutOptions } from '#lib/actions/shortcut.ts';
+  import OnEvents from '#lib/components/OnEvents.svelte';
   import type { AssetCursor } from '#lib/components/asset-viewer/AssetViewer.svelte';
   import type { Action } from '#lib/components/asset-viewer/actions/action.ts';
-  import OnEvents from '#lib/components/OnEvents.svelte';
   import AssetSelectionRotateShortcuts from '#lib/components/assets/AssetSelectionRotateShortcuts.svelte';
   import Thumbnail from '#lib/components/assets/thumbnail/Thumbnail.svelte';
   import { AssetAction } from '#lib/constants.ts';
@@ -25,13 +23,19 @@
   import { handleError } from '#lib/utils/handle-error.ts';
   import { getJustifiedLayoutFromAssets } from '#lib/utils/layout-utils.ts';
   import { navigate } from '#lib/utils/navigation.ts';
-  import { type PageMap, getLoadedAssets, getContainerHeight, findGhostPagesNearViewport } from '#lib/utils/page-map.ts';
+  import {
+    findGhostPagesNearViewport,
+    getContainerHeight,
+    getLoadedAssets,
+    type PageMap,
+  } from '#lib/utils/page-map.ts';
   import { isTimelineAsset, toTimelineAsset } from '#lib/utils/timeline-util.ts';
   import { TUNABLES } from '#lib/utils/tunables.ts';
   import { AssetVisibility, type AssetResponseDto } from '@immich/sdk';
   import { modalManager } from '@immich/ui';
   import { debounce, throttle } from 'lodash-es';
   import { t } from 'svelte-i18n';
+  import { SvelteMap, SvelteSet } from 'svelte/reactivity';
   import { goto } from '$app/navigation';
 
   const {

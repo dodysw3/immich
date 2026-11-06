@@ -189,11 +189,7 @@ describe(SmartInfoService.name, () => {
 
     it('should skip assets without a resize path', async () => {
       const asset = AssetFactory.create();
-      mocks.assetJob.getForClipEncoding.mockResolvedValue({
-        id: asset.id,
-        visibility: asset.visibility,
-        previewFile: null,
-      });
+      mocks.assetJob.getForClipEncoding.mockResolvedValue({ id: asset.id, visibility: asset.visibility, files: [] });
 
       expect(await sut.handleEncodeClip({ id: asset.id })).toEqual(JobStatus.Failed);
 
@@ -205,7 +201,7 @@ describe(SmartInfoService.name, () => {
       const asset = AssetFactory.from().file({ type: AssetFileType.Preview }).build();
       const previewFile = asset.files[0].path;
       mocks.machineLearning.encodeImage.mockResolvedValue('[0.01, 0.02, 0.03]');
-      mocks.assetJob.getForClipEncoding.mockResolvedValue({ id: asset.id, visibility: asset.visibility, previewFile });
+      mocks.assetJob.getForClipEncoding.mockResolvedValue({ id: asset.id, visibility: asset.visibility, files: asset.files });
 
       expect(await sut.handleEncodeClip({ id: asset.id })).toEqual(JobStatus.Success);
 
@@ -250,8 +246,7 @@ describe(SmartInfoService.name, () => {
       const asset = AssetFactory.from({ visibility: AssetVisibility.Hidden })
         .file({ type: AssetFileType.Preview })
         .build();
-      const previewFile = asset.files[0].path;
-      mocks.assetJob.getForClipEncoding.mockResolvedValue({ id: asset.id, visibility: asset.visibility, previewFile });
+      mocks.assetJob.getForClipEncoding.mockResolvedValue({ id: asset.id, visibility: asset.visibility, files: asset.files });
 
       expect(await sut.handleEncodeClip({ id: asset.id })).toEqual(JobStatus.Skipped);
 
@@ -273,7 +268,7 @@ describe(SmartInfoService.name, () => {
       const previewFile = asset.files[0].path;
       mocks.machineLearning.encodeImage.mockResolvedValue('[0.01, 0.02, 0.03]');
       mocks.database.isBusy.mockReturnValue(true);
-      mocks.assetJob.getForClipEncoding.mockResolvedValue({ id: asset.id, visibility: asset.visibility, previewFile });
+      mocks.assetJob.getForClipEncoding.mockResolvedValue({ id: asset.id, visibility: asset.visibility, files: asset.files });
 
       expect(await sut.handleEncodeClip({ id: asset.id })).toEqual(JobStatus.Success);
 

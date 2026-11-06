@@ -32,17 +32,13 @@ const getLabelMeasureContext = (): CanvasRenderingContext2D | OffscreenCanvasRen
   return labelMeasureCtx;
 };
 
-const measureAt = (
-  context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
-  text: string,
-  size: number,
-): number => {
-  context.font = `${size}px sans-serif`;
+const measureAt = (context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, text: string): number => {
+  context.font = `${LABEL_MAX_FONT}px sans-serif`;
   return context.measureText(text).width;
 };
 
-const fitSize = (measured: number, maxWidth: number, max: number, min: number): number =>
-  measured <= maxWidth ? max : Math.max(min, Math.floor((max * maxWidth) / measured));
+const fitSize = (measured: number, maxWidth: number): number =>
+  measured <= maxWidth ? LABEL_MAX_FONT : Math.max(LABEL_MIN_FONT, Math.floor((LABEL_MAX_FONT * maxWidth) / measured));
 
 export type FaceLabelStyle = { fontSize: number; wrap: boolean };
 
@@ -72,12 +68,12 @@ export const isPlaceholderFaceName = (name: string | undefined): boolean =>
   PLACEHOLDER_FACE_NAMES.has(name?.trim() ?? '');
 
 /**
- * Reference labels ([1], [2*], …) for faces without a usable name: faces with
- * no person and persons named "..." get [n], faces of unnamed persons get [n*].
- * Numbers come from a single pool per asset ordered by face position, so they
- * are stable across reloads and match between the viewer overlay and the
- * people panel.
- */
+Reference labels ([1], [2*], …) for faces without a usable name: faces with
+no person and persons named "..." get [n], faces of unnamed persons get [n*].
+Numbers come from a single pool per asset ordered by face position, so they
+are stable across reloads and match between the viewer overlay and the
+people panel.
+*/
 export const getFaceReferenceLabels = (faces: FaceWithName[]): Map<string, string> => {
   const labels = new Map<string, string>();
   const numbered = faces
@@ -156,14 +152,14 @@ export const getFaceLabelStyle = (
   if (words.length > 1 && !hasFaceBelow(box, allBoxes)) {
     let size = LABEL_MAX_FONT;
     if (context) {
-      const widest = Math.max(...words.map((word) => measureAt(context, word, LABEL_MAX_FONT)));
-      size = fitSize(widest, maxWidth, LABEL_MAX_FONT, LABEL_MIN_FONT);
+      const widest = Math.max(...words.map((word) => measureAt(context, word)));
+      size = fitSize(widest, maxWidth);
     }
     return { fontSize: size, wrap: true };
   }
   let size = LABEL_MAX_FONT;
   if (context) {
-    size = fitSize(measureAt(context, text, LABEL_MAX_FONT), maxWidth, LABEL_MAX_FONT, LABEL_MIN_FONT);
+    size = fitSize(measureAt(context, text), maxWidth);
   }
   return { fontSize: size, wrap: false };
 };

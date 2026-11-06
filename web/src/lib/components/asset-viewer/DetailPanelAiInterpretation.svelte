@@ -1,12 +1,12 @@
 <script lang="ts">
+  import { locale } from '#lib/stores/preferences.store.ts';
   import { getAssetMetadataByKey, type AssetMetadataResponseDto, type AssetResponseDto } from '@immich/sdk';
   import { Icon } from '@immich/ui';
   import { mdiChevronDown, mdiChevronUp } from '@mdi/js';
   import { DateTime } from 'luxon';
   import { onDestroy } from 'svelte';
-  import { slide } from 'svelte/transition';
   import { t } from 'svelte-i18n';
-  import { locale } from '$lib/stores/preferences.store';
+  import { slide } from 'svelte/transition';
 
   const AI_INTERPRETATION_KEY = 'ai-interpretation-v1';
 
@@ -374,7 +374,7 @@
     }
 
     const parts = [
-      input.width !== undefined && input.height !== undefined ? `${input.width} × ${input.height}` : undefined,
+      input.width === undefined || input.height === undefined ? undefined : `${input.width} × ${input.height}`,
       input.source,
       input.mimeType,
     ].filter((part): part is string => !!part);

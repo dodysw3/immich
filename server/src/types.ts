@@ -340,10 +340,10 @@ export interface IAssetInterpretationJob extends IEntityJob {
   /** Queue tier: 1 = interactive "interpret now", 2 = upload default, 3 = bulk script backlog. */
   priority?: 1 | 2 | 3;
   /** Bulk-script deliveries (queue-ai-interpretation.sh) mark themselves so run
-   * provenance and retry tiering do not misattribute them to the upload path. */
+  provenance and retry tiering do not misattribute them to the upload path. */
   origin?: 'script';
   /** Reconcile-only: BullMQ delay (ms) spreading retry dispatches so a requeued
-   * batch cannot outrun the remote lane's per-minute ceiling. */
+  batch cannot outrun the remote lane's per-minute ceiling. */
   delayMs?: number;
 }
 

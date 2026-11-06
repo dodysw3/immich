@@ -37,7 +37,7 @@ const result: MuseInterpretationResult = {
 
 const metrics: AiInterpretationMetrics = { durationMs: 1000, promptTokens: 10, completionTokens: 20 };
 
-const makeRepository = (document: AiInterpretationDocument | null = null) => {
+const makeRepository = () => {
   const db = {
     transaction: () => ({
       execute: (callback: (transaction: unknown) => Promise<unknown>) => Promise.resolve(callback(db)),
@@ -49,7 +49,7 @@ const makeRepository = (document: AiInterpretationDocument | null = null) => {
     lockFirstInsert: ReturnType<typeof vi.fn>;
     save: ReturnType<typeof vi.fn>;
   };
-  let current = document;
+  let current: AiInterpretationDocument | null = null;
   let lockTail = Promise.resolve();
   let activeRelease: (() => void) | undefined;
   internals.getLocked = vi.fn().mockImplementation(() => current);

@@ -243,13 +243,8 @@ export class AssetJobRepository {
   getForClipEncoding(id: string) {
     return this.db
       .selectFrom('asset')
-      .select((eb) => [
-        'asset.id' as const,
-        'asset.visibility' as const,
-        eb.fn
-          .coalesce(withFilePath(eb, AssetFileType.Preview, true), withFilePath(eb, AssetFileType.Preview, false))
-          .as('previewFile'),
-      ])
+      .select(['asset.id', 'asset.visibility'])
+      .select((eb) => withFiles(eb, AssetFileType.Preview))
       .where('asset.id', '=', id)
       .executeTakeFirst();
   }

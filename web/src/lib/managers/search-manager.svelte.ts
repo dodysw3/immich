@@ -142,7 +142,7 @@ class SearchManager {
       visibility: this.filter.display.isArchive ? AssetVisibility.Archive : undefined,
       isFavorite: this.filter.display.isFavorite || undefined,
       // Keep false to filter unfinished assets; undefined removes the filter.
-      // eslint-disable-next-line unicorn/prefer-logical-operator-over-ternary
+
       hasAiInterpretation: this.filter.display.withoutAiInterpretation ? false : undefined,
       isNotInAlbum: this.filter.display.isNotInAlbum || undefined,
       personIds: this.filter.personIds.size > 0 ? [...this.filter.personIds] : undefined,

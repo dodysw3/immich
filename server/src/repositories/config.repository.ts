@@ -509,7 +509,7 @@ const getEnv = (): EnvData => {
       // requeued batch under the remote lane's per-minute ceiling (im-ai-remote
       // enforces its own rpm cap and every overflow 503 evicts the lane from
       // the proxy for 60s). 0 disables the spread.
-      reconcileStaggerMs: dto.IMMICH_AI_IMAGE_INTERPRETATION_RECONCILE_STAGGER_MS ?? 5_000,
+      reconcileStaggerMs: dto.IMMICH_AI_IMAGE_INTERPRETATION_RECONCILE_STAGGER_MS ?? 5000,
       // Backlog-sweep compute saver: while on, ALL deliveries skip any asset
       // that already carries a completed interpretation run (any model,
       // quant, or prompt version) — "Interpret image (public)" included,

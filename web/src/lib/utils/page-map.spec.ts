@@ -1,13 +1,13 @@
+import {
+  findGhostPagesNearViewport,
+  getContainerHeight,
+  getLoadedAssets,
+  getPageAtScrollOffset,
+  type PageMap,
+  type PageState,
+} from '#lib/utils/page-map.ts';
 import type { AssetResponseDto } from '@immich/sdk';
 import { describe, expect, it } from 'vitest';
-import {
-  type PageMap,
-  getLoadedAssets,
-  getContainerHeight,
-  getPageAtScrollOffset,
-  findGhostPagesNearViewport,
-} from '$lib/utils/page-map';
-import type { PageState } from '$lib/utils/page-map';
 
 const createAsset = (id: string) =>
   ({
@@ -17,12 +17,8 @@ const createAsset = (id: string) =>
     type: 'IMAGE',
   }) as AssetResponseDto;
 
-function makePage(entries: [number, PageState][], initial?: PageMap): PageMap {
-  const map: PageMap = initial ?? {};
-  for (const [key, value] of entries) {
-    map[key] = value;
-  }
-  return map;
+function makePage(entries: [number, PageState][]): PageMap {
+  return Object.fromEntries(entries) as PageMap;
 }
 
 describe('getLoadedAssets', () => {

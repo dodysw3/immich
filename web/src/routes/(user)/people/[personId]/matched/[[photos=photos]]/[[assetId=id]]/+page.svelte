@@ -1,36 +1,34 @@
 <script lang="ts">
-  import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
-  import { navigating } from '$app/stores';
-  import { page } from '$app/state';
-  import ActionMenuItem from '$lib/components/ActionMenuItem.svelte';
-  import ButtonContextMenu from '$lib/components/shared-components/context-menu/ButtonContextMenu.svelte';
-  import ControlAppBar from '$lib/components/shared-components/ControlAppBar.svelte';
-  import GalleryViewer from '$lib/components/shared-components/gallery-viewer/GalleryViewer.svelte';
-  import ArchiveAction from '$lib/components/timeline/actions/ArchiveAction.svelte';
-  import ChangeDate from '$lib/components/timeline/actions/ChangeDateAction.svelte';
-  import ChangeDescription from '$lib/components/timeline/actions/ChangeDescriptionAction.svelte';
-  import ChangeLocation from '$lib/components/timeline/actions/ChangeLocationAction.svelte';
-  import DeleteAssets from '$lib/components/timeline/actions/DeleteAssetsAction.svelte';
-  import DownloadAction from '$lib/components/timeline/actions/DownloadAction.svelte';
-  import FavoriteAction from '$lib/components/timeline/actions/FavoriteAction.svelte';
-  import SetVisibilityAction from '$lib/components/timeline/actions/SetVisibilityAction.svelte';
-  import AssetSelectControlBar from '$lib/components/timeline/AssetSelectControlBar.svelte';
-  import { assetMultiSelectManager } from '$lib/managers/asset-multi-select-manager.svelte';
-  import { authManager } from '$lib/managers/auth-manager.svelte';
-  import type { Viewport } from '$lib/managers/timeline-manager/types';
-  import { Route } from '$lib/route';
-  import { getAssetBulkActions } from '$lib/services/asset.service';
-  import { SessionStorageKey } from '$lib/constants';
-  import { handlePromiseError } from '$lib/utils';
-  import { handleError } from '$lib/utils/handle-error';
-  import { isPeopleRoute } from '$lib/utils/navigation';
-  import { toTimelineAsset } from '$lib/utils/timeline-util';
-  import { createPageMap, getLoadedAssets } from '$lib/utils/page-map';
+  import ActionMenuItem from '#lib/components/ActionMenuItem.svelte';
+  import ControlAppBar from '#lib/components/shared-components/ControlAppBar.svelte';
+  import ButtonContextMenu from '#lib/components/shared-components/context-menu/ButtonContextMenu.svelte';
+  import GalleryViewer from '#lib/components/shared-components/gallery-viewer/GalleryViewer.svelte';
+  import AssetSelectControlBar from '#lib/components/timeline/AssetSelectControlBar.svelte';
+  import ChangeDate from '#lib/components/timeline/actions/ChangeDateAction.svelte';
+  import ChangeDescription from '#lib/components/timeline/actions/ChangeDescriptionAction.svelte';
+  import ChangeLocation from '#lib/components/timeline/actions/ChangeLocationAction.svelte';
+  import DeleteAssets from '#lib/components/timeline/actions/DeleteAssetsAction.svelte';
+  import DownloadAction from '#lib/components/timeline/actions/DownloadAction.svelte';
+  import FavoriteAction from '#lib/components/timeline/actions/FavoriteAction.svelte';
+  import SetVisibilityAction from '#lib/components/timeline/actions/SetVisibilityAction.svelte';
+  import { SessionStorageKey } from '#lib/constants.ts';
+  import { assetMultiSelectManager } from '#lib/managers/asset-multi-select-manager.svelte.ts';
+  import { authManager } from '#lib/managers/auth-manager.svelte.ts';
+  import type { Viewport } from '#lib/managers/timeline-manager/types.ts';
+  import { Route } from '#lib/route.ts';
+  import { getAssetBulkActions } from '#lib/services/asset.service.ts';
+  import { handlePromiseError } from '#lib/utils.ts';
+  import { handleError } from '#lib/utils/handle-error.ts';
+  import { isPeopleRoute } from '#lib/utils/navigation.ts';
+  import { createPageMap, getLoadedAssets } from '#lib/utils/page-map.ts';
+  import { toTimelineAsset } from '#lib/utils/timeline-util.ts';
   import { getPersonAssets } from '@immich/sdk';
   import { ActionButton, CommandPaletteDefaultProvider, Icon, IconButton, LoadingSpinner } from '@immich/ui';
   import { mdiArrowLeft, mdiDotsVertical, mdiImageOffOutline, mdiSelectAll } from '@mdi/js';
-  import { onDestroy, tick } from 'svelte';
+  import { tick } from 'svelte';
   import { t } from 'svelte-i18n';
+  import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
+  import { page } from '$app/state';
   import type { PageData } from './$types';
 
   interface Props {
@@ -67,8 +65,8 @@
 
   const matchedPrefix = `/people/${data.person.id}/matched`;
 
-  const unsubscribeNavigating = navigating.subscribe((navigation) => {
-    if (navigation?.to) {
+  beforeNavigate((navigation) => {
+    if (navigation.to) {
       const existing = sessionStorage.getItem(SessionStorageKey.MATCHED_SCROLL_POSITION);
       if (!existing && !navigation.to.url.pathname.startsWith(matchedPrefix)) {
         const scrollPos = document.scrollingElement?.scrollTop ?? 0;
@@ -109,10 +107,6 @@
       }
     })(),
   );
-
-  onDestroy(() => {
-    unsubscribeNavigating();
-  });
 
   let scrollBeforeAssetView = 0;
 
@@ -247,7 +241,7 @@
   {#if assetMultiSelectManager.selectionActive}
     <div class="fixed inset-s-0 top-0 z-2 w-full">
       <AssetSelectControlBar>
-        {@const Actions = getAssetBulkActions($t)}
+        {const Actions = $derived(getAssetBulkActions($t))}
         <CommandPaletteDefaultProvider name={$t('assets')} actions={Object.values(Actions)} />
         <ActionButton action={Actions.CreateSharedLink} />
         <IconButton
@@ -272,13 +266,11 @@
             <ChangeDate menuItem />
             <ChangeDescription menuItem />
             <ChangeLocation menuItem />
-            <ArchiveAction
-              menuItem
-              unarchive={assetMultiSelectManager.isAllArchived}
-              onArchive={() => {
-                assetMultiSelectManager.clear();
-              }}
-            />
+            {#if assetMultiSelectManager.isAllArchived}
+              <ActionMenuItem action={Actions.Unarchive} />
+            {:else}
+              <ActionMenuItem action={Actions.Archive} />
+            {/if}
             <SetVisibilityAction menuItem onVisibilitySet={handleSetVisibility} />
             {#if authManager.preferences.tags.enabled}
               <ActionMenuItem action={Actions.Tag} />

@@ -1,10 +1,10 @@
 <script lang="ts">
+  import UserPageLayout from '#lib/components/layouts/UserPageLayout.svelte';
+  import PdfDocumentInfo from '#lib/components/pdf-viewer/PdfDocumentInfo.svelte';
+  import PdfSearchBar from '#lib/components/pdf-viewer/PdfSearchBar.svelte';
+  import PdfViewer from '#lib/components/pdf-viewer/PdfViewer.svelte';
+  import { handleError } from '#lib/utils/handle-error.ts';
   import { toastManager } from '@immich/ui';
-  import PdfDocumentInfo from '$lib/components/pdf-viewer/PdfDocumentInfo.svelte';
-  import PdfSearchBar from '$lib/components/pdf-viewer/PdfSearchBar.svelte';
-  import PdfViewer from '$lib/components/pdf-viewer/PdfViewer.svelte';
-  import { handleError } from '$lib/utils/handle-error';
-  import UserPageLayout from '$lib/components/layouts/UserPageLayout.svelte';
   import type { PageData } from './$types';
 
   interface Props {

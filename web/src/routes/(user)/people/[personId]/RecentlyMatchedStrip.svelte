@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { getPersonAssets, AssetMediaSize } from '@immich/sdk';
-  import ImageThumbnail from '$lib/components/assets/thumbnail/ImageThumbnail.svelte';
-  import { getAssetMediaUrl } from '$lib/utils';
-  import { navigate } from '$lib/utils/navigation';
+  import ImageThumbnail from '#lib/components/assets/thumbnail/ImageThumbnail.svelte';
+  import { getAssetMediaUrl } from '#lib/utils.ts';
+  import { navigate } from '#lib/utils/navigation.ts';
+  import { AssetMediaSize, getPersonAssets } from '@immich/sdk';
 
   interface Props {
     personId: string;

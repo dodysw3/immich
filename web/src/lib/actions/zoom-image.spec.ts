@@ -1,6 +1,6 @@
+import { zoomImageAction } from '#lib/actions/zoom-image.ts';
+import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { zoomImageAction } from '$lib/actions/zoom-image';
-import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
 
 const zoomHandlerState = {
   pointerDownCalls: 0,

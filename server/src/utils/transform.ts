@@ -4,11 +4,11 @@ import { AssetOcrResponseDto } from 'src/dtos/ocr.dto.js';
 import type { ImageDimensions } from 'src/types.js';
 
 /**
- * Edit chain that maps coordinates from the raw stored image (as decoded by the ML service,
- * which ignores EXIF orientation) into the oriented image, using the same operations as the
- * thumbnail pipeline's ORIENTATION_TO_SHARP_ROTATION table. Note the fork's mirror convention:
- * axis 'horizontal' mirrors left-right (flop), axis 'vertical' mirrors top-bottom (flip).
- */
+Edit chain that maps coordinates from the raw stored image (as decoded by the ML service,
+which ignores EXIF orientation) into the oriented image, using the same operations as the
+thumbnail pipeline's ORIENTATION_TO_SHARP_ROTATION table. Note the fork's mirror convention:
+axis 'horizontal' mirrors left-right (flop), axis 'vertical' mirrors top-bottom (flip).
+*/
 export const exifOrientationToEdits = (orientation: number | null | undefined): AssetEditActionItem[] => {
   switch (orientation) {
     case 2: {

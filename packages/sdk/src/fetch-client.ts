@@ -175,6 +175,7 @@ export type AdminConfigJobDto = {
     migration: AdminConfigJobSettingsDto;
     notifications: AdminConfigJobSettingsDto;
     ocr: AdminConfigJobSettingsDto;
+    pdfProcessing: AdminConfigJobSettingsDto;
     search: AdminConfigJobSettingsDto;
     sidecar: AdminConfigJobSettingsDto;
     smartSearch: AdminConfigJobSettingsDto;
@@ -218,18 +219,55 @@ export type AdminConfigDuplicateDetectionDto = {
     enabled: boolean;
     /** Maximum distance threshold for duplicate detection */
     maxDistance: number;
+    /** Exclude duplicate candidates whose OCR text differs materially from the source asset */
+    ocrVeto: boolean;
+    /** Maximum OCR token-bag symmetric difference before a duplicate candidate is vetoed */
+    ocrVetoMaxTokenDiff: number;
+    /** Exclude duplicate PDF candidates whose page count or whole-document text differs from the source asset */
+    pdfVeto: boolean;
+    /** Maximum whole-document PDF text token-bag symmetric difference before a candidate is vetoed */
+    pdfVetoMaxTokenDiff: number;
+};
+export type AdminConfigTilingMinDimWithFacesDto = {
+    /** Minimum original image dimension to consider tiling */
+    dim: number;
+    /** Minimum pass-1 face count when original dim threshold is met */
+    faces: number;
+};
+export type AdminConfigTilingTriggersDto = {
+    minDimWithFaces: AdminConfigTilingMinDimWithFacesDto;
+    /** Minimum pass-1 face count to trigger tiling */
+    minPass1Faces: number;
+};
+export type AdminConfigTilingDto = {
+    /** Enable tiled face detection for large/group photos */
+    enabled: boolean;
+    /** Maximum number of tiles before downscaling */
+    maxTiles: number;
+    /** Overlap ratio between adjacent tiles */
+    tileOverlap: number;
+    /** Tile size in pixels for tiled detection */
+    tileSize: number;
+    triggers: AdminConfigTilingTriggersDto;
 };
 export type AdminConfigFacialRecognitionDto = {
     /** Whether the task is enabled */
     enabled: boolean;
+    /** Import person names from other accounts in the same recognition cluster */
+    importNamesFromOtherAccounts: boolean;
     /** Maximum distance threshold for face recognition */
     maxDistance: number;
+    /** Minimum bounding box pixel dimension for face recognition */
+    minFaceSize: number;
     /** Minimum number of faces required for recognition */
     minFaces: number;
     /** Minimum confidence score for face detection */
     minScore: number;
+    /** Minimum detector score when each face is re-checked on a standard crop around it (0 disables the re-check) */
+    minVerifyScore: number;
     /** Name of the model to use */
     modelName: string;
+    tiling: AdminConfigTilingDto;
 };
 export type AdminConfigOcrDto = {
     /** Whether the task is enabled */
@@ -1458,6 +1496,44 @@ export type AssetOcrResponseDto = {
     /** Normalized y coordinate of box corner 4 (0-1) */
     y4: number;
 };
+export type VideoFaceDto = {
+    assetFaceId: string | null;
+    /** Timestamp of the representative frame */
+    bestFrameMs: number;
+    /** Earliest sighting timestamp */
+    firstObservedMs: number;
+    /** Single sighting below the stricter quality bar */
+    flagged: boolean;
+    id: string;
+    /** Latest sighting timestamp */
+    lastObservedMs: number;
+    personGroupId: string | null;
+    /** Owner's person name, if assigned or matched */
+    personName: string | null;
+    sightingCount: number;
+    sightings: {
+        /** Detection score */
+        score: number;
+        /** Decoded presentation timestamp of the sighting */
+        timeMs: number;
+    }[];
+};
+export type VideoFaceRunDto = {
+    configHash: string;
+    /** Video timeline duration */
+    durationMs: number;
+    finishedAt: string | null;
+    firstSampledMs: number;
+    framesAnalyzed: number;
+    identities: number;
+    lastSampledMs: number;
+    outcome: Outcome;
+};
+export type VideoFacesResponseDto = {
+    faces: VideoFaceDto[];
+    /** Latest scan run, null when never scanned */
+    run: (VideoFaceRunDto) | null;
+};
 export type SignUpDto = {
     /** User email */
     email: string;
@@ -1726,6 +1802,66 @@ export type DuplicateResolveDto = {
     /** List of duplicate groups to resolve */
     groups: DuplicateResolveGroupDto[];
 };
+export type ExternalOcrFailureDto = {
+    /** External OCR provider identifier */
+    provider: string;
+    /** Failure reason */
+    reason: string;
+    /** Whether the failure is retriable */
+    retriable: boolean;
+    /** Number of retries attempted */
+    retryCount: number;
+};
+export type ExternalOcrLineDto = {
+    /** Detection confidence */
+    boxScore: number;
+    /** Recognized text */
+    text: string;
+    /** Text recognition confidence */
+    textScore: number;
+    /** Bounding box x1 */
+    x1: number;
+    /** Bounding box x2 */
+    x2: number;
+    /** Bounding box x3 */
+    x3: number;
+    /** Bounding box x4 */
+    x4: number;
+    /** Bounding box y1 */
+    y1: number;
+    /** Bounding box y2 */
+    y2: number;
+    /** Bounding box y3 */
+    y3: number;
+    /** Bounding box y4 */
+    y4: number;
+};
+export type ExternalOcrResultDto = {
+    /** Language hint */
+    language?: string;
+    /** OCR result lines */
+    lines: ExternalOcrLineDto[];
+    /** OCR write mode */
+    mode: Mode;
+    /** Model family/name */
+    model: string;
+    /** Model revision for reprocessing control */
+    modelRevision: string;
+    /** External OCR completion timestamp (ISO 8601) */
+    processedAt: string;
+    /** External OCR provider identifier */
+    provider: string;
+    /** Pre-tokenized search text */
+    searchText?: string;
+    /** SHA256 of original source bytes */
+    sourceChecksum: string;
+};
+export type ExternalOcrWriteResponseDto = {
+    /** Length of generated search text */
+    searchTextLength: number;
+    /** Number of records written */
+    written: number;
+};
 export type AssetFaceResponseDto = {
     /** Bounding box X1 coordinate */
     boundingBoxX1: number;
@@ -1797,24 +1933,29 @@ export type QueueResponseLegacyDto = {
     queueStatus: QueueStatusLegacyDto;
 };
 export type QueuesResponseLegacyDto = {
+    aiInterpretSearch: QueueResponseLegacyDto;
     backgroundTask: QueueResponseLegacyDto;
     backupDatabase: QueueResponseLegacyDto;
     duplicateDetection: QueueResponseLegacyDto;
     editor: QueueResponseLegacyDto;
     faceDetection: QueueResponseLegacyDto;
     facialRecognition: QueueResponseLegacyDto;
+    imageInterpretation: QueueResponseLegacyDto;
+    imageInterpretationPublic: QueueResponseLegacyDto;
     integrityCheck: QueueResponseLegacyDto;
     library: QueueResponseLegacyDto;
     metadataExtraction: QueueResponseLegacyDto;
     migration: QueueResponseLegacyDto;
     notifications: QueueResponseLegacyDto;
     ocr: QueueResponseLegacyDto;
+    pdfProcessing: QueueResponseLegacyDto;
     search: QueueResponseLegacyDto;
     sidecar: QueueResponseLegacyDto;
     smartSearch: QueueResponseLegacyDto;
     storageTemplateMigration: QueueResponseLegacyDto;
     thumbnailGeneration: QueueResponseLegacyDto;
     videoConversion: QueueResponseLegacyDto;
+    videoFaceScan: QueueResponseLegacyDto;
     workflow: QueueResponseLegacyDto;
 };
 export type JobCreateDto = {
@@ -2114,6 +2255,22 @@ export type MergePersonDto = {
     /** Person IDs to merge */
     ids: string[];
 };
+export type RecentlyMatchedItemDto = {
+    /** Asset ID of the matched face */
+    assetId: string;
+    /** Person ID the face was matched to */
+    personId: string;
+    /** Person name, empty when the person is unnamed */
+    personName: string;
+    /** When this asset-person pair was last matched by recognition */
+    recognizedAt: string;
+};
+export type RecentlyMatchedResponseDto = {
+    /** Asset-person pairs ordered by recognition recency */
+    items: RecentlyMatchedItemDto[];
+    /** Total number of recent asset-person pairs */
+    total: number;
+};
 export type PersonUsersDeleteDto = {
     /** Person ID */
     personId: string;
@@ -2163,6 +2320,72 @@ export type PersonUpdateDto = {
     name?: string;
     /** Restrict the update to the person record of this User ID */
     userId?: string;
+};
+export type PersonAssetsResponseDto = {
+    /** Assets sorted by recognition time */
+    assets: {
+        /** Base64 encoded SHA1 hash */
+        checksum: string;
+        /** The UTC timestamp when the asset was originally uploaded to Immich. */
+        createdAt: string;
+        /** Duplicate group ID */
+        duplicateId?: string | null;
+        /** Video/gif duration in milliseconds (null for static images) */
+        duration: number | null;
+        exifInfo?: ExifResponseDto;
+        /** The actual UTC timestamp when the file was created/captured, preserving timezone information. This is the authoritative timestamp for chronological sorting within timeline groups. Combined with timezone data, this can be used to determine the exact moment the photo was taken. */
+        fileCreatedAt: string;
+        /** The UTC timestamp when the file was last modified on the filesystem. This reflects the last time the physical file was changed, which may be different from when the photo was originally taken. */
+        fileModifiedAt: string;
+        /** Whether asset has metadata */
+        hasMetadata: boolean;
+        /** Asset height */
+        height: number | null;
+        /** Asset ID */
+        id: string;
+        /** Is archived */
+        isArchived: boolean;
+        /** Is edited */
+        isEdited: boolean;
+        /** Is favorite */
+        isFavorite: boolean;
+        /** Is offline */
+        isOffline: boolean;
+        /** Is trashed */
+        isTrashed: boolean;
+        /** Library ID */
+        libraryId?: string | null;
+        /** Live photo video ID */
+        livePhotoVideoId?: string | null;
+        /** The local date and time when the photo/video was taken, derived from EXIF metadata. This represents the photographer's local time regardless of timezone, stored as a timezone-agnostic timestamp. Used for timeline grouping by "local" days and months. */
+        localDateTime: string;
+        /** Original file name */
+        originalFileName: string;
+        /** Original MIME type */
+        originalMimeType?: string;
+        /** Original file path */
+        originalPath: string;
+        owner?: UserResponseDto;
+        /** Owner user ID */
+        ownerId: string;
+        people?: PersonResponseDto[];
+        /** When the face was matched to this person */
+        recognizedAt: string;
+        /** Is resized */
+        resized?: boolean;
+        stack?: (AssetStackResponseDto) | null;
+        tags?: TagResponseDto[];
+        /** Thumbhash for thumbnail generation (base64) also used as the c query param for thumbnail cache busting. */
+        thumbhash: string | null;
+        "type": AssetTypeEnum;
+        /** The UTC timestamp when the asset record was last updated in the database. This is automatically maintained by the database and reflects when any field in the asset was last modified. */
+        updatedAt: string;
+        visibility: AssetVisibility;
+        /** Asset width */
+        width: number | null;
+    }[];
+    /** Total number of assets */
+    total: number;
 };
 export type AssetFaceUpdateItem = {
     /** Asset ID */
@@ -2308,6 +2531,64 @@ export type QueueJobResponseDto = {
     /** Job creation timestamp */
     timestamp: number;
 };
+export type AiInterpretSearchDto = {
+    /** Filter by city name (null = no city) */
+    city?: string | null;
+    /** Filter by country name (null = no country) */
+    country?: string | null;
+    /** Filter by presence of a completed AI interpretation */
+    hasAiInterpretation?: boolean;
+    /** Filter by favorite status */
+    isFavorite?: boolean;
+    /** Filter assets not in any album */
+    isNotInAlbum?: boolean;
+    /** Filter by lens model (null = no lens) */
+    lensModel?: string | null;
+    /** Filter by camera make (null = no make) */
+    make?: string | null;
+    /** Filter by camera model (null = no model) */
+    model?: string | null;
+    /** Page number */
+    page?: number;
+    /** Filter by person IDs (all must match) */
+    personIds?: string[];
+    /** Natural language query against AI interpretations */
+    q: string;
+    /** Filter by rating (null = unrated) */
+    rating?: number | null;
+    /** Number of results to return */
+    size?: number;
+    /** Filter by state/province name (null = no state) */
+    state?: string | null;
+    /** Filter by tag IDs (all must match; null = untagged) */
+    tagIds?: string[] | null;
+    /** Filter by taken date (after) */
+    takenAfter?: string;
+    /** Filter by taken date (before) */
+    takenBefore?: string;
+    /** Filter by asset type */
+    "type"?: AssetTypeEnum;
+    /** Filter by visibility */
+    visibility?: AssetVisibility;
+    /** Include stacked assets */
+    withStacked?: boolean;
+};
+export type AiInterpretSearchItemDto = {
+    asset: AssetResponseDto;
+    /** Search branch that contributed the best rank for this result */
+    branch: Branch;
+    /** Reciprocal rank fusion score of this result */
+    score: number;
+};
+export type AiInterpretSearchResponseDto = {
+    /** Number of results on this page */
+    count: number;
+    items: AiInterpretSearchItemDto[];
+    /** Next page number, if more results are available */
+    nextPage: string | null;
+    /** Total number of fused results in the current window */
+    total: number;
+};
 export type SearchExploreItem = {
     data: AssetResponseDto;
     /** Explore value */
@@ -2416,6 +2697,8 @@ export type SearchFilterBranch = {
     description?: StringPatternFilter;
     encodedVideoPath?: StringFilter;
     fileSizeInBytes?: NumberFilter;
+    /** Whether any AI image interpretation has completed with a result */
+    hasAiInterpretation?: BoolFilter;
     hasAlbums?: BoolFilter;
     hasPeople?: BoolFilter;
     hasTags?: BoolFilter;
@@ -2450,6 +2733,8 @@ export type SearchFilter = {
     description?: StringPatternFilter;
     encodedVideoPath?: StringFilter;
     fileSizeInBytes?: NumberFilter;
+    /** Whether any AI image interpretation has completed with a result */
+    hasAiInterpretation?: BoolFilter;
     hasAlbums?: BoolFilter;
     hasPeople?: BoolFilter;
     hasTags?: BoolFilter;
@@ -2500,6 +2785,8 @@ export type MetadataSearchDto = {
     /** Filter by encoded video file path */
     encodedVideoPath?: string;
     filter?: SearchFilter;
+    /** Filter by presence of a completed AI image interpretation */
+    hasAiInterpretation?: boolean;
     /** Filter by asset ID */
     id?: string;
     /** Filter by encoded status */
@@ -2627,6 +2914,8 @@ export type RandomSearchDto = {
     /** Filter by creation date (before) */
     createdBefore?: string;
     filter?: SearchFilter;
+    /** Filter by presence of a completed AI image interpretation */
+    hasAiInterpretation?: boolean;
     /** Filter by encoded status */
     isEncoded?: boolean;
     /** Filter by favorite status */
@@ -2692,6 +2981,8 @@ export type SmartSearchDto = {
     /** Filter by creation date (before) */
     createdBefore?: string;
     filter?: SearchFilter;
+    /** Filter by presence of a completed AI image interpretation */
+    hasAiInterpretation?: boolean;
     /** Filter by encoded status */
     isEncoded?: boolean;
     /** Filter by favorite status */
@@ -2763,6 +3054,8 @@ export type StatisticsSearchDto = {
     /** Filter by description text */
     description?: string;
     filter?: SearchFilter;
+    /** Filter by presence of a completed AI image interpretation */
+    hasAiInterpretation?: boolean;
     /** Filter by encoded status */
     isEncoded?: boolean;
     /** Filter by favorite status */
@@ -2893,6 +3186,8 @@ export type ServerConfigDto = {
     userDeleteDelay: number;
 };
 export type ServerFeaturesDto = {
+    /** Whether AI interpretation search is enabled */
+    aiInterpretSearch: boolean;
     /** Whether the backups feature is enabled */
     backups: boolean;
     /** Whether config file is available */
@@ -2937,6 +3232,8 @@ export type LicenseKeyDto = {
 export type ServerMediaTypesResponseDto = {
     /** Supported image MIME types */
     image: string[];
+    /** Supported PDF MIME types */
+    pdf: string[];
     /** Supported sidecar MIME types */
     sidecar: string[];
     /** Supported video MIME types */
@@ -3223,6 +3520,8 @@ export type TagUpdateDto = {
     name?: string;
 };
 export type TimeBucketAssetResponseDto = {
+    /** Array of AI interpretation titles (most recent completed run per asset, null when the asset was never interpreted) */
+    aiInterpretationTitle?: (string | null)[];
     /** Array of city names extracted from EXIF GPS data */
     city?: (string | null)[];
     /** Array of country names extracted from EXIF GPS data */
@@ -4975,6 +5274,22 @@ export function updateAsset({ id, updateAssetDto }: {
     })));
 }
 /**
+ * Download asset with face labels
+ */
+export function downloadAssetAnnotated({ id, layers }: {
+    id: string;
+    layers?: "faces" | "faces"[];
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchBlob<{
+        status: 200;
+        data: Blob;
+    }>(`/assets/${encodeURIComponent(id)}/annotated-original${QS.query(QS.explode({
+        layers
+    }))}`, {
+        ...opts
+    }));
+}
+/**
  * Remove edits from an existing asset
  */
 export function removeAssetEdits({ id }: {
@@ -5121,6 +5436,33 @@ export function viewAsset({ edited, id, key, size, slug }: {
         size,
         slug
     }))}`, {
+        ...opts
+    }));
+}
+/**
+ * List faces discovered in a video
+ */
+export function getVideoFaces({ id }: {
+    id: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: VideoFacesResponseDto;
+    }>(`/assets/${encodeURIComponent(id)}/video-faces`, {
+        ...opts
+    }));
+}
+/**
+ * Face crop from its representative frame
+ */
+export function getFaceThumbnail({ faceId, id }: {
+    faceId: string;
+    id: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchBlob<{
+        status: 200;
+        data: Blob;
+    }>(`/assets/${encodeURIComponent(id)}/video-faces/${encodeURIComponent(faceId)}/thumbnail`, {
         ...opts
     }));
 }
@@ -5483,6 +5825,115 @@ export function getUserConfigDefaults(opts?: Oazapfts.RequestOpts) {
     }));
 }
 /**
+ * List PDF documents
+ */
+export function getDocuments({ page, size, status }: {
+    page?: number;
+    size?: number;
+    status?: "pending" | "processing" | "ready" | "failed";
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: object;
+    }>(`/documents${QS.query(QS.explode({
+        page,
+        size,
+        status
+    }))}`, {
+        ...opts
+    }));
+}
+/**
+ * Search PDF documents
+ */
+export function searchDocuments({ page, query, size, status }: {
+    page?: number;
+    query: string;
+    size?: number;
+    status?: "pending" | "processing" | "ready" | "failed";
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: object;
+    }>(`/documents/search${QS.query(QS.explode({
+        page,
+        query,
+        size,
+        status
+    }))}`, {
+        ...opts
+    }));
+}
+/**
+ * Get PDF document metadata
+ */
+export function getDocument({ id }: {
+    id: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: object;
+    }>(`/documents/${encodeURIComponent(id)}`, {
+        ...opts
+    }));
+}
+/**
+ * Get PDF pages
+ */
+export function getPages({ id }: {
+    id: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: object[];
+    }>(`/documents/${encodeURIComponent(id)}/pages`, {
+        ...opts
+    }));
+}
+/**
+ * Get PDF page
+ */
+export function getPage({ id, pageNumber }: {
+    id: string;
+    pageNumber: number;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: object;
+    }>(`/documents/${encodeURIComponent(id)}/pages/${encodeURIComponent(pageNumber)}`, {
+        ...opts
+    }));
+}
+/**
+ * Reprocess a PDF document
+ */
+export function reprocessDocument({ id }: {
+    id: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/documents/${encodeURIComponent(id)}/reprocess`, {
+        ...opts,
+        method: "POST"
+    }));
+}
+/**
+ * Search inside a PDF document
+ */
+export function searchInDocument({ id, query, size }: {
+    id: string;
+    query: string;
+    size?: number;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: object[];
+    }>(`/documents/${encodeURIComponent(id)}/search${QS.query(QS.explode({
+        query,
+        size
+    }))}`, {
+        ...opts
+    }));
+}
+/**
  * Download asset archive
  */
 export function downloadArchive({ key, slug, downloadArchiveDto }: {
@@ -5570,6 +6021,35 @@ export function deleteDuplicate({ id }: {
         ...opts,
         method: "DELETE"
     }));
+}
+/**
+ * Report external OCR failure
+ */
+export function reportFailure({ id, externalOcrFailureDto }: {
+    id: string;
+    externalOcrFailureDto: ExternalOcrFailureDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/external-ocr/assets/${encodeURIComponent(id)}/failure`, oazapfts.json({
+        ...opts,
+        method: "PUT",
+        body: externalOcrFailureDto
+    })));
+}
+/**
+ * Write external OCR result
+ */
+export function writeResult({ id, externalOcrResultDto }: {
+    id: string;
+    externalOcrResultDto: ExternalOcrResultDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ExternalOcrWriteResponseDto;
+    }>(`/external-ocr/assets/${encodeURIComponent(id)}/result`, oazapfts.json({
+        ...opts,
+        method: "PUT",
+        body: externalOcrResultDto
+    })));
 }
 /**
  * Retrieve faces for asset
@@ -6396,6 +6876,23 @@ export function mergePeople({ mergePersonDto }: {
     })));
 }
 /**
+ * Get recently matched faces
+ */
+export function getRecentlyMatched({ limit, offset }: {
+    limit?: number;
+    offset?: number;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RecentlyMatchedResponseDto;
+    }>(`/people/recently-matched${QS.query(QS.explode({
+        limit,
+        offset
+    }))}`, {
+        ...opts
+    }));
+}
+/**
  * Remove users from people
  */
 export function removeUsersFromPeople({ personUsersDeleteDto }: {
@@ -6483,6 +6980,26 @@ export function updatePerson({ id, personUpdateDto }: {
         method: "PUT",
         body: personUpdateDto
     })));
+}
+/**
+ * Get person assets
+ */
+export function getPersonAssets({ id, limit, order, page }: {
+    id: string;
+    limit?: number;
+    order?: "asc" | "desc";
+    page?: number;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: PersonAssetsResponseDto;
+    }>(`/people/${encodeURIComponent(id)}/assets${QS.query(QS.explode({
+        limit,
+        order,
+        page
+    }))}`, {
+        ...opts
+    }));
 }
 /**
  * Merge people
@@ -6714,6 +7231,21 @@ export function getQueueJobs({ name, status }: {
     }));
 }
 /**
+ * AI interpretation search
+ */
+export function searchAiInterpret({ aiInterpretSearchDto }: {
+    aiInterpretSearchDto: AiInterpretSearchDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: AiInterpretSearchResponseDto;
+    }>("/search/ai-interpret", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: aiInterpretSearchDto
+    })));
+}
+/**
  * Retrieve assets by city
  */
 export function getAssetsByCity(opts?: Oazapfts.RequestOpts) {
@@ -6738,12 +7270,13 @@ export function getExploreData(opts?: Oazapfts.RequestOpts) {
 /**
  * Search large assets
  */
-export function searchLargeAssets({ albumIds, city, country, createdAfter, createdBefore, isEncoded, isFavorite, isMotion, isNotInAlbum, isOffline, lensModel, libraryId, make, minFileSize, model, ocr, personIds, rating, size, state, tagIds, takenAfter, takenBefore, trashedAfter, trashedBefore, $type, updatedAfter, updatedBefore, visibility, withDeleted, withExif }: {
+export function searchLargeAssets({ albumIds, city, country, createdAfter, createdBefore, hasAiInterpretation, isEncoded, isFavorite, isMotion, isNotInAlbum, isOffline, lensModel, libraryId, make, minFileSize, model, ocr, personIds, rating, size, state, tagIds, takenAfter, takenBefore, trashedAfter, trashedBefore, $type, updatedAfter, updatedBefore, visibility, withDeleted, withExif }: {
     albumIds?: string[];
     city?: string | null;
     country?: string | null;
     createdAfter?: string;
     createdBefore?: string;
+    hasAiInterpretation?: boolean;
     isEncoded?: boolean;
     isFavorite?: boolean;
     isMotion?: boolean;
@@ -6780,6 +7313,7 @@ export function searchLargeAssets({ albumIds, city, country, createdAfter, creat
         country,
         createdAfter,
         createdBefore,
+        hasAiInterpretation,
         isEncoded,
         isFavorite,
         isMotion,
@@ -8507,9 +9041,12 @@ export enum AssetRejectReason {
     UnsupportedFormat = "unsupported-format"
 }
 export enum AssetJobName {
+    ScanVideoFaces = "scan-video-faces",
     RefreshFaces = "refresh-faces",
     RefreshMetadata = "refresh-metadata",
     RegenerateThumbnail = "regenerate-thumbnail",
+    InterpretImage = "interpret-image",
+    InterpretImagePublic = "interpret-image-public",
     TranscodeVideo = "transcode-video"
 }
 export enum PersonUserRole {
@@ -8538,6 +9075,16 @@ export enum AssetMediaSize {
     Preview = "preview",
     Thumbnail = "thumbnail"
 }
+export enum Outcome {
+    Saturated = "saturated",
+    BudgetExhausted = "budget_exhausted",
+    Deadline = "deadline",
+    DecodeFailed = "decode_failed"
+}
+export enum Mode {
+    Replace = "replace",
+    Merge = "merge"
+}
 export enum SourceType {
     MachineLearning = "machine-learning",
     Exif = "exif",
@@ -8545,6 +9092,7 @@ export enum SourceType {
 }
 export enum ManualJobName {
     PersonCleanup = "person-cleanup",
+    FaceRecheck = "face-recheck",
     TagCleanup = "tag-cleanup",
     UserCleanup = "user-cleanup",
     MemoryCleanup = "memory-cleanup",
@@ -8577,9 +9125,14 @@ export enum QueueName {
     Notifications = "notifications",
     BackupDatabase = "backupDatabase",
     Ocr = "ocr",
+    PdfProcessing = "pdfProcessing",
     Workflow = "workflow",
     IntegrityCheck = "integrityCheck",
-    Editor = "editor"
+    Editor = "editor",
+    ImageInterpretation = "imageInterpretation",
+    ImageInterpretationPublic = "imageInterpretationPublic",
+    AiInterpretSearch = "aiInterpretSearch",
+    VideoFaceScan = "videoFaceScan"
 }
 export enum QueueCommand {
     Start = "start",
@@ -8627,8 +9180,11 @@ export enum QueueJobStatus {
 export enum JobName {
     AssetDelete = "AssetDelete",
     AssetDeleteCheck = "AssetDeleteCheck",
+    AssetVideoFaceScan = "AssetVideoFaceScan",
     AssetDetectFacesQueueAll = "AssetDetectFacesQueueAll",
     AssetDetectFaces = "AssetDetectFaces",
+    FaceRecheckQueueAll = "FaceRecheckQueueAll",
+    FaceRecheck = "FaceRecheck",
     AssetDetectDuplicatesQueueAll = "AssetDetectDuplicatesQueueAll",
     AssetDetectDuplicates = "AssetDetectDuplicates",
     AssetEditThumbnailGeneration = "AssetEditThumbnailGeneration",
@@ -8640,6 +9196,11 @@ export enum JobName {
     AssetFileMigration = "AssetFileMigration",
     AssetGenerateThumbnailsQueueAll = "AssetGenerateThumbnailsQueueAll",
     AssetGenerateThumbnails = "AssetGenerateThumbnails",
+    AssetInterpretImage = "AssetInterpretImage",
+    AssetInterpretImagePublic = "AssetInterpretImagePublic",
+    AssetInterpretationReconcile = "AssetInterpretationReconcile",
+    AiInterpretSearchSync = "AiInterpretSearchSync",
+    AiInterpretSearchReconcile = "AiInterpretSearchReconcile",
     AuditTableCleanup = "AuditTableCleanup",
     AuthChallengeCleanup = "AuthChallengeCleanup",
     DatabaseBackup = "DatabaseBackup",
@@ -8670,6 +9231,7 @@ export enum JobName {
     PersonGenerateThumbnail = "PersonGenerateThumbnail",
     SessionCleanup = "SessionCleanup",
     SendMail = "SendMail",
+    SendAiInterpretationDiscordAlert = "SendAiInterpretationDiscordAlert",
     SidecarQueueAll = "SidecarQueueAll",
     SidecarCheck = "SidecarCheck",
     SidecarWrite = "SidecarWrite",
@@ -8681,6 +9243,8 @@ export enum JobName {
     VersionCheck = "VersionCheck",
     OcrQueueAll = "OcrQueueAll",
     Ocr = "Ocr",
+    PdfProcessQueueAll = "PdfProcessQueueAll",
+    PdfProcess = "PdfProcess",
     WorkflowAssetTrigger = "WorkflowAssetTrigger",
     IntegrityUntrackedFilesQueueAll = "IntegrityUntrackedFilesQueueAll",
     IntegrityUntrackedFiles = "IntegrityUntrackedFiles",
@@ -8692,6 +9256,10 @@ export enum JobName {
     IntegrityChecksumFilesRefresh = "IntegrityChecksumFilesRefresh",
     IntegrityDeleteReportType = "IntegrityDeleteReportType",
     IntegrityDeleteReports = "IntegrityDeleteReports"
+}
+export enum Branch {
+    Dense = "dense",
+    Lexical = "lexical"
 }
 export enum SearchOrderField {
     FileCreatedAt = "fileCreatedAt",

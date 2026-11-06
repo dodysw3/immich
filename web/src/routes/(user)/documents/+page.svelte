@@ -1,11 +1,11 @@
 <script lang="ts">
+  import UserPageLayout from '#lib/components/layouts/UserPageLayout.svelte';
+  import PdfDocumentGrid from '#lib/components/pdf-viewer/PdfDocumentGrid.svelte';
+  import PdfSearchBar from '#lib/components/pdf-viewer/PdfSearchBar.svelte';
+  import { Route } from '#lib/route.ts';
   import { SvelteURLSearchParams } from 'svelte/reactivity';
-  import PdfDocumentGrid from '$lib/components/pdf-viewer/PdfDocumentGrid.svelte';
-  import PdfSearchBar from '$lib/components/pdf-viewer/PdfSearchBar.svelte';
-  import UserPageLayout from '$lib/components/layouts/UserPageLayout.svelte';
-  import type { PageData } from './$types';
   import { goto } from '$app/navigation';
-  import { Route } from '$lib/route';
+  import type { PageData } from './$types';
 
   interface Props {
     data: PageData;

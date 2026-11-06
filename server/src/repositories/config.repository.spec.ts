@@ -206,6 +206,7 @@ describe('getEnv', () => {
         maxEdge: 1600,
         maxPixels: 16_000_000,
         concurrency: 1,
+        reconcileStaggerMs: 5000,
         skipIfInterpreted: true,
         discord: { webhookUrl: undefined, includeThumbnail: false },
       });
@@ -219,7 +220,7 @@ describe('getEnv', () => {
 
     it('should parse the local endpoint settings', () => {
       process.env.IMMICH_AI_IMAGE_INTERPRETATION_ENABLED = 'true';
-      // eslint-disable-next-line unicorn/prefer-https -- the local host-gateway endpoint is HTTP by design
+       
       process.env.IMMICH_AI_IMAGE_INTERPRETATION_URL = 'http://host.docker.internal:8888/v1';
       process.env.IMMICH_AI_IMAGE_INTERPRETATION_API_KEY = 'secret';
       process.env.IMMICH_AI_IMAGE_INTERPRETATION_TIMEOUT_MS = '30000';
@@ -229,7 +230,7 @@ describe('getEnv', () => {
 
       expect(getEnv().aiImageInterpretation).toMatchObject({
         enabled: true,
-        // eslint-disable-next-line unicorn/prefer-https -- the local host-gateway endpoint is HTTP by design
+         
         url: 'http://host.docker.internal:8888/v1',
         apiKey: 'secret',
         timeoutMs: 30_000,

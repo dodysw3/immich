@@ -6,16 +6,6 @@ const fetchMock = vi.hoisted(() => vi.fn());
 
 vi.mock('undici', () => ({ Agent: class {}, fetch: fetchMock }));
 
-const result = {
-  title: 'A quiet room',
-  literal_description: 'A room with a window and a table.',
-  interpretation: 'The image suggests a pause in an otherwise active day.',
-  notable_details: [{ detail: 'Soft light', significance: 'It establishes the mood.', confidence: 'high' as const }],
-  identifications: [],
-  archive_summary: 'A softly lit room with a table and a window.',
-  search_keywords: ['room', 'window', 'interior'],
-};
-
 type ContractResult = {
   title: string;
   literal_description: string;
@@ -24,6 +14,16 @@ type ContractResult = {
   identifications: Array<{ name: string; type: string; confidence: string; basis: string }>;
   archive_summary: string;
   search_keywords: string[];
+};
+
+const result: ContractResult = {
+  title: 'A quiet room',
+  literal_description: 'A room with a window and a table.',
+  interpretation: 'The image suggests a pause in an otherwise active day.',
+  notable_details: [{ detail: 'Soft light', significance: 'It establishes the mood.', confidence: 'high' as const }],
+  identifications: [],
+  archive_summary: 'A softly lit room with a table and a window.',
+  search_keywords: ['room', 'window', 'interior'],
 };
 
 const IDENTIFICATION_CODES = {
@@ -35,18 +35,18 @@ const IDENTIFICATION_CODES = {
   other: 'OTH',
 } as const;
 
-const lineContract = (value: ContractResult): string =>
+const lineContract = (): string =>
   [
-    `T ${value.title}`,
-    `D ${value.literal_description}`,
-    `I ${value.interpretation}`,
-    ...value.notable_details.map((n) => `N ${n.confidence[0].toUpperCase()}|${n.detail}|${n.significance}`),
-    ...value.identifications.map(
+    `T ${result.title}`,
+    `D ${result.literal_description}`,
+    `I ${result.interpretation}`,
+    ...result.notable_details.map((n) => `N ${n.confidence[0].toUpperCase()}|${n.detail}|${n.significance}`),
+    ...result.identifications.map(
       (i) =>
         `X ${i.confidence[0].toUpperCase()}|${IDENTIFICATION_CODES[i.type as keyof typeof IDENTIFICATION_CODES]}|${i.name}|${i.basis}`,
     ),
-    `A ${value.archive_summary}`,
-    `K ${value.search_keywords.join('|')}`,
+    `A ${result.archive_summary}`,
+    `K ${result.search_keywords.join('|')}`,
   ].join('\n');
 
 describe(AiImageInterpretationClient.name, () => {
@@ -63,7 +63,7 @@ describe(AiImageInterpretationClient.name, () => {
       ...env,
       aiImageInterpretation: {
         ...env.aiImageInterpretation,
-        // eslint-disable-next-line unicorn/prefer-https -- the local host-gateway endpoint is HTTP by design
+         
         url: 'http://host.docker.internal:8888/v1',
         apiKey: 'secret-key',
       },
@@ -78,7 +78,7 @@ describe(AiImageInterpretationClient.name, () => {
     fetchMock.mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue({
-        choices: [{ message: { content: lineContract(result) } }],
+        choices: [{ message: { content: lineContract() } }],
         usage: { prompt_tokens: 12, completion_tokens: 34 },
       }),
     });
@@ -93,7 +93,7 @@ describe(AiImageInterpretationClient.name, () => {
 
     const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(request.body as string);
-    // eslint-disable-next-line unicorn/prefer-https -- the local host-gateway endpoint is HTTP by design
+     
     expect(url).toBe('http://host.docker.internal:8888/v1/chat/completions');
     expect(request.headers).toEqual({
       'Content-Type': 'application/json',
@@ -185,7 +185,7 @@ describe(AiImageInterpretationClient.name, () => {
   it('rejects malformed line output as invalid_json, logging the defect for triage', async () => {
     // Garbage, JSON remnants of the 1.1.0 format, and structural violations
     // (duplicate or missing singles) all fail the same way.
-    const contents = ['not json at all', '{}', 'K only|keywords', `${lineContract(result)}\nT a second title`];
+    const contents = ['not json at all', '{}', 'K only|keywords', `${lineContract()}\nT a second title`];
     for (const content of contents) {
       fetchMock.mockReset().mockResolvedValue({
         ok: true,
@@ -228,7 +228,7 @@ describe(AiImageInterpretationClient.name, () => {
       ok: true,
       headers: { get: (name: string) => (name.toLowerCase() === 'x-ai-backend' ? 'remote' : null) },
       json: vi.fn().mockResolvedValue({
-        choices: [{ message: { content: lineContract(result) } }],
+        choices: [{ message: { content: lineContract() } }],
         usage: { prompt_tokens: 12, completion_tokens: 34 },
       }),
     });
@@ -252,10 +252,10 @@ describe(AiImageInterpretationClient.name, () => {
   it('routes the request to an overridden endpoint and labels the backend accordingly', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: vi.fn().mockResolvedValue({ choices: [{ message: { content: lineContract(result) } }] }),
+      json: vi.fn().mockResolvedValue({ choices: [{ message: { content: lineContract() } }] }),
     });
 
-    // eslint-disable-next-line unicorn/prefer-https -- the public hybrid route is HTTP by design
+     
     const url = 'http://host.docker.internal:51900/public/v1';
     await expect(
       client.interpret(Buffer.from('preview'), {
@@ -283,7 +283,7 @@ describe(AiImageInterpretationClient.name, () => {
         get: (name: string) => (name.toLowerCase() === 'x-ai-model' ? 'mai/muse-spark-1.3-contributor' : null),
       },
       json: vi.fn().mockResolvedValue({
-        choices: [{ message: { content: lineContract(result) } }],
+        choices: [{ message: { content: lineContract() } }],
         usage: { prompt_tokens: 12, completion_tokens: 34 },
       }),
     });
@@ -293,7 +293,7 @@ describe(AiImageInterpretationClient.name, () => {
 
     fetchMock.mockResolvedValueOnce({
       ok: true,
-      json: vi.fn().mockResolvedValue({ choices: [{ message: { content: lineContract(result) } }] }),
+      json: vi.fn().mockResolvedValue({ choices: [{ message: { content: lineContract() } }] }),
     });
     await expect(client.interpret(Buffer.from('preview'))).resolves.toMatchObject({
       model: 'unsloth/Muse-Glimmer-30B-GGUF',
@@ -307,7 +307,7 @@ describe(AiImageInterpretationClient.name, () => {
       ok: true,
       json: vi.fn().mockResolvedValue({
         model: 'upstage/solar-pro-3:free',
-        choices: [{ message: { content: lineContract(result) } }],
+        choices: [{ message: { content: lineContract() } }],
         usage: { prompt_tokens: 12, completion_tokens: 34 },
       }),
     });
@@ -322,7 +322,7 @@ describe(AiImageInterpretationClient.name, () => {
       ok: true,
       json: vi.fn().mockResolvedValue({
         model: '/models/muse-glimmer-30b-iq4_xs.gguf',
-        choices: [{ message: { content: lineContract(result) } }],
+        choices: [{ message: { content: lineContract() } }],
         usage: { prompt_tokens: 12, completion_tokens: 34 },
       }),
     });
@@ -338,7 +338,7 @@ describe(AiImageInterpretationClient.name, () => {
       },
       json: vi.fn().mockResolvedValue({
         model: 'upstage/solar-pro-3:free',
-        choices: [{ message: { content: lineContract(result) } }],
+        choices: [{ message: { content: lineContract() } }],
       }),
     });
     await expect(client.interpret(Buffer.from('preview'), { model: 'openrouter/free' })).resolves.toMatchObject({
@@ -349,7 +349,7 @@ describe(AiImageInterpretationClient.name, () => {
   it('defaults the backend to local when no proxy header is present', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: vi.fn().mockResolvedValue({ choices: [{ message: { content: lineContract(result) } }] }),
+      json: vi.fn().mockResolvedValue({ choices: [{ message: { content: lineContract() } }] }),
     });
 
     await expect(client.interpret(Buffer.from('preview'))).resolves.toMatchObject({ backend: 'local' });

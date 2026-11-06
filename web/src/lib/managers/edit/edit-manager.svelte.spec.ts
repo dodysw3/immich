@@ -1,6 +1,6 @@
+import { EditManager } from '#lib/managers/edit/edit-manager.svelte.ts';
 import type { AssetResponseDto } from '@immich/sdk';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { EditManager } from '$lib/managers/edit/edit-manager.svelte';
 
 const mocks = vi.hoisted(() => ({
   editAsset: vi.fn(),
@@ -15,11 +15,11 @@ const mocks = vi.hoisted(() => ({
   formatter: vi.fn((key: string) => key),
 }));
 
-vi.mock('$lib/components/asset-viewer/editor/transform-tool/transform-tool.svelte', () => ({
+vi.mock('#lib/components/asset-viewer/editor/transform-tool/transform-tool.svelte', () => ({
   default: {},
 }));
 
-vi.mock('$lib/managers/edit/transform-manager.svelte', () => ({
+vi.mock('#lib/managers/edit/transform-manager.svelte', () => ({
   transformManager: {
     onActivate: vi.fn(),
     onDeactivate: vi.fn(),
@@ -30,18 +30,18 @@ vi.mock('$lib/managers/edit/transform-manager.svelte', () => ({
   },
 }));
 
-vi.mock('$lib/managers/event-manager.svelte', () => ({
+vi.mock('#lib/managers/event-manager.svelte', () => ({
   eventManager: {
     emit: mocks.eventEmit,
   },
 }));
 
-vi.mock('$lib/stores/websocket', () => ({
+vi.mock('#lib/stores/websocket.ts', () => ({
   waitForWebsocketEvent: mocks.waitForWebsocketEvent,
 }));
 
-vi.mock('$lib/utils/i18n', async () => {
-  const actual = await vi.importActual<typeof import('$lib/utils/i18n')>('$lib/utils/i18n');
+vi.mock('#lib/utils/i18n.ts', async () => {
+  const actual = await vi.importActual<typeof import('#lib/utils/i18n.ts')>('#lib/utils/i18n.ts');
 
   return {
     ...actual,
@@ -174,7 +174,7 @@ describe('EditManager.applyInstantRotateBulk', () => {
     mocks.waitForWebsocketEvent.mockResolvedValue(undefined);
     mocks.editAsset.mockResolvedValue(undefined);
     mocks.getAssetEdits.mockResolvedValue({ edits: [] });
-    mocks.getAssetInfo.mockImplementation(async ({ id }: { id: string }) => createAsset(id));
+    mocks.getAssetInfo.mockImplementation(({ id }: { id: string }) => createAsset(id));
   });
 
   it('rotates each asset and shows a single count toast', async () => {

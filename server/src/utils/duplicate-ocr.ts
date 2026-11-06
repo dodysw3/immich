@@ -1,16 +1,16 @@
 /**
- * OCR-assisted duplicate veto.
- *
- * CLIP embeddings cannot separate visually-identical document templates that
- * differ only in small text (dates, reference numbers, amounts) — such pairs
- * sit at smaller embedding distances than true re-copies of the same document.
- * OCR text separates them: same template with different values produces a
- * materially different token bag, while re-copies differ only by OCR jitter.
- *
- * The comparator is a bag of whitespace tokens because PaddleOCR returns
- * boxes in detection order, so the same document can OCR to the same tokens
- * in a different order.
- */
+OCR-assisted duplicate veto.
+
+CLIP embeddings cannot separate visually-identical document templates that
+differ only in small text (dates, reference numbers, amounts) — such pairs
+sit at smaller embedding distances than true re-copies of the same document.
+OCR text separates them: same template with different values produces a
+materially different token bag, while re-copies differ only by OCR jitter.
+
+The comparator is a bag of whitespace tokens because PaddleOCR returns
+boxes in detection order, so the same document can OCR to the same tokens
+in a different order.
+*/
 
 // Collapse runs of the same repeated punctuation character ("…………9365" → "…9365",
 // "--" → "-"). OCR dot-leaders and dashes are read with inconsistent counts

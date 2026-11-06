@@ -26,14 +26,14 @@ export function configureTelemetry() {
 }
 
 /**
- * Rejects requests that carry an Immich API key (`x-api-key` header or `apiKey`
- * query param) from clients outside the allowlisted networks — API keys are meant
- * for LAN/docker use, while session and shared-link access stays open to the
- * internet. The client IP honors `trust proxy`, so requests forwarded by a
- * trusted reverse proxy are judged by the forwarded client address, not the
- * proxy's address, and proxies not listed in `IMMICH_TRUSTED_PROXIES` cannot
- * influence it via a forged `X-Forwarded-For`.
- */
+Rejects requests that carry an Immich API key (`x-api-key` header or `apiKey`
+query param) from clients outside the allowlisted networks — API keys are meant
+for LAN/docker use, while session and shared-link access stays open to the
+internet. The client IP honors `trust proxy`, so requests forwarded by a
+trusted reverse proxy are judged by the forwarded client address, not the
+proxy's address, and proxies not listed in `IMMICH_TRUSTED_PROXIES` cannot
+influence it via a forged `X-Forwarded-For`.
+*/
 export const createApiKeyNetworkGuard = (
   allowedNetworks: string[],
   logger: Pick<LoggingRepository, 'warn'>,

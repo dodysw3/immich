@@ -1,4 +1,4 @@
-import { getFaceLabelCompensation } from '$lib/features/face-overlay/face-overlay.utils';
+import { getFaceLabelCompensation } from '#lib/features/face-overlay/face-overlay.utils.ts';
 
 describe('getFaceLabelCompensation', () => {
   it('keeps labels at their original size when zooming in', () => {

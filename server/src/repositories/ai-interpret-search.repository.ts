@@ -23,10 +23,10 @@ export interface AiInterpretStoredRow {
 }
 
 /**
- * Asset-level filters shared by both search branches. Semantics match
- * searchAssetBuilderLegacy: `undefined` means unfiltered, `null` (where
- * allowed) means an explicit "is null" (absent) filter.
- */
+Asset-level filters shared by both search branches. Semantics match
+searchAssetBuilderLegacy: `undefined` means unfiltered, `null` (where
+allowed) means an explicit "is null" (absent) filter.
+*/
 export interface AiInterpretAssetFilters {
   userIds: string[];
   visibility?: AssetVisibility | 'not-locked';
@@ -63,10 +63,10 @@ export interface AiInterpretBranchRow {
 }
 
 /**
- * Applies the shared asset-level filters to a query whose driving table is
- * `asset` (with `ai_interpret_search` joined). Multiple exif filters each add
- * their own join, so the caller must attach the join-deduplication plugin.
- */
+Applies the shared asset-level filters to a query whose driving table is
+`asset` (with `ai_interpret_search` joined). Multiple exif filters each add
+their own join, so the caller must attach the join-deduplication plugin.
+*/
 function applyAssetFilters<O>(
   qb: SelectQueryBuilder<DB, 'asset', O>,
   {
@@ -203,10 +203,10 @@ export class AiInterpretSearchRepository {
   }
 
   /**
-   * Pages through assets that have at least one completed AI interpretation
-   * run, ordered by assetId for keyset pagination. Returns the raw metadata
-   * document so the caller can pick the latest completed run itself.
-   */
+  Pages through assets that have at least one completed AI interpretation
+  run, ordered by assetId for keyset pagination. Returns the raw metadata
+  document so the caller can pick the latest completed run itself.
+  */
   @GenerateSql({ params: [{ cursor: DummyValue.UUID, limit: 500 }] })
   async pageAssetsWithRuns({
     cursor,
@@ -235,10 +235,10 @@ export class AiInterpretSearchRepository {
   }
 
   /**
-   * Dense branch: cosine kNN over indexed interpretations, restricted to the
-   * caller's asset universe and the configured minimum cosine similarity.
-   * Returns the top `limit` rows ordered best-match first.
-   */
+  Dense branch: cosine kNN over indexed interpretations, restricted to the
+  caller's asset universe and the configured minimum cosine similarity.
+  Returns the top `limit` rows ordered best-match first.
+  */
   @GenerateSql({
     params: [
       { limit: 101 },
@@ -292,10 +292,10 @@ export class AiInterpretSearchRepository {
   }
 
   /**
-   * Lexical branch: pg_trgm strict word similarity over the curated text,
-   * ranked best-match first via the word similarity distance operator.
-   * Returns the top `limit` rows ordered best-match first.
-   */
+  Lexical branch: pg_trgm strict word similarity over the curated text,
+  ranked best-match first via the word similarity distance operator.
+  Returns the top `limit` rows ordered best-match first.
+  */
   @GenerateSql({
     params: [
       { limit: 101 },

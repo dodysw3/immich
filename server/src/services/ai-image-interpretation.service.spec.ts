@@ -24,9 +24,9 @@ import { AssetFactory } from 'test/factories/asset.factory.js';
 const runKey = 'a'.repeat(64);
 const config = {
   enabled: true,
-  // eslint-disable-next-line unicorn/prefer-https -- the local host-gateway endpoint is HTTP by design
+   
   url: 'http://host.docker.internal:8888/v1',
-  // eslint-disable-next-line unicorn/prefer-https -- the public hybrid route is HTTP by design
+   
   publicUrl: 'http://host.docker.internal:51900/public/v1',
   publicModel: 'mai/muse-spark-1.3-contributor',
   model: 'model-a',
@@ -36,6 +36,7 @@ const config = {
   maxEdge: 1600,
   maxPixels: 16_000_000,
   concurrency: 1,
+  reconcileStaggerMs: 5000,
   discord: { webhookUrl: 'https://discord.com/api/webhooks/123/token', includeThumbnail: true },
 };
 
@@ -609,11 +610,11 @@ describe(AiImageInterpretationService.name, () => {
     expect(dependencies.interpretationRepository.requeue).toHaveBeenCalledTimes(2);
     expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
       name: JobName.AssetInterpretImage,
-      data: { id: 'asset-1', runKey, priority: 2 },
+      data: { id: 'asset-1', runKey, priority: 2, delayMs: 0 },
     });
     expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
       name: JobName.AssetInterpretImage,
-      data: { id: 'asset-2', runKey, priority: 3 },
+      data: { id: 'asset-2', runKey, priority: 3, delayMs: 5000 },
     });
   });
 
@@ -636,8 +637,68 @@ describe(AiImageInterpretationService.name, () => {
     );
     expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
       name: JobName.AssetInterpretImagePublic,
-      data: { id: 'asset-1', runKey: publicRunKey, priority: 1 },
+      data: { id: 'asset-1', runKey: publicRunKey, priority: 1, delayMs: undefined },
     });
+  });
+
+  it('staggers main-queue retry dispatches reconcileStaggerMs apart, public runs excluded', async () => {
+    const { service, dependencies } = makeService();
+    dependencies.interpretationRepository.failStale.mockResolvedValue(0);
+    dependencies.interpretationRepository.findDueRetries.mockResolvedValue([
+      { assetId: 'asset-1', runKey, assetCreatedAt: new Date() },
+      { assetId: 'asset-2', runKey, assetCreatedAt: new Date() },
+      { assetId: 'asset-3', runKey: publicRunKey, assetCreatedAt: new Date() },
+      { assetId: 'asset-4', runKey, assetCreatedAt: new Date() },
+    ]);
+    dependencies.interpretationRepository.requeue.mockResolvedValue(true);
+
+    await expect(service.handleReconcile()).resolves.toBe(JobStatus.Success);
+
+    // Main-queue retries dispatch 0 / 5s / 10s apart; the public run (own
+    // queue, user-facing) never carries a delay and does not consume a slot.
+    expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
+      name: JobName.AssetInterpretImage,
+      data: { id: 'asset-1', runKey, priority: 2, delayMs: 0 },
+    });
+    expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
+      name: JobName.AssetInterpretImage,
+      data: { id: 'asset-2', runKey, priority: 2, delayMs: 5000 },
+    });
+    expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
+      name: JobName.AssetInterpretImagePublic,
+      data: { id: 'asset-3', runKey: publicRunKey, priority: 1, delayMs: undefined },
+    });
+    expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
+      name: JobName.AssetInterpretImage,
+      data: { id: 'asset-4', runKey, priority: 2, delayMs: 10_000 },
+    });
+    expect(dependencies.logger.log).toHaveBeenCalledWith('Requeued 4 due AI interpretation retry run(s) (spread over 10s)');
+  });
+
+  it('skips the stagger entirely when reconcileStaggerMs is 0', async () => {
+    const { service, dependencies } = makeService();
+    dependencies.configRepository.getEnv.mockReturnValue({
+      aiImageInterpretation: { ...config, reconcileStaggerMs: 0 },
+      aiInterpretSearch: { enabled: false },
+    });
+    dependencies.interpretationRepository.failStale.mockResolvedValue(0);
+    dependencies.interpretationRepository.findDueRetries.mockResolvedValue([
+      { assetId: 'asset-1', runKey, assetCreatedAt: new Date() },
+      { assetId: 'asset-2', runKey, assetCreatedAt: new Date() },
+    ]);
+    dependencies.interpretationRepository.requeue.mockResolvedValue(true);
+
+    await expect(service.handleReconcile()).resolves.toBe(JobStatus.Success);
+
+    expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
+      name: JobName.AssetInterpretImage,
+      data: { id: 'asset-1', runKey, priority: 2, delayMs: 0 },
+    });
+    expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
+      name: JobName.AssetInterpretImage,
+      data: { id: 'asset-2', runKey, priority: 2, delayMs: 0 },
+    });
+    expect(dependencies.logger.log).toHaveBeenCalledWith('Requeued 2 due AI interpretation retry run(s)');
   });
 
   it('skips due retries that another trigger already requeued', async () => {
@@ -856,7 +917,7 @@ describe(AiImageInterpretationService.name, () => {
       expect(dependencies.jobRepository.queue).toHaveBeenCalledTimes(1);
       expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
         name: JobName.AssetInterpretImage,
-        data: { id: 'asset-fresh', runKey, priority: 2 },
+        data: { id: 'asset-fresh', runKey, priority: 2, delayMs: 0 },
       });
     });
   });

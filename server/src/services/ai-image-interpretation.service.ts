@@ -461,8 +461,8 @@ export class AiImageInterpretationService {
       dispatched++;
     }
 
+    const spread = staggered > 0 ? ` (spread over ${Math.ceil((staggered * staggerMs) / 1000)}s)` : '';
     if (dispatched > 0) {
-      const spread = staggered > 0 ? ` (spread over ${Math.ceil((staggered * staggerMs) / 1000)}s)` : '';
       this.logger.log(`Requeued ${dispatched} due AI interpretation retry run(s)${spread}`);
     }
   }

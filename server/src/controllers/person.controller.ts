@@ -17,6 +17,7 @@ import { ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
 import type { NextFunction, Response } from 'express';
 import { Endpoint, HistoryBuilder } from 'src/decorators.js';
 import { BulkIdResponseDto } from 'src/dtos/asset-ids.response.dto.js';
+import type { AuthDto } from 'src/dtos/auth.dto.js';
 import { PersonAssetsDto, PersonAssetsResponseDto } from 'src/dtos/person-assets.dto.js';
 import {
   AssetFaceUpdateDto,

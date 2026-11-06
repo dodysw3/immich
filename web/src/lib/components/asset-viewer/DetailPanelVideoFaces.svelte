@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
+  import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
   import { getFaceThumbnail, getVideoFaces, type AssetResponseDto, type VideoFacesResponseDto } from '@immich/sdk';
   import { Duration } from 'luxon';
   import { t } from 'svelte-i18n';
@@ -63,7 +63,7 @@
   <section class="text-sm">
     <div class="mt-2 grid grid-cols-4 gap-2">
       {#each data.faces as face (face.id)}
-        {@const total = data?.run?.durationMs || durationMs || 1}
+        {const total = $derived(data?.run?.durationMs || durationMs || 1)}
         <button
           type="button"
           class="group cursor-pointer text-left outline-none"
@@ -74,24 +74,26 @@
             <img
               src={thumbnails[face.id]}
               alt={face.personName ?? $t('video_face_unknown')}
-              class="h-full w-full rounded-xl object-cover outline-offset-2 outline-immich-primary group-focus-visible:outline-2 dark:outline-immich-dark-primary"
+              class="size-full rounded-xl object-cover outline-offset-2 outline-immich-primary group-focus-visible:outline-2 dark:outline-immich-dark-primary"
             />
           {:else}
-            <div class="flex aspect-square w-full items-center justify-center rounded-xl bg-gray-200 text-xs dark:bg-gray-700">
+            <div
+              class="flex aspect-square w-full items-center justify-center rounded-xl bg-gray-200 text-xs dark:bg-gray-700"
+            >
               …
             </div>
           {/if}
           <p class="mt-1 truncate font-medium" title={face.personName ?? $t('video_face_unknown')}>
             {face.personName ?? $t('video_face_unknown')}
           </p>
-          <p class="font-light text-xs">
+          <p class="text-xs font-light">
             {$t('video_face_first_observed', { values: { time: formatTime(face.firstObservedMs) } })}
           </p>
           <!-- sparse "seen at" markers: point positions only, never presence bands -->
-          <div class="relative mt-1 h-1 w-full rounded bg-gray-200 dark:bg-gray-700">
+          <div class="relative mt-1 h-1 w-full rounded-sm bg-gray-200 dark:bg-gray-700">
             {#each face.sightings as sighting (sighting.timeMs)}
               <span
-                class="absolute top-[-1px] h-[6px] w-[2px] rounded bg-immich-primary dark:bg-immich-dark-primary"
+                class="absolute -top-px h-[6px] w-[2px] rounded-sm bg-immich-primary dark:bg-immich-dark-primary"
                 style="left: {Math.min(98, (sighting.timeMs / total) * 100)}%"
               ></span>
             {/each}
@@ -100,7 +102,7 @@
       {/each}
     </div>
     {#if coveragePercent !== null}
-      <p class="mt-2 font-light text-xs">
+      <p class="mt-2 text-xs font-light">
         {$t('video_face_coverage', { values: { percent: coveragePercent } })}
       </p>
     {/if}

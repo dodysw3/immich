@@ -254,11 +254,11 @@ export class MediaRepository {
   }
 
   /**
-   * Grab one frame near `seekSec` via input-side seek (O(K) over the run, not
-   * O(duration)) for video face scanning. -copyts keeps the output
-   * presentation timestamp so showinfo reports the frame's true timeline
-   * position; the caller must use the returned actualSec, not the request.
-   */
+  Grab one frame near `seekSec` via input-side seek (O(K) over the run, not
+  O(duration)) for video face scanning. -copyts keeps the output
+  presentation timestamp so showinfo reports the frame's true timeline
+  position; the caller must use the returned actualSec, not the request.
+  */
   async grabVideoFrame(input: string, seekSec: number, outputPath: string, maxSide = 1440): Promise<number> {
     const args = [
       '-hide_banner',
@@ -278,7 +278,7 @@ export class MediaRepository {
       proc.stderr.on('data', (chunk) => (stderr += chunk.toString()));
       proc.on('error', reject);
       proc.on('close', (code) => {
-        const match = [...stderr.matchAll(/pts_time:([0-9.]+)/g)].map((m) => Number(m[1]));
+        const match = stderr.matchAll(/pts_time:([0-9.]+)/g).map((m) => Number(m[1])).toArray();
         const actual = match[0];
         if (code !== 0 || actual === undefined) {
           reject(new Error(`ffmpeg grab at ${seekSec}s failed (code ${code})`));

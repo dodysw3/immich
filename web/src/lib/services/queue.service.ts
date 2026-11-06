@@ -21,6 +21,7 @@ import {
   mdiCog,
   mdiContentDuplicate,
   mdiDatabaseOutline,
+  mdiEarth,
   mdiFaceRecognition,
   mdiFileCheckOutline,
   mdiFileJpgBox,
@@ -41,7 +42,6 @@ import {
   mdiTrayFull,
   mdiVideo,
   mdiVideoOutline,
-  mdiEarth,
 } from '@mdi/js';
 import type { MessageFormatter } from 'svelte-i18n';
 import { goto } from '$app/navigation';

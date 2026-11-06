@@ -333,7 +333,7 @@
             class="pointer-events-none absolute inset-x-0 bottom-0 z-2 bg-linear-to-t from-black/75 via-black/40 to-transparent px-1.5 pt-6 pb-1.5"
           >
             <p
-              class="text-white-shadow line-clamp-3 text-[11px] leading-snug font-medium break-words text-white"
+              class="text-white-shadow line-clamp-3 text-[11px] leading-snug font-medium wrap-break-word text-white"
               data-testid="interpretation-title"
             >
               {asset.aiInterpretationTitle}

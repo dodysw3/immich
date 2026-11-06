@@ -12,6 +12,7 @@ import { removeAssetFromAlbumMutation } from '#lib/queries/album.query.ts';
 import { executeMutation, readPreloadedQuery } from '#lib/queries/client.ts';
 import { getUserConfigQuery } from '#lib/queries/config-user.query.ts';
 import { Route } from '#lib/route.ts';
+import { faceManager } from '#lib/stores/face.svelte.ts';
 import { SlideshowState, slideshowStore } from '#lib/stores/slideshow.store.ts';
 import { downloadUrl, getAssetAnnotatedUrl, getAssetMediaUrl, getSharedLink, sleep } from '#lib/utils.ts';
 import type { OnFavorite } from '#lib/utils/actions.ts';
@@ -48,7 +49,6 @@ import {
   mdiFaceRecognition,
   mdiFileDocumentOutline,
   mdiHeadSyncOutline,
-  mdiVideoOutline,
   mdiHeart,
   mdiHeartOutline,
   mdiImageRefreshOutline,
@@ -65,11 +65,11 @@ import {
   mdiTagMultipleOutline,
   mdiTagPlusOutline,
   mdiTune,
+  mdiVideoOutline,
 } from '@mdi/js';
 import { t, type MessageFormatter } from 'svelte-i18n';
 import { get } from 'svelte/store';
 import { goto } from '$app/navigation';
-import { faceManager } from '#lib/stores/face.svelte.ts';
 
 type EditorAvailabilityOptions = {
   isOwner: boolean;

@@ -7,9 +7,9 @@
   import NextAssetAction from '#lib/components/asset-viewer/actions/NextAssetAction.svelte';
   import PreviousAssetAction from '#lib/components/asset-viewer/actions/PreviousAssetAction.svelte';
   import type { Action, OnAction, PreAction } from '#lib/components/asset-viewer/actions/action.ts';
+  import { AssetAction, ProjectionType } from '#lib/constants.ts';
   import FaceOverlayButton from '#lib/features/face-overlay/face-overlay-button.svelte';
   import { faceOverlayStore } from '#lib/features/face-overlay/face-overlay.store.svelte.ts';
-  import { AssetAction, ProjectionType } from '#lib/constants.ts';
   import { activityManager } from '#lib/managers/activity-manager.svelte.ts';
   import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
   import { authManager } from '#lib/managers/auth-manager.svelte.ts';
@@ -492,6 +492,7 @@
   };
 
   const onInstantRotateShortcut = (event: KeyboardEvent) => {
+    // eslint-disable-next-line tscompat/tscompat -- KeyboardEvent.repeat is Chrome 37+; the rule's Chrome 109 claim is wrong
     if (event.defaultPrevented || shouldIgnoreEvent(event) || event.repeat) {
       return;
     }

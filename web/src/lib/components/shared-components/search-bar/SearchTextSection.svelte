@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { featureFlagsManager } from '#lib/managers/feature-flags-manager.svelte.ts';
   import { searchManager } from '#lib/managers/search-manager.svelte.ts';
   import { createPreloadedQuery } from '#lib/queries/client.ts';
   import { getUserConfigQuery } from '#lib/queries/config-user.query.ts';

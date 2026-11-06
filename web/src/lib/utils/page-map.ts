@@ -6,22 +6,18 @@ export type PageState =
   | { status: 'loading'; ghostHeight: number }
   | { status: 'unloaded' };
 
-/**
- * A record of page states keyed by page number (1-indexed).
- */
+/** A record of page states keyed by page number (1-indexed). */
 export type PageMap = Record<number, PageState>;
 
-/**
- * Create an empty PageMap.
- */
+/** Create an empty PageMap. */
 export function createPageMap(): PageMap {
   return {};
 }
 
 /**
- * Flatten all loaded pages in page-number order into a single array of assets.
- * Pages loaded out of order are still returned in the correct sequence.
- */
+Flatten all loaded pages in page-number order into a single array of assets.
+Pages loaded out of order are still returned in the correct sequence.
+*/
 export function getLoadedAssets(pages: PageMap): AssetResponseDto[] {
   const sorted = Object.keys(pages)
     .map(Number)
@@ -38,9 +34,9 @@ export function getLoadedAssets(pages: PageMap): AssetResponseDto[] {
 }
 
 /**
- * Sum heights from all loaded pages and ghost pages.
- * Unloaded and loading pages contribute 0 to the container height.
- */
+Sum heights from all loaded pages and ghost pages.
+Unloaded and loading pages contribute 0 to the container height.
+*/
 export function getContainerHeight(pages: PageMap): number {
   let total = 0;
   for (const state of Object.values(pages)) {
@@ -52,9 +48,9 @@ export function getContainerHeight(pages: PageMap): number {
 }
 
 /**
- * Return the page number that owns a given vertical pixel position,
- * or `undefined` if the offset is past all pages.
- */
+Return the page number that owns a given vertical pixel position,
+or `undefined` if the offset is past all pages.
+*/
 export function getPageAtScrollOffset(pages: PageMap, offset: number): number | undefined {
   let accumulated = 0;
   const sorted = Object.keys(pages)
@@ -76,9 +72,9 @@ export function getPageAtScrollOffset(pages: PageMap, offset: number): number | 
 }
 
 /**
- * Find ghost page numbers whose position overlaps with the given
- * viewport range (extended by `threshold` viewport heights in both directions).
- */
+Find ghost page numbers whose position overlaps with the given
+viewport range (extended by `threshold` viewport heights in both directions).
+*/
 export function findGhostPagesNearViewport(
   pages: PageMap,
   scrollTop: number,

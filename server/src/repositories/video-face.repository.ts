@@ -124,12 +124,12 @@ export class VideoFaceRepository {
   }
 
   /**
-   * Persist identities for an asset, reconciling against existing rows by
-   * embedding similarity so identityKey and the published assetFaceId link
-   * (i.e. manual person assignments through the normal face UI) survive a
-   * re-scan. Identities that no longer match anything are deleted (sightings
-   * cascade). Returns rows keyed by identityKey with their persisted ids.
-   */
+  Persist identities for an asset, reconciling against existing rows by
+  embedding similarity so identityKey and the published assetFaceId link
+  (i.e. manual person assignments through the normal face UI) survive a
+  re-scan. Identities that no longer match anything are deleted (sightings
+  cascade). Returns rows keyed by identityKey with their persisted ids.
+  */
   async persistIdentities(
     runId: string,
     assetId: string,
@@ -145,16 +145,18 @@ export class VideoFaceRepository {
     const used = new Set<string>();
     for (const identity of identities) {
       let match: (typeof existing)[number] | undefined;
-      let best = Number.POSITIVE_INFINITY;
+      let best = Infinity;
       for (const row of existing) {
         if (used.has(row.id)) {
           continue;
         }
         const d = cosineDistance(identity.embedding, row.embedding as number[]);
-        if (d < best) {
-          best = d;
-          match = row;
+        if (!(d < best)) {
+          continue;
         }
+
+        best = d;
+        match = row;
       }
       if (match && best < RECONCILE_DISTANCE) {
         used.add(match.id);
@@ -371,6 +373,7 @@ export function cosineDistance(a: number[], b: number[]): number {
   let na = 0;
   let nb = 0;
   const n = Math.min(a.length, b.length);
+  // eslint-disable-next-line unicorn/prefer-iterator-zip -- server TS lib types IteratorObject helpers but not the static Iterator.zip
   for (let i = 0; i < n; i++) {
     dot += a[i] * b[i];
     na += a[i] * a[i];

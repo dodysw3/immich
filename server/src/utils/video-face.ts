@@ -109,12 +109,12 @@ export interface GapBisectState {
 }
 
 /**
- * Adaptive gap bisection: next sample = midpoint of the highest-priority
- * unsampled gap. Priority = length x (signatures differ ? wDiff : 1) x
- * (gap has any faces ? wFace : wEmpty). Deterministic tie-break: earliest gap.
- */
+Adaptive gap bisection: next sample = midpoint of the highest-priority
+unsampled gap. Priority = length x (signatures differ ? wDiff : 1) x
+(gap has any faces ? wFace : wEmpty). Deterministic tie-break: earliest gap.
+*/
 export function nextSampleByGap(state: GapBisectState, cfg: VideoFaceScanConfig): { timeMs: number; reason: SampleReason } | null {
-  const times = [...state.sampled.map((s) => s.timeMs)].sort((a, b) => a - b);
+  const times = state.sampled.map((s) => s.timeMs).sort((a, b) => a - b);
   const bounds = [0, ...times, state.durationMs];
   let best: { mid: number; priority: number } | null = null;
   for (let i = 0; i < bounds.length - 1; i++) {
@@ -140,11 +140,11 @@ export function nextSampleByGap(state: GapBisectState, cfg: VideoFaceScanConfig)
 }
 
 /**
- * Saturation stop: last `saturation` samples contributed no new identity AND
- * every gap between consecutive samples is below minGapMs. Either condition
- * failing keeps the run going — new identities can appear at the very end of
- * the timeline (bench: 10 identities in the final 2.4s of a 23s video).
- */
+Saturation stop: last `saturation` samples contributed no new identity AND
+every gap between consecutive samples is below minGapMs. Either condition
+failing keeps the run going — new identities can appear at the very end of
+the timeline (bench: 10 identities in the final 2.4s of a 23s video).
+*/
 export function shouldStopForSaturation(
   history: { timeMs: number; newIdentityKeys: string[] }[],
   cfg: VideoFaceScanConfig,
@@ -173,6 +173,7 @@ function normalize(embedding: number[]): number[] {
 
 export function cosineDistance(a: number[], b: number[]): number {
   let dot = 0;
+  // eslint-disable-next-line unicorn/prefer-iterator-zip -- server TS lib types IteratorObject helpers but not the static Iterator.zip
   for (let i = 0; i < Math.min(a.length, b.length); i++) {
     dot += a[i] * b[i];
   }
@@ -186,13 +187,13 @@ interface WorkingIdentity {
 }
 
 /**
- * Group detections into within-video identities.
- *
- * Greedy centroid clustering in chronological order; two detections from the
- * same decoded frame (same timeMs) never merge into one identity. Optional
- * second stage merges clusters whose best exemplars (max size x score) are
- * within the threshold — halves splits at 0.55 without false merges.
- */
+Group detections into within-video identities.
+
+Greedy centroid clustering in chronological order; two detections from the
+same decoded frame (same timeMs) never merge into one identity. Optional
+second stage merges clusters whose best exemplars (max size x score) are
+within the threshold — halves splits at 0.55 without false merges.
+*/
 export function groupDetections(frames: GroupInput[], cfg: VideoFaceScanConfig): VideoFaceIdentity[] {
   const identities: WorkingIdentity[] = [];
 
@@ -204,17 +205,19 @@ export function groupDetections(frames: GroupInput[], cfg: VideoFaceScanConfig):
       }
       const emb = normalize(det.embedding);
       let best: WorkingIdentity | null = null;
-      let bestD = Number.POSITIVE_INFINITY;
+      let bestD = Infinity;
       for (const identity of identities) {
         if (identity.members.some((m) => m.timeMs === frame.timeMs)) {
           continue; // same-frame rule: one identity, one face per frame
         }
         const centroid = identity.sum.map((v) => v / identity.count);
         const d = cosineDistance(emb, centroid);
-        if (d < bestD) {
-          bestD = d;
-          best = identity;
+        if (!(d < bestD)) {
+          continue;
         }
+
+        bestD = d;
+        best = identity;
       }
       if (best && bestD < cfg.groupThreshold) {
         best.sum = best.sum.map((v, i) => v + emb[i]);
@@ -226,12 +229,15 @@ export function groupDetections(frames: GroupInput[], cfg: VideoFaceScanConfig):
     }
   }
 
-  const exemplar = (identity: WorkingIdentity) =>
-    identity.members.reduce((best, m) => {
-      const quality = m.det.sizePx * m.det.score;
-      const bestQuality = best.det.sizePx * best.det.score;
-      return quality > bestQuality ? m : best;
-    });
+  const exemplar = (identity: WorkingIdentity) => {
+    let best = identity.members[0];
+    for (const m of identity.members) {
+      if (m.det.sizePx * m.det.score > best.det.sizePx * best.det.score) {
+        best = m;
+      }
+    }
+    return best;
+  };
 
   if (cfg.exemplarMerge) {
     let changed = true;
@@ -305,9 +311,9 @@ export function groupDetections(frames: GroupInput[], cfg: VideoFaceScanConfig):
 }
 
 /**
- * Assign stable identity keys: order identities by first observation (then
- * quality) so the same video + config yields the same keys on re-run.
- */
+Assign stable identity keys: order identities by first observation (then
+quality) so the same video + config yields the same keys on re-run.
+*/
 export function assignIdentityKeys(identities: VideoFaceIdentity[]): VideoFaceIdentity[] {
   const sorted = [...identities].sort(
     (a, b) => a.firstObservedMs - b.firstObservedMs || b.bestSizePx * b.bestScore - a.bestSizePx * a.bestScore,

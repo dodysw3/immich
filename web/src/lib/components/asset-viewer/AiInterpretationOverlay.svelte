@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { browser } from '$app/environment';
-  import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
+  import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
   import { AssetTypeEnum, getAssetMetadataByKey, type AssetResponseDto } from '@immich/sdk';
   import { IconButton, Tooltip } from '@immich/ui';
   import { mdiBrain } from '@mdi/js';
   import { onDestroy } from 'svelte';
   import { t } from 'svelte-i18n';
+  import { browser } from '$app/env';
 
   const AI_INTERPRETATION_KEY = 'ai-interpretation-v1';
   const SESSION_STORAGE_KEY = 'immich-ai-interpretation-overlay-enabled';

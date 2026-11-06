@@ -10,6 +10,7 @@ import { ImmichWorker, JobName, JobStatus, MetadataKey, QueueCleanType, QueueJob
 import { ConfigRepository } from 'src/repositories/config.repository.js';
 import { EventRepository } from 'src/repositories/event.repository.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';
+import type { JobCounts, JobItem, JobOf } from 'src/types.js';
 import {
   AI_INTERPRETATION_RATE_WINDOW_MINUTES,
   AI_INTERPRETATION_RATE_WINDOW_MS,
@@ -281,13 +282,13 @@ export class JobRepository {
   }
 
   /**
-   * Tier-1 "interpret now" for an asset that is already queued (e.g. by the bulk
-   * script): the bare-assetId job id is deterministic, so a plain add() would be
-   * dropped as a duplicate and the photo would stay behind the backlog. Re-score
-   * the waiting job to priority 1 instead. Jobs in any other state (active,
-   * completed, failed) are left alone — the follow-up add() no-ops on those
-   * duplicates exactly as before.
-   */
+  Tier-1 "interpret now" for an asset that is already queued (e.g. by the bulk
+  script): the bare-assetId job id is deterministic, so a plain add() would be
+  dropped as a duplicate and the photo would stay behind the backlog. Re-score
+  the waiting job to priority 1 instead. Jobs in any other state (active,
+  completed, failed) are left alone — the follow-up add() no-ops on those
+  duplicates exactly as before.
+  */
   private async promoteInterpretationJob(item: JobItem): Promise<boolean> {
     if (item.name !== JobName.AssetInterpretImage || item.data.priority !== 1) {
       return false;
