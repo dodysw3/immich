@@ -1,8 +1,8 @@
 import { snakeCase } from 'lodash-es';
 import type { ObservableResult } from '@opentelemetry/api';
-import type { ArgOf, ArgsOf } from 'src/repositories/event.repository.js';
 import { OnEvent } from 'src/decorators.js';
 import { ImmichWorker, JobStatus, QueueName } from 'src/enum.js';
+import type { ArgOf, ArgsOf } from 'src/repositories/event.repository.js';
 import { BaseService } from 'src/services/base.service.js';
 
 // BullMQ 6 includes paused jobs in waiting; active is tracked separately by

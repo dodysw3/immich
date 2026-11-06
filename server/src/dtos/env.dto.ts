@@ -14,10 +14,10 @@ enum DatabaseSslMode {
 const DatabaseSslModeSchema = z.enum(DatabaseSslMode).describe('Database SSL mode').meta({ id: 'DatabaseSslMode' });
 const absolutePath = z.string().regex(/^\//, 'Must be an absolute path').optional();
 /**
- * Treat certain strings as booleans and coerce them to boolean
- * Ideal for environment variables that are strings but should be treated as booleans
- * @docs https://zod.dev/api?id=stringbool
- */
+Treat certain strings as booleans and coerce them to boolean
+Ideal for environment variables that are strings but should be treated as booleans
+@docs https://zod.dev/api?id=stringbool
+*/
 const stringBool = z.stringbool();
 
 const discordWebhookUrl = z
@@ -107,6 +107,7 @@ export const EnvSchema = z
     IMMICH_AI_IMAGE_INTERPRETATION_MAX_EDGE: z.coerce.number().int().min(1).optional(),
     IMMICH_AI_IMAGE_INTERPRETATION_MAX_PIXELS: z.coerce.number().int().min(1).optional(),
     IMMICH_AI_IMAGE_INTERPRETATION_CONCURRENCY: z.coerce.number().int().min(1).optional(),
+    IMMICH_AI_IMAGE_INTERPRETATION_RECONCILE_STAGGER_MS: z.coerce.number().int().min(0).optional(),
     IMMICH_AI_IMAGE_INTERPRETATION_SKIP_IF_INTERPRETED: stringBool.optional(),
     IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_WEBHOOK_URL: z.preprocess(
       (value) => (value === '' ? undefined : value),

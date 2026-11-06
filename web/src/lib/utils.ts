@@ -1,3 +1,9 @@
+import { defaultLang, locales } from '#lib/constants.ts';
+import { authManager } from '#lib/managers/auth-manager.svelte.ts';
+import { alwaysLoadOriginalFile, lang, locale } from '#lib/stores/preferences.store.ts';
+import { isWebCompatibleImage } from '#lib/utils/asset-utils.ts';
+import { handleError } from '#lib/utils/handle-error.ts';
+import { convertBCP47, langs } from '#lib/utils/i18n.ts';
 import {
   AssetMediaSize,
   AssetTypeEnum,
@@ -24,12 +30,6 @@ import { toastManager, type ActionItem, type IfLike } from '@immich/ui';
 import { DateTime } from 'luxon';
 import { init, register, t } from 'svelte-i18n';
 import { derived, get } from 'svelte/store';
-import { defaultLang, locales } from '$lib/constants';
-import { authManager } from '$lib/managers/auth-manager.svelte';
-import { alwaysLoadOriginalFile, lang, locale } from '$lib/stores/preferences.store';
-import { isWebCompatibleImage } from '$lib/utils/asset-utils';
-import { handleError } from '$lib/utils/handle-error';
-import { convertBCP47, langs } from '$lib/utils/i18n';
 
 interface DownloadRequestOptions<T = unknown> {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -133,7 +133,7 @@ export const downloadRequest = <TBody = unknown>(options: DownloadRequestOptions
     options = { url: options };
   }
 
-  const { signal, method, url, data: body, onDownloadProgress: onProgress } = options;
+  const { signal, method = 'GET', url, data: body, onDownloadProgress: onProgress } = options;
 
   return new Promise<{ data: Blob; status: number }>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -156,7 +156,7 @@ export const downloadRequest = <TBody = unknown>(options: DownloadRequestOptions
       signal.addEventListener('abort', () => xhr.abort());
     }
 
-    xhr.open(method || 'GET', url);
+    xhr.open(method, url);
     xhr.responseType = 'blob';
 
     if (body) {

@@ -1,12 +1,12 @@
 <script lang="ts">
-  import ImageThumbnail from '$lib/components/assets/thumbnail/ImageThumbnail.svelte';
-  import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
-  import { authManager } from '$lib/managers/auth-manager.svelte';
-  import { Route } from '$lib/route';
-  import { faceManager } from '$lib/stores/face.svelte';
-  import { locale } from '$lib/stores/preferences.store';
-  import { getPeopleThumbnailUrl } from '$lib/utils';
-  import { FACE_STATS_MIN_FACES, getFaceStats, getPersonDisplayName } from '$lib/utils/people-utils';
+  import ImageThumbnail from '#lib/components/assets/thumbnail/ImageThumbnail.svelte';
+  import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
+  import { authManager } from '#lib/managers/auth-manager.svelte.ts';
+  import { Route } from '#lib/route.ts';
+  import { faceManager } from '#lib/stores/face.svelte.ts';
+  import { locale } from '#lib/stores/preferences.store.ts';
+  import { getPeopleThumbnailUrl } from '#lib/utils.ts';
+  import { FACE_STATS_MIN_FACES, getFaceStats, getPersonDisplayName } from '#lib/utils/people-utils.ts';
   import { type AssetResponseDto } from '@immich/sdk';
   import { IconButton, Text } from '@immich/ui';
   import { mdiEye, mdiEyeOff, mdiPencil, mdiPlus } from '@mdi/js';
@@ -118,9 +118,11 @@
 
     <div class="mt-2 grid {visiblePeople.length <= 6 ? 'grid-cols-3 gap-3' : 'grid-cols-4 gap-2'}">
       {#each visiblePeople as person (person.id)}
-        {@const personFaces = faceManager.facesByPersonId.get(person.id) ?? []}
-        {@const displayName = getPersonDisplayName(person, personFaces, faceManager.faceReferenceLabels)}
-        {@const isHighlighted = personFaces.some((f) => assetViewerManager.highlightedFaces.some((b) => b.id === f.id))}
+        {const personFaces = $derived(faceManager.facesByPersonId.get(person.id) ?? [])}
+        {const isHighlighted = $derived(
+          personFaces.some((f) => assetViewerManager.highlightedFaces.some((b) => b.id === f.id)),
+        )}
+        {const displayName = $derived(getPersonDisplayName(person, personFaces, faceManager.faceReferenceLabels))}
         <a
           class="group outline-none"
           href={Route.viewPerson(person, { previousRoute })}

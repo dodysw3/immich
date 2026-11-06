@@ -1,7 +1,6 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import sanitize from 'sanitize-filename';
 import sharp from 'sharp';
-import type { UploadFile, UploadRequest } from 'src/types.js';
 import { StorageCore } from 'src/cores/storage.core.js';
 import { Asset, AuthSharedLink } from 'src/database.js';
 import {
@@ -33,6 +32,7 @@ import {
 } from 'src/enum.js';
 import { AuthRequest } from 'src/middleware/auth.guard.js';
 import { BaseService } from 'src/services/base.service.js';
+import type { UploadFile, UploadRequest } from 'src/types.js';
 import { requireUploadAccess } from 'src/utils/access.js';
 import { asUploadRequest, getDimensions, onBeforeLink } from 'src/utils/asset.util.js';
 import { isAssetChecksumConstraint } from 'src/utils/database.js';
@@ -146,6 +146,19 @@ export class AssetMediaService extends BaseService {
       this.requireQuota(auth, file.size);
 
       if (dto.livePhotoVideoId) {
+        if (auth.sharedLink) {
+          const ids = new Set([dto.livePhotoVideoId]);
+          const [assetIds1, assetIds2] = await Promise.all([
+            this.accessRepository.asset.checkSharedLinkAccess(auth.sharedLink.id, ids),
+            this.accessRepository.asset.checkOwnerAccess(auth.user.id, ids, false),
+          ]);
+
+          if (!assetIds1.intersection(assetIds2).has(dto.livePhotoVideoId)) {
+            throw new BadRequestException(`Not found or no ${Permission.AssetUpdate} permission`);
+          }
+        } else {
+          await this.requireAccess({ auth, permission: Permission.AssetUpdate, ids: [dto.livePhotoVideoId] });
+        }
         await onBeforeLink(
           { asset: this.assetRepository, event: this.eventRepository },
           { userId: auth.user.id, livePhotoVideoId: dto.livePhotoVideoId },

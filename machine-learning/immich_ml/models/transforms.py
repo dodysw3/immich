@@ -7,6 +7,7 @@ import numpy as np
 import orjson
 from numpy.typing import NDArray
 from PIL import Image
+from pillow_jxl import JpegXLImagePlugin
 
 try:
     from pillow_heif import register_heif_opener
@@ -17,6 +18,9 @@ except ImportError:
 
 _PIL_RESAMPLING_METHODS = {resampling.name.lower(): resampling for resampling in Image.Resampling}
 _PUNCTUATION_TRANS = str.maketrans("", "", string.punctuation)
+
+# Requests are already decoded in parallel, so don't start a thread per core for each one
+JpegXLImagePlugin.DECODE_THREADS = 0
 
 
 def resize_pil(img: Image.Image, size: int, resample: Image.Resampling = Image.Resampling.BICUBIC) -> Image.Image:

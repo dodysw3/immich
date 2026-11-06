@@ -2,7 +2,6 @@ import { CronExpression } from '@nestjs/schedule';
 import { validateCronExpression } from 'cron';
 import { createZodDto } from 'nestjs-zod';
 import z from 'zod';
-import type { DeepPartial } from 'src/types.js';
 import {
   AudioCodec,
   AudioCodecSchema,
@@ -32,6 +31,7 @@ import {
   VideoContainer,
   VideoContainerSchema,
 } from 'src/enum.js';
+import type { DeepPartial } from 'src/types.js';
 
 const { Admin, User, Public } = ConfigVisibility;
 
@@ -187,6 +187,7 @@ const AdminConfigSchemaWithVisibility = z
   .object({
     backup: z
       .object({
+        beta: configBool.default(false).optional().describe('Whether the backups feature is enabled'),
         database: z
           .object({
             enabled: configBool.describe('Enabled'),
@@ -357,7 +358,8 @@ const AdminConfigSchemaWithVisibility = z
         accountManagementUrl: emptyOrUrl('Account management URL must be an empty string or a valid URL')
           .describe('Account management URL')
           .optional()
-          .default(''),
+          .default('')
+          .meta({ visibility: User }),
         scope: z.string().describe('Scope'),
         prompt: z.string().describe('OAuth prompt parameter (e.g. select_account, login, consent)'),
         endSessionEndpoint: emptyOrUrl('endSessionEndpoint must be an empty string or a valid URL').describe(
@@ -637,6 +639,7 @@ export function mapPublicConfig(config: SystemConfig): PublicConfigDto {
 
 export const defaults = Object.freeze<SystemConfig>({
   backup: {
+    beta: false,
     database: {
       enabled: true,
       cronExpression: CronExpression.EVERY_DAY_AT_2AM,

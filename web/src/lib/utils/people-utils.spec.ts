@@ -1,5 +1,5 @@
-import type { Faces } from '$lib/managers/asset-viewer-manager.svelte';
-import type { Size } from '$lib/utils/container-utils';
+import type { Faces } from '#lib/managers/asset-viewer-manager.svelte.ts';
+import type { Size } from '#lib/utils/container-utils.ts';
 import {
   getBoundingBox,
   getFaceReferenceLabels,
@@ -7,10 +7,10 @@ import {
   getPersonDisplayName,
   isPlaceholderFaceName,
   type FaceWithName,
-} from '$lib/utils/people-utils';
+} from '#lib/utils/people-utils.ts';
 
-// the $lib/utils barrel runs DOM-dependent module side effects unrelated to these tests
-vi.mock('$lib/utils', () => ({ getAssetMediaUrl: vi.fn() }));
+// the utils barrel runs DOM-dependent module side effects unrelated to these tests
+vi.mock('#lib/utils.ts', () => ({ getAssetMediaUrl: vi.fn() }));
 
 const makeFace = (overrides: Partial<Faces> = {}): Faces => ({
   id: 'face-1',

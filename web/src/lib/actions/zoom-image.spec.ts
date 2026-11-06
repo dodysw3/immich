@@ -41,14 +41,14 @@ describe('zoomImageAction', () => {
     ignoredChild.dataset.zoomImageIgnore = 'true';
     node.append(ignoredChild);
 
-    const action = zoomImageAction(node, { ignoreSelector: '[data-zoom-image-ignore]' });
+    const cleanup = zoomImageAction({ ignoreSelector: '[data-zoom-image-ignore]' })(node);
 
     ignoredChild.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
 
     expect(zoomHandlerState.pointerDownCalls).toBe(0);
     expect(assetViewerManager.cancelZoomAnimation).toHaveBeenCalledOnce();
 
-    action.destroy();
+    cleanup();
   });
 
   it('still lets normal viewer pointer interactions reach the zoom handler', () => {
@@ -56,14 +56,14 @@ describe('zoomImageAction', () => {
     const child = document.createElement('div');
     node.append(child);
 
-    const action = zoomImageAction(node, { ignoreSelector: '[data-zoom-image-ignore]' });
+    const cleanup = zoomImageAction({ ignoreSelector: '[data-zoom-image-ignore]' })(node);
 
     child.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
 
     expect(zoomHandlerState.pointerDownCalls).toBe(1);
     expect(assetViewerManager.cancelZoomAnimation).toHaveBeenCalledOnce();
 
-    action.destroy();
+    cleanup();
   });
 
   it('stops zoom touch handling for ignored descendants', () => {
@@ -72,13 +72,13 @@ describe('zoomImageAction', () => {
     ignoredChild.dataset.zoomImageIgnore = 'true';
     node.append(ignoredChild);
 
-    const action = zoomImageAction(node, { ignoreSelector: '[data-zoom-image-ignore]' });
+    const cleanup = zoomImageAction({ ignoreSelector: '[data-zoom-image-ignore]' })(node);
 
     ignoredChild.dispatchEvent(new Event('touchstart', { bubbles: true }));
 
     expect(zoomHandlerState.touchStartCalls).toBe(0);
     expect(assetViewerManager.cancelZoomAnimation).toHaveBeenCalledOnce();
 
-    action.destroy();
+    cleanup();
   });
 });

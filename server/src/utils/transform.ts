@@ -1,7 +1,7 @@
 import { Matrix, applyToPoint, compose, flipX, flipY, identity, rotate, scale, translate } from 'transformation-matrix';
-import type { ImageDimensions } from 'src/types.js';
 import { AssetEditAction, AssetEditActionItem, MirrorAxis } from 'src/dtos/editing.dto.js';
 import { AssetOcrResponseDto } from 'src/dtos/ocr.dto.js';
+import type { ImageDimensions } from 'src/types.js';
 
 /**
  * Edit chain that maps coordinates from the raw stored image (as decoded by the ML service,
@@ -116,9 +116,9 @@ type TransformState = {
 };
 
 /**
- * Transforms an array of points through a series of edit operations (crop, rotate, mirror).
- * Points should be in absolute pixel coordinates relative to the starting dimensions.
- */
+Transforms an array of points through a series of edit operations (crop, rotate, mirror).
+Points should be in absolute pixel coordinates relative to the starting dimensions.
+*/
 export const transformPoints = (
   points: Point[],
   edits: AssetEditActionItem[],

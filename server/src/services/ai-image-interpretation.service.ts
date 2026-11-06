@@ -417,6 +417,16 @@ export class AiImageInterpretationService {
 
     const due = await this.interpretationRepository.findDueRetries(new Date());
     let dispatched = 0;
+    // Re-enqueueing a whole due batch at once lands up to the worker
+    // concurrency on the interpretation endpoint simultaneously; the remote
+    // adapter lanes enforce their own per-minute ceilings and every overflow
+    // 503 evicts the lane from the proxy for fail_timeout, so the burst
+    // churned into endpoint_error storms. Spread main-queue dispatches
+    // staggerMs apart (public runs go to the dedicated public queue and stay
+    // undelayed); each job waits in BullMQ's delayed set with priority intact.
+    let staggerIndex = 0;
+    let staggered = 0;
+    const staggerMs = config.reconcileStaggerMs;
     for (const { assetId, runKey, assetCreatedAt } of due) {
       // Without this guard a failed run for an already-interpreted asset would
       // churn forever: requeue → delivery skipped → orphaned queued run →
@@ -440,15 +450,20 @@ export class AiImageInterpretationService {
       // uploads stopped being prompt). Older assets drop to the bulk band (3).
       const isPublic = runKey === publicRunKey;
       const isFreshUpload = Date.now() - assetCreatedAt.getTime() < UPLOAD_RETRY_MAX_ASSET_AGE_MS;
+      const delayMs = isPublic ? undefined : staggerIndex++ * staggerMs;
+      if (delayMs !== undefined && delayMs > 0) {
+        staggered++;
+      }
       await this.jobRepository.queue({
         name: isPublic ? JobName.AssetInterpretImagePublic : JobName.AssetInterpretImage,
-        data: { id: assetId, runKey, priority: isPublic ? 1 : isFreshUpload ? 2 : 3 },
+        data: { id: assetId, runKey, priority: isPublic ? 1 : isFreshUpload ? 2 : 3, delayMs },
       });
       dispatched++;
     }
 
     if (dispatched > 0) {
-      this.logger.log(`Requeued ${dispatched} due AI interpretation retry run(s)`);
+      const spread = staggered > 0 ? ` (spread over ${Math.ceil((staggered * staggerMs) / 1000)}s)` : '';
+      this.logger.log(`Requeued ${dispatched} due AI interpretation retry run(s)${spread}`);
     }
   }
 

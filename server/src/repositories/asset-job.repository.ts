@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { type Kysely, sql } from 'kysely';
+import { sql, type Kysely } from 'kysely';
 import { jsonArrayFrom, jsonObjectFrom } from 'kysely/helpers/postgres';
 import { InjectKysely } from 'nestjs-kysely';
 import { columns } from 'src/database.js';
@@ -284,6 +284,7 @@ export class AssetJobRepository {
     return this.db
       .selectFrom('asset')
       .select((eb) => [
+        'asset.ownerId',
         'asset.visibility',
         eb.fn
           .coalesce(withFilePath(eb, AssetFileType.Preview, true), withFilePath(eb, AssetFileType.Preview, false))

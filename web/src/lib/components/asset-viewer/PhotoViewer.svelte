@@ -1,20 +1,20 @@
 <script lang="ts">
-  import { shortcuts } from '$lib/actions/shortcut';
-  import { zoomImageAction } from '$lib/actions/zoom-image';
-  import AdaptiveImage from '$lib/components/AdaptiveImage.svelte';
-  import BoundingBoxOverlay from '$lib/components/asset-viewer/BoundingBoxOverlay.svelte';
-  import FaceEditor from '$lib/components/asset-viewer/face-editor/FaceEditor.svelte';
-  import AssetViewerEvents from '$lib/components/AssetViewerEvents.svelte';
-  import Thumbhash from '$lib/components/Thumbhash.svelte';
-  import { faceOverlayStore } from '$lib/features/face-overlay/face-overlay.store.svelte';
-  import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
-  import { castManager } from '$lib/managers/cast-manager.svelte';
-  import { ocrManager } from '$lib/stores/ocr.svelte';
-  import { SlideshowLook, SlideshowState, slideshowStore } from '$lib/stores/slideshow.store';
-  import { handlePromiseError } from '$lib/utils';
-  import { canCopyImageToClipboard, copyImageToClipboard } from '$lib/utils/asset-utils';
-  import { getNaturalSize, scaleToFit, type Size } from '$lib/utils/container-utils';
-  import { handleError } from '$lib/utils/handle-error';
+  import { shortcuts } from '#lib/actions/shortcut.ts';
+  import { zoomImageAction } from '#lib/actions/zoom-image.ts';
+  import AdaptiveImage from '#lib/components/AdaptiveImage.svelte';
+  import AssetViewerEvents from '#lib/components/AssetViewerEvents.svelte';
+  import Thumbhash from '#lib/components/Thumbhash.svelte';
+  import BoundingBoxOverlay from '#lib/components/asset-viewer/BoundingBoxOverlay.svelte';
+  import FaceEditor from '#lib/components/asset-viewer/face-editor/FaceEditor.svelte';
+  import { faceOverlayStore } from '#lib/features/face-overlay/face-overlay.store.svelte.ts';
+  import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
+  import { castManager } from '#lib/managers/cast-manager.svelte.ts';
+  import { ocrManager } from '#lib/stores/ocr.svelte.ts';
+  import { SlideshowLook, SlideshowState, slideshowStore } from '#lib/stores/slideshow.store.ts';
+  import { handlePromiseError } from '#lib/utils.ts';
+  import { canCopyImageToClipboard, copyImageToClipboard } from '#lib/utils/asset-utils.ts';
+  import { getNaturalSize, scaleToFit, type Size } from '#lib/utils/container-utils.ts';
+  import { handleError } from '#lib/utils/handle-error.ts';
   import { type SharedLinkResponseDto } from '@immich/sdk';
   import { toastManager } from '@immich/ui';
   import { onDestroy, untrack } from 'svelte';
@@ -163,11 +163,11 @@
   bind:clientHeight={containerHeight}
   role="presentation"
   ondblclick={onZoom}
-  use:zoomImageAction={{
+  {@attach zoomImageAction({
     zoomTarget: adaptiveImage,
     disabled: assetViewerManager.isFaceEditMode || ocrManager.showOverlay,
     ignoreSelector: '[data-zoom-image-ignore]',
-  }}
+  })}
   {...useSwipe((event) => onSwipe?.(event))}
 >
   <AdaptiveImage

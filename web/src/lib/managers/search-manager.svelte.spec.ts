@@ -1,6 +1,6 @@
 import { AssetTypeEnum } from '@immich/sdk';
 import { goto } from '$app/navigation';
-import { searchManager } from '$lib/managers/search-manager.svelte';
+import { searchManager } from '#lib/managers/search-manager.svelte.ts';
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 

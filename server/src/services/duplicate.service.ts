@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import type { MachineLearningConfig } from 'src/dtos/config.dto.js';
-import type { JobOf } from 'src/types.js';
 import { OnJob } from 'src/decorators.js';
 import { BulkIdErrorReason, BulkIdResponseDto, BulkIdsDto } from 'src/dtos/asset-ids.response.dto.js';
 import { MapAsset, mapAsset } from 'src/dtos/asset-response.dto.js';
@@ -9,6 +8,7 @@ import { DuplicateResolveDto, DuplicateResolveGroupDto, DuplicateResponseDto } f
 import { AssetStatus, AssetVisibility, DatabaseLock, JobName, JobStatus, Permission, QueueName } from 'src/enum.js';
 import { AssetDuplicateResult } from 'src/repositories/search.repository.js';
 import { BaseService } from 'src/services/base.service.js';
+import type { JobOf } from 'src/types.js';
 import { ocrTokenBagDiff } from 'src/utils/duplicate-ocr.js';
 import { suggestDuplicateKeepAssetIds } from 'src/utils/duplicate.js';
 import { batched, isDuplicateDetectionEnabled, isOcrEnabled } from 'src/utils/misc.js';
@@ -114,7 +114,7 @@ export class DuplicateService extends BaseService {
   private async resolveGroup(auth: AuthDto, group: DuplicateResolveGroupDto): Promise<BulkIdResponseDto> {
     const { duplicateId, keepAssetIds, trashAssetIds } = group;
 
-    const duplicateGroup = await this.duplicateRepository.get(duplicateId);
+    const duplicateGroup = await this.duplicateRepository.get(auth.user.id, duplicateId);
     if (!duplicateGroup) {
       return { id: duplicateId, success: false, error: BulkIdErrorReason.NOT_FOUND };
     }

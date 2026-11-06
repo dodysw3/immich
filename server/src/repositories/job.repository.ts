@@ -4,7 +4,6 @@ import { ModuleRef, Reflector } from '@nestjs/core';
 import { JobsOptions, Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { setTimeout } from 'node:timers/promises';
-import type { JobCounts, JobItem, JobOf } from 'src/types.js';
 import { JobConfig } from 'src/decorators.js';
 import { QueueJobResponseDto, QueueJobSearchDto } from 'src/dtos/queue.dto.js';
 import { ImmichWorker, JobName, JobStatus, MetadataKey, QueueCleanType, QueueJobStatus, QueueName } from 'src/enum.js';
@@ -373,6 +372,7 @@ export class JobRepository {
         return {
           jobId: item.data.runKey ? createAiInterpretationJobId(item.data.id, item.data.runKey) : item.data.id,
           priority: item.data.priority,
+          delay: item.data.delayMs,
         };
       }
       case JobName.AssetInterpretationReconcile: {

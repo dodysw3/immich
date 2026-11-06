@@ -61,18 +61,13 @@ uv run mypy --strict immich_ml/       # type check
 uv run pytest --cov=immich_ml        # tests
 ```
 
-### Makefile shortcuts (from repo root)
-```bash
-make check-server   # format + lint + tsc for server
-make test-server    # server unit tests
-make check-web      # format + lint + svelte-check + tsc for web
-make test-web       # web unit tests
-make open-api       # regenerate OpenAPI clients (dart + typescript)
-make sql            # sync SQL files via server dist
-make e2e            # run e2e Docker Compose
-```
+### Upstream conventions (from upstream AGENTS.md, 2026-11 sync)
 
-Make package mapping: `server`=`immich`, `web`=`immich-web`, `cli`=`@immich/cli`, `sdk`=`@immich/sdk`, `e2e`=`immich-e2e`.
+- Upstream ships **per-folder AGENTS.md** files (`server/`, `web/`, `mobile/`, `native/`, `machine-learning/`, `e2e/`) — read the relevant one before changing code there.
+- Build/lint/test/codegen run through mise tasks: `mise //<dir>:<task>`, root as `mise //:<task>` (`mise tasks ls --all`).
+- Never hand-edit generated files: `open-api/immich-openapi-specs.json`, `packages/sdk/src/fetch-client.ts`, `mobile/generated/openapi/`, `server/src/queries/*.sql`, Dart codegen.
+- Only edit `i18n/en.json` (other locales come from Weblate); run `mise //:i18n:format-fix` after adding keys.
+- Upstream forbids LLM-generated PRs and `good first issue` contributions — irrelevant for the private fork, kept here for provenance.
 
 ## Architecture: Server
 

@@ -1,3 +1,4 @@
+import { WorkflowTrigger } from '@immich/plugin-sdk';
 import { ShallowDehydrateObject } from 'kysely';
 import { Mocked } from 'vitest';
 import { VECTOR_EXTENSIONS } from 'src/constants.js';
@@ -43,19 +44,14 @@ export type DeepPartial<T> = T extends Date
 
 export type RepositoryInterface<T extends object> = Pick<T, keyof T>;
 
-export type FullsizeImageOptions = {
-  format: ImageFormat;
-  quality: number;
-  enabled: boolean;
-  progressive?: boolean;
-};
-
 export type ImageOptions = {
   format: ImageFormat;
   quality: number;
-  size: number;
   progressive?: boolean;
+  decodingTier: 0 | 1 | 2 | 3 | 4;
 };
+
+export type FullsizeImageOptions = ImageOptions & { enabled: boolean };
 
 export type RawImageInfo = {
   width: number;
@@ -84,9 +80,7 @@ export type TransformOptions = {
   edits?: AssetEditActionItem[];
 };
 
-export type GenerateThumbnailOptions = Pick<ImageOptions, 'format' | 'quality' | 'progressive'> &
-  ImageColorOptions &
-  TransformOptions;
+export type GenerateThumbnailOptions = ImageOptions & ImageColorOptions & TransformOptions;
 export type GenerateThumbhashOptions = ImageColorOptions & Pick<TransformOptions, 'edits'>;
 
 export interface VideoStreamInfo {
@@ -348,6 +342,9 @@ export interface IAssetInterpretationJob extends IEntityJob {
   /** Bulk-script deliveries (queue-ai-interpretation.sh) mark themselves so run
    * provenance and retry tiering do not misattribute them to the upload path. */
   origin?: 'script';
+  /** Reconcile-only: BullMQ delay (ms) spreading retry dispatches so a requeued
+   * batch cannot outrun the remote lane's per-minute ceiling. */
+  delayMs?: number;
 }
 
 export interface IAiInterpretationDiscordAlertJob {
@@ -477,7 +474,7 @@ export type JobItem =
   | { name: JobName.PdfProcess; data: IEntityJob }
 
   // Workflow
-  | { name: JobName.WorkflowAssetTrigger; data: { workflowId: string; assetId: string } }
+  | { name: JobName.WorkflowAssetTrigger; data: { workflowId: string; assetId: string; trigger: WorkflowTrigger } }
 
   // Integrity
   | { name: JobName.IntegrityUntrackedFilesQueueAll; data?: IIntegrityJob }

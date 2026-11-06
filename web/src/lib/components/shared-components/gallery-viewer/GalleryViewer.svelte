@@ -1,37 +1,38 @@
 <script lang="ts">
-  import { SvelteMap, SvelteSet } from 'svelte/reactivity';
   import { goto } from '$app/navigation';
-  import { shortcuts, type ShortcutOptions } from '$lib/actions/shortcut';
-  import type { Action } from '$lib/components/asset-viewer/actions/action';
-  import type { AssetCursor } from '$lib/components/asset-viewer/AssetViewer.svelte';
-  import OnEvents from '$lib/components/OnEvents.svelte';
-  import AssetSelectionRotateShortcuts from '$lib/components/assets/AssetSelectionRotateShortcuts.svelte';
-  import Thumbnail from '$lib/components/assets/thumbnail/Thumbnail.svelte';
-  import { AssetAction } from '$lib/constants';
-  import Portal from '$lib/elements/Portal.svelte';
-  import type { AssetMultiSelectManager } from '$lib/managers/asset-multi-select-manager.svelte';
-  import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
-  import { featureFlagsManager } from '$lib/managers/feature-flags-manager.svelte';
-  import type { TimelineAsset, Viewport } from '$lib/managers/timeline-manager/types';
-  import AssetDeleteConfirmModal from '$lib/modals/AssetDeleteConfirmModal.svelte';
-  import ShortcutsModal from '$lib/modals/ShortcutsModal.svelte';
-  import { Route } from '$lib/route';
-  import { keyboardManager } from '$lib/stores/keyboard-manager.svelte';
-  import { showDeleteModal } from '$lib/stores/preferences.store';
-  import { handlePromiseError } from '$lib/utils';
-  import { deleteAssets } from '$lib/utils/actions';
-  import { archiveAssets, getNextAsset, getPreviousAsset, navigateToAsset } from '$lib/utils/asset-utils';
-  import { moveFocus } from '$lib/utils/focus-util';
-  import { handleError } from '$lib/utils/handle-error';
-  import { getJustifiedLayoutFromAssets } from '$lib/utils/layout-utils';
-  import { navigate } from '$lib/utils/navigation';
-  import { isTimelineAsset, toTimelineAsset } from '$lib/utils/timeline-util';
-  import { type PageMap, getLoadedAssets, getContainerHeight, findGhostPagesNearViewport } from '$lib/utils/page-map';
-  import { TUNABLES } from '$lib/utils/tunables';
+  import { SvelteMap, SvelteSet } from 'svelte/reactivity';
+  import { shortcuts, type ShortcutOptions } from '#lib/actions/shortcut.ts';
+  import type { AssetCursor } from '#lib/components/asset-viewer/AssetViewer.svelte';
+  import type { Action } from '#lib/components/asset-viewer/actions/action.ts';
+  import OnEvents from '#lib/components/OnEvents.svelte';
+  import AssetSelectionRotateShortcuts from '#lib/components/assets/AssetSelectionRotateShortcuts.svelte';
+  import Thumbnail from '#lib/components/assets/thumbnail/Thumbnail.svelte';
+  import { AssetAction } from '#lib/constants.ts';
+  import Portal from '#lib/elements/Portal.svelte';
+  import type { AssetMultiSelectManager } from '#lib/managers/asset-multi-select-manager.svelte.ts';
+  import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
+  import { featureFlagsManager } from '#lib/managers/feature-flags-manager.svelte.ts';
+  import type { TimelineAsset, Viewport } from '#lib/managers/timeline-manager/types.ts';
+  import AssetDeleteConfirmModal from '#lib/modals/AssetDeleteConfirmModal.svelte';
+  import ShortcutsModal from '#lib/modals/ShortcutsModal.svelte';
+  import { Route } from '#lib/route.ts';
+  import { keyboardManager } from '#lib/stores/keyboard-manager.svelte.ts';
+  import { showDeleteModal } from '#lib/stores/preferences.store.ts';
+  import { handlePromiseError } from '#lib/utils.ts';
+  import { deleteAssets } from '#lib/utils/actions.ts';
+  import { archiveAssets, getNextAsset, getPreviousAsset, navigateToAsset } from '#lib/utils/asset-utils.ts';
+  import { moveFocus } from '#lib/utils/focus-util.ts';
+  import { handleError } from '#lib/utils/handle-error.ts';
+  import { getJustifiedLayoutFromAssets } from '#lib/utils/layout-utils.ts';
+  import { navigate } from '#lib/utils/navigation.ts';
+  import { type PageMap, getLoadedAssets, getContainerHeight, findGhostPagesNearViewport } from '#lib/utils/page-map.ts';
+  import { isTimelineAsset, toTimelineAsset } from '#lib/utils/timeline-util.ts';
+  import { TUNABLES } from '#lib/utils/tunables.ts';
   import { AssetVisibility, type AssetResponseDto } from '@immich/sdk';
   import { modalManager } from '@immich/ui';
   import { debounce, throttle } from 'lodash-es';
   import { t } from 'svelte-i18n';
+  import { goto } from '$app/navigation';
 
   const {
     TIMELINE: { INTERSECTION_EXPAND_TOP, INTERSECTION_EXPAND_BOTTOM },
@@ -627,8 +628,8 @@
   >
     {#each resolvedAssets as asset, index (asset.id + '-' + index)}
       {#if isInOrNearViewport(index)}
-        {@const currentAsset = toTimelineAsset(asset)}
         <div class="absolute" style:overflow="clip" style={getStyle(index)}>
+          {const currentAsset = $derived(toTimelineAsset(asset))}
           <Thumbnail
             onClick={() => {
               if (assetInteraction.selectionActive) {
@@ -679,7 +680,7 @@
 <!-- Overlay Asset Viewer -->
 {#if assetViewerManager.isViewing}
   <Portal target="body">
-    {#await import('$lib/components/asset-viewer/AssetViewer.svelte') then { default: AssetViewer }}
+    {#await import('#lib/components/asset-viewer/AssetViewer.svelte') then { default: AssetViewer }}
       <AssetViewer
         cursor={assetCursor}
         onAction={handleAction}

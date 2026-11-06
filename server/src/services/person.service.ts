@@ -2,7 +2,6 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Insertable } from 'kysely';
 import { isUndefined, omitBy } from 'lodash-es';
 import type { SystemConfig } from 'src/dtos/config.dto.js';
-import type { JobItem, JobOf } from 'src/types.js';
 import { Chunked, OnJob } from 'src/decorators.js';
 import { BulkIdErrorReason, BulkIdResponseDto } from 'src/dtos/asset-ids.response.dto.js';
 import { mapAsset } from 'src/dtos/asset-response.dto.js';
@@ -57,6 +56,7 @@ import { AssetFaceTable } from 'src/schema/tables/asset-face.table.js';
 import { FaceSearchTable } from 'src/schema/tables/face-search.table.js';
 import { PersonUserTable } from 'src/schema/tables/person-user.table.js';
 import { BaseService } from 'src/services/base.service.js';
+import type { JobItem, JobOf } from 'src/types.js';
 import { getDimensions, getMyPartnerIds } from 'src/utils/asset.util.js';
 import { asDateString, asDateTimeString } from 'src/utils/date.js';
 import { isWrappedDuplicate } from 'src/utils/face-box.js';
@@ -685,7 +685,7 @@ export class PersonService extends BaseService {
     for (const { boundingBox, embedding, verifyScore } of storedFaces) {
       // compare in normalized coordinates: legacy rows may be stored in an older rescaling
       // of the same geometry
-      const match = asset.faces.find((face) => {
+      const matches = asset.faces.filter((face) => {
         const faceWidth = face.imageWidth || storageDims.width;
         const faceHeight = face.imageHeight || storageDims.height;
         const storedBox = {
@@ -696,6 +696,8 @@ export class PersonService extends BaseService {
         };
         return this.boundingBoxIou(storedBox, boundingBox) > 0.5 || isWrappedDuplicate(storedBox, boundingBox);
       });
+      // prefer metadata faces over machine learning duplicates
+      const match = matches.find((face) => face.sourceType !== SourceType.MachineLearning) ?? matches[0];
 
       if (match) {
         // multiple detections can match the same stored row (pass 1 and pass 2 boxes

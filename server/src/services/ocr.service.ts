@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
-
-import type { JobOf } from 'src/types.js';
 import { OnJob } from 'src/decorators.js';
 import { AssetVisibility, JobName, JobStatus, QueueName } from 'src/enum.js';
 import { OCR } from 'src/repositories/machine-learning.repository.js';
 import { BaseService } from 'src/services/base.service.js';
+import type { JobOf } from 'src/types.js';
 import { tokenizeForSearch } from 'src/utils/database.js';
 import { batched, isDuplicateDetectionEnabled, isOcrEnabled } from 'src/utils/misc.js';
 
@@ -56,6 +55,11 @@ export class OcrService extends BaseService {
     if (isDuplicateDetectionEnabled(machineLearning) && machineLearning.duplicateDetection.ocrVeto) {
       await this.jobRepository.queue({ name: JobName.AssetDetectDuplicates, data: { id } });
     }
+
+    await this.eventRepository.emit('AssetOcrExtracted', {
+      userId: asset.ownerId,
+      assetId: id,
+    });
 
     this.logger.debug(`Processed ${ocrResults.text.length} OCR result(s) for ${id}`);
     return JobStatus.Success;
