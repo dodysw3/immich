@@ -186,9 +186,12 @@ export const composeVideoInterpretationContext = (input: AiVideoInterpretationCo
 
   if (hasCaptions) {
     const truncatedNote = captions?.truncated ? '\n[Captions cover only the head of a longer video.]' : '';
-    sections.push(
-      `Visual captions per ${(captions?.config.segmentSeconds ?? 5).toFixed(0)}-second segment:\n${capContextSection(captionLines)}${truncatedNote}`,
-    );
+    // Adaptive runs use change-driven variable-length windows — the caption
+    // ranges below are real windows, not fixed grid steps.
+    const captionsHeader = captions?.config.adaptive
+      ? 'Visual captions (variable-length segments)'
+      : `Visual captions per ${(captions?.config.segmentSeconds ?? 5).toFixed(0)}-second segment`;
+    sections.push(`${captionsHeader}:\n${capContextSection(captionLines)}${truncatedNote}`);
   }
 
   if (hasTranscript) {

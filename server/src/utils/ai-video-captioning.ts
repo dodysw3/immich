@@ -10,13 +10,24 @@ export const AI_VIDEO_CAPTIONING_PROMPT_VERSION = 'video-captioning-0.4.1';
 
 export const createVideoCaptionRunKey = (
   model: string,
-  segmentSeconds: number,
-  framesPerSegment: number,
+  segmentation: string,
   promptVersion: string,
 ): string =>
   createHash('sha256')
-    .update(`${model}\n${segmentSeconds}x${framesPerSegment}\n${promptVersion}`, 'utf8')
+    .update(`${model}\n${segmentation}\n${promptVersion}`, 'utf8')
     .digest('hex');
+
+/** Fixed-grid segmentation descriptor ("5x3"). */
+export const fixedSegmentationKey = (segmentSeconds: number, framesPerSegment: number): string =>
+  `${segmentSeconds}x${framesPerSegment}`;
+
+/** Adaptive segmentation descriptor (probe fps + window bounds + thresholds). */
+export const adaptiveSegmentationKey = (
+  probeFps: number,
+  minSegmentSeconds: number,
+  maxSegmentSeconds: number,
+  changeBudget: number,
+): string => `adaptive-${probeFps}fps-${minSegmentSeconds}-${maxSegmentSeconds}-b${changeBudget}`;
 
 export interface CaptionSegmentWindow {
   startMs: number;
@@ -64,6 +75,125 @@ export const groupFramesBySegment = (
     segment.frameTimesMs.push(Math.round(frameTimeMs));
   }
   return grouped;
+};
+
+export interface AdaptiveSegmentOptions {
+  /** Shortest allowed window — bounds fragmentation during continuous motion. */
+  minSegmentMs: number;
+  /** Longest allowed window — bounds how far static stretches merge. */
+  maxSegmentMs: number;
+  /** Accumulated pixel change inside a window that closes it (diff budget). */
+  changeBudget: number;
+  /** Single-frame diff treated as a hard cut — closes the window immediately. */
+  cutThreshold: number;
+  /** Call-count ceiling (the fixed-grid equivalent); over-budget windows merge. */
+  maxCalls: number;
+}
+
+/**
+Adaptive segment planning: instead of a fixed grid, windows are drawn from a
+pixel-change signal so static stretches merge (up to maxSegmentMs) while
+high-change bursts split (down to minSegmentMs). diffScores[i] is the mean
+absolute 32x32-grayscale diff entering frame i (0 for the first frame) — the
+same signal as the 2026-11-08 offline prototype (caption-delta-exp), whose
+tuned knobs this mirrors: a window closes at frame i when it spans at least
+minSegmentMs AND the accumulated change since its start reaches changeBudget,
+or frame i is a hard cut (diff >= cutThreshold), or it reached maxSegmentMs.
+Windows tile the probed timeline contiguously; the tail beyond the last probe
+frame (under 1/probeFps) is dropped, like the fixed planner drops its sliver.
+maxCalls caps the call count at the fixed-grid equivalent by merging the
+windows whose shared boundary carries the least change — adaptive never costs
+more calls than the grid it replaces. Bench on the three user-checked videos
+(131s sermon / 29s market / 12s street): 13/27 calls and −52% prompt tokens on
+the static sermon; parity call counts on the busy videos.
+*/
+export const planAdaptiveSegments = (
+  frameTimesMs: number[],
+  diffScores: number[],
+  options: AdaptiveSegmentOptions,
+): CaptionSegmentWindow[] => {
+  const count = frameTimesMs.length;
+  if (count === 0) {
+    return [];
+  }
+  // Window start indices; the final window always extends to the last frame.
+  const starts: number[] = [0];
+  let accumulated = 0;
+  for (let i = 1; i < count; i++) {
+    const spanMs = frameTimesMs[i] - frameTimesMs[starts.at(-1)!];
+    const score = diffScores[i] ?? 0;
+    accumulated += score;
+    if (!(spanMs >= options.minSegmentMs && (accumulated >= options.changeBudget || score >= options.cutThreshold || spanMs >= options.maxSegmentMs))) {
+      continue;
+    }
+
+    starts.push(i);
+    accumulated = 0;
+  }
+  // Spans in frame indices: [starts[k], starts[k+1]) and the final [last, count).
+  const spans: Array<[number, number]> = starts.slice(0, -1).map((start, k) => [start, starts[k + 1]]);
+  spans.push([starts.at(-1)!, count]);
+  // Merge a degenerate final window (< minSegmentMs) into its predecessor.
+  const lastSpan = spans.at(-1)!;
+  if (spans.length >= 2 && frameTimesMs[lastSpan[1] - 1] + 1 - frameTimesMs[lastSpan[0]] < options.minSegmentMs) {
+    spans.splice(-2, 2, [spans.at(-2)![0], count]);
+  }
+  // Call cap: merge the pairs whose shared boundary carries the least change.
+  while (spans.length > options.maxCalls) {
+    let best = 1;
+    let bestScore = Infinity;
+    for (let k = 1; k < spans.length; k++) {
+      const score = diffScores[spans[k][0]] ?? 0;
+      if (!(score < bestScore)) {
+        continue;
+      }
+
+      best = k;
+      bestScore = score;
+    }
+    spans.splice(best - 1, 2, [spans[best - 1][0], spans[best][1]]);
+  }
+  // Window time is half-open [first frame, next boundary); the final one ends
+  // at last frame +1ms so it includes it — tiling stays contiguous.
+  return spans.map(([start, end], k) => ({
+    startMs: frameTimesMs[start],
+    endMs: k < spans.length - 1 ? frameTimesMs[end] : frameTimesMs[end - 1] + 1,
+  }));
+};
+
+/**
+Frame budget per adaptive window: without it a 20s merged window at a 2 fps
+probe would send 40 near-duplicate frames.
+*/
+export const CAPTION_MAX_FRAMES_PER_WINDOW = 3;
+
+/**
+Pick at most `maxFrames` probe frames per adaptive window: the first, the one
+whose entering change is largest (the in-window action peak), and the last —
+deduped, in timeline order, returned as frame indices.
+*/
+export const selectWindowFrames = (
+  frameTimesMs: number[],
+  diffScores: number[],
+  window: CaptionSegmentWindow,
+  maxFrames = CAPTION_MAX_FRAMES_PER_WINDOW,
+): number[] => {
+  const indices: number[] = [];
+  for (const [index, timeMs] of frameTimesMs.entries()) {
+    if (timeMs >= window.startMs && timeMs < window.endMs) {
+      indices.push(index);
+    }
+  }
+  if (indices.length <= maxFrames) {
+    return indices;
+  }
+  let peak = indices[1];
+  for (const index of indices.slice(1)) {
+    if ((diffScores[index] ?? 0) > (diffScores[peak] ?? 0)) {
+      peak = index;
+    }
+  }
+  return [...new Set([indices[0], peak, indices.at(-1)!])].sort((a, b) => a - b);
 };
 
 const LANGUAGE_NAMES: Record<string, string> = {

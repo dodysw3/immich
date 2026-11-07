@@ -1,25 +1,36 @@
 import {
   AI_VIDEO_CAPTIONING_PROMPT_VERSION,
+  adaptiveSegmentationKey,
   buildCaptionPrompt,
   captionLanguageName,
   createVideoCaptionRunKey,
+  fixedSegmentationKey,
   foldCaptionSegment,
   groupFramesBySegment,
   isNoChangeCaption,
+  planAdaptiveSegments,
   planCaptionSegments,
+  selectWindowFrames,
   stripCaptionOpener,
   stripCaptionThinking,
 } from 'src/utils/ai-video-captioning.js';
 
 const seg = (startMs: number, endMs: number, caption: string) => ({ startMs, endMs, caption });
 
+/** 2 fps probe grid: frames every 500ms. */
+const times2fps = (count: number) => Array.from({ length: count }, (_, i) => i * 500);
+
 describe('ai-video-captioning utils', () => {
   describe('createVideoCaptionRunKey', () => {
     it('should differ per model, segmentation, and prompt version', () => {
-      const base = createVideoCaptionRunKey('lfm3-omni-2b', 5, 3, AI_VIDEO_CAPTIONING_PROMPT_VERSION);
+      const base = createVideoCaptionRunKey('lfm3-omni-2b', fixedSegmentationKey(5, 3), AI_VIDEO_CAPTIONING_PROMPT_VERSION);
       expect(base).toMatch(/^[a-f0-9]{64}$/);
-      expect(createVideoCaptionRunKey('lfm3-vl-2b', 5, 3, AI_VIDEO_CAPTIONING_PROMPT_VERSION)).not.toBe(base);
-      expect(createVideoCaptionRunKey('lfm3-omni-2b', 3, 2, AI_VIDEO_CAPTIONING_PROMPT_VERSION)).not.toBe(base);
+      expect(createVideoCaptionRunKey('lfm3-vl-2b', fixedSegmentationKey(5, 3), AI_VIDEO_CAPTIONING_PROMPT_VERSION)).not.toBe(base);
+      expect(createVideoCaptionRunKey('lfm3-omni-2b', fixedSegmentationKey(3, 2), AI_VIDEO_CAPTIONING_PROMPT_VERSION)).not.toBe(base);
+      // adaptive runs key separately from the fixed grid they replace
+      expect(
+        createVideoCaptionRunKey('lfm3-omni-2b', adaptiveSegmentationKey(2, 2, 20, 40), AI_VIDEO_CAPTIONING_PROMPT_VERSION),
+      ).not.toBe(base);
     });
   });
 
@@ -77,6 +88,102 @@ describe('ai-video-captioning utils', () => {
         { startMs: 5000, endMs: 10_000 },
       ]);
       expect(grouped[1].framePaths).toEqual([]);
+    });
+  });
+
+  describe('planAdaptiveSegments', () => {
+    // scores[i] = change entering frame i (0 for the first frame).
+    const defaults = { minSegmentMs: 2000, maxSegmentMs: 20_000, changeBudget: 40, cutThreshold: 35, maxCalls: 27 };
+
+    it('should merge a static video into maxSegmentMs windows', () => {
+      const windows = planAdaptiveSegments(times2fps(120), times2fps(120).map(() => 1), defaults);
+      expect(windows).toEqual([
+        { startMs: 0, endMs: 20_000 },
+        { startMs: 20_000, endMs: 40_000 },
+        { startMs: 40_000, endMs: 59_501 },
+      ]);
+    });
+
+    it('should split at a hard cut (score >= cutThreshold)', () => {
+      const scores = times2fps(120).map(() => 1);
+      scores[20] = 100; // cut entering the 10.0s frame
+      const windows = planAdaptiveSegments(times2fps(120), scores, defaults);
+      expect(windows[0]).toEqual({ startMs: 0, endMs: 10_000 });
+      // the static stretch after the cut runs to its next natural close
+      // (budget and maxSegmentMs both trip at the 20s mark)
+      expect(windows[1]).toEqual({ startMs: 10_000, endMs: 30_000 });
+    });
+
+    it('should split when accumulated change busts the budget', () => {
+      const scores = times2fps(120).map(() => 1);
+      for (let i = 1; i <= 40; i++) {
+        scores[i] = 2; // 40 frames x 2 = 80 accumulated within the first 20s
+      }
+      const windows = planAdaptiveSegments(times2fps(120), scores, defaults);
+      expect(windows[0].endMs).toBeLessThan(20_000);
+    });
+
+    it('should tile contiguously and cover through the last frame', () => {
+      const scores = times2fps(120).map((_, i) => (i % 30 === 0 ? 60 : 3));
+      const windows = planAdaptiveSegments(times2fps(120), scores, defaults);
+      for (const [k, window] of windows.entries()) {
+        expect(window.endMs).toBeGreaterThan(window.startMs);
+        if (k > 0) {
+          expect(window.startMs).toBe(windows[k - 1].endMs);
+        }
+      }
+      expect(windows[0].startMs).toBe(0);
+      expect(windows.at(-1)!.endMs).toBe(59_500 + 1);
+    });
+
+    it('should merge a degenerate final window into its predecessor', () => {
+      // cut at 9.5s (frame 19) leaves a 0.5s tail — below minSegmentMs
+      const scores = times2fps(20).map(() => 1);
+      scores[19] = 100;
+      const windows = planAdaptiveSegments(times2fps(20), scores, defaults);
+      expect(windows).toEqual([{ startMs: 0, endMs: 9500 + 1 }]);
+    });
+
+    it('should cap the call count by merging the least-changed boundaries', () => {
+      // bursts every 5s would make 12 windows; cap at 4
+      const scores = times2fps(120).map((_, i) => (i % 10 === 0 && i > 0 ? 100 : 1));
+      const windows = planAdaptiveSegments(times2fps(120), scores, { ...defaults, maxCalls: 4 });
+      expect(windows).toHaveLength(4);
+      expect(windows[0].startMs).toBe(0);
+      expect(windows.at(-1)!.endMs).toBe(59_501);
+    });
+
+    it('should handle empty and single-frame inputs', () => {
+      expect(planAdaptiveSegments([], [], defaults)).toEqual([]);
+      expect(planAdaptiveSegments([0], [0], defaults)).toEqual([{ startMs: 0, endMs: 1 }]);
+    });
+  });
+
+  describe('selectWindowFrames', () => {
+    const times = Array.from({ length: 80 }, (_, i) => i * 500); // 2 fps, 40s
+
+    it('should keep all frames when the window has at most three', () => {
+      const indices = selectWindowFrames(times, times.map(() => 1), { startMs: 0, endMs: 1000 });
+      expect(indices).toEqual([0, 1]);
+    });
+
+    it('should pick first, max-diff, and last for wide windows', () => {
+      const scores = times.map(() => 1);
+      scores[30] = 90; // peak change entering the 15.0s frame
+      const indices = selectWindowFrames(times, scores, { startMs: 10_000, endMs: 20_000 });
+      expect(indices).toEqual([20, 30, 39]); // 10.0s, 15.0s, 19.5s
+    });
+
+    it('should dedupe when the peak coincides with the last frame (never the first — peak candidates start at the second frame)', () => {
+      const scores = times.map(() => 1);
+      scores[39] = 90;
+      const indices = selectWindowFrames(times, scores, { startMs: 10_000, endMs: 20_000 });
+      expect(indices).toEqual([20, 39]);
+    });
+
+    it('should return only frames inside the window', () => {
+      const indices = selectWindowFrames(times, times.map(() => 50), { startMs: 5000, endMs: 6000 });
+      expect(indices).toEqual([10, 11]);
     });
   });
 

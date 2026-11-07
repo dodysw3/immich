@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import sharp from 'sharp';
 import { OnJob } from 'src/decorators.js';
 import {
   AiVideoCaptionError,
@@ -24,13 +25,20 @@ import {
 import type { JobOf } from 'src/types.js';
 import {
   AI_VIDEO_CAPTIONING_PROMPT_VERSION,
+  adaptiveSegmentationKey,
   buildCaptionPrompt,
   createVideoCaptionRunKey,
+  fixedSegmentationKey,
   foldCaptionSegment,
   groupFramesBySegment,
   isNoChangeCaption,
+  planAdaptiveSegments,
   planCaptionSegments,
+  selectWindowFrames,
 } from 'src/utils/ai-video-captioning.js';
+
+/** Probe-frame diff resolution (32x32 grayscale), matching the offline prototype. */
+const FRAME_DIFF_SIZE = 32;
 
 @Injectable()
 export class AiVideoCaptioningService {
@@ -71,13 +79,7 @@ export class AiVideoCaptioningService {
         runKey,
         model: config.model,
         promptVersion: AI_VIDEO_CAPTIONING_PROMPT_VERSION,
-        config: {
-          segmentSeconds: config.segmentSeconds,
-          framesPerSegment: config.framesPerSegment,
-          frameEdge: config.frameEdge,
-          maxDurationSec: config.maxDurationSec,
-          language: config.language,
-        },
+        config: this.storedConfig(config),
         trigger: 'manual',
       });
       await this.captioningRepository.fail(assetId, claimedKey, {
@@ -111,7 +113,8 @@ export class AiVideoCaptioningService {
     }
 
     const runKey = this.runKey(config);
-    const existing = (await this.captioningRepository.get(assetId))?.runs[runKey];
+    const document = await this.captioningRepository.get(assetId);
+    const existing = document?.runs[runKey];
     if (existing && existing.status !== 'failed') {
       // completed: reuse it; queued/running: a concurrent delivery is already
       // producing this run — don't double-claim and let interpretation use
@@ -132,13 +135,51 @@ export class AiVideoCaptioningService {
     return this.captioningRepository.findLatestCompletedRun(document ?? { schemaVersion: 1, runs: {} }) ?? undefined;
   }
 
-  private runKey(config: { model: string; segmentSeconds: number; framesPerSegment: number }): string {
-    return createVideoCaptionRunKey(
-      config.model,
-      config.segmentSeconds,
-      config.framesPerSegment,
-      AI_VIDEO_CAPTIONING_PROMPT_VERSION,
-    );
+  private runKey(config: {
+    model: string;
+    segmentSeconds: number;
+    framesPerSegment: number;
+    adaptive: boolean;
+    probeFps: number;
+    minSegmentSeconds: number;
+    maxSegmentSeconds: number;
+    changeBudget: number;
+  }): string {
+    const segmentation = config.adaptive
+      ? adaptiveSegmentationKey(config.probeFps, config.minSegmentSeconds, config.maxSegmentSeconds, config.changeBudget)
+      : fixedSegmentationKey(config.segmentSeconds, config.framesPerSegment);
+    return createVideoCaptionRunKey(config.model, segmentation, AI_VIDEO_CAPTIONING_PROMPT_VERSION);
+  }
+
+  /**
+  The config stored on each run/claim. Adaptive runs record their knobs so the
+  interpretation context can label the caption granularity and old fixed-grid
+  documents stay schema-valid (the adaptive fields are optional).
+  */
+  private storedConfig(config: {
+    segmentSeconds: number;
+    framesPerSegment: number;
+    frameEdge: number;
+    maxDurationSec: number;
+    language: string;
+    adaptive: boolean;
+    probeFps: number;
+    minSegmentSeconds: number;
+    maxSegmentSeconds: number;
+  }) {
+    return {
+      segmentSeconds: config.segmentSeconds,
+      framesPerSegment: config.framesPerSegment,
+      frameEdge: config.frameEdge,
+      maxDurationSec: config.maxDurationSec,
+      language: config.language,
+      ...(config.adaptive && {
+            adaptive: true,
+            probeFps: config.probeFps,
+            minSegmentSeconds: config.minSegmentSeconds,
+            maxSegmentSeconds: config.maxSegmentSeconds,
+          }),
+    };
   }
 
   /** Probe → claim → extract frames → per-segment captioning → complete/fail. */
@@ -168,13 +209,7 @@ export class AiVideoCaptioningService {
       runKey,
       model: config.model,
       promptVersion: AI_VIDEO_CAPTIONING_PROMPT_VERSION,
-      config: {
-        segmentSeconds: config.segmentSeconds,
-        framesPerSegment: config.framesPerSegment,
-        frameEdge: config.frameEdge,
-        maxDurationSec: config.maxDurationSec,
-        language: config.language,
-      },
+      config: this.storedConfig(config),
       durationMs,
       trigger,
     });
@@ -182,7 +217,9 @@ export class AiVideoCaptioningService {
 
     const tempDir = await mkdtemp(join(tmpdir(), 'immich-video-caption-'));
     try {
-      const fps = config.framesPerSegment / config.segmentSeconds;
+      // Adaptive mode probes at a higher fps and lets the pixel-change signal
+      // draw the windows; fixed mode keeps the segmentSeconds x framesPerSegment grid.
+      const fps = config.adaptive ? config.probeFps : config.framesPerSegment / config.segmentSeconds;
       const cappedDurationSec = Math.min(durationMs / 1000, config.maxDurationSec);
       const framePaths = await this.mediaRepository.extractVideoFrames(originalPath, tempDir, {
         fps,
@@ -193,8 +230,35 @@ export class AiVideoCaptioningService {
         throw new AiVideoCaptioningClientError('invalid_output', 'No frames could be extracted from the video');
       }
 
-      const { segments, truncated } = planCaptionSegments(durationMs, config.segmentSeconds, config.maxDurationSec);
+      const frameTimesMs = framePaths.map((_, index) => Math.round((index / fps) * 1000));
+      let segments: { startMs: number; endMs: number }[];
+      let truncated: boolean;
+      let diffScores: number[] | undefined;
+      if (config.adaptive) {
+        diffScores = await this.frameDiffScores(framePaths);
+        segments = planAdaptiveSegments(frameTimesMs, diffScores, {
+          minSegmentMs: config.minSegmentSeconds * 1000,
+          maxSegmentMs: config.maxSegmentSeconds * 1000,
+          changeBudget: config.changeBudget,
+          cutThreshold: config.cutThreshold,
+          // Call-count ceiling: the fixed-grid equivalent for this duration.
+          maxCalls: Math.ceil(cappedDurationSec / config.segmentSeconds),
+        });
+        truncated = durationMs > config.maxDurationSec * 1000;
+      } else {
+        ({ segments, truncated } = planCaptionSegments(durationMs, config.segmentSeconds, config.maxDurationSec));
+      }
       const grouped = groupFramesBySegment(framePaths, fps, segments);
+      const plannedSegments = diffScores
+        ? grouped.map((segment) => {
+            const indices = selectWindowFrames(frameTimesMs, diffScores!, segment);
+            return {
+              ...segment,
+              framePaths: indices.map((index) => framePaths[index]),
+              frameTimesMs: indices.map((index) => frameTimesMs[index]),
+            };
+          })
+        : grouped;
 
       let promptTokens = 0;
       let completionTokens = 0;
@@ -206,7 +270,7 @@ export class AiVideoCaptioningService {
       // a change the model missed gets a second chance to be reported).
       let previousCaption: { caption: string; startMs: number; endMs: number } | undefined;
 
-      for (const [segmentIndex, segment] of grouped.entries()) {
+      for (const [segmentIndex, segment] of plannedSegments.entries()) {
         if (segment.framePaths.length === 0) {
           continue;
         }
@@ -279,5 +343,38 @@ export class AiVideoCaptioningService {
     } finally {
       await rm(tempDir, { recursive: true, force: true }).catch(() => void 0);
     }
+  }
+
+  /**
+  Change signal for adaptive planning: mean absolute diff between consecutive
+  probe frames downscaled to 32x32 grayscale (BT.601 luma, matching the
+  offline prototype's PIL "L" convert). Index 0 is the zero baseline; a score
+  of ~1 is a still tripod shot, ~40 is continuous motion (2026-11-08 bench:
+  static sermon p50 0.7, busy market p50 38).
+  */
+  private async frameDiffScores(framePaths: string[]): Promise<number[]> {
+    const scores: number[] = [0];
+    let previous: Uint8Array | undefined;
+    for (const path of framePaths) {
+      const { data, info } = await sharp(path)
+        .resize(FRAME_DIFF_SIZE, FRAME_DIFF_SIZE, { fit: 'fill' })
+        .removeAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      const gray = new Uint8Array(FRAME_DIFF_SIZE * FRAME_DIFF_SIZE);
+      for (let pixel = 0; pixel < gray.length; pixel++) {
+        const offset = pixel * info.channels;
+        gray[pixel] = Math.round(0.299 * data[offset] + 0.587 * data[offset + 1] + 0.114 * data[offset + 2]);
+      }
+      if (previous !== undefined) {
+        let total = 0;
+        for (let pixel = 0; pixel < gray.length; pixel++) {
+          total += Math.abs(gray[pixel] - previous[pixel]);
+        }
+        scores.push(total / gray.length);
+      }
+      previous = gray;
+    }
+    return scores;
   }
 }

@@ -182,6 +182,13 @@ export interface EnvData {
     timeoutMs: number;
     segmentSeconds: number;
     framesPerSegment: number;
+    /** Adaptive change-driven windows; segmentSeconds doubles as the call-count ceiling. */
+    adaptive: boolean;
+    probeFps: number;
+    minSegmentSeconds: number;
+    maxSegmentSeconds: number;
+    changeBudget: number;
+    cutThreshold: number;
     frameEdge: number;
     maxDurationSec: number;
     language: string;
@@ -575,6 +582,16 @@ const getEnv = (): EnvData => {
       timeoutMs: dto.IMMICH_AI_VIDEO_CAPTIONING_TIMEOUT_MS || 120_000,
       segmentSeconds: dto.IMMICH_AI_VIDEO_CAPTIONING_SEGMENT_SECONDS || 5,
       framesPerSegment: dto.IMMICH_AI_VIDEO_CAPTIONING_FRAMES_PER_SEGMENT || 3,
+      // Adaptive (change-driven) windows: probe at probeFps, merge static
+      // stretches up to maxSegmentSeconds, split bursts down to
+      // minSegmentSeconds (2026-11-08 bench-tuned defaults). segmentSeconds
+      // stays the fixed-grid call-count ceiling in adaptive mode.
+      adaptive: dto.IMMICH_AI_VIDEO_CAPTIONING_ADAPTIVE ?? false,
+      probeFps: dto.IMMICH_AI_VIDEO_CAPTIONING_PROBE_FPS || 2,
+      minSegmentSeconds: dto.IMMICH_AI_VIDEO_CAPTIONING_MIN_SEGMENT_SECONDS || 2,
+      maxSegmentSeconds: dto.IMMICH_AI_VIDEO_CAPTIONING_MAX_SEGMENT_SECONDS || 20,
+      changeBudget: dto.IMMICH_AI_VIDEO_CAPTIONING_CHANGE_BUDGET || 40,
+      cutThreshold: dto.IMMICH_AI_VIDEO_CAPTIONING_CUT_THRESHOLD || 35,
       frameEdge: dto.IMMICH_AI_VIDEO_CAPTIONING_FRAME_EDGE || 672,
       maxDurationSec: dto.IMMICH_AI_VIDEO_CAPTIONING_MAX_DURATION_SEC || 300,
       language: dto.IMMICH_AI_VIDEO_CAPTIONING_LANGUAGE || 'en',

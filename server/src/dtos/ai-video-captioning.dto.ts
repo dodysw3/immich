@@ -17,6 +17,13 @@ const AiVideoCaptionConfigSchema = z
     frameEdge: z.int().positive(),
     maxDurationSec: z.int().positive(),
     language: z.string().min(1),
+    /** Adaptive (change-driven) window planning; absent = fixed grid. */
+    adaptive: z.boolean().optional(),
+    /** Probe fps the change signal was measured at (adaptive runs only). */
+    probeFps: z.number().positive().optional(),
+    /** Adaptive window bounds in seconds (adaptive runs only). */
+    minSegmentSeconds: z.number().positive().optional(),
+    maxSegmentSeconds: z.number().positive().optional(),
   })
   .meta({ id: 'AiVideoCaptionConfig' });
 
