@@ -1,8 +1,9 @@
 import { DateTime } from 'luxon';
 import { createHash } from 'node:crypto';
 import { AiInterpretationDocumentSchema } from 'src/dtos/ai-image-interpretation.dto.js';
-import type { AiVideoCaptionRun } from 'src/dtos/ai-video-captioning.dto.js';
+import type { AiVideoCaptionRun, AiVideoCaptionSegment } from 'src/dtos/ai-video-captioning.dto.js';
 import type { AiVideoTranscriptionRun } from 'src/dtos/ai-video-transcription.dto.js';
+import { isNoChangeCaption } from 'src/utils/ai-video-captioning.js';
 
 export const AI_IMAGE_INTERPRETATION_PROMPT_VERSION = 'image-interpretation-1.2.0';
 /**
@@ -115,6 +116,33 @@ const capContextSection = (lines: string[]): string => {
 const formatContextWindow = (startMs: number, endMs: number): string =>
   `[${(startMs / 1000).toFixed(1)}-${(endMs / 1000).toFixed(1)}s]`;
 
+/**
+Delta captioning (v0.4.0) emits "No change." for static stretches; in the
+interpretation context those lines are info-free, so consecutive ones
+collapse into a single line spanning the whole unchanged window.
+*/
+const collapseNoChangeCaptions = (segments: AiVideoCaptionSegment[]): string[] => {
+  const lines: string[] = [];
+  let pendingNoChange: { startMs: number; endMs: number } | undefined;
+  const flushPending = () => {
+    if (!pendingNoChange) {
+      return;
+    }
+    lines.push(`${formatContextWindow(pendingNoChange.startMs, pendingNoChange.endMs)} No change.`);
+    pendingNoChange = undefined;
+  };
+  for (const segment of segments) {
+    if (isNoChangeCaption(segment.caption)) {
+      pendingNoChange = { startMs: pendingNoChange?.startMs ?? segment.startMs, endMs: segment.endMs };
+      continue;
+    }
+    flushPending();
+    lines.push(`${formatContextWindow(segment.startMs, segment.endMs)} ${segment.caption}`);
+  }
+  flushPending();
+  return lines;
+};
+
 export interface AiVideoInterpretationContextInput {
   durationMs?: number;
   /** Latest completed caption run, when the captioning lane produced one. */
@@ -131,14 +159,10 @@ image"). Returns undefined when there is nothing to add — an absent transcript
 run means "unknown", never "no speech", so it stays silent rather than claiming
 anything about the audio.
 */
-export const composeVideoInterpretationContext = (
-  input: AiVideoInterpretationContextInput,
-): string | undefined => {
+export const composeVideoInterpretationContext = (input: AiVideoInterpretationContextInput): string | undefined => {
   const { durationMs, captions, transcripts } = input;
 
-  const captionLines = (captions?.segments ?? []).map(
-    (segment) => `${formatContextWindow(segment.startMs, segment.endMs)} ${segment.caption}`,
-  );
+  const captionLines = collapseNoChangeCaptions(captions?.segments ?? []);
   const transcriptLines = (transcripts?.segments ?? []).map(
     (segment) => `${formatContextWindow(segment.startMs, segment.endMs)} ${segment.text}`,
   );
@@ -156,12 +180,15 @@ export const composeVideoInterpretationContext = (
   if (durationSec) {
     header += ` (${durationSec}s long)`;
   }
-  header += '. Evidence captured from the full video follows; treat it as direct observation alongside the thumbnail, distinguish it from inference, and include what is said or heard when it matters.';
+  header +=
+    '. Evidence captured from the full video follows; treat it as direct observation alongside the thumbnail, distinguish it from inference, and include what is said or heard when it matters.';
   sections.push(header);
 
   if (hasCaptions) {
     const truncatedNote = captions?.truncated ? '\n[Captions cover only the head of a longer video.]' : '';
-    sections.push(`Visual captions per ${(captions?.config.segmentSeconds ?? 5).toFixed(0)}-second segment:\n${capContextSection(captionLines)}${truncatedNote}`);
+    sections.push(
+      `Visual captions per ${(captions?.config.segmentSeconds ?? 5).toFixed(0)}-second segment:\n${capContextSection(captionLines)}${truncatedNote}`,
+    );
   }
 
   if (hasTranscript) {

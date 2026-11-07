@@ -16,13 +16,18 @@ import { AssetRepository } from 'src/repositories/asset.repository.js';
 import { ConfigRepository } from 'src/repositories/config.repository.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';
 import { MediaRepository } from 'src/repositories/media.repository.js';
-import { AiVideoCaptioningClient, AiVideoCaptioningClientError, CaptionFrame } from 'src/services/ai-video-captioning.client.js';
+import {
+  AiVideoCaptioningClient,
+  AiVideoCaptioningClientError,
+  CaptionFrame,
+} from 'src/services/ai-video-captioning.client.js';
 import type { JobOf } from 'src/types.js';
 import {
   AI_VIDEO_CAPTIONING_PROMPT_VERSION,
   buildCaptionPrompt,
   createVideoCaptionRunKey,
   groupFramesBySegment,
+  isNoChangeCaption,
   planCaptionSegments,
 } from 'src/utils/ai-video-captioning.js';
 
@@ -127,7 +132,12 @@ export class AiVideoCaptioningService {
   }
 
   private runKey(config: { model: string; segmentSeconds: number; framesPerSegment: number }): string {
-    return createVideoCaptionRunKey(config.model, config.segmentSeconds, config.framesPerSegment, AI_VIDEO_CAPTIONING_PROMPT_VERSION);
+    return createVideoCaptionRunKey(
+      config.model,
+      config.segmentSeconds,
+      config.framesPerSegment,
+      AI_VIDEO_CAPTIONING_PROMPT_VERSION,
+    );
   }
 
   /** Probe → claim → extract frames → per-segment captioning → complete/fail. */
@@ -189,8 +199,13 @@ export class AiVideoCaptioningService {
       let completionTokens = 0;
       let servedModel: string | undefined;
       const completedSegments: AiVideoCaptionSegment[] = [];
+      // Delta captioning (v0.4.0): every captioned segment compares against
+      // the last informative caption; "No change." segments carry no anchor,
+      // so the previous substantive caption stays the comparison point (and
+      // a change the model missed gets a second chance to be reported).
+      let previousCaption: { caption: string; startMs: number; endMs: number } | undefined;
 
-      for (const segment of grouped) {
+      for (const [segmentIndex, segment] of grouped.entries()) {
         if (segment.framePaths.length === 0) {
           continue;
         }
@@ -207,12 +222,18 @@ export class AiVideoCaptioningService {
         const response = await this.client.captionSegment(
           frames,
           { startMs: segment.startMs, endMs: segment.endMs },
-          buildCaptionPrompt(segment, config.language),
+          buildCaptionPrompt(segment, config.language, {
+            ordinal: segmentIndex + 1,
+            previous: previousCaption,
+          }),
         );
         servedModel = response.servedModel ?? servedModel;
         promptTokens += response.promptTokens ?? 0;
         completionTokens += response.completionTokens ?? 0;
         completedSegments.push({ startMs: segment.startMs, endMs: segment.endMs, caption: response.caption });
+        if (!isNoChangeCaption(response.caption)) {
+          previousCaption = { caption: response.caption, startMs: segment.startMs, endMs: segment.endMs };
+        }
 
         // Incremental persistence: a crash mid-video keeps the earlier
         // segments, and the sidebar shows progress for long videos.

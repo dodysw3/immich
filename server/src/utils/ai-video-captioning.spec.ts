@@ -4,6 +4,7 @@ import {
   captionLanguageName,
   createVideoCaptionRunKey,
   groupFramesBySegment,
+  isNoChangeCaption,
   planCaptionSegments,
   stripCaptionOpener,
   stripCaptionThinking,
@@ -88,6 +89,39 @@ describe('ai-video-captioning utils', () => {
     it('should map language codes to names', () => {
       expect(captionLanguageName('id')).toBe('Indonesian');
       expect(captionLanguageName('xx')).toBe('English');
+    });
+
+    it('should build the delta prompt when a previous caption exists (v0.4.0)', () => {
+      const prompt = buildCaptionPrompt({ startMs: 15_000, endMs: 20_000 }, 'en', {
+        ordinal: 4,
+        previous: { caption: 'A woman holds a phone. Text now shows "SAYA?".', startMs: 5000, endMs: 10_000 },
+      });
+      expect(prompt).toContain('15.0s to 20.0s');
+      expect(prompt).toContain('segment 4 of a longer video');
+      expect(prompt).toContain('previous described segment (5s-10s) was captioned as: "A woman holds a phone.');
+      expect(prompt).toContain('ONLY what is new or changed');
+      expect(prompt).toContain('"No change."');
+      expect(prompt).toContain('English');
+      // The delta prompt replaces the full scene-establishing opener.
+      expect(prompt).not.toContain('Start directly with the subject');
+      expect(prompt).not.toContain('1-3 sentences');
+    });
+
+    it('should keep the full prompt when no previous caption exists', () => {
+      const full = buildCaptionPrompt({ startMs: 0, endMs: 5000 }, 'en', { ordinal: 1 });
+      expect(full).toContain('1-3 sentences');
+      expect(full).not.toContain('ONLY what is new or changed');
+    });
+  });
+
+  describe('isNoChangeCaption', () => {
+    it('should match the delta prompt escape-hatch answer', () => {
+      expect(isNoChangeCaption('No change.')).toBe(true);
+      expect(isNoChangeCaption('No change')).toBe(true);
+      expect(isNoChangeCaption('  no change.  ')).toBe(true);
+      expect(isNoChangeCaption('Nothing changed.')).toBe(false);
+      expect(isNoChangeCaption('New on-screen text overlay: "SAYA?".')).toBe(false);
+      expect(isNoChangeCaption('')).toBe(false);
     });
   });
 

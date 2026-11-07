@@ -122,6 +122,27 @@ describe('composeVideoInterpretationContext', () => {
     expect(context).toContain('[24.4-26.4s] selamat datang di LRT Jabodetai');
   });
 
+  it('collapses consecutive No-change delta captions into one spanning line', () => {
+    const context = composeVideoInterpretationContext({
+      captions: captionRun({
+        segments: [
+          { startMs: 0, endMs: 5000, caption: 'A woman holds a silver smartphone.' },
+          { startMs: 5000, endMs: 10_000, caption: 'No change.' },
+          { startMs: 10_000, endMs: 15_000, caption: 'no change' },
+          { startMs: 15_000, endMs: 20_000, caption: 'Text now shows "KITA".' },
+          { startMs: 20_000, endMs: 25_000, caption: 'No change.' },
+        ],
+      }),
+    })!;
+    expect(context).toContain('[0.0-5.0s] A woman holds a silver smartphone.');
+    // Both static segments fold into a single line with the merged window.
+    expect(context).toContain('[5.0-15.0s] No change.');
+    expect(context).toContain('[15.0-20.0s] Text now shows "KITA".');
+    expect(context).toContain('[20.0-25.0s] No change.');
+    expect(context).not.toContain('[5.0-10.0s]');
+    expect(context).not.toContain('[10.0-15.0s]');
+  });
+
   it('states the audio conclusion for a completed transcript run without segments', () => {
     const noAudio = composeVideoInterpretationContext({
       captions: captionRun(),

@@ -5,7 +5,7 @@ Experimental video captioning (LFM3-Omni-2B lane) — separate prompt version
 and run keying from image interpretation so the two features can evolve
 (and be reverted) independently.
 */
-export const AI_VIDEO_CAPTIONING_PROMPT_VERSION = 'video-captioning-0.3.0';
+export const AI_VIDEO_CAPTIONING_PROMPT_VERSION = 'video-captioning-0.4.0';
 
 export const createVideoCaptionRunKey = (
   model: string,
@@ -82,20 +82,67 @@ export const captionLanguageName = (language: string): string => LANGUAGE_NAMES[
 Captions are visual-only since v0.3.0: the omni audio path hallucinated
 languages and looped on reverberant speech (2026-11-07 eval); audible content
 is covered by the faster-whisper transcript fed to interpretation instead.
+
+Since v0.4.0 every segment after the first is captioned as a delta against
+the previous informative caption (2026-11-08 experiment on a 17-segment
+talking-head video: −69% caption tokens, −75% interpretation-context chars,
+equal interpretation quality; post-processing the finished captions with a
+diff pass was also tested and failed — the 2B model parrots the input back).
+The first segment keeps the full prompt so the scene is established once.
 */
-export const buildCaptionPrompt = (segment: { startMs: number; endMs: number }, language: string): string => {
+export interface CaptionPromptState {
+  /** 1-based ordinal of the current segment in the video's segment plan. */
+  ordinal: number;
+  /**
+  The last informative caption (never "No change.") with its window — the
+  comparison anchor for the delta prompt. Undefined for the first captioned
+  segment, which then gets the full scene-establishing prompt.
+  */
+  previous?: { caption: string; startMs: number; endMs: number };
+}
+
+export const buildCaptionPrompt = (
+  segment: { startMs: number; endMs: number },
+  language: string,
+  state?: CaptionPromptState,
+): string => {
   const languageName = captionLanguageName(language);
   const start = (segment.startMs / 1000).toFixed(1);
   const end = (segment.endMs / 1000).toFixed(1);
+  const previous = state?.previous;
+  if (!previous) {
+    return [
+      `These frames are sampled from ${start}s to ${end}s of a video, in chronological order.`,
+      'Describe what happens in this video segment concisely in 1-3 sentences:',
+      'who or what is visible, the actions, the scene, and any on-screen text.',
+      'Start directly with the subject (e.g. "A busy city street...", "A man in a blue shirt..."); never open with "The video shows", "The frames show", "In this scene", "In a busy street scene" or any scene-setting phrase — put that context in the sentences that follow.',
+      `Write the caption in ${languageName}. Stick to what is actually there; do not speculate.`,
+      'Reply with the caption text only — no preamble, no quotes, no reasoning.',
+    ].join(' ');
+  }
+  const previousStart = (previous.startMs / 1000).toFixed(0);
+  const previousEnd = (previous.endMs / 1000).toFixed(0);
   return [
     `These frames are sampled from ${start}s to ${end}s of a video, in chronological order.`,
-    'Describe what happens in this video segment concisely in 1-3 sentences:',
-    'who or what is visible, the actions, the scene, and any on-screen text.',
-    'Start directly with the subject (e.g. "A busy city street...", "A man in a blue shirt..."); never open with "The video shows", "The frames show", "In this scene", "In a busy street scene" or any scene-setting phrase — put that context in the sentences that follow.',
+    `This is segment ${state?.ordinal ?? 1} of a longer video; the previous described segment (${previousStart}s-${previousEnd}s) was captioned as: "${previous.caption}"`,
+    'Describe ONLY what is new or changed in this segment compared to the previous one, in at most 2 short sentences.',
+    'The person, their clothing, the background and the camera carry over — do not mention them.',
+    'Ignore small facial changes (blinks, gaze direction, mouth movement) and do not describe expressions at all; mention a gesture only if it is genuinely new.',
+    'New on-screen text is the most important change: quote EVERY distinct text overlay visible in these frames that was not in the previous segment, exactly as it appears, in order, e.g. Text now shows "SAYA?" then "INILAH". Never mention the previous segment\'s text or use phrases like "replacing X" — state only the new text.',
+    `If literally nothing is new, reply "No change."`,
+    'Start directly with what is new; never open with scene-setting phrases.',
     `Write the caption in ${languageName}. Stick to what is actually there; do not speculate.`,
     'Reply with the caption text only — no preamble, no quotes, no reasoning.',
   ].join(' ');
 };
+
+/**
+The delta prompt (v0.4.0) tells the model to answer exactly this when a
+segment adds nothing; callers rely on the shape to collapse runs of
+unchanged segments in the interpretation context and to keep threading the
+last informative caption as the comparison anchor.
+*/
+export const isNoChangeCaption = (text: string): boolean => /^no change\.?$/i.test(text.trim());
 
 /** Belt-and-braces: strip a leaked <think>…</think> block if the server did not. */
 export const stripCaptionThinking = (text: string): string =>
