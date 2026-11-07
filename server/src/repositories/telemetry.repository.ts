@@ -98,7 +98,10 @@ export const bootstrapTelemetry = (port: number) => {
       [ATTR_SERVICE_NAME]: `immich`,
       [ATTR_SERVICE_VERSION]: serverVersion.toString(),
     }),
-    metricReaders: [new PrometheusExporter({ port })],
+    // exporter-prometheus 0.300.0 defaults host to 'localhost' (loopback-only bind;
+    // 0.223.0 defaulted to all interfaces); containerized scraping needs the pod IP,
+    // so bind all interfaces explicitly.
+    metricReaders: [new PrometheusExporter({ port, host: '0.0.0.0' })],
     contextManager: new AsyncLocalStorageContextManager(),
     instrumentations: [
       new HttpInstrumentation({
