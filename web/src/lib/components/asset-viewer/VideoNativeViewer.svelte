@@ -2,6 +2,7 @@
   import BoundingBoxOverlay from '#lib/components/asset-viewer/BoundingBoxOverlay.svelte';
   import VideoCaptionOverlay from '#lib/components/asset-viewer/VideoCaptionOverlay.svelte';
   import VideoRemoteViewer from '#lib/components/asset-viewer/VideoRemoteViewer.svelte';
+  import VideoTranscriptOverlay from '#lib/components/asset-viewer/VideoTranscriptOverlay.svelte';
   import FaceEditor from '#lib/components/asset-viewer/face-editor/FaceEditor.svelte';
   import { assetViewerFadeDuration } from '#lib/constants.ts';
   import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
@@ -13,8 +14,9 @@
   import { getPublicConfigQuery } from '#lib/queries/config-public.query.ts';
   import { faceManager } from '#lib/stores/face.svelte.ts';
   import { ocrManager } from '#lib/stores/ocr.svelte.ts';
-  import { videoCaptionManager } from '#lib/stores/video-caption.svelte.ts';
   import { autoPlayVideo, lang, loopVideo as loopVideoPreference } from '#lib/stores/preferences.store.ts';
+  import { videoCaptionManager } from '#lib/stores/video-caption.svelte.ts';
+  import { videoTranscriptManager } from '#lib/stores/video-transcript.svelte.ts';
   import { getAssetHlsSessionUrl, getAssetHlsUrl, getAssetMediaUrl, getAssetPlaybackUrl } from '#lib/utils.ts';
   import { AssetMediaSize, AssetTypeEnum, type AssetResponseDto } from '@immich/sdk';
   import { Icon, LoadingSpinner, shortcuts } from '@immich/ui';
@@ -357,6 +359,7 @@
   );
 
   const showCaptionOverlay = $derived(asset.type === AssetTypeEnum.Video && videoCaptionManager.hasCaptions);
+  const showTranscriptOverlay = $derived(asset.type === AssetTypeEnum.Video && videoTranscriptManager.hasTranscript);
 
   $effect(() => {
     if (assetViewerManager.isFaceEditMode) {
@@ -581,6 +584,15 @@
           currentTimeMs={assetViewerManager.videoCurrentTimeMs ?? 0}
           contentRect={overlayContentRect}
           {containerWidth}
+          {containerHeight}
+          raised={showTranscriptOverlay}
+        />
+      {/if}
+
+      {#if showTranscriptOverlay}
+        <VideoTranscriptOverlay
+          currentTimeMs={assetViewerManager.videoCurrentTimeMs ?? 0}
+          contentRect={overlayContentRect}
           {containerHeight}
         />
       {/if}

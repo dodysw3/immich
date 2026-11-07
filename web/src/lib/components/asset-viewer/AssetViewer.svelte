@@ -19,9 +19,10 @@
   import { canOpenEditorForAsset, getAssetActions } from '#lib/services/asset.service.ts';
   import { faceManager } from '#lib/stores/face.svelte.ts';
   import { ocrManager } from '#lib/stores/ocr.svelte.ts';
-  import { videoCaptionManager } from '#lib/stores/video-caption.svelte.ts';
   import { alwaysLoadOriginalVideo } from '#lib/stores/preferences.store.ts';
   import { SlideshowNavigation, SlideshowState, slideshowStore } from '#lib/stores/slideshow.store.ts';
+  import { videoCaptionManager } from '#lib/stores/video-caption.svelte.ts';
+  import { videoTranscriptManager } from '#lib/stores/video-transcript.svelte.ts';
   import { getSharedLink, handlePromiseError } from '#lib/utils.ts';
   import type { OnUndoDelete } from '#lib/utils/actions.ts';
   import { navigateToAsset } from '#lib/utils/asset-utils.ts';
@@ -52,10 +53,11 @@
   import DetailPanel from './DetailPanel.svelte';
   import ImagePanoramaViewer from './ImagePanoramaViewer.svelte';
   import OcrButton from './OcrButton.svelte';
-  import VideoCaptionButton from './VideoCaptionButton.svelte';
   import PhotoViewer from './PhotoViewer.svelte';
   import SlideshowBar from './SlideshowBar.svelte';
   import SlideshowMetadataOverlay from './SlideshowMetadataOverlay.svelte';
+  import VideoCaptionButton from './VideoCaptionButton.svelte';
+  import VideoTranscriptButton from './VideoTranscriptButton.svelte';
   import VideoViewer from './VideoWrapperViewer.svelte';
   import EditorPanel from './editor/EditorPanel.svelte';
   import CropArea from './editor/transform-tool/CropArea.svelte';
@@ -404,6 +406,7 @@
     faceOverlayStore.clear();
     faceManager.clear();
     videoCaptionManager.clear();
+    videoTranscriptManager.clear();
     assetViewerManager.clearVideoCurrentTimeMs();
     if (!sharedLink) {
       if (previewStackedAsset) {
@@ -415,6 +418,7 @@
     }
     if (asset.type === AssetTypeEnum.Video && !sharedLink) {
       await videoCaptionManager.getAssetCaptions(asset.id);
+      await videoTranscriptManager.getAssetTranscripts(asset.id);
     }
   };
 
@@ -483,9 +487,19 @@
       asset.type === AssetTypeEnum.Video &&
       videoCaptionManager.hasCaptions,
   );
+  const showTranscriptButton = $derived(
+    $slideshowState === SlideshowState.None &&
+      !assetViewerManager.isShowEditor &&
+      asset.type === AssetTypeEnum.Video &&
+      videoTranscriptManager.hasTranscript,
+  );
 
   const aiInterpretationButtonBottom = $derived(
-    24 + (showFaceButton ? 56 : 0) + (showOcrButton ? 56 : 0) + (showCaptionButton ? 56 : 0),
+    24 +
+      (showFaceButton ? 56 : 0) +
+      (showOcrButton ? 56 : 0) +
+      (showCaptionButton ? 56 : 0) +
+      (showTranscriptButton ? 56 : 0),
   );
   const { Tag, TagPeople } = $derived(getAssetActions($t, asset));
 
@@ -697,6 +711,18 @@
         class:mb-6={!showFaceButton && !showOcrButton}
       >
         <VideoCaptionButton />
+      </div>
+    {/if}
+
+    {#if showTranscriptButton}
+      <div
+        class="absolute inset-e-0 bottom-0 me-6"
+        class:mb-[180px]={showFaceButton && showOcrButton && showCaptionButton}
+        class:mb-[124px]={(showFaceButton ? 1 : 0) + (showOcrButton ? 1 : 0) + (showCaptionButton ? 1 : 0) === 2}
+        class:mb-20={(showFaceButton ? 1 : 0) + (showOcrButton ? 1 : 0) + (showCaptionButton ? 1 : 0) === 1}
+        class:mb-6={!showFaceButton && !showOcrButton && !showCaptionButton}
+      >
+        <VideoTranscriptButton />
       </div>
     {/if}
 

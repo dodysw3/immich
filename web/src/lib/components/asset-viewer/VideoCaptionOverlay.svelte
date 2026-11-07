@@ -13,11 +13,14 @@
     contentRect = { width: 0, height: 0, offsetX: 0, offsetY: 0 } as ContentRect,
     containerWidth = 0,
     containerHeight = 0,
+    raised = false,
   }: {
     currentTimeMs?: number;
     contentRect?: ContentRect;
     containerWidth?: number;
     containerHeight?: number;
+    /** Shift up a tier when the transcription subtitles render underneath. */
+    raised?: boolean;
   } = $props();
 
   const activeSegment = $derived(videoCaptionManager.segmentAt(currentTimeMs));
@@ -60,7 +63,7 @@
     </div>
   {:else}
     <div
-      class="pointer-events-none absolute inset-x-0 bottom-14 z-10 flex justify-center px-8"
+      class="pointer-events-none absolute inset-x-0 z-10 flex justify-center px-8 {raised ? 'bottom-28' : 'bottom-14'}"
       data-testid="video-caption-overlay"
     >
       <div
