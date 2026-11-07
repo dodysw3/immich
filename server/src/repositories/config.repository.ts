@@ -156,6 +156,8 @@ export interface EnvData {
     concurrency: number;
     reconcileStaggerMs: number;
     skipIfInterpreted: boolean;
+    /** Videos interpret with caption/transcript prompt context (experiment 2). */
+    videoContext: boolean;
     discord: {
       webhookUrl?: string;
       includeThumbnail: boolean;
@@ -184,6 +186,18 @@ export interface EnvData {
     maxDurationSec: number;
     language: string;
     concurrency: number;
+  };
+
+  // Experimental faster-whisper CPU sidecar for video speech transcription
+  // (chained from the AI interpretation job, stores video-transcripts-v1).
+  aiVideoTranscription: {
+    enabled: boolean;
+    url?: string;
+    model: string;
+    timeoutMs: number;
+    /** ISO 639-1 hint; empty = auto-detect. */
+    language: string;
+    maxDurationSec: number;
   };
 
   videoFaceScan: {
@@ -531,6 +545,9 @@ const getEnv = (): EnvData => {
       // since multi-select cannot assume the user knows which assets are
       // already interpreted. Turn off to let re-interpretation through.
       skipIfInterpreted: dto.IMMICH_AI_IMAGE_INTERPRETATION_SKIP_IF_INTERPRETED ?? true,
+      // Experiment 2: videos chain caption+transcript runs into the
+      // interpretation prompt (forked video promptVersion keys the runs).
+      videoContext: dto.IMMICH_AI_IMAGE_INTERPRETATION_VIDEO_CONTEXT ?? false,
       discord: {
         webhookUrl: dto.IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_WEBHOOK_URL,
         includeThumbnail: dto.IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_INCLUDE_THUMBNAIL ?? false,
@@ -564,6 +581,17 @@ const getEnv = (): EnvData => {
       concurrency: dto.IMMICH_AI_VIDEO_CAPTIONING_CONCURRENCY || 1,
     },
 
+    // Experiment 2: faster-whisper CPU sidecar transcribing video speech into
+    // asset_metadata `video-transcripts-v1`; chained from the interpretation
+    // job alongside the GPU captioning lane, never fatal to it.
+    aiVideoTranscription: {
+      enabled: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_ENABLED ?? false,
+      url: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_URL,
+      model: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_MODEL || 'faster-whisper-large-v3',
+      timeoutMs: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_TIMEOUT_MS || 600_000,
+      language: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_LANGUAGE || '',
+      maxDurationSec: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_MAX_DURATION_SEC || 300,
+    },
 
     // Multi-frame video face discovery. Manual per-video trigger only; the
     // queue runs at concurrency 1. Thresholds are bench-tuned (see

@@ -409,6 +409,7 @@ export enum AssetMetadataKey {
   MobileApp = 'mobile-app',
   AiInterpretationV1 = 'ai-interpretation-v1',
   VideoCaptionsV1 = 'video-captions-v1',
+  VideoTranscriptsV1 = 'video-transcripts-v1',
 }
 
 export enum UserAvatarColor {

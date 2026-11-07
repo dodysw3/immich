@@ -7,6 +7,7 @@ import {
   AI_IMAGE_INTERPRETATION_QUANT,
   AI_INTERPRETATION_RATE_WINDOW_MS,
   AI_INTERPRETATION_RETRY_MAX_MS,
+  composeVideoInterpretationContext,
   createAiInterpretationRunKey,
   formatAiInterpretationQueueEta,
   interpretationRetryDelayMs,
@@ -84,5 +85,78 @@ describe('AI image interpretation contract', () => {
 
   it('uses a five-minute completion-rate window', () => {
     expect(AI_INTERPRETATION_RATE_WINDOW_MS).toBe(5 * 60_000);
+  });
+});
+
+describe('composeVideoInterpretationContext', () => {
+  const captionRun = (overrides: Partial<Record<string, unknown>> = {}) =>
+    ({
+      segments: [{ startMs: 0, endMs: 5000, caption: 'A train pulls into a night station.' }],
+      config: { segmentSeconds: 5, framesPerSegment: 3, frameEdge: 672, maxDurationSec: 300, language: 'en' },
+      ...overrides,
+    }) as never;
+
+  const transcriptRun = (overrides: Partial<Record<string, unknown>> = {}) =>
+    ({
+      segments: [{ startMs: 24_400, endMs: 26_400, text: 'selamat datang di LRT Jabodetai' }],
+      ...overrides,
+    }) as never;
+
+  it('returns undefined when neither lane produced a completed run', () => {
+    expect(composeVideoInterpretationContext({})).toBeUndefined();
+  });
+
+  it('frames captions as full-video evidence with the video duration in the header', () => {
+    const context = composeVideoInterpretationContext({ durationMs: 32_391, captions: captionRun() })!;
+    expect(context).toContain('preview thumbnail of a video (32.4s long)');
+    expect(context).toContain('[0.0-5.0s] A train pulls into a night station.');
+    expect(context).toContain('direct observation alongside the thumbnail');
+  });
+
+  it('lists the transcript with its detected language', () => {
+    const context = composeVideoInterpretationContext({
+      captions: captionRun(),
+      transcripts: transcriptRun({ language: 'id' }),
+    })!;
+    expect(context).toContain('Speech transcript (detected language: id):');
+    expect(context).toContain('[24.4-26.4s] selamat datang di LRT Jabodetai');
+  });
+
+  it('states the audio conclusion for a completed transcript run without segments', () => {
+    const noAudio = composeVideoInterpretationContext({
+      captions: captionRun(),
+      transcripts: transcriptRun({ segments: [], noAudio: true }),
+    })!;
+    expect(noAudio).toContain('The video has no audio track.');
+    const silent = composeVideoInterpretationContext({
+      captions: captionRun(),
+      transcripts: transcriptRun({ segments: [] }),
+    })!;
+    expect(silent).toContain('No speech was detected in the video.');
+  });
+
+  it('stays silent about audio when the transcript run is missing entirely', () => {
+    const context = composeVideoInterpretationContext({ captions: captionRun() })!;
+    expect(context).not.toContain('audio');
+  });
+
+  it('notes truncated caption coverage', () => {
+    const context = composeVideoInterpretationContext({ captions: captionRun({ truncated: true }) })!;
+    expect(context).toContain('[Captions cover only the head of a longer video.]');
+  });
+
+  it('caps each section and marks the omission', () => {
+    const longCaption = 'x'.repeat(4000);
+    const context = composeVideoInterpretationContext({
+      captions: captionRun({
+        segments: [
+          { startMs: 0, endMs: 5000, caption: longCaption },
+          { startMs: 5000, endMs: 10_000, caption: longCaption },
+        ],
+      }),
+    })!;
+    expect(context).toContain('[… additional segments omitted]');
+    expect(context).not.toContain('[5.0-10.0s]');
+    expect(context.indexOf('… additional segments omitted')).toBeGreaterThan(context.lastIndexOf('xxxx'));
   });
 });

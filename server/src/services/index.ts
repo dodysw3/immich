@@ -7,6 +7,8 @@ import { AiInterpretSearchClient } from 'src/services/ai-interpret-search.client
 import { AiInterpretSearchService } from 'src/services/ai-interpret-search.service.js';
 import { AiVideoCaptioningClient } from 'src/services/ai-video-captioning.client.js';
 import { AiVideoCaptioningService } from 'src/services/ai-video-captioning.service.js';
+import { AiVideoTranscriptionClient } from 'src/services/ai-video-transcription.client.js';
+import { AiVideoTranscriptionService } from 'src/services/ai-video-transcription.service.js';
 import { AlbumService } from 'src/services/album.service.js';
 import { ApiKeyService } from 'src/services/api-key.service.js';
 import { ApiService } from 'src/services/api.service.js';
@@ -74,6 +76,8 @@ export const services = [
   AiImageInterpretationService,
   AiVideoCaptioningClient,
   AiVideoCaptioningService,
+  AiVideoTranscriptionClient,
+  AiVideoTranscriptionService,
   AiInterpretSearchClient,
   AiInterpretSearchService,
   ActivityService,

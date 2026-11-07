@@ -422,7 +422,11 @@ export class AssetService extends BaseService {
   // Keys written exclusively by the server's own pipelines; user-supplied
   // metadata upserts/deletes must never collide with them.
   private isServerManagedMetadataKey(key: string): boolean {
-    return key === AssetMetadataKey.AiInterpretationV1 || key === AssetMetadataKey.VideoCaptionsV1;
+    return (
+      key === AssetMetadataKey.AiInterpretationV1 ||
+      key === AssetMetadataKey.VideoCaptionsV1 ||
+      key === AssetMetadataKey.VideoTranscriptsV1
+    );
   }
 
   async upsertBulkMetadata(auth: AuthDto, dto: AssetMetadataBulkUpsertDto): Promise<AssetMetadataBulkResponseDto[]> {

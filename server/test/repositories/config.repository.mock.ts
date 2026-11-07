@@ -129,6 +129,7 @@ export const envData: EnvData = {
     reconcileStaggerMs: 5000,
     // Test mock keeps pre-flag behavior: deliveries never skip on existing runs.
     skipIfInterpreted: false,
+    videoContext: false,
     discord: { includeThumbnail: true },
   },
 
@@ -149,6 +150,14 @@ export const envData: EnvData = {
     maxDurationSec: 300,
     language: 'en',
     concurrency: 1,
+  },
+
+  aiVideoTranscription: {
+    enabled: false,
+    model: 'faster-whisper-large-v3',
+    timeoutMs: 600_000,
+    language: '',
+    maxDurationSec: 300,
   },
 
   videoFaceScan: {

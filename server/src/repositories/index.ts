@@ -3,6 +3,7 @@ import { ActivityRepository } from 'src/repositories/activity.repository.js';
 import { AiImageInterpretationRepository } from 'src/repositories/ai-image-interpretation.repository.js';
 import { AiInterpretSearchRepository } from 'src/repositories/ai-interpret-search.repository.js';
 import { AiVideoCaptioningRepository } from 'src/repositories/ai-video-captioning.repository.js';
+import { AiVideoTranscriptionRepository } from 'src/repositories/ai-video-transcription.repository.js';
 import { AlbumUserRepository } from 'src/repositories/album-user.repository.js';
 import { AlbumRepository } from 'src/repositories/album.repository.js';
 import { ApiKeyRepository } from 'src/repositories/api-key.repository.js';
@@ -68,6 +69,7 @@ export const repositories = [
   AccessRepository,
   AiImageInterpretationRepository,
   AiVideoCaptioningRepository,
+  AiVideoTranscriptionRepository,
   AiInterpretSearchRepository,
   ActivityRepository,
   AlbumRepository,

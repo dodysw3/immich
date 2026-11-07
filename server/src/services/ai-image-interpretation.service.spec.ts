@@ -24,9 +24,9 @@ import { AssetFactory } from 'test/factories/asset.factory.js';
 const runKey = 'a'.repeat(64);
 const config = {
   enabled: true,
-   
+
   url: 'http://host.docker.internal:8888/v1',
-   
+
   publicUrl: 'http://host.docker.internal:51900/public/v1',
   publicModel: 'mai/muse-spark-1.3-contributor',
   model: 'model-a',
@@ -37,6 +37,8 @@ const config = {
   maxPixels: 16_000_000,
   concurrency: 1,
   reconcileStaggerMs: 5000,
+  skipIfInterpreted: true,
+  videoContext: false,
   discord: { webhookUrl: 'https://discord.com/api/webhooks/123/token', includeThumbnail: true },
 };
 
@@ -77,6 +79,8 @@ const makeService = () => {
       requeue: vi.fn(),
     },
     client: { interpret: vi.fn() },
+    captioningService: { captionIfMissing: vi.fn().mockResolvedValue(undefined) },
+    transcriptionService: { transcribeIfMissing: vi.fn().mockResolvedValue(undefined) },
   };
   const service = new AiImageInterpretationService(
     dependencies.logger as never as LoggingRepository,
@@ -87,6 +91,8 @@ const makeService = () => {
     dependencies.jobRepository as never as JobRepository,
     dependencies.interpretationRepository as never as AiImageInterpretationRepository,
     dependencies.client as never as AiImageInterpretationClient,
+    dependencies.captioningService as never as never,
+    dependencies.transcriptionService as never as never,
   );
   return { service, dependencies };
 };
@@ -452,7 +458,7 @@ describe(AiImageInterpretationService.name, () => {
         promptVersion: config.promptVersion,
       },
       expect.any(Date),
-      undefined,
+      { promptVersion: config.promptVersion },
     );
     expect(dependencies.interpretationRepository.transitionToRunning).toHaveBeenCalledWith(asset.id, runKey);
     expect(dependencies.client.interpret).toHaveBeenCalledWith(Buffer.from('preview'), { model: config.model });

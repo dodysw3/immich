@@ -1,8 +1,17 @@
 import { DateTime } from 'luxon';
 import { createHash } from 'node:crypto';
 import { AiInterpretationDocumentSchema } from 'src/dtos/ai-image-interpretation.dto.js';
+import type { AiVideoCaptionRun } from 'src/dtos/ai-video-captioning.dto.js';
+import type { AiVideoTranscriptionRun } from 'src/dtos/ai-video-transcription.dto.js';
 
 export const AI_IMAGE_INTERPRETATION_PROMPT_VERSION = 'image-interpretation-1.2.0';
+/**
+Run identity for videos whose interpretation is enriched with caption/transcript
+context. Forking the promptVersion forks the runKey, so existing video
+interpretations (thumbnail-only, under 1.2.0) stay intact; turning the feature
+off or changing context inputs changes the identity again.
+*/
+export const AI_IMAGE_INTERPRETATION_VIDEO_PROMPT_VERSION = 'image-interpretation-1.2.0-video-0.1.0';
 export const AI_IMAGE_INTERPRETATION_MODEL = 'unsloth/Muse-Glimmer-30B-GGUF';
 export const AI_IMAGE_INTERPRETATION_QUANT = 'UD-Q3_K_XL';
 export const AI_IMAGE_INTERPRETATION_MAX_OUTPUT_TOKENS = 6400;
@@ -83,6 +92,90 @@ export const interpretationRetryDelayMs = (attempts: number): number => {
 };
 
 export const isAiInterpretationDocument = (value: unknown) => AiInterpretationDocumentSchema.safeParse(value).success;
+
+// Per-section cap on the composed video context (captions / transcript), so a
+// long video cannot balloon the interpretation prompt; everything past the cap
+// is replaced with an explicit omission marker.
+const VIDEO_CONTEXT_SECTION_CAP_CHARS = 6000;
+
+const capContextSection = (lines: string[]): string => {
+  const kept: string[] = [];
+  let length = 0;
+  for (const line of lines) {
+    if (kept.length > 0 && length + line.length > VIDEO_CONTEXT_SECTION_CAP_CHARS) {
+      kept.push('[… additional segments omitted]');
+      break;
+    }
+    kept.push(line);
+    length += line.length + 1;
+  }
+  return kept.join('\n');
+};
+
+const formatContextWindow = (startMs: number, endMs: number): string =>
+  `[${(startMs / 1000).toFixed(1)}-${(endMs / 1000).toFixed(1)}s]`;
+
+export interface AiVideoInterpretationContextInput {
+  durationMs?: number;
+  /** Latest completed caption run, when the captioning lane produced one. */
+  captions?: AiVideoCaptionRun;
+  /** Latest completed transcription run, when the whisper sidecar produced one. */
+  transcripts?: AiVideoTranscriptionRun;
+}
+
+/**
+Compose the prompt-context block fed to the interpretation model for videos:
+per-segment visual captions plus the whisper transcript, framed as direct
+evidence from the full video (the system prompt only knows about "the supplied
+image"). Returns undefined when there is nothing to add — an absent transcript
+run means "unknown", never "no speech", so it stays silent rather than claiming
+anything about the audio.
+*/
+export const composeVideoInterpretationContext = (
+  input: AiVideoInterpretationContextInput,
+): string | undefined => {
+  const { durationMs, captions, transcripts } = input;
+
+  const captionLines = (captions?.segments ?? []).map(
+    (segment) => `${formatContextWindow(segment.startMs, segment.endMs)} ${segment.caption}`,
+  );
+  const transcriptLines = (transcripts?.segments ?? []).map(
+    (segment) => `${formatContextWindow(segment.startMs, segment.endMs)} ${segment.text}`,
+  );
+
+  const hasCaptions = captionLines.length > 0;
+  const hasTranscript = transcriptLines.length > 0;
+  if (!hasCaptions && !hasTranscript) {
+    return undefined;
+  }
+
+  const durationSec = durationMs !== undefined ? (durationMs / 1000).toFixed(1) : undefined;
+  const sections: string[] = [];
+
+  let header = 'The attached image is only the preview thumbnail of a video';
+  if (durationSec) {
+    header += ` (${durationSec}s long)`;
+  }
+  header += '. Evidence captured from the full video follows; treat it as direct observation alongside the thumbnail, distinguish it from inference, and include what is said or heard when it matters.';
+  sections.push(header);
+
+  if (hasCaptions) {
+    const truncatedNote = captions?.truncated ? '\n[Captions cover only the head of a longer video.]' : '';
+    sections.push(`Visual captions per ${(captions?.config.segmentSeconds ?? 5).toFixed(0)}-second segment:\n${capContextSection(captionLines)}${truncatedNote}`);
+  }
+
+  if (hasTranscript) {
+    const languageNote = transcripts?.language ? ` (detected language: ${transcripts.language})` : '';
+    sections.push(`Speech transcript${languageNote}:\n${capContextSection(transcriptLines)}`);
+  } else if (transcripts) {
+    // A completed run without segments is a real observation about the audio
+    // (no stream, or whisper/VAD heard nothing through the noise filter); a
+    // MISSING run would stay silent above instead of claiming this.
+    sections.push(transcripts.noAudio ? 'The video has no audio track.' : 'No speech was detected in the video.');
+  }
+
+  return sections.join('\n\n');
+};
 
 // The completion-rate window used for queue ETA estimates: the average of the
 // last N minutes of completed interpretations (aggregated across workers via

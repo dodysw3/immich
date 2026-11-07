@@ -21,8 +21,12 @@ import {
   AiImageInterpretationClient,
   AiImageInterpretationClientError,
 } from 'src/services/ai-image-interpretation.client.js';
+import { AiVideoCaptioningService } from 'src/services/ai-video-captioning.service.js';
+import { AiVideoTranscriptionService } from 'src/services/ai-video-transcription.service.js';
 import {
   AI_INTERPRETATION_HOSTED_QUANT,
+  AI_IMAGE_INTERPRETATION_VIDEO_PROMPT_VERSION,
+  composeVideoInterpretationContext,
   createAiInterpretationJobId,
   createAiInterpretationPublicRunKey,
 } from 'src/utils/ai-image-interpretation.js';
@@ -62,6 +66,8 @@ export class AiImageInterpretationService {
     private jobRepository: JobRepository,
     private interpretationRepository: AiImageInterpretationRepository,
     private client: AiImageInterpretationClient,
+    private captioningService: AiVideoCaptioningService,
+    private transcriptionService: AiVideoTranscriptionService,
   ) {
     this.logger.setContext(AiImageInterpretationService.name);
   }
@@ -121,35 +127,49 @@ export class AiImageInterpretationService {
     forcePublic: boolean,
   ): Promise<JobStatus> {
     const config = this.configRepository.getEnv().aiImageInterpretation;
-    const publicRunKey = createAiInterpretationPublicRunKey(config.publicModel, config.promptVersion);
+    const isManualDelivery = !source && !origin;
     // Backlog-sweep compute saver: a delivery for an asset that already
     // carries any completed run (older prompt version, another model, a
     // public-spark run) is skipped instead of re-interpreted — public
-    // deliveries included, since multi-select "Interpret image (public)"
-    // cannot assume the user knows which assets are already interpreted.
+    // deliveries included, since multi-select "Interpret (public)" cannot
+    // assume the user knows which assets are already interpreted.
     // Checked before claiming so a skipped delivery leaves no run record.
     // To force a re-interpretation (either lane), turn the flag off.
     if (config.skipIfInterpreted && (await this.hasCompletedInterpretation(assetId))) {
-      // Log level (not debug): during the backlog sweep this is the only
-      // visible signal that compute is being saved — skipped deliveries
-      // produce no run record, alert, or metric.
-      this.logger.log(`Skipping AI interpretation for ${assetId}: asset already has a completed interpretation`);
-      return JobStatus.Skipped;
+      // One narrow bypass: a manual "Interpret" on a video with the caption/
+      // transcript context feature on is exactly the enrichment re-run that
+      // feature exists for. Script/upload deliveries keep the skip semantics.
+      if (!(isManualDelivery && config.videoContext && (await this.isVideoAsset(assetId)))) {
+        // Log level (not debug): during the backlog sweep this is the only
+        // visible signal that compute is being saved — skipped deliveries
+        // produce no run record, alert, or metric.
+        this.logger.log(`Skipping AI interpretation for ${assetId}: asset already has a completed interpretation`);
+        return JobStatus.Skipped;
+      }
+      this.logger.log(`Re-interpreting video ${assetId} with caption/transcript context`);
     }
+    // Videos interpreting with caption/transcript context claim the forked
+    // video prompt version, so their runKey differs from thumbnail-only runs
+    // and the public-lane comparison below stays consistent for videos.
+    const promptVersion = await this.promptVersionFor(assetId, config);
+    const publicRunKey = createAiInterpretationPublicRunKey(config.publicModel, promptVersion);
     let runKey = requestedRunKey;
     if (!runKey && forcePublic) {
-      runKey = createAiInterpretationPublicRunKey(config.publicModel, config.promptVersion);
+      runKey = publicRunKey;
     }
     if (!runKey) {
       // Bulk-script deliveries (origin: 'script') must not masquerade as upload
       // claims — the trigger feeds run provenance and retry tiering.
-      runKey = await this.claimMissingRun(assetId, origin === 'script' ? { trigger: 'script' } : undefined);
+      runKey = await this.claimMissingRun(assetId, {
+        ...(origin === 'script' && { trigger: 'script' as const }),
+        promptVersion,
+      });
       if (!runKey) {
         this.logger.debug(`Skipping manual AI interpretation request for ${assetId}`);
         return JobStatus.Skipped;
       }
     } else if (forcePublic || runKey === publicRunKey) {
-      // Manual "Interpret image (public)" delivery: claim the hosted identity.
+      // Manual "Interpret (public)" delivery: claim the hosted identity.
       // The runKey encodes model + prompt version, so a completed run means
       // this asset already carries a public interpretation of the same
       // identity — skip it instead of re-sending the image. Bumping the
@@ -160,7 +180,7 @@ export class AiImageInterpretationService {
         return JobStatus.Skipped;
       }
 
-      const claim = await this.interpretationRepository.claim(assetId, this.publicIdentity(config), new Date(), {
+      const claim = await this.interpretationRepository.claim(assetId, this.publicIdentity(config, promptVersion), new Date(), {
         trigger: 'manual-public',
       });
       if (claim.alreadyExists && (claim.run.status === 'running' || claim.run.status === 'completed')) {
@@ -214,7 +234,23 @@ export class AiImageInterpretationService {
         return JobStatus.Success;
       }
 
-      const copySource = isPublic ? null : await this.interpretationRepository.findCopySource(assetId, runKey);
+      const isVideo = asset.type === AssetType.Video;
+      const videoContextEnabled = config.videoContext && isVideo;
+      // Chain the captioning (GPU lane) and transcription (CPU sidecar) runs
+      // concurrently — independent work, and both must finish before the
+      // richer prompt is composed. Each degrades independently: a down lane
+      // logs a warning and the context composes from whatever completed runs
+      // exist, never failing the interpretation.
+      let videoContext: string | undefined;
+      if (videoContextEnabled) {
+        videoContext = await this.enrichVideoContext(assetId);
+      }
+
+      // Video-context runs skip duplicate copying: copying a sibling's
+      // (thumbnail-only) interpretation would silently defeat the enrichment
+      // this run exists for. Images keep the copy path.
+      const copySource =
+        !videoContextEnabled && !isPublic ? await this.interpretationRepository.findCopySource(assetId, runKey) : null;
       if (copySource) {
         completed = await this.interpretationRepository.completeCopy(assetId, runKey, copySource, {
           durationMs: Date.now() - startedAt,
@@ -231,6 +267,7 @@ export class AiImageInterpretationService {
         const response = await this.client.interpret(prepared.buffer, {
           model: run.model,
           ...(isPublic && { url: config.publicUrl, backendLabel: 'public-spark' }),
+          ...(videoContext && { videoContext }),
         });
 
         const served = response.model === run.model ? undefined : { model: response.model, quant: 'hosted' as const };
@@ -308,9 +345,65 @@ export class AiImageInterpretationService {
 
   // The hosted ("public") run identity: the same prompt as local runs, but the
   // hosted router model the user manually opts into per image. `hosted` quant
-  // distinguishes it from locally quantized GGUF identities.
-  private publicIdentity(config: { publicModel: string; promptVersion: string }): AiInterpretationIdentity {
-    return { model: config.publicModel, quant: AI_INTERPRETATION_HOSTED_QUANT, promptVersion: config.promptVersion };
+  // distinguishes it from locally quantized GGUF identities. Video-context
+  // deliveries pass the forked video prompt version so their public runKey
+  // matches the local video runKey's prompt identity.
+  private publicIdentity(
+    config: { publicModel: string; promptVersion: string },
+    promptVersionOverride?: string,
+  ): AiInterpretationIdentity {
+    return {
+      model: config.publicModel,
+      quant: AI_INTERPRETATION_HOSTED_QUANT,
+      promptVersion: promptVersionOverride ?? config.promptVersion,
+    };
+  }
+
+  private async isVideoAsset(assetId: string): Promise<boolean> {
+    const [asset] = await this.assetRepository.getByIds([assetId]);
+    return asset?.type === AssetType.Video;
+  }
+
+  // Video assets interpreting with the caption/transcript context feature on
+  // claim the forked video prompt version; everything else keeps the
+  // configured prompt version. No asset fetch when the feature is off.
+  private async promptVersionFor(
+    assetId: string,
+    config: { videoContext: boolean; promptVersion: string },
+  ): Promise<string> {
+    if (!config.videoContext) {
+      return config.promptVersion;
+    }
+    return (await this.isVideoAsset(assetId)) ? AI_IMAGE_INTERPRETATION_VIDEO_PROMPT_VERSION : config.promptVersion;
+  }
+
+  // Chain the captioning (GPU) and transcription (CPU) lanes concurrently —
+  // they are independent and both must finish before the richer prompt is
+  // composed. Each lane degrades independently: a down sidecar or LFM lane
+  // logs a warning and the context composes from whatever completed runs
+  // exist, never failing the interpretation job.
+  private async enrichVideoContext(assetId: string): Promise<string | undefined> {
+    const [captions, transcripts] = await Promise.allSettled([
+      this.captioningService.captionIfMissing(assetId, 'auto-interpret'),
+      this.transcriptionService.transcribeIfMissing(assetId, 'auto-interpret'),
+    ]);
+    const captionRun = captions.status === 'fulfilled' ? captions.value : undefined;
+    const transcriptRun = transcripts.status === 'fulfilled' ? transcripts.value : undefined;
+    if (!captionRun && !transcriptRun) {
+      return undefined;
+    }
+
+    const context = composeVideoInterpretationContext({
+      durationMs: captionRun?.durationMs ?? transcriptRun?.durationMs,
+      captions: captionRun,
+      transcripts: transcriptRun,
+    });
+    if (context) {
+      this.logger.log(
+        `Composed video caption/transcript context for ${assetId} (${captionRun ? 'captions' : 'no captions'}, ${transcriptRun ? 'transcript' : 'no transcript'})`,
+      );
+    }
+    return context;
   }
 
   // Any completed run in the asset's own document counts — copied runs and
@@ -339,7 +432,10 @@ export class AiImageInterpretationService {
     return !!getAssetFile(asset.files, AssetFileType.Preview, { isEdited: false });
   }
 
-  private async claimMissingRun(assetId: string, options?: AiInterpretationClaimOptions): Promise<string | undefined> {
+  private async claimMissingRun(
+    assetId: string,
+    options?: AiInterpretationClaimOptions & { promptVersion?: string },
+  ): Promise<string | undefined> {
     const config = this.configRepository.getEnv().aiImageInterpretation;
     if (!(await this.isInterpretationEligible(assetId))) {
       return;
@@ -350,7 +446,7 @@ export class AiImageInterpretationService {
       {
         model: config.model,
         quant: config.quant,
-        promptVersion: config.promptVersion,
+        promptVersion: options?.promptVersion ?? config.promptVersion,
       },
       new Date(),
       options,
@@ -400,14 +496,19 @@ export class AiImageInterpretationService {
     const now = Date.now();
     // A queued run is only declared lost when its BullMQ job no longer exists
     // (e.g. queue state wiped); waiting behind a long backlog is not loss.
+    // Videos interpreting with caption/transcript context carry the forked
+    // video prompt version in their public runKey, so both hosted identities
+    // count as public here.
     const publicRunKey = createAiInterpretationPublicRunKey(config.publicModel, config.promptVersion);
+    const videoPublicRunKey = createAiInterpretationPublicRunKey(config.publicModel, AI_IMAGE_INTERPRETATION_VIDEO_PROMPT_VERSION);
+    const isPublicRunKey = (runKey: string) => runKey === publicRunKey || runKey === videoPublicRunKey;
     const failed = await this.interpretationRepository.failStale(new Date(now - timeoutMs), (assetId, runKey) =>
       // Public runs live in their own queue (and legacy pre-split public jobs
       // in the old one are deliberately NOT seen here): checking only the
       // run's own queue marks them orphaned so the reconcile re-dispatches
       // them through the public queue.
       this.jobRepository.jobExists(
-        runKey === publicRunKey ? QueueName.ImageInterpretationPublic : QueueName.ImageInterpretation,
+        isPublicRunKey(runKey) ? QueueName.ImageInterpretationPublic : QueueName.ImageInterpretation,
         createAiInterpretationJobId(assetId, runKey),
       ),
     );
@@ -448,7 +549,7 @@ export class AiImageInterpretationService {
       // is FIFO: an old-library run re-added there sits behind every newer
       // upload — at backlog scale it re-flooded tier 2 wholesale and new
       // uploads stopped being prompt). Older assets drop to the bulk band (3).
-      const isPublic = runKey === publicRunKey;
+      const isPublic = isPublicRunKey(runKey);
       const isFreshUpload = Date.now() - assetCreatedAt.getTime() < UPLOAD_RETRY_MAX_ASSET_AGE_MS;
       const delayMs = isPublic ? undefined : staggerIndex++ * staggerMs;
       if (delayMs !== undefined && delayMs > 0) {

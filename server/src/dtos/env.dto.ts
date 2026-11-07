@@ -129,6 +129,12 @@ export const EnvSchema = z
     IMMICH_AI_VIDEO_CAPTIONING_MAX_DURATION_SEC: z.coerce.number().int().min(1).optional(),
     IMMICH_AI_VIDEO_CAPTIONING_LANGUAGE: z.string().min(2).max(8).optional(),
     IMMICH_AI_VIDEO_CAPTIONING_CONCURRENCY: z.coerce.number().int().min(1).optional(),
+    IMMICH_AI_VIDEO_TRANSCRIPTION_ENABLED: stringBool.optional(),
+    IMMICH_AI_VIDEO_TRANSCRIPTION_URL: z.string().url().optional(),
+    IMMICH_AI_VIDEO_TRANSCRIPTION_MODEL: z.string().min(1).optional(),
+    IMMICH_AI_VIDEO_TRANSCRIPTION_TIMEOUT_MS: z.coerce.number().int().min(1).optional(),
+    IMMICH_AI_VIDEO_TRANSCRIPTION_LANGUAGE: z.string().max(8).optional(),
+    IMMICH_AI_VIDEO_TRANSCRIPTION_MAX_DURATION_SEC: z.coerce.number().int().min(1).optional(),
     IMMICH_AI_INTERPRET_SEARCH_ENABLED: stringBool.optional(),
     IMMICH_AI_INTERPRET_SEARCH_URL: z.string().url().optional(),
     IMMICH_AI_INTERPRET_SEARCH_API_KEY: z.preprocess(
