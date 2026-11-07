@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import sharp from 'sharp';
-import type { ArgOf } from 'src/repositories/event.repository.js';
-import type { IAssetInterpretationJob, JobOf } from 'src/types.js';
 import { OnEvent, OnJob } from 'src/decorators.js';
 import { AiInterpretationInput, AiInterpretationMetrics } from 'src/dtos/ai-image-interpretation.dto.js';
 import { AssetFileType, AssetType, AssetVisibility, ImmichWorker, JobName, JobStatus, QueueName } from 'src/enum.js';
@@ -14,6 +12,7 @@ import {
 import { AssetJobRepository } from 'src/repositories/asset-job.repository.js';
 import { AssetRepository } from 'src/repositories/asset.repository.js';
 import { ConfigRepository } from 'src/repositories/config.repository.js';
+import type { ArgOf } from 'src/repositories/event.repository.js';
 import { JobRepository } from 'src/repositories/job.repository.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';
 import { SystemMetadataRepository } from 'src/repositories/system-metadata.repository.js';
@@ -23,9 +22,10 @@ import {
 } from 'src/services/ai-image-interpretation.client.js';
 import { AiVideoCaptioningService } from 'src/services/ai-video-captioning.service.js';
 import { AiVideoTranscriptionService } from 'src/services/ai-video-transcription.service.js';
+import type { IAssetInterpretationJob, JobOf } from 'src/types.js';
 import {
-  AI_INTERPRETATION_HOSTED_QUANT,
   AI_IMAGE_INTERPRETATION_VIDEO_PROMPT_VERSION,
+  AI_INTERPRETATION_HOSTED_QUANT,
   composeVideoInterpretationContext,
   createAiInterpretationJobId,
   createAiInterpretationPublicRunKey,
@@ -127,34 +127,38 @@ export class AiImageInterpretationService {
     forcePublic: boolean,
   ): Promise<JobStatus> {
     const config = this.configRepository.getEnv().aiImageInterpretation;
-    const isManualDelivery = !source && !origin;
     // Backlog-sweep compute saver: a delivery for an asset that already
-    // carries any completed run (older prompt version, another model, a
-    // public-spark run) is skipped instead of re-interpreted — public
+    // carries a completed run is skipped instead of re-interpreted — public
     // deliveries included, since multi-select "Interpret (public)" cannot
     // assume the user knows which assets are already interpreted.
     // Checked before claiming so a skipped delivery leaves no run record.
     // To force a re-interpretation (either lane), turn the flag off.
-    if (config.skipIfInterpreted && (await this.hasCompletedInterpretation(assetId))) {
-      // One narrow bypass: a manual "Interpret" on a video with the caption/
-      // transcript context feature on is exactly the enrichment re-run that
-      // feature exists for. Script/upload deliveries keep the skip semantics.
-      if (!(isManualDelivery && config.videoContext && (await this.isVideoAsset(assetId)))) {
-        // Log level (not debug): during the backlog sweep this is the only
-        // visible signal that compute is being saved — skipped deliveries
-        // produce no run record, alert, or metric.
-        this.logger.log(`Skipping AI interpretation for ${assetId}: asset already has a completed interpretation`);
-        return JobStatus.Skipped;
-      }
-      this.logger.log(`Re-interpreting video ${assetId} with caption/transcript context`);
-    }
+    // Videos are version-scoped instead: a completed run of an OLDER
+    // interpretation version (e.g. a thumbnail-only run from before the
+    // caption/transcript context feature) doesn't block the current version's
+    // delivery, while a same-version completion still saves the compute.
+    const isVideo = await this.isVideoAsset(assetId);
     // Videos interpreting with caption/transcript context claim the forked
     // video prompt version, so their runKey differs from thumbnail-only runs
     // and the public-lane comparison below stays consistent for videos.
-    const promptVersion = await this.promptVersionFor(assetId, config);
+    const promptVersion = this.promptVersionFor(isVideo, config);
+    if (
+      config.skipIfInterpreted &&
+      (await this.hasCompletedInterpretation(assetId, isVideo ? promptVersion : undefined))
+    ) {
+      // Log level (not debug): during the backlog sweep this is the only
+      // visible signal that compute is being saved — skipped deliveries
+      // produce no run record, alert, or metric.
+      this.logger.log(`Skipping AI interpretation for ${assetId}: asset already has a completed interpretation`);
+      return JobStatus.Skipped;
+    }
     const publicRunKey = createAiInterpretationPublicRunKey(config.publicModel, promptVersion);
+    // Public deliveries always ride the recomputed key: the enqueue-time key
+    // carries the base prompt version, but videos claim the forked video one —
+    // the claim keys off the identity, so transition/completion/failure must
+    // use that same key or the delivery silently no-ops on a missing run.
     let runKey = requestedRunKey;
-    if (!runKey && forcePublic) {
+    if (forcePublic) {
       runKey = publicRunKey;
     }
     if (!runKey) {
@@ -180,9 +184,14 @@ export class AiImageInterpretationService {
         return JobStatus.Skipped;
       }
 
-      const claim = await this.interpretationRepository.claim(assetId, this.publicIdentity(config, promptVersion), new Date(), {
-        trigger: 'manual-public',
-      });
+      const claim = await this.interpretationRepository.claim(
+        assetId,
+        this.publicIdentity(config, promptVersion),
+        new Date(),
+        {
+          trigger: 'manual-public',
+        },
+      );
       if (claim.alreadyExists && (claim.run.status === 'running' || claim.run.status === 'completed')) {
         this.logger.debug(
           `Skipping public AI interpretation delivery for ${assetId}: ${claim.run.status} run already exists`,
@@ -366,15 +375,12 @@ export class AiImageInterpretationService {
 
   // Video assets interpreting with the caption/transcript context feature on
   // claim the forked video prompt version; everything else keeps the
-  // configured prompt version. No asset fetch when the feature is off.
-  private async promptVersionFor(
-    assetId: string,
-    config: { videoContext: boolean; promptVersion: string },
-  ): Promise<string> {
-    if (!config.videoContext) {
+  // configured prompt version.
+  private promptVersionFor(isVideo: boolean, config: { videoContext: boolean; promptVersion: string }): string {
+    if (!config.videoContext || !isVideo) {
       return config.promptVersion;
     }
-    return (await this.isVideoAsset(assetId)) ? AI_IMAGE_INTERPRETATION_VIDEO_PROMPT_VERSION : config.promptVersion;
+    return AI_IMAGE_INTERPRETATION_VIDEO_PROMPT_VERSION;
   }
 
   // Chain the captioning (GPU) and transcription (CPU) lanes concurrently —
@@ -408,14 +414,18 @@ export class AiImageInterpretationService {
 
   // Any completed run in the asset's own document counts — copied runs and
   // public-spark runs included; failed or in-flight runs of other identities
-  // never block.
-  private async hasCompletedInterpretation(assetId: string): Promise<boolean> {
+  // never block. With a promptVersion, only a completed run of that version
+  // counts (the version-scoped gate for videos: older-version runs yield to
+  // the current version's delivery).
+  private async hasCompletedInterpretation(assetId: string, promptVersion?: string): Promise<boolean> {
     const document = await this.interpretationRepository.get(assetId);
     if (!document) {
       return false;
     }
 
-    return Object.values(document.runs).some((run) => run.status === 'completed');
+    return Object.values(document.runs).some(
+      (run) => run.status === 'completed' && (!promptVersion || run.promptVersion === promptVersion),
+    );
   }
 
   private async isInterpretationEligible(assetId: string): Promise<boolean> {
@@ -500,7 +510,10 @@ export class AiImageInterpretationService {
     // video prompt version in their public runKey, so both hosted identities
     // count as public here.
     const publicRunKey = createAiInterpretationPublicRunKey(config.publicModel, config.promptVersion);
-    const videoPublicRunKey = createAiInterpretationPublicRunKey(config.publicModel, AI_IMAGE_INTERPRETATION_VIDEO_PROMPT_VERSION);
+    const videoPublicRunKey = createAiInterpretationPublicRunKey(
+      config.publicModel,
+      AI_IMAGE_INTERPRETATION_VIDEO_PROMPT_VERSION,
+    );
     const isPublicRunKey = (runKey: string) => runKey === publicRunKey || runKey === videoPublicRunKey;
     const failed = await this.interpretationRepository.failStale(new Date(now - timeoutMs), (assetId, runKey) =>
       // Public runs live in their own queue (and legacy pre-split public jobs
@@ -528,13 +541,19 @@ export class AiImageInterpretationService {
     let staggerIndex = 0;
     let staggered = 0;
     const staggerMs = config.reconcileStaggerMs;
-    for (const { assetId, runKey, assetCreatedAt } of due) {
+    for (const { assetId, runKey, assetCreatedAt, assetType, promptVersion } of due) {
       // Without this guard a failed run for an already-interpreted asset would
       // churn forever: requeue → delivery skipped → orphaned queued run →
       // failStale marks it failed → due again. Leaving it failed (retry stays
       // past-due) is stable, and reprocessing unblocks as soon as the flag is
-      // turned off.
-      if (config.skipIfInterpreted && (await this.hasCompletedInterpretation(assetId))) {
+      // turned off. Videos are version-scoped like the delivery gate: an
+      // older-version completion must not strand a failed run of the current
+      // version (e.g. an enrichment run behind a thumbnail-only completion).
+      const isVideo = assetType === AssetType.Video;
+      if (
+        config.skipIfInterpreted &&
+        (await this.hasCompletedInterpretation(assetId, isVideo ? promptVersion : undefined))
+      ) {
         continue;
       }
       const requeued = await this.interpretationRepository.requeue(assetId, runKey);

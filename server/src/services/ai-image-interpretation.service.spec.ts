@@ -17,7 +17,10 @@ import {
   AiImageInterpretationClientError,
 } from 'src/services/ai-image-interpretation.client.js';
 import { AiImageInterpretationService } from 'src/services/ai-image-interpretation.service.js';
-import { createAiInterpretationPublicRunKey } from 'src/utils/ai-image-interpretation.js';
+import {
+  AI_IMAGE_INTERPRETATION_VIDEO_PROMPT_VERSION,
+  createAiInterpretationPublicRunKey,
+} from 'src/utils/ai-image-interpretation.js';
 import { clearConfigCache } from 'src/utils/config.js';
 import { AssetFactory } from 'test/factories/asset.factory.js';
 
@@ -43,6 +46,8 @@ const config = {
 };
 
 const publicRunKey = createAiInterpretationPublicRunKey(config.publicModel, config.promptVersion);
+const videoPromptVersion = AI_IMAGE_INTERPRETATION_VIDEO_PROMPT_VERSION;
+const videoPublicRunKey = createAiInterpretationPublicRunKey(config.publicModel, videoPromptVersion);
 
 const makeService = () => {
   const dependencies = {
@@ -59,6 +64,9 @@ const makeService = () => {
         visibility: AssetVisibility.Timeline,
         duplicatesDetectedAt: new Date(),
       }),
+      // Deliveries fetch the asset once to branch image vs video gating;
+      // image is the historical default, video tests override this.
+      getByIds: vi.fn().mockResolvedValue([{ type: AssetType.Image }]),
     },
     systemMetadataRepository: { get: vi.fn().mockResolvedValue({}) },
     jobRepository: {
@@ -145,6 +153,13 @@ const makePublicRun = (
 const enableSkipFlag = (dependencies: ReturnType<typeof makeService>['dependencies']) => {
   dependencies.configRepository.getEnv.mockReturnValue({
     aiImageInterpretation: { ...config, skipIfInterpreted: true },
+    aiInterpretSearch: { enabled: false },
+  });
+};
+
+const enableVideoContext = (dependencies: ReturnType<typeof makeService>['dependencies']) => {
+  dependencies.configRepository.getEnv.mockReturnValue({
+    aiImageInterpretation: { ...config, skipIfInterpreted: true, videoContext: true },
     aiInterpretSearch: { enabled: false },
   });
 };
@@ -678,7 +693,9 @@ describe(AiImageInterpretationService.name, () => {
       name: JobName.AssetInterpretImage,
       data: { id: 'asset-4', runKey, priority: 2, delayMs: 10_000 },
     });
-    expect(dependencies.logger.log).toHaveBeenCalledWith('Requeued 4 due AI interpretation retry run(s) (spread over 10s)');
+    expect(dependencies.logger.log).toHaveBeenCalledWith(
+      'Requeued 4 due AI interpretation retry run(s) (spread over 10s)',
+    );
   });
 
   it('skips the stagger entirely when reconcileStaggerMs is 0', async () => {
@@ -924,6 +941,212 @@ describe(AiImageInterpretationService.name, () => {
       expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
         name: JobName.AssetInterpretImage,
         data: { id: 'asset-fresh', runKey, priority: 2, delayMs: 0 },
+      });
+    });
+
+    it('re-interprets a video with a completed older-version run through the public lane on the forked video runKey', async () => {
+      const { service, dependencies } = makeService();
+      enableSkipFlag(dependencies);
+      enableVideoContext(dependencies);
+      dependencies.assetRepository.getByIds.mockResolvedValue([{ type: AssetType.Video }]);
+      // A completed thumbnail-only (base prompt version) run exists — exactly
+      // the M1-era state that must yield to the enriched video-context version.
+      dependencies.interpretationRepository.get.mockResolvedValue({
+        schemaVersion: 1,
+        runs: {
+          [publicRunKey]: {
+            model: config.publicModel,
+            quant: 'hosted',
+            promptVersion: config.promptVersion,
+            trigger: 'manual-public',
+            requestedAt: new Date().toISOString(),
+            status: 'completed',
+          },
+          // The run the delivery claims (created by the claim below in real
+          // life); the document lookup after transitionToRunning needs it.
+          [videoPublicRunKey]: {
+            model: config.publicModel,
+            quant: 'hosted',
+            promptVersion: videoPromptVersion,
+            trigger: 'manual-public',
+            requestedAt: new Date().toISOString(),
+            status: 'queued',
+          },
+        },
+      } as AiInterpretationDocument);
+      dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue(
+        AssetFactory.from({ type: AssetType.Video, visibility: AssetVisibility.Timeline })
+          .files([AssetFileType.Preview])
+          .build(),
+      );
+      service_preparePreview(service);
+      dependencies.interpretationRepository.claim.mockResolvedValue({
+        alreadyExists: false,
+        runKey: videoPublicRunKey,
+        run: { model: config.publicModel, quant: 'hosted', promptVersion: videoPromptVersion },
+      });
+      dependencies.interpretationRepository.transitionToRunning.mockResolvedValue(true);
+      dependencies.client.interpret.mockResolvedValue({
+        result: { title: 't' } as never,
+        model: config.publicModel,
+        promptTokens: 1,
+        completionTokens: 1,
+      });
+      dependencies.interpretationRepository.complete.mockResolvedValue(true);
+
+      await expect(service.handleInterpretationPublic({ id: 'asset-1', runKey: publicRunKey } as never)).resolves.toBe(
+        JobStatus.Success,
+      );
+
+      // The delivery must claim AND transition on the forked video identity —
+      // transitioning on the enqueue-time base key is what silently no-op'd
+      // public video deliveries before the fix.
+      expect(dependencies.interpretationRepository.claim).toHaveBeenCalledWith(
+        'asset-1',
+        { model: config.publicModel, quant: 'hosted', promptVersion: videoPromptVersion },
+        expect.any(Date),
+        { trigger: 'manual-public' },
+      );
+      expect(dependencies.interpretationRepository.transitionToRunning).toHaveBeenCalledWith(
+        'asset-1',
+        videoPublicRunKey,
+      );
+      expect(dependencies.client.interpret).toHaveBeenCalled();
+    });
+
+    it('still skips a video whose current interpretation version already completed', async () => {
+      const { service, dependencies } = makeService();
+      enableSkipFlag(dependencies);
+      enableVideoContext(dependencies);
+      dependencies.assetRepository.getByIds.mockResolvedValue([{ type: AssetType.Video }]);
+      dependencies.interpretationRepository.get.mockResolvedValue({
+        schemaVersion: 1,
+        runs: {
+          [videoPublicRunKey]: {
+            model: config.publicModel,
+            quant: 'hosted',
+            promptVersion: videoPromptVersion,
+            trigger: 'manual-public',
+            requestedAt: new Date().toISOString(),
+            status: 'completed',
+          },
+        },
+      } as AiInterpretationDocument);
+
+      await expect(service.handleInterpretationPublic({ id: 'asset-1', runKey: publicRunKey } as never)).resolves.toBe(
+        JobStatus.Skipped,
+      );
+
+      expect(dependencies.interpretationRepository.claim).not.toHaveBeenCalled();
+      expect(dependencies.interpretationRepository.transitionToRunning).not.toHaveBeenCalled();
+    });
+
+    it('claims the forked video prompt version for private manual deliveries on older-version videos', async () => {
+      const { service, dependencies } = makeService();
+      enableSkipFlag(dependencies);
+      enableVideoContext(dependencies);
+      dependencies.assetRepository.getByIds.mockResolvedValue([{ type: AssetType.Video }]);
+      dependencies.interpretationRepository.get.mockResolvedValue({
+        schemaVersion: 1,
+        runs: {
+          [runKey]: {
+            model: config.model,
+            quant: config.quant,
+            promptVersion: config.promptVersion,
+            trigger: 'upload',
+            requestedAt: new Date().toISOString(),
+            status: 'completed',
+          },
+        },
+      } as AiInterpretationDocument);
+      dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue(
+        AssetFactory.from({ type: AssetType.Video, visibility: AssetVisibility.Timeline })
+          .files([AssetFileType.Preview])
+          .build(),
+      );
+      service_preparePreview(service);
+      dependencies.interpretationRepository.claim.mockResolvedValue({
+        alreadyExists: false,
+        runKey,
+        run: { model: config.model, quant: config.quant, promptVersion: videoPromptVersion },
+      });
+      dependencies.interpretationRepository.transitionToRunning.mockResolvedValue(true);
+      dependencies.client.interpret.mockResolvedValue({
+        result: { title: 't' } as never,
+        model: config.model,
+        promptTokens: 1,
+        completionTokens: 1,
+      });
+      dependencies.interpretationRepository.complete.mockResolvedValue(true);
+
+      await expect(service.handleInterpretation({ id: 'asset-1' } as never)).resolves.toBe(JobStatus.Success);
+
+      expect(dependencies.interpretationRepository.claim).toHaveBeenCalledWith(
+        'asset-1',
+        { model: config.model, quant: config.quant, promptVersion: videoPromptVersion },
+        expect.any(Date),
+        { promptVersion: videoPromptVersion },
+      );
+    });
+
+    it('requeues a video retry whose own version has not completed even when older versions did', async () => {
+      const { service, dependencies } = makeService();
+      enableSkipFlag(dependencies);
+      dependencies.interpretationRepository.failStale.mockResolvedValue(0);
+      dependencies.interpretationRepository.findDueRetries.mockResolvedValue([
+        // Failed enrichment run behind a completed thumbnail-only run: the
+        // version-scoped gate must let reconcile requeue it.
+        {
+          assetId: 'asset-video',
+          runKey: videoPublicRunKey,
+          assetCreatedAt: new Date(),
+          assetType: AssetType.Video,
+          promptVersion: videoPromptVersion,
+        },
+        // Same-version completion already exists: keep the compute saver.
+        {
+          assetId: 'asset-video-done',
+          runKey: videoPublicRunKey,
+          assetCreatedAt: new Date(),
+          assetType: AssetType.Video,
+          promptVersion: videoPromptVersion,
+        },
+      ]);
+      dependencies.interpretationRepository.get
+        .mockResolvedValueOnce({
+          schemaVersion: 1,
+          runs: {
+            [publicRunKey]: {
+              model: config.publicModel,
+              quant: 'hosted',
+              promptVersion: config.promptVersion,
+              trigger: 'manual-public',
+              requestedAt: new Date().toISOString(),
+              status: 'completed',
+            },
+          },
+        } as AiInterpretationDocument)
+        .mockResolvedValueOnce({
+          schemaVersion: 1,
+          runs: {
+            [videoPublicRunKey]: {
+              model: config.publicModel,
+              quant: 'hosted',
+              promptVersion: videoPromptVersion,
+              trigger: 'manual-public',
+              requestedAt: new Date().toISOString(),
+              status: 'completed',
+            },
+          },
+        } as AiInterpretationDocument);
+      dependencies.interpretationRepository.requeue.mockResolvedValue(true);
+
+      await expect(service.handleReconcile()).resolves.toBe(JobStatus.Success);
+
+      expect(dependencies.interpretationRepository.requeue).toHaveBeenCalledTimes(1);
+      expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
+        name: JobName.AssetInterpretImagePublic,
+        data: { id: 'asset-video', runKey: videoPublicRunKey, priority: 1, delayMs: undefined },
       });
     });
   });

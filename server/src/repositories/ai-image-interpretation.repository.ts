@@ -10,7 +10,7 @@ import {
   AiInterpretationRun,
   MuseInterpretationResult,
 } from 'src/dtos/ai-image-interpretation.dto.js';
-import { AssetMetadataKey } from 'src/enum.js';
+import { AssetMetadataKey, AssetType } from 'src/enum.js';
 import { DB } from 'src/schema/index.js';
 import { createAiInterpretationRunKey, interpretationRetryDelayMs } from 'src/utils/ai-image-interpretation.js';
 
@@ -293,20 +293,36 @@ export class AiImageInterpretationRepository {
     return next !== null;
   }
 
-  async findDueRetries(cutoff: Date): Promise<Array<{ assetId: string; runKey: string; assetCreatedAt: Date }>> {
+  async findDueRetries(
+    cutoff: Date,
+  ): Promise<
+    Array<{ assetId: string; runKey: string; assetCreatedAt: Date; assetType: AssetType; promptVersion: string }>
+  > {
     const rows = await this.db
       .selectFrom('asset_metadata')
       .innerJoin('asset', 'asset.id', 'asset_metadata.assetId')
-      .select(['asset_metadata.assetId', 'asset_metadata.value', 'asset.createdAt'])
+      .select(['asset_metadata.assetId', 'asset_metadata.value', 'asset.createdAt', 'asset.type'])
       .where('asset_metadata.key', '=', AssetMetadataKey.AiInterpretationV1)
       .execute();
 
-    const due: Array<{ assetId: string; runKey: string; assetCreatedAt: Date }> = [];
+    const due: Array<{
+      assetId: string;
+      runKey: string;
+      assetCreatedAt: Date;
+      assetType: AssetType;
+      promptVersion: string;
+    }> = [];
     for (const row of rows) {
       const document = this.parseDocument(row.value);
       for (const [runKey, run] of Object.entries(document.runs)) {
         if (run.status === 'failed' && run.nextAttemptAt && new Date(run.nextAttemptAt) <= cutoff) {
-          due.push({ assetId: row.assetId, runKey, assetCreatedAt: row.createdAt });
+          due.push({
+            assetId: row.assetId,
+            runKey,
+            assetCreatedAt: row.createdAt,
+            assetType: row.type,
+            promptVersion: run.promptVersion,
+          });
         }
       }
     }

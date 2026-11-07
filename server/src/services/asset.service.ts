@@ -550,6 +550,9 @@ export class AssetService extends BaseService {
             name: JobName.AssetInterpretImagePublic,
             data: {
               id,
+              // deliver() recomputes this key for public deliveries — videos
+              // claim the forked video prompt version — so enqueueing the
+              // base-version key is fine; the worker identity is authoritative.
               runKey: createAiInterpretationPublicRunKey(
                 interpretationEnv.publicModel,
                 interpretationEnv.promptVersion,
