@@ -172,6 +172,7 @@
           <hr />
           <ActionMenuItem action={Actions.RefreshFacesJob} />
           <ActionMenuItem action={Actions.ScanVideoFacesJob} />
+          <ActionMenuItem action={Actions.GenerateVideoCaptions} />
           <ActionMenuItem action={Actions.RefreshMetadataJob} />
           <ActionMenuItem action={Actions.RegenerateThumbnailJob} />
           <ActionMenuItem action={Actions.InterpretImageJob} />

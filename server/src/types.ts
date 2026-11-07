@@ -352,6 +352,8 @@ export interface IAiInterpretationDiscordAlertJob {
   runKey: string;
 }
 
+export type IVideoCaptionJob = IEntityJob;
+
 export interface JobCounts {
   active: number;
   completed: number;
@@ -379,6 +381,7 @@ export type JobItem =
   | { name: JobName.AssetInterpretationReconcile; data?: IBaseJob }
   | { name: JobName.AiInterpretSearchSync; data: IEntityJob }
   | { name: JobName.AiInterpretSearchReconcile; data?: IBaseJob }
+  | { name: JobName.AssetCaptionVideo; data: IVideoCaptionJob }
 
   // User
   | { name: JobName.UserDeleteCheck; data?: IBaseJob }

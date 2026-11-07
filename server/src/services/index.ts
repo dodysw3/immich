@@ -5,6 +5,8 @@ import { AiImageInterpretationClient } from 'src/services/ai-image-interpretatio
 import { AiImageInterpretationService } from 'src/services/ai-image-interpretation.service.js';
 import { AiInterpretSearchClient } from 'src/services/ai-interpret-search.client.js';
 import { AiInterpretSearchService } from 'src/services/ai-interpret-search.service.js';
+import { AiVideoCaptioningClient } from 'src/services/ai-video-captioning.client.js';
+import { AiVideoCaptioningService } from 'src/services/ai-video-captioning.service.js';
 import { AlbumService } from 'src/services/album.service.js';
 import { ApiKeyService } from 'src/services/api-key.service.js';
 import { ApiService } from 'src/services/api.service.js';
@@ -38,7 +40,6 @@ import { PartnerService } from 'src/services/partner.service.js';
 import { PasskeyService } from 'src/services/passkey.service.js';
 import { PdfService } from 'src/services/pdf.service.js';
 import { PersonService } from 'src/services/person.service.js';
-import { VideoFaceService } from 'src/services/video-face.service.js';
 import { PluginService } from 'src/services/plugin.service.js';
 import { QueueService } from 'src/services/queue.service.js';
 import { SearchService } from 'src/services/search.service.js';
@@ -60,6 +61,7 @@ import { TrashService } from 'src/services/trash.service.js';
 import { UserAdminService } from 'src/services/user-admin.service.js';
 import { UserService } from 'src/services/user.service.js';
 import { VersionService } from 'src/services/version.service.js';
+import { VideoFaceService } from 'src/services/video-face.service.js';
 import { ViewService } from 'src/services/view.service.js';
 import { WorkflowExecutionService } from 'src/services/workflow-execution.service.js';
 import { WorkflowService } from 'src/services/workflow.service.js';
@@ -70,6 +72,8 @@ export const services = [
   AiImageInterpretationDiscordClient,
   AiImageInterpretationDiscordService,
   AiImageInterpretationService,
+  AiVideoCaptioningClient,
+  AiVideoCaptioningService,
   AiInterpretSearchClient,
   AiInterpretSearchService,
   ActivityService,

@@ -139,6 +139,18 @@ export const envData: EnvData = {
     minScore: 0.4,
   },
 
+  aiVideoCaptioning: {
+    enabled: true,
+    model: 'lfm3-omni-2b',
+    timeoutMs: 120_000,
+    segmentSeconds: 5,
+    framesPerSegment: 3,
+    frameEdge: 672,
+    maxDurationSec: 300,
+    language: 'en',
+    concurrency: 1,
+  },
+
   videoFaceScan: {
     enabled: true,
     framesBudget: 32,

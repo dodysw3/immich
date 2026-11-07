@@ -251,6 +251,21 @@ class AssetViewerManager extends BaseEventManager<Events> {
     this.#videoSeekRequestMs = null;
   }
 
+  /** Live playback clock (ms), updated by the video viewer's ontimeupdate — consumed by the caption overlay and sidebar timeline. */
+  #videoCurrentTimeMs = $state<number | null>(null);
+
+  get videoCurrentTimeMs() {
+    return this.#videoCurrentTimeMs;
+  }
+
+  setVideoCurrentTimeMs(timeMs: number) {
+    this.#videoCurrentTimeMs = timeMs;
+  }
+
+  clearVideoCurrentTimeMs() {
+    this.#videoCurrentTimeMs = null;
+  }
+
   toggleHiddenPeople() {
     this.#showingHiddenPeople = !this.#showingHiddenPeople;
   }

@@ -341,6 +341,7 @@ const queues = (): ResponseOf<'getQueuesLegacy'> => ({
   imageInterpretationPublic: idleQueue(),
   aiInterpretSearch: idleQueue(),
   videoFaceScan: idleQueue(),
+  videoCaptioning: idleQueue(),
 });
 
 const idleQueue = () => ({

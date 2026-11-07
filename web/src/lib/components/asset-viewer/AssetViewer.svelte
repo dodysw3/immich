@@ -19,6 +19,7 @@
   import { canOpenEditorForAsset, getAssetActions } from '#lib/services/asset.service.ts';
   import { faceManager } from '#lib/stores/face.svelte.ts';
   import { ocrManager } from '#lib/stores/ocr.svelte.ts';
+  import { videoCaptionManager } from '#lib/stores/video-caption.svelte.ts';
   import { alwaysLoadOriginalVideo } from '#lib/stores/preferences.store.ts';
   import { SlideshowNavigation, SlideshowState, slideshowStore } from '#lib/stores/slideshow.store.ts';
   import { getSharedLink, handlePromiseError } from '#lib/utils.ts';
@@ -51,6 +52,7 @@
   import DetailPanel from './DetailPanel.svelte';
   import ImagePanoramaViewer from './ImagePanoramaViewer.svelte';
   import OcrButton from './OcrButton.svelte';
+  import VideoCaptionButton from './VideoCaptionButton.svelte';
   import PhotoViewer from './PhotoViewer.svelte';
   import SlideshowBar from './SlideshowBar.svelte';
   import SlideshowMetadataOverlay from './SlideshowMetadataOverlay.svelte';
@@ -401,6 +403,8 @@
     ocrManager.clear();
     faceOverlayStore.clear();
     faceManager.clear();
+    videoCaptionManager.clear();
+    assetViewerManager.clearVideoCurrentTimeMs();
     if (!sharedLink) {
       if (previewStackedAsset) {
         await ocrManager.getAssetOcr(previewStackedAsset.id);
@@ -408,6 +412,9 @@
       }
       await ocrManager.getAssetOcr(asset.id);
       await faceManager.getAssetFaces(asset.id);
+    }
+    if (asset.type === AssetTypeEnum.Video && !sharedLink) {
+      await videoCaptionManager.getAssetCaptions(asset.id);
     }
   };
 
@@ -470,8 +477,16 @@
   const showOcrButton = $derived(
     $slideshowState === SlideshowState.None && !assetViewerManager.isShowEditor && ocrManager.hasOcrData,
   );
+  const showCaptionButton = $derived(
+    $slideshowState === SlideshowState.None &&
+      !assetViewerManager.isShowEditor &&
+      asset.type === AssetTypeEnum.Video &&
+      videoCaptionManager.hasCaptions,
+  );
 
-  const aiInterpretationButtonBottom = $derived(24 + (showFaceButton ? 56 : 0) + (showOcrButton ? 56 : 0));
+  const aiInterpretationButtonBottom = $derived(
+    24 + (showFaceButton ? 56 : 0) + (showOcrButton ? 56 : 0) + (showCaptionButton ? 56 : 0),
+  );
   const { Tag, TagPeople } = $derived(getAssetActions($t, asset));
 
   const canInstantRotate = $derived.by(
@@ -671,6 +686,17 @@
     {#if showOcrButton}
       <div class="absolute inset-e-0 bottom-0 me-6" class:mb-20={showFaceButton} class:mb-6={!showFaceButton}>
         <OcrButton />
+      </div>
+    {/if}
+
+    {#if showCaptionButton}
+      <div
+        class="absolute inset-e-0 bottom-0 me-6"
+        class:mb-[124px]={showFaceButton && showOcrButton}
+        class:mb-20={showFaceButton !== showOcrButton}
+        class:mb-6={!showFaceButton && !showOcrButton}
+      >
+        <VideoCaptionButton />
       </div>
     {/if}
 

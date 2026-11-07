@@ -36,6 +36,7 @@ import {
   mdiPlay,
   mdiPlus,
   mdiStateMachine,
+  mdiSubtitles,
   mdiTable,
   mdiTagFaces,
   mdiTrashCanOutline,
@@ -274,6 +275,11 @@ export const asQueueItem = ($t: MessageFormatter, queue: { name: QueueName }): Q
     [QueueName.AiInterpretSearch]: {
       icon: mdiImageSearch,
       title: 'AI interpretation search',
+    },
+    [QueueName.VideoCaptioning]: {
+      icon: mdiSubtitles,
+      title: 'Video captioning (experimental)',
+      subtitle: 'Generate timestamped captions for individual videos (manual trigger).',
     },
   };
 

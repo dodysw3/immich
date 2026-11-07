@@ -1,5 +1,6 @@
 <script lang="ts">
   import BoundingBoxOverlay from '#lib/components/asset-viewer/BoundingBoxOverlay.svelte';
+  import VideoCaptionOverlay from '#lib/components/asset-viewer/VideoCaptionOverlay.svelte';
   import VideoRemoteViewer from '#lib/components/asset-viewer/VideoRemoteViewer.svelte';
   import FaceEditor from '#lib/components/asset-viewer/face-editor/FaceEditor.svelte';
   import { assetViewerFadeDuration } from '#lib/constants.ts';
@@ -12,6 +13,7 @@
   import { getPublicConfigQuery } from '#lib/queries/config-public.query.ts';
   import { faceManager } from '#lib/stores/face.svelte.ts';
   import { ocrManager } from '#lib/stores/ocr.svelte.ts';
+  import { videoCaptionManager } from '#lib/stores/video-caption.svelte.ts';
   import { autoPlayVideo, lang, loopVideo as loopVideoPreference } from '#lib/stores/preferences.store.ts';
   import { getAssetHlsSessionUrl, getAssetHlsUrl, getAssetMediaUrl, getAssetPlaybackUrl } from '#lib/utils.ts';
   import { AssetMediaSize, AssetTypeEnum, type AssetResponseDto } from '@immich/sdk';
@@ -354,6 +356,8 @@
     asset.type === AssetTypeEnum.Video && (faceManager.data.length > 0 || ocrManager.hasOcrData),
   );
 
+  const showCaptionOverlay = $derived(asset.type === AssetTypeEnum.Video && videoCaptionManager.hasCaptions);
+
   $effect(() => {
     if (assetViewerManager.isFaceEditMode) {
       videoPlayer?.pause();
@@ -373,6 +377,14 @@
   // The time is only refreshed on HLS fragment decode by default,
   // so manually emit events on seek to update it immediately.
   const onSeeking = (event: Event) => event.currentTarget?.dispatchEvent(new Event('timeupdate'));
+
+  // Live playback clock for the caption overlay / sidebar timeline.
+  const onTimeUpdate = (event: Event) => {
+    const time = (event.currentTarget as HTMLVideoElement).currentTime;
+    if (Number.isFinite(time)) {
+      assetViewerManager.setVideoCurrentTimeMs(time * 1000);
+    }
+  };
 </script>
 
 <svelte:body
@@ -437,6 +449,7 @@
             onloadedmetadata={() => (hasLoadedMetadata = true)}
             onended={onVideoEnded}
             onseeking={onSeeking}
+            ontimeupdate={onTimeUpdate}
             onplaying={(e: Event) => {
               if (hasFocused) {
                 return;
@@ -463,6 +476,7 @@
             onloadedmetadata={() => (hasLoadedMetadata = true)}
             onended={onVideoEnded}
             onseeking={onSeeking}
+            ontimeupdate={onTimeUpdate}
             onplaying={(e) => {
               if (hasFocused) {
                 return;
@@ -560,6 +574,15 @@
             offsetY={overlayContentRect.offsetY}
           />
         </div>
+      {/if}
+
+      {#if showCaptionOverlay}
+        <VideoCaptionOverlay
+          currentTimeMs={assetViewerManager.videoCurrentTimeMs ?? 0}
+          contentRect={overlayContentRect}
+          {containerWidth}
+          {containerHeight}
+        />
       {/if}
     {/if}
   </div>

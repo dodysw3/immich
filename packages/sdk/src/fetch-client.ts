@@ -1954,6 +1954,7 @@ export type QueuesResponseLegacyDto = {
     smartSearch: QueueResponseLegacyDto;
     storageTemplateMigration: QueueResponseLegacyDto;
     thumbnailGeneration: QueueResponseLegacyDto;
+    videoCaptioning: QueueResponseLegacyDto;
     videoConversion: QueueResponseLegacyDto;
     videoFaceScan: QueueResponseLegacyDto;
     workflow: QueueResponseLegacyDto;
@@ -9047,6 +9048,7 @@ export enum AssetJobName {
     RegenerateThumbnail = "regenerate-thumbnail",
     InterpretImage = "interpret-image",
     InterpretImagePublic = "interpret-image-public",
+    CaptionVideo = "caption-video",
     TranscodeVideo = "transcode-video"
 }
 export enum PersonUserRole {
@@ -9132,7 +9134,8 @@ export enum QueueName {
     ImageInterpretation = "imageInterpretation",
     ImageInterpretationPublic = "imageInterpretationPublic",
     AiInterpretSearch = "aiInterpretSearch",
-    VideoFaceScan = "videoFaceScan"
+    VideoFaceScan = "videoFaceScan",
+    VideoCaptioning = "videoCaptioning"
 }
 export enum QueueCommand {
     Start = "start",
@@ -9201,6 +9204,7 @@ export enum JobName {
     AssetInterpretationReconcile = "AssetInterpretationReconcile",
     AiInterpretSearchSync = "AiInterpretSearchSync",
     AiInterpretSearchReconcile = "AiInterpretSearchReconcile",
+    AssetCaptionVideo = "AssetCaptionVideo",
     AuditTableCleanup = "AuditTableCleanup",
     AuthChallengeCleanup = "AuthChallengeCleanup",
     DatabaseBackup = "DatabaseBackup",

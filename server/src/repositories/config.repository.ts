@@ -171,6 +171,21 @@ export interface EnvData {
     minScore: number;
   };
 
+  // Experimental LFM3-VL-2B video-captioning lane (manual trigger only).
+  aiVideoCaptioning: {
+    enabled: boolean;
+    url?: string;
+    apiKey?: string;
+    model: string;
+    timeoutMs: number;
+    segmentSeconds: number;
+    framesPerSegment: number;
+    frameEdge: number;
+    maxDurationSec: number;
+    language: string;
+    concurrency: number;
+  };
+
   videoFaceScan: {
     enabled: boolean;
     // analyzed-frame cap per run (resource contract; dry-run CLI can exceed)
@@ -530,6 +545,25 @@ const getEnv = (): EnvData => {
       timeoutMs: dto.IMMICH_AI_INTERPRET_SEARCH_TIMEOUT_MS || 30_000,
       minScore: dto.IMMICH_AI_INTERPRET_SEARCH_MIN_SCORE ?? 0.4,
     },
+
+    // Experimental video captioning via the local LFM3-Omni-2B lane (:51902).
+    // Manual trigger only (asset viewer menu); metadata lands in
+    // asset_metadata under the separate `video-captions-v1` key so it can be
+    // wiped or reverted without touching ai-interpretation-v1.
+    aiVideoCaptioning: {
+      enabled: dto.IMMICH_AI_VIDEO_CAPTIONING_ENABLED ?? true,
+      url: dto.IMMICH_AI_VIDEO_CAPTIONING_URL,
+      apiKey: dto.IMMICH_AI_VIDEO_CAPTIONING_API_KEY,
+      model: dto.IMMICH_AI_VIDEO_CAPTIONING_MODEL || 'lfm3-omni-2b',
+      timeoutMs: dto.IMMICH_AI_VIDEO_CAPTIONING_TIMEOUT_MS || 120_000,
+      segmentSeconds: dto.IMMICH_AI_VIDEO_CAPTIONING_SEGMENT_SECONDS || 5,
+      framesPerSegment: dto.IMMICH_AI_VIDEO_CAPTIONING_FRAMES_PER_SEGMENT || 3,
+      frameEdge: dto.IMMICH_AI_VIDEO_CAPTIONING_FRAME_EDGE || 672,
+      maxDurationSec: dto.IMMICH_AI_VIDEO_CAPTIONING_MAX_DURATION_SEC || 300,
+      language: dto.IMMICH_AI_VIDEO_CAPTIONING_LANGUAGE || 'en',
+      concurrency: dto.IMMICH_AI_VIDEO_CAPTIONING_CONCURRENCY || 1,
+    },
+
 
     // Multi-frame video face discovery. Manual per-video trigger only; the
     // queue runs at concurrency 1. Thresholds are bench-tuned (see

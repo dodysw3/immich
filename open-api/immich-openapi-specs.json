@@ -22584,6 +22584,7 @@
           "regenerate-thumbnail",
           "interpret-image",
           "interpret-image-public",
+          "caption-video",
           "transcode-video"
         ],
         "type": "string"
@@ -24799,6 +24800,7 @@
           "AssetInterpretationReconcile",
           "AiInterpretSearchSync",
           "AiInterpretSearchReconcile",
+          "AssetCaptionVideo",
           "AuditTableCleanup",
           "AuthChallengeCleanup",
           "DatabaseBackup",
@@ -28639,7 +28641,8 @@
           "imageInterpretation",
           "imageInterpretationPublic",
           "aiInterpretSearch",
-          "videoFaceScan"
+          "videoFaceScan",
+          "videoCaptioning"
         ],
         "type": "string"
       },
@@ -28834,6 +28837,9 @@
           "thumbnailGeneration": {
             "$ref": "#/components/schemas/QueueResponseLegacyDto"
           },
+          "videoCaptioning": {
+            "$ref": "#/components/schemas/QueueResponseLegacyDto"
+          },
           "videoConversion": {
             "$ref": "#/components/schemas/QueueResponseLegacyDto"
           },
@@ -28866,6 +28872,7 @@
           "smartSearch",
           "storageTemplateMigration",
           "thumbnailGeneration",
+          "videoCaptioning",
           "videoConversion",
           "videoFaceScan",
           "workflow"

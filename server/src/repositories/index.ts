@@ -2,6 +2,7 @@ import { AccessRepository } from 'src/repositories/access.repository.js';
 import { ActivityRepository } from 'src/repositories/activity.repository.js';
 import { AiImageInterpretationRepository } from 'src/repositories/ai-image-interpretation.repository.js';
 import { AiInterpretSearchRepository } from 'src/repositories/ai-interpret-search.repository.js';
+import { AiVideoCaptioningRepository } from 'src/repositories/ai-video-captioning.repository.js';
 import { AlbumUserRepository } from 'src/repositories/album-user.repository.js';
 import { AlbumRepository } from 'src/repositories/album.repository.js';
 import { ApiKeyRepository } from 'src/repositories/api-key.repository.js';
@@ -39,7 +40,6 @@ import { PasskeyRepository } from 'src/repositories/passkey.repository.js';
 import { PdfRepository } from 'src/repositories/pdf.repository.js';
 import { PersonUserRepository } from 'src/repositories/person-user.repository.js';
 import { PersonRepository } from 'src/repositories/person.repository.js';
-import { VideoFaceRepository } from 'src/repositories/video-face.repository.js';
 import { PluginRepository } from 'src/repositories/plugin.repository.js';
 import { ProcessRepository } from 'src/repositories/process.repository.js';
 import { SearchRepository } from 'src/repositories/search.repository.js';
@@ -57,6 +57,7 @@ import { TelemetryRepository } from 'src/repositories/telemetry.repository.js';
 import { TrashRepository } from 'src/repositories/trash.repository.js';
 import { UserRepository } from 'src/repositories/user.repository.js';
 import { VersionHistoryRepository } from 'src/repositories/version-history.repository.js';
+import { VideoFaceRepository } from 'src/repositories/video-face.repository.js';
 import { VideoStreamRepository } from 'src/repositories/video-stream.repository.js';
 import { ViewRepository } from 'src/repositories/view-repository.js';
 import { WebAuthnRepository } from 'src/repositories/webauthn.repository.js';
@@ -66,6 +67,7 @@ import { WorkflowRepository } from 'src/repositories/workflow.repository.js';
 export const repositories = [
   AccessRepository,
   AiImageInterpretationRepository,
+  AiVideoCaptioningRepository,
   AiInterpretSearchRepository,
   ActivityRepository,
   AlbumRepository,

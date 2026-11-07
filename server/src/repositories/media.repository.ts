@@ -5,6 +5,7 @@ import { camelCase, upperFirst } from 'lodash-es';
 import { Duration } from 'luxon';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
+import { join } from 'node:path';
 import { Writable } from 'node:stream';
 import sharp, { Sharp } from 'sharp';
 import { ORIENTATION_TO_SHARP_ROTATION } from 'src/constants.js';
@@ -262,14 +263,20 @@ export class MediaRepository {
   async grabVideoFrame(input: string, seekSec: number, outputPath: string, maxSide = 1440): Promise<number> {
     const args = [
       '-hide_banner',
-      '-loglevel', 'info',
+      '-loglevel',
+      'info',
       '-copyts',
       '-y',
-      '-ss', String(seekSec),
-      '-i', input,
-      '-frames:v', '1',
-      '-vf', `scale='min(${maxSide},iw)':-2,showinfo`,
-      '-f', 'mjpeg',
+      '-ss',
+      String(seekSec),
+      '-i',
+      input,
+      '-frames:v',
+      '1',
+      '-vf',
+      `scale='min(${maxSide},iw)':-2,showinfo`,
+      '-f',
+      'mjpeg',
       outputPath,
     ];
     return await new Promise<number>((resolve, reject) => {
@@ -278,7 +285,10 @@ export class MediaRepository {
       proc.stderr.on('data', (chunk) => (stderr += chunk.toString()));
       proc.on('error', reject);
       proc.on('close', (code) => {
-        const match = stderr.matchAll(/pts_time:([0-9.]+)/g).map((m) => Number(m[1])).toArray();
+        const match = stderr
+          .matchAll(/pts_time:([0-9.]+)/g)
+          .map((m) => Number(m[1]))
+          .toArray();
         const actual = match[0];
         if (code !== 0 || actual === undefined) {
           reject(new Error(`ffmpeg grab at ${seekSec}s failed (code ${code})`));
@@ -287,6 +297,84 @@ export class MediaRepository {
         resolve(actual);
       });
     });
+  }
+
+  /**
+  Sample frames for video captioning: one ffmpeg pass at the requested fps,
+  downscaled so the long edge is at most `maxEdge`. Frames land in
+  `outputDir` as frame_%05d.jpg in timeline order; frame N sits at
+  (N-1)/fps seconds from the start (the fps filter emits exact nominal pts).
+  `durationSec` caps the decode window for videos longer than the captioning
+  budget.
+  */
+  async extractVideoFrames(
+    input: string,
+    outputDir: string,
+    options: { fps: number; maxEdge: number; durationSec?: number },
+  ): Promise<string[]> {
+    const { fps, maxEdge, durationSec } = options;
+    const args = ['-hide_banner', '-loglevel', 'error', '-nostdin', '-y', '-i', input];
+    if (durationSec !== undefined && durationSec > 0) {
+      args.push('-t', String(durationSec));
+    }
+    args.push('-vf', `fps=${fps},scale='min(${maxEdge},iw)':-2`, '-q:v', '4', join(outputDir, 'frame_%05d.jpg'));
+    await new Promise<void>((resolve, reject) => {
+      const proc = spawn('ffmpeg', args, { stdio: ['ignore', 'ignore', 'pipe'] });
+      let stderr = '';
+      proc.stderr.on('data', (chunk) => (stderr += chunk.toString()));
+      proc.on('error', reject);
+      proc.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+          return;
+        }
+        reject(new Error(`ffmpeg frame extraction failed (code ${code}): ${stderr.slice(-500)}`));
+      });
+    });
+    const entries = await fs.readdir(outputDir);
+    const files = entries.filter((file) => /^frame_\d{5}\.jpg$/.test(file)).sort();
+    return files.map((file) => join(outputDir, file));
+  }
+
+  /**
+  Extract the audio track for omni video captioning as one 16 kHz mono s16
+  WAV covering the same (capped) window as the frame extraction; the service
+  slices it per segment. Returns null when the video has no audio stream or
+  extraction fails — captioning then runs visual-only.
+  */
+  async extractVideoAudio(
+    input: string,
+    outputDir: string,
+    options: { durationSec?: number } = {},
+  ): Promise<string | null> {
+    const audioPath = join(outputDir, 'audio.wav');
+    const args = ['-hide_banner', '-loglevel', 'error', '-nostdin', '-y', '-i', input];
+    if (options.durationSec !== undefined && options.durationSec > 0) {
+      args.push('-t', String(options.durationSec));
+    }
+    args.push('-vn', '-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le', audioPath);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const proc = spawn('ffmpeg', args, { stdio: ['ignore', 'ignore', 'pipe'] });
+        let stderr = '';
+        proc.stderr.on('data', (chunk) => (stderr += chunk.toString()));
+        proc.on('error', reject);
+        proc.on('close', (code) => {
+          if (code === 0) {
+            resolve();
+            return;
+          }
+          // ffmpeg exits non-zero with "does not contain any stream" when the
+          // source has no audio — the expected no-audio path.
+          reject(new Error(`ffmpeg audio extraction failed (code ${code}): ${stderr.slice(-300)}`));
+        });
+      });
+    } catch (error) {
+      this.logger.debug(`Video captioning audio extraction skipped: ${error instanceof Error ? error.message : error}`);
+      return null;
+    }
+    const stats = await fs.stat(audioPath).catch(() => null);
+    return stats && stats.size > 44 ? audioPath : null;
   }
 
   async probe(input: string, options?: ProbeOptions): Promise<VideoInfo> {

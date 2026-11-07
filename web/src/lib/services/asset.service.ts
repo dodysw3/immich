@@ -64,6 +64,7 @@ import {
   mdiShareVariantOutline,
   mdiTagMultipleOutline,
   mdiTagPlusOutline,
+  mdiSubtitles,
   mdiTune,
   mdiVideoOutline,
 } from '@mdi/js';
@@ -442,6 +443,13 @@ export const getAssetActions = (
     onAction: () => handleRunAssetJob({ name: AssetJobName.ScanVideoFaces, assetIds: [asset.id] }),
   };
 
+  const GenerateVideoCaptions: ActionItem = {
+    title: $t('generate_video_captions'),
+    icon: mdiSubtitles,
+    $if: () => asset.type === AssetTypeEnum.Video && !asset.isTrashed,
+    onAction: () => handleRunAssetJob({ name: AssetJobName.CaptionVideo, assetIds: [asset.id] }),
+  };
+
   const RefreshMetadataJob: ActionItem = {
     title: $t('refresh_metadata'),
     icon: mdiDatabaseRefreshOutline,
@@ -503,6 +511,7 @@ export const getAssetActions = (
     OpenDocumentViewer,
     RefreshFacesJob,
     ScanVideoFacesJob,
+    GenerateVideoCaptions,
     RefreshMetadataJob,
     RegenerateThumbnailJob,
     InterpretImageJob,
@@ -733,6 +742,7 @@ const handleRemoveAssetsFromAlbum = async (assetIds: string[], album: AlbumRespo
 const getAssetJobMessage = ($t: MessageFormatter, job: AssetJobName) => {
   const messages: Record<AssetJobName, string> = {
     [AssetJobName.ScanVideoFaces]: $t('scanning_video_faces'),
+    [AssetJobName.CaptionVideo]: $t('generating_video_captions'),
     [AssetJobName.RefreshFaces]: $t('refreshing_faces'),
     [AssetJobName.RefreshMetadata]: $t('refreshing_metadata'),
     [AssetJobName.RegenerateThumbnail]: $t('regenerating_thumbnails'),

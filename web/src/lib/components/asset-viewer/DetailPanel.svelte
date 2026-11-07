@@ -6,6 +6,7 @@
   import DetailPanelPeople from '#lib/components/asset-viewer/DetailPanelPeople.svelte';
   import DetailPanelRating from '#lib/components/asset-viewer/DetailPanelStarRating.svelte';
   import DetailPanelTags from '#lib/components/asset-viewer/DetailPanelTags.svelte';
+  import DetailPanelVideoCaptions from '#lib/components/asset-viewer/DetailPanelVideoCaptions.svelte';
   import DetailPanelVideoFaces from '#lib/components/asset-viewer/DetailPanelVideoFaces.svelte';
   import { timeToLoadTheMap } from '#lib/constants.ts';
   import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
@@ -151,6 +152,7 @@
     <DetailPanelPeople {asset} {isOwner} {previousRoute} />
     {#if asset.type === AssetTypeEnum.Video}
       <DetailPanelVideoFaces {asset} />
+      <DetailPanelVideoCaptions {asset} />
     {/if}
     {#if asset.type === AssetTypeEnum.Image || asset.type === AssetTypeEnum.Video}
       <DetailPanelAiInterpretation {asset} />

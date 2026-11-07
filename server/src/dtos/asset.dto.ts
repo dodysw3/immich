@@ -82,6 +82,7 @@ export enum AssetJobName {
   REGENERATE_THUMBNAIL = 'regenerate-thumbnail',
   INTERPRET_IMAGE = 'interpret-image',
   INTERPRET_IMAGE_PUBLIC = 'interpret-image-public',
+  CAPTION_VIDEO = 'caption-video',
   TRANSCODE_VIDEO = 'transcode-video',
 }
 
