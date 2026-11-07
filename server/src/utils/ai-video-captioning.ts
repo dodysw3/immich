@@ -1,11 +1,12 @@
 import { createHash } from 'node:crypto';
+import type { AiVideoCaptionSegment } from 'src/dtos/ai-video-captioning.dto.js';
 
 /**
 Experimental video captioning (LFM3-Omni-2B lane) — separate prompt version
 and run keying from image interpretation so the two features can evolve
 (and be reverted) independently.
 */
-export const AI_VIDEO_CAPTIONING_PROMPT_VERSION = 'video-captioning-0.4.0';
+export const AI_VIDEO_CAPTIONING_PROMPT_VERSION = 'video-captioning-0.4.1';
 
 export const createVideoCaptionRunKey = (
   model: string,
@@ -89,6 +90,14 @@ talking-head video: −69% caption tokens, −75% interpretation-context chars,
 equal interpretation quality; post-processing the finished captions with a
 diff pass was also tested and failed — the 2B model parrots the input back).
 The first segment keeps the full prompt so the scene is established once.
+
+v0.4.1 fixes two live regressions of that first delta prompt on a market
+video where the changes are people, not text: ranking on-screen text as
+"the most important change" made the model wrap non-text deltas in a false
+"A new on-screen text overlay appears:" prefix (change types are now
+enumerated neutrally and text phrasing is conditional), and "any on-screen
+text" in the full prompt negative-filled into "No on-screen text appears in
+the frames." (absence statements are now banned outright).
 */
 export interface CaptionPromptState {
   /** 1-based ordinal of the current segment in the video's segment plan. */
@@ -114,7 +123,8 @@ export const buildCaptionPrompt = (
     return [
       `These frames are sampled from ${start}s to ${end}s of a video, in chronological order.`,
       'Describe what happens in this video segment concisely in 1-3 sentences:',
-      'who or what is visible, the actions, the scene, and any on-screen text.',
+      'who or what is visible, the actions, the scene, and any on-screen text (quote it exactly if present).',
+      'If there is no on-screen text, leave it unmentioned — do not write absence statements like "No on-screen text appears in the frames."; just leave it out.',
       'Start directly with the subject (e.g. "A busy city street...", "A man in a blue shirt..."); never open with "The video shows", "The frames show", "In this scene", "In a busy street scene" or any scene-setting phrase — put that context in the sentences that follow.',
       `Write the caption in ${languageName}. Stick to what is actually there; do not speculate.`,
       'Reply with the caption text only — no preamble, no quotes, no reasoning.',
@@ -125,11 +135,12 @@ export const buildCaptionPrompt = (
   return [
     `These frames are sampled from ${start}s to ${end}s of a video, in chronological order.`,
     `This is segment ${state?.ordinal ?? 1} of a longer video; the previous described segment (${previousStart}s-${previousEnd}s) was captioned as: "${previous.caption}"`,
-    'Describe ONLY what is new or changed in this segment compared to the previous one, in at most 2 short sentences.',
+    'Describe ONLY what is new or changed in this segment compared to the previous one, in at most 2 short sentences:',
+    'a person or object entering or leaving, someone starting a different action or moving, the scene or camera changing, or new text appearing on screen.',
     'The person, their clothing, the background and the camera carry over — do not mention them.',
     'Ignore small facial changes (blinks, gaze direction, mouth movement) and do not describe expressions at all; mention a gesture only if it is genuinely new.',
-    'New on-screen text is the most important change: quote EVERY distinct text overlay visible in these frames that was not in the previous segment, exactly as it appears, in order, e.g. Text now shows "SAYA?" then "INILAH". Never mention the previous segment\'s text or use phrases like "replacing X" — state only the new text.',
-    `If literally nothing is new, reply "No change."`,
+    'When text actually appears on screen, quote it exactly as it appears, in order, e.g. Text now shows "SAYA?" then "INILAH". If the change is not about text, describe it directly and do not mention "on-screen text" or "text overlay" at all.',
+    'State the new state directly — never refer to "the previous segment", "the previous frame" or "compared to" inside your caption, never write that something is absent, and never wrap your description in quotation marks. If literally nothing is new, reply "No change."',
     'Start directly with what is new; never open with scene-setting phrases.',
     `Write the caption in ${languageName}. Stick to what is actually there; do not speculate.`,
     'Reply with the caption text only — no preamble, no quotes, no reasoning.',
@@ -138,11 +149,38 @@ export const buildCaptionPrompt = (
 
 /**
 The delta prompt (v0.4.0) tells the model to answer exactly this when a
-segment adds nothing; callers rely on the shape to collapse runs of
-unchanged segments in the interpretation context and to keep threading the
-last informative caption as the comparison anchor.
+segment adds nothing; callers rely on the shape to fold unchanged stretches
+into the previous caption's window and to keep threading the last
+informative caption as the comparison anchor.
 */
 export const isNoChangeCaption = (text: string): boolean => /^no change\.?$/i.test(text.trim());
+
+/**
+Fold a captioned segment into the stored segment list. A "No change." answer
+— or a verbatim repeat of the previous caption, the model's copy failure —
+carries no new content, so instead of storing a no-op row the previous
+segment's window extends to cover the unchanged stretch: the overlay's
+time-in-window lookup keeps showing the previous caption, and the
+interpretation context keeps one line per real caption. The first segment
+has nothing to fold into, so a "No change." there is stored verbatim
+(defensive — the full prompt never asks for it). Callers must not thread a
+folded caption forward as the comparison anchor.
+*/
+export const foldCaptionSegment = (
+  segments: AiVideoCaptionSegment[],
+  next: AiVideoCaptionSegment,
+): { segments: AiVideoCaptionSegment[]; foldedIntoPrevious: boolean } => {
+  const previous = segments.at(-1);
+  const isNoOp =
+    previous !== undefined && (isNoChangeCaption(next.caption) || next.caption.trim() === previous.caption.trim());
+  if (!isNoOp || !previous) {
+    return { segments: [...segments, next], foldedIntoPrevious: false };
+  }
+  return {
+    segments: [...segments.slice(0, -1), { ...previous, endMs: next.endMs }],
+    foldedIntoPrevious: true,
+  };
+};
 
 /** Belt-and-braces: strip a leaked <think>…</think> block if the server did not. */
 export const stripCaptionThinking = (text: string): string =>

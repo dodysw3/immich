@@ -3,12 +3,15 @@ import {
   buildCaptionPrompt,
   captionLanguageName,
   createVideoCaptionRunKey,
+  foldCaptionSegment,
   groupFramesBySegment,
   isNoChangeCaption,
   planCaptionSegments,
   stripCaptionOpener,
   stripCaptionThinking,
 } from 'src/utils/ai-video-captioning.js';
+
+const seg = (startMs: number, endMs: number, caption: string) => ({ startMs, endMs, caption });
 
 describe('ai-video-captioning utils', () => {
   describe('createVideoCaptionRunKey', () => {
@@ -91,7 +94,7 @@ describe('ai-video-captioning utils', () => {
       expect(captionLanguageName('xx')).toBe('English');
     });
 
-    it('should build the delta prompt when a previous caption exists (v0.4.0)', () => {
+    it('should build the delta prompt when a previous caption exists (v0.4.1)', () => {
       const prompt = buildCaptionPrompt({ startMs: 15_000, endMs: 20_000 }, 'en', {
         ordinal: 4,
         previous: { caption: 'A woman holds a phone. Text now shows "SAYA?".', startMs: 5000, endMs: 10_000 },
@@ -102,6 +105,13 @@ describe('ai-video-captioning utils', () => {
       expect(prompt).toContain('ONLY what is new or changed');
       expect(prompt).toContain('"No change."');
       expect(prompt).toContain('English');
+      // v0.4.1: text phrasing is conditional — a false "on-screen text"
+      // prefix on non-text changes was the live regression on a market video.
+      expect(prompt).toContain('When text actually appears on screen');
+      expect(prompt).toContain('do not mention "on-screen text" or "text overlay"');
+      expect(prompt).toContain('never write that something is absent');
+      expect(prompt).toContain('never refer to "the previous segment"');
+      expect(prompt).not.toContain('most important change');
       // The delta prompt replaces the full scene-establishing opener.
       expect(prompt).not.toContain('Start directly with the subject');
       expect(prompt).not.toContain('1-3 sentences');
@@ -110,6 +120,8 @@ describe('ai-video-captioning utils', () => {
     it('should keep the full prompt when no previous caption exists', () => {
       const full = buildCaptionPrompt({ startMs: 0, endMs: 5000 }, 'en', { ordinal: 1 });
       expect(full).toContain('1-3 sentences');
+      expect(full).toContain('quote it exactly if present');
+      expect(full).toContain('do not write absence statements');
       expect(full).not.toContain('ONLY what is new or changed');
     });
   });
@@ -122,6 +134,38 @@ describe('ai-video-captioning utils', () => {
       expect(isNoChangeCaption('Nothing changed.')).toBe(false);
       expect(isNoChangeCaption('New on-screen text overlay: "SAYA?".')).toBe(false);
       expect(isNoChangeCaption('')).toBe(false);
+    });
+  });
+
+  describe('foldCaptionSegment', () => {
+    it('should append informative captions', () => {
+      const folded = foldCaptionSegment([seg(0, 5000, 'A man enters.')], seg(5000, 10_000, 'He sits down.'));
+      expect(folded.foldedIntoPrevious).toBe(false);
+      expect(folded.segments).toEqual([seg(0, 5000, 'A man enters.'), seg(5000, 10_000, 'He sits down.')]);
+    });
+
+    it('should extend the previous window on "No change." instead of storing a no-op row', () => {
+      const folded = foldCaptionSegment([seg(0, 5000, 'A man enters.')], seg(5000, 15_000, 'No change.'));
+      expect(folded.foldedIntoPrevious).toBe(true);
+      expect(folded.segments).toEqual([seg(0, 15_000, 'A man enters.')]);
+    });
+
+    it('should fold a verbatim repeat of the previous caption (the model copy failure)', () => {
+      const folded = foldCaptionSegment([seg(0, 5000, 'A man enters.')], seg(5000, 10_000, 'A man enters.'));
+      expect(folded.foldedIntoPrevious).toBe(true);
+      expect(folded.segments).toEqual([seg(0, 10_000, 'A man enters.')]);
+    });
+
+    it('should not fold a near-duplicate with different wording', () => {
+      const folded = foldCaptionSegment([seg(0, 5000, 'A man enters.')], seg(5000, 10_000, 'The man enters.'));
+      expect(folded.foldedIntoPrevious).toBe(false);
+      expect(folded.segments).toHaveLength(2);
+    });
+
+    it('should store a defensive first-segment "No change." verbatim (nothing to fold into)', () => {
+      const folded = foldCaptionSegment([], seg(0, 5000, 'No change.'));
+      expect(folded.foldedIntoPrevious).toBe(false);
+      expect(folded.segments).toEqual([seg(0, 5000, 'No change.')]);
     });
   });
 

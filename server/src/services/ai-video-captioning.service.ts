@@ -26,6 +26,7 @@ import {
   AI_VIDEO_CAPTIONING_PROMPT_VERSION,
   buildCaptionPrompt,
   createVideoCaptionRunKey,
+  foldCaptionSegment,
   groupFramesBySegment,
   isNoChangeCaption,
   planCaptionSegments,
@@ -198,7 +199,7 @@ export class AiVideoCaptioningService {
       let promptTokens = 0;
       let completionTokens = 0;
       let servedModel: string | undefined;
-      const completedSegments: AiVideoCaptionSegment[] = [];
+      let completedSegments: AiVideoCaptionSegment[] = [];
       // Delta captioning (v0.4.0): every captioned segment compares against
       // the last informative caption; "No change." segments carry no anchor,
       // so the previous substantive caption stays the comparison point (and
@@ -230,14 +231,26 @@ export class AiVideoCaptioningService {
         servedModel = response.servedModel ?? servedModel;
         promptTokens += response.promptTokens ?? 0;
         completionTokens += response.completionTokens ?? 0;
-        completedSegments.push({ startMs: segment.startMs, endMs: segment.endMs, caption: response.caption });
-        if (!isNoChangeCaption(response.caption)) {
+
+        // v0.4.1 folding: a "No change." answer (or a verbatim repeat of the
+        // previous caption) extends that caption's window instead of being
+        // stored, so the overlay keeps showing the previous caption across
+        // unchanged stretches. A folded segment is not threaded as the next
+        // comparison anchor.
+        const folded = foldCaptionSegment(completedSegments, {
+          startMs: segment.startMs,
+          endMs: segment.endMs,
+          caption: response.caption,
+        });
+        completedSegments = folded.segments;
+        if (!folded.foldedIntoPrevious && !isNoChangeCaption(response.caption)) {
           previousCaption = { caption: response.caption, startMs: segment.startMs, endMs: segment.endMs };
         }
 
-        // Incremental persistence: a crash mid-video keeps the earlier
-        // segments, and the sidebar shows progress for long videos.
-        await this.captioningRepository.appendSegments(assetId, runKey, [completedSegments.at(-1)!]);
+        // Incremental persistence: the stored list always equals the folded
+        // list, so a crash mid-video keeps the earlier segments and the
+        // sidebar shows progress for long videos.
+        await this.captioningRepository.setSegments(assetId, runKey, completedSegments);
       }
 
       const metrics: AiVideoCaptionMetrics = {

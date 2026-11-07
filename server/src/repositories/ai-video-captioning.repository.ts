@@ -110,9 +110,14 @@ export class AiVideoCaptioningRepository {
     return next !== null;
   }
 
-  /** Persist segments incrementally as each per-segment caption returns. */
-  async appendSegments(assetId: string, runKey: string, segments: AiVideoCaptionSegment[]): Promise<void> {
-    await this.updateRun(assetId, runKey, (run) => ({ ...run, segments: [...run.segments, ...segments] }));
+  /**
+  Persist the full folded segment list as each per-segment caption returns.
+  The caller folds "No change." (and verbatim repeats) into the previous
+  segment's window, so a fold rewrites that segment's extended end — the
+  stored list must always equal the caller's computed list, not append.
+  */
+  async setSegments(assetId: string, runKey: string, segments: AiVideoCaptionSegment[]): Promise<void> {
+    await this.updateRun(assetId, runKey, (run) => ({ ...run, segments }));
   }
 
   async complete(
