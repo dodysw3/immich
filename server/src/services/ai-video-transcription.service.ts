@@ -15,8 +15,14 @@ import { AssetRepository } from 'src/repositories/asset.repository.js';
 import { ConfigRepository } from 'src/repositories/config.repository.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';
 import { MediaRepository } from 'src/repositories/media.repository.js';
-import { AiVideoTranscriptionClient, AiVideoTranscriptionClientError } from 'src/services/ai-video-transcription.client.js';
-import { AI_VIDEO_TRANSCRIPTION_PROMPT_VERSION, createVideoTranscriptionRunKey } from 'src/utils/ai-video-transcription.js';
+import {
+  AiVideoTranscriptionClient,
+  AiVideoTranscriptionClientError,
+} from 'src/services/ai-video-transcription.client.js';
+import {
+  AI_VIDEO_TRANSCRIPTION_PROMPT_VERSION,
+  createVideoTranscriptionRunKey,
+} from 'src/utils/ai-video-transcription.js';
 
 /**
 Experimental speech transcription for videos via a faster-whisper CPU sidecar
@@ -60,7 +66,8 @@ export class AiVideoTranscriptionService {
     }
 
     const runKey = createVideoTranscriptionRunKey(config.model, AI_VIDEO_TRANSCRIPTION_PROMPT_VERSION);
-    const existing = (await this.transcriptionRepository.get(assetId))?.runs[runKey];
+    const document = await this.transcriptionRepository.get(assetId);
+    const existing = document?.runs[runKey];
     if (existing && existing.status !== 'failed') {
       // completed: reuse it; queued/running: a concurrent delivery is already
       // producing this run — don't double-claim.
@@ -148,19 +155,20 @@ export class AiVideoTranscriptionService {
       }));
 
       // Append before complete: the completed-run zod contract requires
-      // segments (or noAudio), so the document must never be observable in a
-      // completed-but-empty intermediate state.
+      // segments (or noAudio/noSpeech), so the document must never be observable
+      // in a completed-but-empty intermediate state.
       if (segments.length > 0) {
         await this.transcriptionRepository.appendSegments(assetId, runKey, segments);
       }
       await this.transcriptionRepository.complete(assetId, runKey, {
         language: response.language,
         languageProbability: response.languageProbability,
+        noSpeech: response.noSpeech,
         truncated: durationMs / 1000 > config.maxDurationSec,
         metrics: this.metrics(startedAt),
       });
       this.logger.log(
-        `Transcribed video asset ${assetId} (${segments.length} segments, language: ${response.language ?? 'unknown'}) in ${Date.now() - startedAt.getTime()}ms`,
+        `Transcribed video asset ${assetId} (${response.noSpeech ? `no speech: ${response.reason ?? 'unknown'}` : `${segments.length} segments`}, language: ${response.language ?? 'unknown'}) in ${Date.now() - startedAt.getTime()}ms`,
       );
     } catch (error) {
       const transcriptionError: AiVideoTranscriptionError =

@@ -3,11 +3,14 @@ import { Agent, fetch as undiciFetch } from 'undici';
 import { ConfigRepository } from 'src/repositories/config.repository.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';
 import { TelemetryRepository } from 'src/repositories/telemetry.repository.js';
+import { isTranscriptionSegmentAudible } from 'src/utils/ai-video-transcription.js';
 
 type TranscribeResponse = {
   language?: string;
   languageProbability?: number;
-  segments?: Array<{ start?: number; end?: number; text?: string }>;
+  noSpeech?: boolean;
+  reason?: string;
+  segments?: Array<{ start?: number; end?: number; text?: string; noSpeechProb?: number; avgLogProb?: number }>;
 };
 
 // The sidecar transcribes synchronously (large-v3 int8 on CPU can take tens of
@@ -17,7 +20,8 @@ const transcriptionDispatcher = new Agent({ headersTimeout: 0, bodyTimeout: 0 })
 
 export class AiVideoTranscriptionClientError extends Error {
   constructor(
-    readonly code: 'timeout' | 'network_error' | 'endpoint_error' | 'invalid_json' | 'invalid_output' | 'feature_disabled',
+    readonly code:
+      'timeout' | 'network_error' | 'endpoint_error' | 'invalid_json' | 'invalid_output' | 'feature_disabled',
     message: string,
   ) {
     super(message);
@@ -28,6 +32,8 @@ export class AiVideoTranscriptionClientError extends Error {
 export type AiVideoTranscriptionResponse = {
   language?: string;
   languageProbability?: number;
+  noSpeech: boolean;
+  reason?: string;
   segments: Array<{ startSec: number; endSec: number; text: string }>;
 };
 
@@ -43,8 +49,9 @@ export class AiVideoTranscriptionClient {
 
   /**
   Transcribe a 16 kHz mono s16 WAV (the media repository's `extractVideoAudio`
-  output) through the faster-whisper sidecar. The sidecar applies the validated
-  band-pass + VAD recipe and no-speech filtering server-side.
+  output) through the faster-whisper sidecar. The sidecar applies the VAD +
+  post-ASR hallucination filter and reports `noSpeech` when no usable speech
+  survives.
   */
   async transcribe(audio: Buffer, options?: { language?: string }): Promise<AiVideoTranscriptionResponse> {
     const config = this.configRepository.getEnv().aiVideoTranscription;
@@ -84,7 +91,10 @@ export class AiVideoTranscriptionClient {
         payload = (await response.json()) as TranscribeResponse;
       } catch (error) {
         if (error instanceof SyntaxError) {
-          throw new AiVideoTranscriptionClientError('invalid_json', 'AI video transcription endpoint returned invalid JSON');
+          throw new AiVideoTranscriptionClientError(
+            'invalid_json',
+            'AI video transcription endpoint returned invalid JSON',
+          );
         }
         if ((error as Error)?.name === 'AbortError' || (error as { code?: string })?.code === 'ABORT_ERR') {
           throw new AiVideoTranscriptionClientError('timeout', 'AI video transcription request timed out');
@@ -92,17 +102,26 @@ export class AiVideoTranscriptionClient {
         throw new AiVideoTranscriptionClientError('network_error', 'AI video transcription response stream failed');
       }
 
-      const segments = (payload.segments ?? [])
-        .filter((segment) => typeof segment.start === 'number' && typeof segment.end === 'number' && !!segment.text?.trim())
-        .map((segment) => ({ startSec: segment.start!, endSec: segment.end!, text: segment.text!.trim() }));
+      const noSpeech = payload.noSpeech === true;
+      const segments = noSpeech
+        ? []
+        : (payload.segments ?? [])
+            .filter(
+              (segment) =>
+                typeof segment.start === 'number' && typeof segment.end === 'number' && !!segment.text?.trim(),
+            )
+            .filter((segment) => isTranscriptionSegmentAudible(segment))
+            .map((segment) => ({ startSec: segment.start!, endSec: segment.end!, text: segment.text!.trim() }));
 
       this.logger.debug(
-        `AI video transcription completed in ${Date.now() - startedAt}ms (${segments.length} segments, language: ${payload.language ?? 'unknown'})`,
+        `AI video transcription completed in ${Date.now() - startedAt}ms (${noSpeech ? `no speech: ${payload.reason ?? 'unknown'}` : `${segments.length} segments`}, language: ${payload.language ?? 'unknown'})`,
       );
       this.recordRequest(backend, 'success', Date.now() - startedAt);
       return {
         language: payload.language,
         languageProbability: payload.languageProbability,
+        noSpeech,
+        reason: payload.reason,
         segments,
       };
     } catch (error) {

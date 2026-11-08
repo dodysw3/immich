@@ -13,7 +13,7 @@ describe('ai-video-transcription utils', () => {
       expect(createVideoTranscriptionRunKey('faster-whisper-medium', AI_VIDEO_TRANSCRIPTION_PROMPT_VERSION)).not.toBe(
         base,
       );
-      expect(createVideoTranscriptionRunKey('faster-whisper-large-v3', 'video-transcription-0.2.0')).not.toBe(base);
+      expect(createVideoTranscriptionRunKey('faster-whisper-large-v3', 'video-transcription-0.3.0')).not.toBe(base);
     });
   });
 

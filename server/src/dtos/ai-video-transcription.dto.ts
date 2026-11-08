@@ -60,6 +60,8 @@ const AiVideoTranscriptionRunSchema = z
     languageProbability: z.number().min(0).max(1).optional(),
     /** True when the video has no audio stream at all (completed, zero segments). */
     noAudio: z.boolean().optional(),
+    /** True when the audio contained no usable speech (silence/noise); completed with zero segments. */
+    noSpeech: z.boolean().optional(),
     /** True when the audio was longer than maxDurationSec and only the head was transcribed. */
     truncated: z.boolean().optional(),
     segments: z.array(AiVideoTranscriptionSegmentSchema),
@@ -67,10 +69,10 @@ const AiVideoTranscriptionRunSchema = z
     metrics: AiVideoTranscriptionMetricsSchema.optional(),
   })
   .superRefine((run, ctx) => {
-    if (run.status === 'completed' && run.segments.length === 0 && !run.noAudio) {
+    if (run.status === 'completed' && run.segments.length === 0 && !run.noAudio && !run.noSpeech) {
       ctx.addIssue({
         code: 'custom',
-        message: 'Completed runs must include at least one segment or noAudio',
+        message: 'Completed runs must include at least one segment, noAudio, or noSpeech',
         path: ['segments'],
       });
     }

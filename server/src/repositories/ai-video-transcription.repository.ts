@@ -119,6 +119,7 @@ export class AiVideoTranscriptionRepository {
       language?: string;
       languageProbability?: number;
       noAudio?: boolean;
+      noSpeech?: boolean;
       truncated?: boolean;
       metrics?: AiVideoTranscriptionMetrics;
     },
@@ -135,6 +136,7 @@ export class AiVideoTranscriptionRepository {
         language: options.language ?? run.language,
         languageProbability: options.languageProbability ?? run.languageProbability,
         noAudio: options.noAudio,
+        noSpeech: options.noSpeech,
         truncated: options.truncated,
         metrics: options.metrics ?? run.metrics,
         error: undefined,
@@ -143,7 +145,12 @@ export class AiVideoTranscriptionRepository {
     return next !== null;
   }
 
-  async fail(assetId: string, runKey: string, error: AiVideoTranscriptionError, finishedAt = new Date()): Promise<void> {
+  async fail(
+    assetId: string,
+    runKey: string,
+    error: AiVideoTranscriptionError,
+    finishedAt = new Date(),
+  ): Promise<void> {
     await this.updateRun(assetId, runKey, (run) => {
       if (run.status === 'completed' || run.status === 'failed') {
         return;
