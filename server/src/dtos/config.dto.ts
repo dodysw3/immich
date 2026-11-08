@@ -277,6 +277,31 @@ const AdminConfigSchemaWithVisibility = z
             .int()
             .min(0)
             .describe('Maximum whole-document PDF text token-bag symmetric difference before a candidate is vetoed'),
+          videoNearDup: z
+            .object({
+              enabled: z
+                .boolean()
+                .describe(
+                  'Group near-duplicate videos via frame, audio, and metadata fingerprints when CLIP preview similarity finds none',
+                ),
+              groupThreshold: z
+                .number()
+                .min(0.5)
+                .max(1)
+                .describe('Minimum composite similarity before two videos are grouped as near-duplicates')
+                .meta({ format: 'double' }),
+              maxDurationDeltaMs: z
+                .int()
+                .min(0)
+                .describe('Absolute duration tolerance in milliseconds for video near-duplicate candidates'),
+              durationRelTol: z
+                .number()
+                .min(0)
+                .max(0.5)
+                .describe('Relative duration tolerance as a fraction of the longer video')
+                .meta({ format: 'double' }),
+            })
+            .meta({ id: 'AdminConfigVideoNearDupDto' }),
         }).meta({ id: 'AdminConfigDuplicateDetectionDto' }),
         facialRecognition: AdminConfigMachineLearningModelSchema.extend({
           importNamesFromOtherAccounts: z
@@ -731,6 +756,12 @@ export const defaults = Object.freeze<SystemConfig>({
       ocrVetoMaxTokenDiff: 4,
       pdfVeto: true,
       pdfVetoMaxTokenDiff: 1,
+      videoNearDup: {
+        enabled: true,
+        groupThreshold: 0.9,
+        maxDurationDeltaMs: 2000,
+        durationRelTol: 0.03,
+      },
     },
     facialRecognition: {
       enabled: true,

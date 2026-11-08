@@ -35,6 +35,44 @@ interface DuplicateMergeOptions {
   sourceIds: string[];
 }
 
+export interface VideoNearDupSource {
+  id: string;
+  ownerId: string;
+  originalPath: string;
+  durationMs: number;
+  originalFileName: string;
+  localDateTime: Date | null;
+  width: number | null;
+  height: number | null;
+  fps: number | null;
+  duplicateId: string | null;
+  checksumHex: string;
+}
+
+export interface VideoDuplicateCandidateRow {
+  assetId: string;
+  duplicateId: string | null;
+  originalPath: string;
+  durationMs: number;
+  originalFileName: string;
+  localDateTime: Date | null;
+  width: number | null;
+  height: number | null;
+  fps: number | null;
+  checksumHex: string;
+  /** pgvector cosine distance of the preview embedding; null when the candidate has none */
+  clipDistance: number | null;
+}
+
+interface VideoCandidateSearch {
+  assetId: string;
+  ownerId: string;
+  durationMs: number;
+  maxDeltaMs: number;
+  relTol: number;
+  embedding: string;
+}
+
 @Injectable()
 export class DuplicateRepository {
   constructor(@InjectKysely() private db: Kysely<DB>) {}
@@ -267,5 +305,83 @@ export class DuplicateRepository {
         eb.or([eb('duplicateId', '=', anyUuid(options.sourceIds)), eb('id', '=', anyUuid(options.assetIds))]),
       )
       .execute();
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID] })
+  async getForVideoNearDuplicates(assetId: string): Promise<VideoNearDupSource | undefined> {
+    const row = await this.db
+      .selectFrom('asset')
+      .leftJoin('asset_exif', 'asset_exif.assetId', 'asset.id')
+      .select([
+        'asset.id',
+        'asset.ownerId',
+        'asset.originalPath',
+        'asset.duration as durationMs',
+        'asset.originalFileName',
+        'asset.localDateTime',
+        'asset.width',
+        'asset.height',
+        'asset_exif.fps as fps',
+        'asset.duplicateId',
+        sql<string>`encode(asset.checksum, 'hex')`.as('checksumHex'),
+      ])
+      .where('asset.id', '=', asUuid(assetId))
+      .executeTakeFirst();
+    return row as VideoNearDupSource | undefined;
+  }
+
+  // Duration-window candidates for near-duplicate video verification. A plain
+  // filtered scan (owner + type + duration bounds) rather than a vector search:
+  // the strongest anchor — identical filename and capture time — does not
+  // correlate with CLIP distance, so arm-B pairs must be found regardless of
+  // the embedding. clipDistance comes along for gate arm C and scoring.
+  @GenerateSql({
+    params: [
+      {
+        assetId: DummyValue.UUID,
+        ownerId: DummyValue.UUID,
+        durationMs: 60_000,
+        maxDeltaMs: 2000,
+        relTol: 0.03,
+        embedding: DummyValue.VECTOR,
+      },
+    ],
+  })
+  async searchVideoCandidates({
+    assetId,
+    ownerId,
+    durationMs,
+    maxDeltaMs,
+    relTol,
+    embedding,
+  }: VideoCandidateSearch): Promise<VideoDuplicateCandidateRow[]> {
+    const tolerance = maxDeltaMs + relTol * durationMs;
+    const rows = await this.db
+      .selectFrom('asset')
+      .$call(withDefaultVisibility)
+      .leftJoin('asset_exif', 'asset_exif.assetId', 'asset.id')
+      .leftJoin('smart_search', 'smart_search.assetId', 'asset.id')
+      .select([
+        'asset.id as assetId',
+        'asset.duplicateId',
+        'asset.originalPath',
+        'asset.duration as durationMs',
+        'asset.originalFileName',
+        'asset.localDateTime',
+        'asset.width',
+        'asset.height',
+        'asset_exif.fps as fps',
+        sql<string>`encode(asset.checksum, 'hex')`.as('checksumHex'),
+        sql<number | null>`smart_search.embedding <=> ${embedding}`.as('clipDistance'),
+      ])
+      .where('asset.ownerId', '=', asUuid(ownerId))
+      .where('asset.deletedAt', 'is', null)
+      .where('asset.type', '=', AssetType.Video)
+      .where('asset.id', '!=', asUuid(assetId))
+      .where('asset.stackId', 'is', null)
+      .where('asset.duration', '>=', Math.floor(durationMs - tolerance))
+      .where('asset.duration', '<=', Math.ceil(durationMs + tolerance))
+      .execute();
+    return rows.map((row) => ({ ...row, durationMs: Number(row.durationMs) })) as VideoDuplicateCandidateRow[];
   }
 }

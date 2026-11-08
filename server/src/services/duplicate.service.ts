@@ -5,13 +5,29 @@ import { BulkIdErrorReason, BulkIdResponseDto, BulkIdsDto } from 'src/dtos/asset
 import { MapAsset, mapAsset } from 'src/dtos/asset-response.dto.js';
 import { AuthDto } from 'src/dtos/auth.dto.js';
 import { DuplicateResolveDto, DuplicateResolveGroupDto, DuplicateResponseDto } from 'src/dtos/duplicate.dto.js';
-import { AssetStatus, AssetVisibility, DatabaseLock, JobName, JobStatus, Permission, QueueName } from 'src/enum.js';
+import { AssetStatus, AssetType, AssetVisibility, DatabaseLock, JobName, JobStatus, Permission, QueueName } from 'src/enum.js';
+import type { VideoDuplicateCandidateRow, VideoNearDupSource } from 'src/repositories/duplicate.repository.js';
 import { AssetDuplicateResult } from 'src/repositories/search.repository.js';
 import { BaseService } from 'src/services/base.service.js';
 import type { JobOf } from 'src/types.js';
 import { ocrTokenBagDiff } from 'src/utils/duplicate-ocr.js';
 import { suggestDuplicateKeepAssetIds } from 'src/utils/duplicate.js';
+import {
+  dHash9x8Gray,
+  meanAdjacentHamming,
+  passesVideoCheapGate,
+  pcmToEnvelope,
+  scoreVideoDuplicatePair,
+  type VideoDuplicateMeta,
+  type VideoFingerprint,
+} from 'src/utils/duplicate-video.js';
 import { batched, isDuplicateDetectionEnabled, isOcrEnabled } from 'src/utils/misc.js';
+
+// Bound the ffmpeg verification work per video asset: after the cheap gate,
+// candidates are ordered by CLIP distance and only this many get fingerprints.
+const VIDEO_NEAR_DUP_MAX_VERIFICATIONS = 16;
+const VIDEO_NEAR_DUP_FRAMES = 8;
+const VIDEO_NEAR_DUP_MAX_AUDIO_SEC = 600;
 
 type ResolveRequest = {
   assetUpdate: {
@@ -64,6 +80,17 @@ const getUniqueCoordinate = (assets: MapAsset[], key: 'latitude' | 'longitude'):
   const unique = new Set(values);
   return unique.size === 1 ? [...unique][0] : null;
 };
+
+const toVideoDuplicateMeta = (row: VideoNearDupSource | VideoDuplicateCandidateRow): VideoDuplicateMeta => ({
+  id: 'assetId' in row ? row.assetId : row.id,
+  originalFileName: row.originalFileName,
+  durationMs: row.durationMs,
+  localDateTime: row.localDateTime,
+  width: row.width,
+  height: row.height,
+  fps: row.fps ?? null,
+  checksumHex: row.checksumHex,
+});
 
 @Injectable()
 export class DuplicateService extends BaseService {
@@ -374,6 +401,19 @@ export class DuplicateService extends BaseService {
           `Found ${duplicateAssets.length} duplicate${duplicateAssets.length === 1 ? '' : 's'} for asset ${asset.id}`,
         );
         assetIds = await this.updateDuplicates(asset, duplicateAssets);
+      } else if (asset.type === AssetType.Video && machineLearning.duplicateDetection.videoNearDup.enabled) {
+        // CLIP preview similarity cannot separate two encodes of the same video (different
+        // poster frame, distance 0.05-0.19 measured). Fall back to frame/audio/metadata
+        // fingerprints; this also re-establishes groups a force re-run would otherwise
+        // dissolve for videos whose group was built on these signals.
+        const videoCandidates = await this.searchVideoNearDuplicates(asset, machineLearning);
+        if (videoCandidates.length > 0) {
+          this.logger.debug(`Found ${videoCandidates.length} video near-duplicate${videoCandidates.length === 1 ? '' : 's'} for asset ${asset.id}`);
+          assetIds = await this.updateDuplicates(asset, videoCandidates);
+        } else if (asset.duplicateId) {
+          this.logger.debug(`No duplicates found for video asset ${asset.id}, removing duplicateId`);
+          await this.assetRepository.update({ id: asset.id, duplicateId: null });
+        }
       } else if (asset.duplicateId) {
         this.logger.debug(`No duplicates found for asset ${asset.id}, removing duplicateId`);
         await this.assetRepository.update({ id: asset.id, duplicateId: null });
@@ -514,6 +554,102 @@ export class DuplicateService extends BaseService {
     }
 
     return filtered;
+  }
+
+  // Near-duplicate video fallback for the CLIP path: duration-window candidates from
+  // the same owner, cheap metadata/CLIP gate, then ffmpeg fingerprint verification
+  // (frame dHash grid + audio envelope + metadata composite, see duplicate-video.ts).
+  // Returns AssetDuplicateResult-shaped candidates so updateDuplicates handles grouping
+  // and group coalescing exactly like the CLIP path.
+  private async searchVideoNearDuplicates(
+    asset: { id: string; ownerId: string; embedding: string | null },
+    machineLearning: MachineLearningConfig,
+  ): Promise<AssetDuplicateResult[]> {
+    const config = machineLearning.duplicateDetection.videoNearDup;
+    const source = await this.duplicateRepository.getForVideoNearDuplicates(asset.id);
+    if (!source || source.durationMs <= 0 || !source.originalPath || !asset.embedding) {
+      return [];
+    }
+
+    const candidates = await this.duplicateRepository.searchVideoCandidates({
+      assetId: source.id,
+      ownerId: source.ownerId,
+      durationMs: source.durationMs,
+      maxDeltaMs: config.maxDurationDeltaMs,
+      relTol: config.durationRelTol,
+      embedding: asset.embedding,
+    });
+    if (candidates.length === 0) {
+      return [];
+    }
+
+    const sourceMeta = toVideoDuplicateMeta(source);
+    // Cheap gate first (no ffmpeg), then order by CLIP distance and cap the
+    // verification work — a force re-run over the whole library must stay sane.
+    const gated = candidates
+      .map((row) => ({
+        row,
+        meta: toVideoDuplicateMeta(row),
+        clipSimilarity: row.clipDistance === null ? null : 1 - row.clipDistance,
+      }))
+      .filter(({ meta, clipSimilarity }) => passesVideoCheapGate(sourceMeta, meta, clipSimilarity))
+      .sort((a, b) => (a.row.clipDistance ?? Infinity) - (b.row.clipDistance ?? Infinity))
+      .slice(0, VIDEO_NEAR_DUP_MAX_VERIFICATIONS);
+    if (gated.length === 0) {
+      return [];
+    }
+
+    const sourceFingerprint = await this.extractVideoFingerprint(source.originalPath, source.durationMs);
+    if (!sourceFingerprint) {
+      return [];
+    }
+
+    const verified: AssetDuplicateResult[] = [];
+    for (const { row, meta, clipSimilarity } of gated) {
+      const candidateFingerprint = await this.extractVideoFingerprint(row.originalPath, row.durationMs);
+      const { score, reviewCap, groupFloor } = scoreVideoDuplicatePair({
+        source: sourceMeta,
+        candidate: meta,
+        sourceFingerprint,
+        candidateFingerprint,
+        clipSimilarity,
+        groupThreshold: config.groupThreshold,
+      });
+      if (!(score >= groupFloor) || reviewCap) {
+        continue;
+      }
+
+      this.logger.log(
+        `Video near-duplicate match for ${source.originalFileName} (${asset.id}): ${row.originalFileName} (${row.assetId}) score ${score.toFixed(3)}`,
+      );
+      verified.push({ assetId: row.assetId, duplicateId: row.duplicateId, distance: 1 - score });
+    }
+
+    return verified;
+  }
+
+  // Null fingerprint = no physical evidence (missing file, undecodable stream) —
+  // the scoring guards then keep the pair out of auto-grouping.
+  private async extractVideoFingerprint(originalPath: string, durationMs: number): Promise<VideoFingerprint | null> {
+    try {
+      const { frames, audio } = await this.mediaRepository.extractVideoFingerprintData(originalPath, {
+        frameCount: VIDEO_NEAR_DUP_FRAMES,
+        durationSec: durationMs / 1000,
+        maxAudioSec: VIDEO_NEAR_DUP_MAX_AUDIO_SEC,
+      });
+      if (frames.length === 0 && audio === null) {
+        return null;
+      }
+      const frameHashes = frames.length === 0 ? null : frames.map((frame) => dHash9x8Gray(frame));
+      return {
+        frameHashes,
+        motionBits: frameHashes ? meanAdjacentHamming(frameHashes) : null,
+        audioEnvelope: audio ? pcmToEnvelope(audio) : null,
+      };
+    } catch (error: Error | any) {
+      this.logger.debug(`Video fingerprint extraction failed for ${originalPath}: ${error?.message}`);
+      return null;
+    }
   }
 
   private async updateDuplicates(

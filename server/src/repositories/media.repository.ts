@@ -377,6 +377,122 @@ export class MediaRepository {
     return stats && stats.size > 44 ? audioPath : null;
   }
 
+  /**
+  Raw fingerprint data for near-duplicate video detection (DuplicateService):
+  `frameCount` frames downscaled to 9x8 grayscale rawvideo (72 bytes each, in
+  timeline order, ready for dHash) plus up to `maxAudioSec` of 8 kHz mono
+  s16le PCM for the audio envelope. Videos up to ~2 minutes decode in one
+  fps-filter pass; longer ones use per-frame input seeks to avoid a full
+  decode. Throws when the frame pass fails (missing file, undecodable
+  stream) — callers treat that as "no physical evidence". Audio returns null
+  on failure or when the source has no audio track (the expected quiet path).
+  */
+  async extractVideoFingerprintData(
+    input: string,
+    options: { frameCount: number; durationSec: number; maxAudioSec: number },
+  ): Promise<{ frames: Buffer[]; audio: Buffer | null }> {
+    const { frameCount, durationSec, maxAudioSec } = options;
+    const frames: Buffer[] = [];
+    if (durationSec > 0 && durationSec <= 120) {
+      const fps = Math.max(frameCount / Math.max(durationSec, 0.5), 1);
+      const args = [
+        '-hide_banner', '-loglevel', 'error', '-nostdin', '-i', input,
+        '-an', '-sn', '-dn', '-map', '0:v:0',
+        '-vf', `fps=${fps.toFixed(4)},scale=9:8,format=gray`,
+        '-frames:v', String(frameCount),
+        '-f', 'rawvideo', '-',
+      ];
+      const raw = await new Promise<Buffer>((resolve, reject) => {
+        const proc = spawn('ffmpeg', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+        const chunks: Buffer[] = [];
+        let stderr = '';
+        proc.stdout.on('data', (chunk) => {
+          chunks.push(chunk as Buffer);
+        });
+        proc.stderr.on('data', (chunk) => (stderr += chunk.toString()));
+        proc.on('error', reject);
+        proc.on('close', (code) => {
+          if (code === 0) {
+            resolve(Buffer.concat(chunks));
+            return;
+          }
+          reject(new Error(`ffmpeg fingerprint frame pass failed (code ${code}): ${stderr.slice(-300)}`));
+        });
+      });
+      for (let offset = 0; offset + 72 <= raw.length; offset += 72) {
+        frames.push(raw.subarray(offset, offset + 72));
+      }
+    } else if (durationSec > 0) {
+      for (let i = 0; i < frameCount; i++) {
+        const at = (durationSec * (i + 0.5)) / frameCount;
+        try {
+          const raw = await new Promise<Buffer>((resolve, reject) => {
+            const args = [
+              '-hide_banner', '-loglevel', 'error', '-nostdin',
+              '-ss', at.toFixed(3), '-i', input,
+              '-an', '-sn', '-dn', '-map', '0:v:0',
+              '-frames:v', '1', '-vf', 'scale=9:8,format=gray', '-f', 'rawvideo', '-',
+            ];
+            const proc = spawn('ffmpeg', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+            const chunks: Buffer[] = [];
+            let stderr = '';
+            proc.stdout.on('data', (chunk) => {
+          chunks.push(chunk as Buffer);
+        });
+            proc.stderr.on('data', (chunk) => (stderr += chunk.toString()));
+            proc.on('error', reject);
+            proc.on('close', (code) => {
+              if (code === 0) {
+                resolve(Buffer.concat(chunks));
+                return;
+              }
+              reject(new Error(`ffmpeg fingerprint seek pass failed at ${at}s (code ${code}): ${stderr.slice(-300)}`));
+            });
+          });
+          if (raw.length >= 72) {
+            frames.push(raw.subarray(0, 72));
+          }
+        } catch {
+          // seek past EOF, undecodable frame — keep the frames we have
+        }
+      }
+    }
+
+    let audio: Buffer | null;
+    try {
+      audio = await new Promise<Buffer>((resolve, reject) => {
+        const args = [
+          '-hide_banner', '-loglevel', 'error', '-nostdin', '-i', input,
+          '-vn', '-sn', '-dn', '-map', '0:a:0?',
+          '-t', String(maxAudioSec),
+          '-ac', '1', '-ar', '8000', '-f', 's16le', '-',
+        ];
+        const proc = spawn('ffmpeg', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+        const chunks: Buffer[] = [];
+        let stderr = '';
+        proc.stdout.on('data', (chunk) => {
+          chunks.push(chunk as Buffer);
+        });
+        proc.stderr.on('data', (chunk) => (stderr += chunk.toString()));
+        proc.on('error', reject);
+        proc.on('close', (code) => {
+          if (code === 0) {
+            resolve(Buffer.concat(chunks));
+            return;
+          }
+          reject(new Error(`ffmpeg fingerprint audio pass failed (code ${code}): ${stderr.slice(-300)}`));
+        });
+      });
+      if (audio.length < 8000 * 2) {
+        audio = null; // <1s of audio — no usable envelope
+      }
+    } catch {
+      audio = null;
+    }
+
+    return { frames, audio };
+  }
+
   async probe(input: string, options?: ProbeOptions): Promise<VideoInfo> {
     const results = await probe(input, options?.countFrames ? ['-count_packets'] : []); // gets frame count quickly: https://stackoverflow.com/a/28376817
     return {
