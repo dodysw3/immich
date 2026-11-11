@@ -12,16 +12,25 @@
     currentTimeMs = 0,
     contentRect = { width: 0, height: 0, offsetX: 0, offsetY: 0 } as ContentRect,
     containerHeight = 0,
+    // eslint-disable-next-line no-useless-assignment
+    height = $bindable(0),
   }: {
     currentTimeMs?: number;
     contentRect?: ContentRect;
     containerHeight?: number;
+    /** Rendered height of the line on screen, 0 when none — the sound tags stack above it. */
+    height?: number;
   } = $props();
 
   const activeSegment = $derived(videoTranscriptManager.segmentAt(currentTimeMs));
   // Hidden while paused-at-zero: a subtitle pinned at t=0 on an unplayed video
   // looks like a rendering artifact rather than a caption.
   const showBar = $derived(videoTranscriptManager.showOverlay && !!activeSegment && currentTimeMs > 0);
+
+  let measuredHeight = $state(0);
+  $effect(() => {
+    height = showBar ? measuredHeight : 0;
+  });
 
   // Subtitles hug the footage the way YouTube renders them: centered on the
   // displayed media rect, just above its bottom edge (pillarboxed video keeps
@@ -49,6 +58,7 @@
     <div
       class="pointer-events-none absolute z-10 text-center"
       style="left: {placement.left}px; width: {placement.width}px; bottom: {placement.bottom}px;"
+      bind:clientHeight={measuredHeight}
       data-testid="video-transcript-overlay"
     >
       <span class={lineClass} style={lineStyle} role="status" aria-live="polite">{activeSegment!.text}</span>
@@ -56,6 +66,7 @@
   {:else}
     <div
       class="pointer-events-none absolute inset-x-0 bottom-2 z-10 text-center"
+      bind:clientHeight={measuredHeight}
       data-testid="video-transcript-overlay"
     >
       <span class={lineClass} style={lineStyle} role="status" aria-live="polite">{activeSegment!.text}</span>

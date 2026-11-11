@@ -1,5 +1,6 @@
 <script lang="ts">
   import BoundingBoxOverlay from '#lib/components/asset-viewer/BoundingBoxOverlay.svelte';
+  import VideoAudioEventsOverlay from '#lib/components/asset-viewer/VideoAudioEventsOverlay.svelte';
   import VideoCaptionOverlay from '#lib/components/asset-viewer/VideoCaptionOverlay.svelte';
   import VideoRemoteViewer from '#lib/components/asset-viewer/VideoRemoteViewer.svelte';
   import VideoTranscriptOverlay from '#lib/components/asset-viewer/VideoTranscriptOverlay.svelte';
@@ -15,6 +16,7 @@
   import { ocrManager } from '#lib/stores/ocr.svelte.ts';
   import { autoPlayVideo, lang, loopVideo as loopVideoPreference } from '#lib/stores/preferences.store.ts';
   import { videoFacesManager } from '#lib/stores/video-faces.svelte.ts';
+  import { videoAudioEventsManager } from '#lib/stores/video-audio-events.svelte.ts';
   import { videoCaptionManager } from '#lib/stores/video-caption.svelte.ts';
   import { videoTranscriptManager } from '#lib/stores/video-transcript.svelte.ts';
   import { getAssetHlsSessionUrl, getAssetHlsUrl, getAssetMediaUrl, getAssetPlaybackUrl } from '#lib/utils.ts';
@@ -361,6 +363,8 @@
 
   const showCaptionOverlay = $derived(asset.type === AssetTypeEnum.Video && videoCaptionManager.hasCaptions);
   const showTranscriptOverlay = $derived(asset.type === AssetTypeEnum.Video && videoTranscriptManager.hasTranscript);
+  const showAudioEventsOverlay = $derived(asset.type === AssetTypeEnum.Video && videoAudioEventsManager.hasEvents);
+  let transcriptLineHeight = $state(0);
 
   $effect(() => {
     if (assetViewerManager.isFaceEditMode) {
@@ -587,6 +591,7 @@
           {containerWidth}
           {containerHeight}
           raised={showTranscriptOverlay}
+          lift={(showTranscriptOverlay ? 1 : 0) + (showAudioEventsOverlay ? 1 : 0)}
         />
       {/if}
 
@@ -595,6 +600,10 @@
           currentTimeMs={assetViewerManager.videoCurrentTimeMs ?? 0}
           contentRect={overlayContentRect}
           {containerHeight}
+          bind:height={transcriptLineHeight}
+      {#if showAudioEventsOverlay}
+        <VideoAudioEventsOverlay
+          transcriptHeight={showTranscriptOverlay ? transcriptLineHeight : 0}
         />
       {/if}
     {/if}

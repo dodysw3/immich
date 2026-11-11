@@ -21,6 +21,7 @@
   import { ocrManager } from '#lib/stores/ocr.svelte.ts';
   import { alwaysLoadOriginalVideo } from '#lib/stores/preferences.store.ts';
   import { SlideshowNavigation, SlideshowState, slideshowStore } from '#lib/stores/slideshow.store.ts';
+  import { videoAudioEventsManager } from '#lib/stores/video-audio-events.svelte.ts';
   import { videoCaptionManager } from '#lib/stores/video-caption.svelte.ts';
   import { videoTranscriptManager } from '#lib/stores/video-transcript.svelte.ts';
   import { videoFacesManager } from '#lib/stores/video-faces.svelte.ts';
@@ -57,6 +58,7 @@
   import PhotoViewer from './PhotoViewer.svelte';
   import SlideshowBar from './SlideshowBar.svelte';
   import SlideshowMetadataOverlay from './SlideshowMetadataOverlay.svelte';
+  import VideoAudioEventsButton from './VideoAudioEventsButton.svelte';
   import VideoCaptionButton from './VideoCaptionButton.svelte';
   import VideoTranscriptButton from './VideoTranscriptButton.svelte';
   import VideoViewer from './VideoWrapperViewer.svelte';
@@ -409,6 +411,7 @@
     videoCaptionManager.clear();
     videoTranscriptManager.clear();
     videoFacesManager.clear();
+    videoAudioEventsManager.clear();
     assetViewerManager.clearVideoCurrentTimeMs();
     if (!sharedLink) {
       if (previewStackedAsset) {
@@ -422,6 +425,7 @@
       await videoCaptionManager.getAssetCaptions(asset.id);
       await videoTranscriptManager.getAssetTranscripts(asset.id);
     }
+      await videoAudioEventsManager.getAssetAudioEvents(asset.id);
       await videoFacesManager.getAssetVideoFaces(asset.id);
   };
 
@@ -496,6 +500,9 @@
       asset.type === AssetTypeEnum.Video &&
       videoTranscriptManager.hasTranscript,
   );
+  const showAudioEventsButton = $derived(
+      videoAudioEventsManager.hasEvents,
+  const audioEventsButtonMargin = $derived(
 
   const aiInterpretationButtonBottom = $derived(
     24 +
@@ -503,6 +510,7 @@
       (showOcrButton ? 56 : 0) +
       (showCaptionButton ? 56 : 0) +
       (showTranscriptButton ? 56 : 0),
+      (showAudioEventsButton ? 56 : 0),
   );
   const { Tag, TagPeople } = $derived(getAssetActions($t, asset));
 
@@ -729,6 +737,9 @@
       </div>
     {/if}
 
+    {#if showAudioEventsButton}
+      <div class="absolute inset-e-0 bottom-0 me-6" style="margin-bottom: {audioEventsButtonMargin}px;">
+        <VideoAudioEventsButton />
     {#if $slideshowState === SlideshowState.None && !assetViewerManager.isShowEditor}
       <AiInterpretationOverlay {asset} buttonBottom={aiInterpretationButtonBottom} />
     {/if}
