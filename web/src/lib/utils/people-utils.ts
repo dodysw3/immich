@@ -21,6 +21,96 @@ export const getBoundingBox = (faces: Faces[], imageSize: Size): BoundingBox[] =
   return boxes;
 };
 
+export type VideoFaceSightingBox = {
+  timeMs: number;
+  score: number;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  imageWidth: number;
+  imageHeight: number;
+};
+
+export type VideoFaceSightingsSource = {
+  id: string;
+  personName?: string | null;
+  sightings: VideoFaceSightingBox[];
+};
+
+/** How far past the first/last sighting a face's box stays on screen (ms). */
+export const SIGHTING_EDGE_TOLERANCE_MS = 1500;
+
+const normalizedSightingCorners = (sighting: VideoFaceSightingBox) => ({
+  minX: sighting.x1 / sighting.imageWidth,
+  minY: sighting.y1 / sighting.imageHeight,
+  maxX: sighting.x2 / sighting.imageWidth,
+  maxY: sighting.y2 / sighting.imageHeight,
+});
+
+/**
+Boxes for video face identities at playback time. Sightings are sparse
+per-frame samples, so each box linearly interpolates between the two sightings
+bracketing `timeMs` and holds the first/last sighting's box for
+SIGHTING_EDGE_TOLERANCE_MS past the edges; faces without a covering sighting
+are omitted (not on screen at that moment).
+*/
+export const getVideoFaceSightingBoxes = (
+  faces: VideoFaceSightingsSource[],
+  timeMs: number,
+  imageSize: Size,
+): (BoundingBox & { personName: string | null })[] => {
+  const boxes: (BoundingBox & { personName: string | null })[] = [];
+
+  for (const face of faces) {
+    if (face.sightings.length === 0) {
+      continue;
+    }
+    const sorted = [...face.sightings].sort((a, b) => a.timeMs - b.timeMs);
+    const first = sorted[0];
+    const last = sorted.at(-1);
+    if (!first || !last) {
+      continue;
+    }
+    if (timeMs < first.timeMs - SIGHTING_EDGE_TOLERANCE_MS || timeMs > last.timeMs + SIGHTING_EDGE_TOLERANCE_MS) {
+      continue;
+    }
+
+    let corners: ReturnType<typeof normalizedSightingCorners>;
+    if (timeMs <= first.timeMs) {
+      corners = normalizedSightingCorners(first);
+    } else if (timeMs >= last.timeMs) {
+      corners = normalizedSightingCorners(last);
+    } else {
+      let index = 0;
+      while (index < sorted.length - 2 && sorted[index + 1].timeMs <= timeMs) {
+        index += 1;
+      }
+      const a = sorted[index];
+      const b = sorted[index + 1];
+      const ca = normalizedSightingCorners(a);
+      const cb = normalizedSightingCorners(b);
+      const span = b.timeMs - a.timeMs;
+      const t = span > 0 ? (timeMs - a.timeMs) / span : 0;
+      corners = {
+        minX: ca.minX + (cb.minX - ca.minX) * t,
+        minY: ca.minY + (cb.minY - ca.minY) * t,
+        maxX: ca.maxX + (cb.maxX - ca.maxX) * t,
+        maxY: ca.maxY + (cb.maxY - ca.maxY) * t,
+      };
+    }
+
+    const rect = mapNormalizedRectToContent(
+      { x: corners.minX, y: corners.minY },
+      { x: corners.maxX, y: corners.maxY },
+      imageSize,
+    );
+    boxes.push({ id: face.id, ...rect, labelWidth: rect.width, personName: face.personName ?? null });
+  }
+
+  return boxes;
+};
+
 let labelMeasureCtx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null = null;
 
 const getLabelMeasureContext = (): CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null => {

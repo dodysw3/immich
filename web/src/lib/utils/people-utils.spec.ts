@@ -1,12 +1,15 @@
 import type { Faces } from '#lib/managers/asset-viewer-manager.svelte.ts';
 import type { Size } from '#lib/utils/container-utils.ts';
 import {
+  SIGHTING_EDGE_TOLERANCE_MS,
   getBoundingBox,
   getFaceReferenceLabels,
   getFaceStats,
   getPersonDisplayName,
+  getVideoFaceSightingBoxes,
   isPlaceholderFaceName,
   type FaceWithName,
+  type VideoFaceSightingBox,
 } from '#lib/utils/people-utils.ts';
 
 // the utils barrel runs DOM-dependent module side effects unrelated to these tests
@@ -216,5 +219,88 @@ describe('getFaceStats', () => {
     ];
 
     expect(getFaceStats(faces)).toEqual({ namedPersons: 1, unnamedPersons: 1, faces: 2 });
+  });
+});
+
+describe('getVideoFaceSightingBoxes', () => {
+  const imageSize: Size = { width: 1000, height: 500 };
+
+  const makeSighting = (
+    timeMs: number,
+    box: [number, number, number, number],
+    dims: [number, number] = [100, 100],
+  ): VideoFaceSightingBox => ({
+    timeMs,
+    score: 0.9,
+    x1: box[0],
+    y1: box[1],
+    x2: box[2],
+    y2: box[3],
+    imageWidth: dims[0],
+    imageHeight: dims[1],
+  });
+
+  it('should omit faces without sightings', () => {
+    expect(getVideoFaceSightingBoxes([{ id: 'face-1', sightings: [] }], 5000, imageSize)).toEqual([]);
+  });
+
+  it('should hold a single sighting within the edge tolerance and omit it outside', () => {
+    const face = { id: 'face-1', personName: 'Alice', sightings: [makeSighting(10_000, [0, 0, 100, 100])] };
+
+    const [atSighting] = getVideoFaceSightingBoxes([face], 10_000, imageSize);
+    expect(atSighting).toEqual({
+      id: 'face-1',
+      top: 0,
+      left: 0,
+      width: 1000,
+      height: 500,
+      labelWidth: 1000,
+      personName: 'Alice',
+    });
+
+    const [held] = getVideoFaceSightingBoxes([face], 10_000 + SIGHTING_EDGE_TOLERANCE_MS, imageSize);
+    expect(held).toEqual(atSighting);
+
+    expect(getVideoFaceSightingBoxes([face], 10_000 + SIGHTING_EDGE_TOLERANCE_MS + 1, imageSize)).toEqual([]);
+    expect(getVideoFaceSightingBoxes([face], 10_000 - SIGHTING_EDGE_TOLERANCE_MS - 1, imageSize)).toEqual([]);
+  });
+
+  it('should interpolate the box between the sightings bracketing the playhead', () => {
+    const face = {
+      id: 'face-1',
+      sightings: [makeSighting(0, [0, 0, 100, 100]), makeSighting(1000, [100, 0, 200, 100])],
+    };
+
+    const [halfway] = getVideoFaceSightingBoxes([face], 500, imageSize);
+    expect(halfway.left).toBeCloseTo(500);
+    expect(halfway.width).toBeCloseTo(1000);
+
+    const [atEnd] = getVideoFaceSightingBoxes([face], 1000, imageSize);
+    expect(atEnd.left).toBeCloseTo(1000);
+  });
+
+  it('should clamp to the first/last sighting box just past the edges', () => {
+    const face = {
+      id: 'face-1',
+      sightings: [makeSighting(0, [0, 0, 100, 100]), makeSighting(1000, [100, 0, 200, 100])],
+    };
+
+    const [beforeStart] = getVideoFaceSightingBoxes([face], -200, imageSize);
+    expect(beforeStart.left).toBe(0);
+    const [afterEnd] = getVideoFaceSightingBoxes([face], 1200, imageSize);
+    expect(afterEnd.left).toBeCloseTo(1000);
+    expect(getVideoFaceSightingBoxes([face], -SIGHTING_EDGE_TOLERANCE_MS - 1, imageSize)).toEqual([]);
+  });
+
+  it('should normalize each sighting by its own frame dimensions', () => {
+    const face = {
+      id: 'face-1',
+      // same physical half-frame box expressed in 200px and 100px wide frames
+      sightings: [makeSighting(0, [0, 0, 100, 100], [200, 200]), makeSighting(1000, [0, 0, 50, 50], [100, 100])],
+    };
+
+    const [atStart] = getVideoFaceSightingBoxes([face], 0, imageSize);
+    const [atEnd] = getVideoFaceSightingBoxes([face], 1000, imageSize);
+    expect(atStart).toEqual(atEnd);
   });
 });

@@ -3,9 +3,15 @@
   import { assetViewerManager, type Faces } from '#lib/managers/asset-viewer-manager.svelte.ts';
   import { faceManager } from '#lib/stores/face.svelte.ts';
   import { ocrManager } from '#lib/stores/ocr.svelte.ts';
+  import { videoFacesManager } from '#lib/stores/video-faces.svelte.ts';
   import type { Size } from '#lib/utils/container-utils.ts';
   import { getOcrBoundingBoxes } from '#lib/utils/ocr-utils.ts';
-  import { getBoundingBox, getFaceLabelStyle, type BoundingBox } from '#lib/utils/people-utils.ts';
+  import {
+    getBoundingBox,
+    getFaceLabelStyle,
+    getVideoFaceSightingBoxes,
+    type BoundingBox,
+  } from '#lib/utils/people-utils.ts';
   import { onDestroy } from 'svelte';
   import OcrBoundingBox from './OcrBoundingBox.svelte';
 
@@ -16,9 +22,11 @@
     offsetY?: number;
     /** Width used to keep active face labels inside the content area. */
     labelReferenceWidth?: number;
+    /** Live playback clock (ms) for time-indexed video face boxes. */
+    videoFaceTimeMs?: number | null;
   };
 
-  let { overlaySize, offsetX = 0, offsetY = 0, labelReferenceWidth }: Props = $props();
+  let { overlaySize, offsetX = 0, offsetY = 0, labelReferenceWidth, videoFaceTimeMs = null }: Props = $props();
 
   const faceLabelOffset = 32;
   const labelSpace = $derived(labelReferenceWidth ?? overlaySize.width);
@@ -54,9 +62,23 @@
 
   // we want to bind to `boundingbox.labelWidth`, which requires deep reactivity
   // $derived does not currently support that, only $state does.
-  let boundingBoxes = $state<Array<BoundingBox & { name?: string; face: Faces; referenceLabel?: string }>>([]);
+  let boundingBoxes = $state<Array<BoundingBox & { name?: string; face?: Faces; referenceLabel?: string }>>([]);
   $effect(() => {
     if (assetViewerManager.isFaceEditMode || ocrManager.showOverlay) {
+      return;
+    }
+
+    // scanned videos: face boxes follow the sightings (time-indexed) instead of
+    // the static published best-frame boxes, so they track playback position
+    const videoFaceData = videoFacesManager.data;
+    if (videoFaceData && videoFaceData.faces.length > 0) {
+      const allFaces = faceOverlayStore.showOverlay
+        ? videoFaceData.faces
+        : videoFaceData.faces.filter((face) => face.personName);
+      boundingBoxes = getVideoFaceSightingBoxes(allFaces, videoFaceTimeMs ?? 0, overlaySize).map((box) => ({
+        ...box,
+        name: box.personName ?? undefined,
+      }));
       return;
     }
 
@@ -141,7 +163,11 @@
       class="pointer-events-auto absolute rounded-lg {isActive &&
         'border-3 border-solid border-white'} {showPersistent && 'border border-green-500'}"
       style="top: {boundingbox.top}px; left: {boundingbox.left}px; height: {boundingbox.height}px; width: {boundingbox.width}px;"
-      onpointerenter={() => assetViewerManager.setHighlightedFaces([boundingbox.face])}
+      onpointerenter={() => {
+        if (boundingbox.face) {
+          assetViewerManager.setHighlightedFaces([boundingbox.face]);
+        }
+      }}
       onpointerleave={() => assetViewerManager.clearHighlightedFaces()}
     >
       {#if isActive && displayLabel}

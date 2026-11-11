@@ -23,6 +23,7 @@
   import { SlideshowNavigation, SlideshowState, slideshowStore } from '#lib/stores/slideshow.store.ts';
   import { videoCaptionManager } from '#lib/stores/video-caption.svelte.ts';
   import { videoTranscriptManager } from '#lib/stores/video-transcript.svelte.ts';
+  import { videoFacesManager } from '#lib/stores/video-faces.svelte.ts';
   import { getSharedLink, handlePromiseError } from '#lib/utils.ts';
   import type { OnUndoDelete } from '#lib/utils/actions.ts';
   import { navigateToAsset } from '#lib/utils/asset-utils.ts';
@@ -407,6 +408,7 @@
     faceManager.clear();
     videoCaptionManager.clear();
     videoTranscriptManager.clear();
+    videoFacesManager.clear();
     assetViewerManager.clearVideoCurrentTimeMs();
     if (!sharedLink) {
       if (previewStackedAsset) {
@@ -420,6 +422,7 @@
       await videoCaptionManager.getAssetCaptions(asset.id);
       await videoTranscriptManager.getAssetTranscripts(asset.id);
     }
+      await videoFacesManager.getAssetVideoFaces(asset.id);
   };
 
   $effect(() => {

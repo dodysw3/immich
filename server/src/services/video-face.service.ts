@@ -123,6 +123,30 @@ export class VideoFaceService {
     return await this.handleAssetVideoFaceScan({ id: assetId, budgetOverride });
   }
 
+  /**
+  Chained from video captioning: queue a face scan for this video if it has
+  never been scanned. Any prior run (any outcome) suppresses the auto scan —
+  re-scans are reconcile-safe but not free, so only the manual
+  "Scan video faces" action repeats them. Never throws: a queueing failure
+  must not fail the captioning job that chained us.
+  */
+  async scanIfMissing(assetId: string): Promise<void> {
+    try {
+      const { env } = this.resolvedConfig();
+      if (!env.enabled || !env.onCaption) {
+        return;
+      }
+      const latestRun = await this.videoFaceRepository.getLatestRun(assetId);
+      if (latestRun) {
+        return;
+      }
+      await this.jobRepository.queue({ name: JobName.AssetVideoFaceScan, data: { id: assetId } });
+      this.logger.log(`Queued video face scan for asset ${assetId} (chained from captioning)`);
+    } catch (error) {
+      this.logger.warn(`Chained video face scan skipped for asset ${assetId}: ${error}`);
+    }
+  }
+
   async cleanup(result: ScanResult): Promise<void> {
     await rm(result.tempDir, { recursive: true, force: true });
   }

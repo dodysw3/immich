@@ -8,13 +8,13 @@
   import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
   import { authManager } from '#lib/managers/auth-manager.svelte.ts';
   import { castManager } from '#lib/managers/cast-manager.svelte.ts';
-  import { featureFlagsManager } from '#lib/managers/feature-flags-manager.svelte.ts';
   import { mediaCapabilitiesManager } from '#lib/managers/media-capabilities-manager.svelte.ts';
   import { createPreloadedQuery } from '#lib/queries/client.ts';
   import { getPublicConfigQuery } from '#lib/queries/config-public.query.ts';
   import { faceManager } from '#lib/stores/face.svelte.ts';
   import { ocrManager } from '#lib/stores/ocr.svelte.ts';
   import { autoPlayVideo, lang, loopVideo as loopVideoPreference } from '#lib/stores/preferences.store.ts';
+  import { videoFacesManager } from '#lib/stores/video-faces.svelte.ts';
   import { videoCaptionManager } from '#lib/stores/video-caption.svelte.ts';
   import { videoTranscriptManager } from '#lib/stores/video-transcript.svelte.ts';
   import { getAssetHlsSessionUrl, getAssetHlsUrl, getAssetMediaUrl, getAssetPlaybackUrl } from '#lib/utils.ts';
@@ -355,6 +355,7 @@
     };
   });
   const showBoundingBoxOverlay = $derived(
+      (faceManager.data.length > 0 || ocrManager.hasOcrData || (videoFacesManager.data?.faces.length ?? 0) > 0),
     asset.type === AssetTypeEnum.Video && (faceManager.data.length > 0 || ocrManager.hasOcrData),
   );
 

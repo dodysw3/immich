@@ -22,6 +22,7 @@ import {
   AiVideoCaptioningClientError,
   CaptionFrame,
 } from 'src/services/ai-video-captioning.client.js';
+import { VideoFaceService } from 'src/services/video-face.service.js';
 import type { JobOf } from 'src/types.js';
 import {
   AI_VIDEO_CAPTIONING_PROMPT_VERSION,
@@ -49,6 +50,7 @@ export class AiVideoCaptioningService {
     private mediaRepository: MediaRepository,
     private captioningRepository: AiVideoCaptioningRepository,
     private client: AiVideoCaptioningClient,
+    private videoFaceService: VideoFaceService,
   ) {
     this.logger.setContext(AiVideoCaptioningService.name);
   }
@@ -118,7 +120,12 @@ export class AiVideoCaptioningService {
     if (existing && existing.status !== 'failed') {
       // completed: reuse it; queued/running: a concurrent delivery is already
       // producing this run — don't double-claim and let interpretation use
-      // whatever completed run exists today.
+      // whatever completed run exists today. Only the completed case chains
+      // face discovery here (a live captionRun chains at claim time — no-op
+      // once a scan run exists).
+      if (existing.status === 'completed') {
+        await this.videoFaceService.scanIfMissing(assetId);
+      }
       return await this.latestCompletedRun(assetId);
     }
 
@@ -214,6 +221,12 @@ export class AiVideoCaptioningService {
       trigger,
     });
     await this.captioningRepository.transitionToRunning(assetId, runKey);
+
+    // Captioning samples this video anyway — chain face discovery so the same
+    // action populates the face strip (video-face.service gates and skips
+    // already-scanned assets itself). Fire-and-forget: the scan has its own
+    // queue and must not delay or fail the caption run.
+    await this.videoFaceService.scanIfMissing(assetId);
 
     const tempDir = await mkdtemp(join(tmpdir(), 'immich-video-caption-'));
     try {

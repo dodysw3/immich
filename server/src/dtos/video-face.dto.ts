@@ -4,6 +4,12 @@ import { z } from 'zod';
 export const VideoFaceSightingSchema = z.object({
   timeMs: z.int().describe('Decoded presentation timestamp of the sighting'),
   score: z.number().describe('Detection score'),
+  x1: z.int().describe('Pixel box in the decoded frame (≤1440px long edge)'),
+  y1: z.int(),
+  x2: z.int(),
+  y2: z.int(),
+  imageWidth: z.int().describe('Decoded frame dimensions the box is relative to'),
+  imageHeight: z.int(),
 });
 
 export const VideoFaceDtoSchema = z
