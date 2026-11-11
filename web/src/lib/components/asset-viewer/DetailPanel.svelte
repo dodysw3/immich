@@ -2,6 +2,7 @@
   import DetailPanelAiInterpretation from '#lib/components/asset-viewer/DetailPanelAiInterpretation.svelte';
   import DetailPanelDate from '#lib/components/asset-viewer/DetailPanelDate.svelte';
   import DetailPanelDescription from '#lib/components/asset-viewer/DetailPanelDescription.svelte';
+  import DetailPanelFileMetadata from '#lib/components/asset-viewer/DetailPanelFileMetadata.svelte';
   import DetailPanelLocation from '#lib/components/asset-viewer/DetailPanelLocation.svelte';
   import DetailPanelPeople from '#lib/components/asset-viewer/DetailPanelPeople.svelte';
   import DetailPanelRating from '#lib/components/asset-viewer/DetailPanelStarRating.svelte';
@@ -21,7 +22,6 @@
   import { delay, getDimensions } from '#lib/utils/asset-utils.ts';
   import { getByteUnitString } from '#lib/utils/byte-units.ts';
   import { getCameraName } from '#lib/utils/camera-utils.ts';
-  import { getParentPath } from '#lib/utils/tree-utils.ts';
   import {
     AssetMediaSize,
     AssetTypeEnum,
@@ -34,7 +34,6 @@
   import { createQuery } from '@tanstack/svelte-query';
   import { onDestroy } from 'svelte';
   import { t } from 'svelte-i18n';
-  import { slide } from 'svelte/transition';
   import { goto } from '$app/navigation';
   import PersonSidePanel from '../faces-page/PersonSidePanel.svelte';
   import UserAvatar from '../shared-components/UserAvatar.svelte';
@@ -99,11 +98,6 @@
     assetViewerManager.closeEditFacesPanel();
     faceManager.clear();
     await faceManager.getAssetFaces(asset.id);
-  };
-
-  const getAssetFolderHref = (asset: AssetResponseDto) => {
-    // Remove the last part of the path to get the parent path
-    return Route.folders({ path: getParentPath(asset.originalPath) });
   };
 
   onDestroy(() => {
@@ -178,7 +172,7 @@
             {#if isOwner}
               <IconButton
                 icon={mdiInformationOutline}
-                aria-label={$t('show_file_location')}
+                aria-label={$t('show_file_metadata')}
                 size="small"
                 shape="round"
                 color="secondary"
@@ -187,14 +181,7 @@
               />
             {/if}
           </p>
-          {#if assetViewerManager.isShowAssetPath}
-            <p class="pb-2 text-xs break-all opacity-50 hover:text-primary" transition:slide={{ duration: 250 }}>
-              <!-- eslint-disable-next-line svelte/no-navigation-without-resolve this is supposed to be treated as an absolute/external link -->
-              <a href={getAssetFolderHref(asset)} title={$t('go_to_folder')} class="whitespace-pre-wrap">
-                {asset.originalPath}
-              </a>
-            </p>
-          {/if}
+          <DetailPanelFileMetadata {asset} {isOwner} />
           {#if (asset.exifInfo?.exifImageHeight && asset.exifInfo.exifImageWidth) || asset.exifInfo?.fileSizeInByte}
             <div class="flex gap-2 text-sm">
               {#if asset.exifInfo?.exifImageHeight && asset.exifInfo.exifImageWidth}

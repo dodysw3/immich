@@ -3,6 +3,7 @@ import { isUndefined, omitBy } from 'lodash-es';
 import { DateTime, Duration } from 'luxon';
 import type { AssetFile } from 'src/database.js';
 import { OnJob } from 'src/decorators.js';
+import { AvMetadataResponseDto } from 'src/dtos/av-metadata.dto.js';
 import { AssetResponseDto, SanitizedAssetResponseDto, mapAsset } from 'src/dtos/asset-response.dto.js';
 import {
   AssetBulkDeleteDto,
@@ -85,6 +86,8 @@ export class AssetService extends BaseService {
     return mapAsset(asset, { withStack: true, auth });
   }
 
+  async getAvMetadata(auth: AuthDto, id: string): Promise<AvMetadataResponseDto> {
+    return this.videoStreamRepository.getAvMetadata(id);
   async update(auth: AuthDto, id: string, dto: UpdateAssetDto): Promise<AssetResponseDto> {
     await this.requireAccess({ auth, permission: Permission.AssetUpdate, ids: [id] });
 

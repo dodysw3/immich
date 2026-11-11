@@ -116,4 +116,32 @@ export class VideoStreamRepository {
       .select((eb) => withVideoPackets(eb).$notNull().as('packets'))
       .executeTakeFirst();
   }
+
+  @GenerateSql({ params: [DummyValue.UUID] })
+  async getAvMetadata(assetId: string) {
+    const [videoStream, audioStream] = await Promise.all([
+      this.db
+        .selectFrom('asset_video')
+        .select([
+          'asset_video.codecName',
+          'asset_video.formatName',
+          'asset_video.formatLongName',
+          'asset_video.pixelFormat',
+          'asset_video.profile',
+          'asset_video.level',
+          'asset_video.bitrate',
+          'asset_video.frameCount',
+          'asset_video.dvProfile',
+          'asset_video.dvLevel',
+        ])
+        .where('asset_video.assetId', '=', assetId)
+        .executeTakeFirst(),
+      this.db
+        .selectFrom('asset_audio')
+        .select(['asset_audio.codecName', 'asset_audio.profile', 'asset_audio.bitrate'])
+        .where('asset_audio.assetId', '=', assetId)
+        .executeTakeFirst(),
+    ]);
+    return { videoStream: videoStream ?? null, audioStream: audioStream ?? null };
+  }
 }

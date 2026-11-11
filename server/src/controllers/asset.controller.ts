@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
 import { Endpoint, HistoryBuilder } from 'src/decorators.js';
+import { AvMetadataResponseDto } from 'src/dtos/av-metadata.dto.js';
 import { AssetResponseDto } from 'src/dtos/asset-response.dto.js';
 import {
   AssetBulkDeleteDto,
@@ -94,6 +95,17 @@ export class AssetController {
   })
   getAssetInfo(@Auth() auth: AuthDto, @Param() { id }: UUIDParamDto): Promise<AssetResponseDto> {
     return this.service.get(auth, id) as Promise<AssetResponseDto>;
+  }
+
+  @Get(':id/av-metadata')
+  @Authenticated({ permission: Permission.AssetRead, sharedLink: true })
+  @Endpoint({
+    summary: 'Retrieve audio/video stream metadata',
+    description: 'Retrieve the probed stream metadata (codec, bitrate, etc.) of a specific asset.',
+    history: new HistoryBuilder().added('v3.4.0'),
+  })
+  getAssetAvMetadata(@Auth() auth: AuthDto, @Param() { id }: UUIDParamDto): Promise<AvMetadataResponseDto> {
+    return this.service.getAvMetadata(auth, id);
   }
 
   @Put('copy')
