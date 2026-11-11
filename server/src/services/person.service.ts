@@ -1132,17 +1132,13 @@ export class PersonService extends BaseService {
 
       // `matches` also includes the face itself
       if (machineLearning.facialRecognition.minFaces > 1 && matches.length <= 1) {
-        this.logger.debug(`Face ${id} only matched the face itself, skipping`);
         return JobStatus.Skipped;
       }
-
-      this.logger.debug(`Face ${id} has ${matches.length} matches`);
 
       const isCore =
         matches.length >= machineLearning.facialRecognition.minFaces &&
         face.asset.visibility === AssetVisibility.Timeline;
       if (!isCore && !deferred) {
-        this.logger.debug(`Deferring non-core face ${id} for later processing`);
         await this.jobRepository.queue({ name: JobName.FacialRecognition, data: { id, deferred: true } });
         return JobStatus.Skipped;
       }

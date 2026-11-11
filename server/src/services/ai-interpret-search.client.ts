@@ -92,7 +92,6 @@ export class AiInterpretSearchClient {
         embeddings.push(embedding);
       }
 
-      this.logger.debug(`AI interpret search embedded ${texts.length} text(s) in ${Date.now() - startedAt}ms`);
       return embeddings;
     } catch (error) {
       if (error instanceof AiInterpretSearchClientError) {
