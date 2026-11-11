@@ -23,8 +23,8 @@
   import { SlideshowNavigation, SlideshowState, slideshowStore } from '#lib/stores/slideshow.store.ts';
   import { videoAudioEventsManager } from '#lib/stores/video-audio-events.svelte.ts';
   import { videoCaptionManager } from '#lib/stores/video-caption.svelte.ts';
-  import { videoTranscriptManager } from '#lib/stores/video-transcript.svelte.ts';
   import { videoFacesManager } from '#lib/stores/video-faces.svelte.ts';
+  import { videoTranscriptManager } from '#lib/stores/video-transcript.svelte.ts';
   import { getSharedLink, handlePromiseError } from '#lib/utils.ts';
   import type { OnUndoDelete } from '#lib/utils/actions.ts';
   import { navigateToAsset } from '#lib/utils/asset-utils.ts';
@@ -409,8 +409,8 @@
     faceOverlayStore.clear();
     faceManager.clear();
     videoCaptionManager.clear();
-    videoTranscriptManager.clear();
     videoFacesManager.clear();
+    videoTranscriptManager.clear();
     videoAudioEventsManager.clear();
     assetViewerManager.clearVideoCurrentTimeMs();
     if (!sharedLink) {
@@ -424,9 +424,9 @@
     if (asset.type === AssetTypeEnum.Video && !sharedLink) {
       await videoCaptionManager.getAssetCaptions(asset.id);
       await videoTranscriptManager.getAssetTranscripts(asset.id);
-    }
       await videoAudioEventsManager.getAssetAudioEvents(asset.id);
       await videoFacesManager.getAssetVideoFaces(asset.id);
+    }
   };
 
   $effect(() => {
@@ -501,15 +501,25 @@
       videoTranscriptManager.hasTranscript,
   );
   const showAudioEventsButton = $derived(
+    $slideshowState === SlideshowState.None &&
+      !assetViewerManager.isShowEditor &&
+      asset.type === AssetTypeEnum.Video &&
       videoAudioEventsManager.hasEvents,
+  );
+  // Same tier ladder as the caption/transcript buttons above (24/80/124/180 px),
+  // one 56 px step further for a fifth button.
   const audioEventsButtonMargin = $derived(
+    [24, 80, 124, 180, 236][
+      (showFaceButton ? 1 : 0) + (showOcrButton ? 1 : 0) + (showCaptionButton ? 1 : 0) + (showTranscriptButton ? 1 : 0)
+    ],
+  );
 
   const aiInterpretationButtonBottom = $derived(
     24 +
       (showFaceButton ? 56 : 0) +
       (showOcrButton ? 56 : 0) +
       (showCaptionButton ? 56 : 0) +
-      (showTranscriptButton ? 56 : 0),
+      (showTranscriptButton ? 56 : 0) +
       (showAudioEventsButton ? 56 : 0),
   );
   const { Tag, TagPeople } = $derived(getAssetActions($t, asset));
@@ -740,6 +750,9 @@
     {#if showAudioEventsButton}
       <div class="absolute inset-e-0 bottom-0 me-6" style="margin-bottom: {audioEventsButtonMargin}px;">
         <VideoAudioEventsButton />
+      </div>
+    {/if}
+
     {#if $slideshowState === SlideshowState.None && !assetViewerManager.isShowEditor}
       <AiInterpretationOverlay {asset} buttonBottom={aiInterpretationButtonBottom} />
     {/if}

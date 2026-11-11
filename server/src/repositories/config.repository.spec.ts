@@ -214,6 +214,7 @@ describe('getEnv', () => {
         concurrency: 1,
         reconcileStaggerMs: 5000,
         skipIfInterpreted: true,
+        videoContext: false,
         discord: { webhookUrl: undefined, includeThumbnail: false },
       });
     });
@@ -226,7 +227,7 @@ describe('getEnv', () => {
 
     it('should parse the local endpoint settings', () => {
       process.env.IMMICH_AI_IMAGE_INTERPRETATION_ENABLED = 'true';
-       
+
       process.env.IMMICH_AI_IMAGE_INTERPRETATION_URL = 'http://host.docker.internal:8888/v1';
       process.env.IMMICH_AI_IMAGE_INTERPRETATION_API_KEY = 'secret';
       process.env.IMMICH_AI_IMAGE_INTERPRETATION_TIMEOUT_MS = '30000';
@@ -236,7 +237,7 @@ describe('getEnv', () => {
 
       expect(getEnv().aiImageInterpretation).toMatchObject({
         enabled: true,
-         
+
         url: 'http://host.docker.internal:8888/v1',
         apiKey: 'secret',
         timeoutMs: 30_000,
@@ -497,15 +498,34 @@ describe('getEnv', () => {
       expect(telemetry.metrics).toEqual(new Set([ImmichTelemetry.Api, ImmichTelemetry.Host, ImmichTelemetry.Io]));
     });
   });
+
   describe('aiAudioEvents', () => {
+    it('should be disabled with bench-tuned defaults', () => {
       expect(getEnv().aiAudioEvents).toEqual({
+        enabled: false,
+        context: false,
+        url: undefined,
+        threshold: 0.15,
+        maxDurationSec: 300,
+        timeoutMs: 60_000,
+      });
+    });
+
+    it('should treat empty compose passthroughs as unset instead of failing the boot', () => {
+      for (const key of [
         'IMMICH_AI_AUDIO_EVENTS_ENABLED',
         'IMMICH_AI_AUDIO_EVENTS_CONTEXT',
         'IMMICH_AI_AUDIO_EVENTS_URL',
         'IMMICH_AI_AUDIO_EVENTS_THRESHOLD',
         'IMMICH_AI_AUDIO_EVENTS_MAX_DURATION_SEC',
         'IMMICH_AI_AUDIO_EVENTS_TIMEOUT_MS',
+      ]) {
+        process.env[key] = '';
+      }
       expect(getEnv().aiAudioEvents).toMatchObject({ enabled: false, context: false, url: undefined, threshold: 0.15 });
+    });
+
+    it('should parse explicit values', () => {
       process.env.IMMICH_AI_AUDIO_EVENTS_ENABLED = 'true';
       process.env.IMMICH_AI_AUDIO_EVENTS_CONTEXT = 'true';
       process.env.IMMICH_AI_AUDIO_EVENTS_URL = 'http://host.docker.internal:51906';
@@ -513,7 +533,20 @@ describe('getEnv', () => {
       process.env.IMMICH_AI_AUDIO_EVENTS_MAX_DURATION_SEC = '120';
       process.env.IMMICH_AI_AUDIO_EVENTS_TIMEOUT_MS = '5000';
       expect(getEnv().aiAudioEvents).toEqual({
+        enabled: true,
+        context: true,
+        url: 'http://host.docker.internal:51906',
+        threshold: 0.2,
+        maxDurationSec: 120,
+        timeoutMs: 5000,
+      });
+    });
+
+    it('should reject a threshold below the sidecar floor', () => {
       process.env.IMMICH_AI_AUDIO_EVENTS_THRESHOLD = '0.01';
+      expect(() => getEnv()).toThrow();
+    });
+  });
 });
 
 describe('applyCspHashes', () => {

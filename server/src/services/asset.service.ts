@@ -87,7 +87,11 @@ export class AssetService extends BaseService {
   }
 
   async getAvMetadata(auth: AuthDto, id: string): Promise<AvMetadataResponseDto> {
+    await this.requireAccess({ auth, permission: Permission.AssetRead, ids: [id] });
+
     return this.videoStreamRepository.getAvMetadata(id);
+  }
+
   async update(auth: AuthDto, id: string, dto: UpdateAssetDto): Promise<AssetResponseDto> {
     await this.requireAccess({ auth, permission: Permission.AssetUpdate, ids: [id] });
 
@@ -428,11 +432,11 @@ export class AssetService extends BaseService {
     return (
       key === AssetMetadataKey.AiInterpretationV1 ||
       key === AssetMetadataKey.VideoCaptionsV1 ||
-      key === AssetMetadataKey.VideoTranscriptsV1
+      key === AssetMetadataKey.VideoTranscriptsV1 ||
+      key === AssetMetadataKey.VideoAudioEventsV1
     );
   }
 
-      key === AssetMetadataKey.VideoAudioEventsV1
   async upsertBulkMetadata(auth: AuthDto, dto: AssetMetadataBulkUpsertDto): Promise<AssetMetadataBulkResponseDto[]> {
     await this.requireAccess({ auth, permission: Permission.AssetUpdate, ids: dto.items.map((item) => item.assetId) });
 

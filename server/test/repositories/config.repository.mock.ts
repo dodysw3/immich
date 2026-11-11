@@ -166,8 +166,17 @@ export const envData: EnvData = {
     maxDurationSec: 300,
   },
 
+  aiAudioEvents: {
+    enabled: false,
+    context: false,
+    threshold: 0.15,
+    maxDurationSec: 300,
+    timeoutMs: 60_000,
+  },
+
   videoFaceScan: {
     enabled: true,
+    onCaption: true,
     framesBudget: 32,
     deadlineMs: 60_000,
     groupThreshold: 0.55,

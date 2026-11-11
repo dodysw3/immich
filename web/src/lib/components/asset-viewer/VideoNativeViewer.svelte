@@ -15,9 +15,9 @@
   import { faceManager } from '#lib/stores/face.svelte.ts';
   import { ocrManager } from '#lib/stores/ocr.svelte.ts';
   import { autoPlayVideo, lang, loopVideo as loopVideoPreference } from '#lib/stores/preferences.store.ts';
-  import { videoFacesManager } from '#lib/stores/video-faces.svelte.ts';
   import { videoAudioEventsManager } from '#lib/stores/video-audio-events.svelte.ts';
   import { videoCaptionManager } from '#lib/stores/video-caption.svelte.ts';
+  import { videoFacesManager } from '#lib/stores/video-faces.svelte.ts';
   import { videoTranscriptManager } from '#lib/stores/video-transcript.svelte.ts';
   import { getAssetHlsSessionUrl, getAssetHlsUrl, getAssetMediaUrl, getAssetPlaybackUrl } from '#lib/utils.ts';
   import { AssetMediaSize, AssetTypeEnum, type AssetResponseDto } from '@immich/sdk';
@@ -357,13 +357,14 @@
     };
   });
   const showBoundingBoxOverlay = $derived(
+    asset.type === AssetTypeEnum.Video &&
       (faceManager.data.length > 0 || ocrManager.hasOcrData || (videoFacesManager.data?.faces.length ?? 0) > 0),
-    asset.type === AssetTypeEnum.Video && (faceManager.data.length > 0 || ocrManager.hasOcrData),
   );
 
   const showCaptionOverlay = $derived(asset.type === AssetTypeEnum.Video && videoCaptionManager.hasCaptions);
   const showTranscriptOverlay = $derived(asset.type === AssetTypeEnum.Video && videoTranscriptManager.hasTranscript);
   const showAudioEventsOverlay = $derived(asset.type === AssetTypeEnum.Video && videoAudioEventsManager.hasEvents);
+  // Height of the transcript line currently on screen; the sound tags stack above it.
   let transcriptLineHeight = $state(0);
 
   $effect(() => {
@@ -580,6 +581,7 @@
             overlaySize={{ width: overlayContentRect.width, height: overlayContentRect.height }}
             offsetX={overlayContentRect.offsetX}
             offsetY={overlayContentRect.offsetY}
+            videoFaceTimeMs={assetViewerManager.videoCurrentTimeMs}
           />
         </div>
       {/if}
@@ -590,7 +592,6 @@
           contentRect={overlayContentRect}
           {containerWidth}
           {containerHeight}
-          raised={showTranscriptOverlay}
           lift={(showTranscriptOverlay ? 1 : 0) + (showAudioEventsOverlay ? 1 : 0)}
         />
       {/if}
@@ -601,8 +602,15 @@
           contentRect={overlayContentRect}
           {containerHeight}
           bind:height={transcriptLineHeight}
+        />
+      {/if}
+
       {#if showAudioEventsOverlay}
         <VideoAudioEventsOverlay
+          currentTimeMs={assetViewerManager.videoCurrentTimeMs ?? 0}
+          contentRect={overlayContentRect}
+          {containerHeight}
+          hasTranscript={showTranscriptOverlay}
           transcriptHeight={showTranscriptOverlay ? transcriptLineHeight : 0}
         />
       {/if}

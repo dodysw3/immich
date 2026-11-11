@@ -143,12 +143,28 @@ export const EnvSchema = z
     IMMICH_AI_VIDEO_TRANSCRIPTION_TIMEOUT_MS: z.coerce.number().int().min(1).optional(),
     IMMICH_AI_VIDEO_TRANSCRIPTION_LANGUAGE: z.string().max(8).optional(),
     IMMICH_AI_VIDEO_TRANSCRIPTION_MAX_DURATION_SEC: z.coerce.number().int().min(1).optional(),
+    // YAMNet audio-events sidecar (video-audio-events-v1). Empty values (compose
+    // `${VAR:-}` passthroughs) mean "unset" instead of crash-looping the boot.
     IMMICH_AI_AUDIO_EVENTS_ENABLED: z.preprocess((value) => (value === '' ? undefined : value), stringBool.optional()),
+    // Whether stored events also feed the interpretation prompt (tagging and
+    // the viewer overlay run regardless while the lane is enabled).
     IMMICH_AI_AUDIO_EVENTS_CONTEXT: z.preprocess((value) => (value === '' ? undefined : value), stringBool.optional()),
     IMMICH_AI_AUDIO_EVENTS_URL: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      z.string().url().optional(),
+    ),
     IMMICH_AI_AUDIO_EVENTS_THRESHOLD: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      z.coerce.number().min(0.05).max(1).optional(),
+    ),
     IMMICH_AI_AUDIO_EVENTS_MAX_DURATION_SEC: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      z.coerce.number().int().min(1).optional(),
+    ),
     IMMICH_AI_AUDIO_EVENTS_TIMEOUT_MS: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      z.coerce.number().int().min(1).optional(),
+    ),
     IMMICH_AI_INTERPRET_SEARCH_ENABLED: stringBool.optional(),
     IMMICH_AI_INTERPRET_SEARCH_URL: z.string().url().optional(),
     IMMICH_AI_INTERPRET_SEARCH_API_KEY: z.preprocess(
@@ -159,6 +175,7 @@ export const EnvSchema = z
     IMMICH_AI_INTERPRET_SEARCH_TIMEOUT_MS: z.coerce.number().int().min(1).optional(),
     IMMICH_AI_INTERPRET_SEARCH_MIN_SCORE: z.coerce.number().min(0).max(1).optional(),
     IMMICH_VIDEO_FACE_SCAN_ENABLED: stringBool.optional(),
+    IMMICH_VIDEO_FACE_SCAN_ON_CAPTION: stringBool.optional(),
     IMMICH_VIDEO_FACE_SCAN_FRAMES_BUDGET: z.coerce.number().int().min(1).max(96).optional(),
     IMMICH_VIDEO_FACE_SCAN_DEADLINE_MS: z.coerce.number().int().min(1000).optional(),
     IMMICH_VIDEO_FACE_SCAN_GROUP_THRESHOLD: z.coerce.number().min(0.1).max(0.9).optional(),
