@@ -13,8 +13,12 @@ Run identity for videos whose interpretation is enriched with caption/transcript
 context. Forking the promptVersion forks the runKey, so existing video
 interpretations (thumbnail-only, under 1.2.0) stay intact; turning the feature
 off or changing context inputs changes the identity again.
+0.2.0 (2026-11-11): the caption budget rose to 60 minutes and the whisper /
+audio-event lanes to full-length coverage, so the context block is now
+budget-sampled across the whole timeline (head detail, stride, tail, omission
+markers) instead of head-truncated at 6000 chars per section.
 */
-export const AI_IMAGE_INTERPRETATION_VIDEO_PROMPT_VERSION = 'image-interpretation-1.2.0-video-0.1.0';
+export const AI_IMAGE_INTERPRETATION_VIDEO_PROMPT_VERSION = 'image-interpretation-1.2.0-video-0.2.0';
 export const AI_IMAGE_INTERPRETATION_MODEL = 'unsloth/Muse-Glimmer-30B-GGUF';
 export const AI_IMAGE_INTERPRETATION_QUANT = 'UD-Q3_K_XL';
 export const AI_IMAGE_INTERPRETATION_MAX_OUTPUT_TOKENS = 6400;
@@ -96,41 +100,153 @@ export const interpretationRetryDelayMs = (attempts: number): number => {
 
 export const isAiInterpretationDocument = (value: unknown) => AiInterpretationDocumentSchema.safeParse(value).success;
 
-// Per-section cap on the composed video context (captions / transcript), so a
-// long video cannot balloon the interpretation prompt; everything past the cap
-// is replaced with an explicit omission marker.
-const VIDEO_CONTEXT_SECTION_CAP_CHARS = 6000;
-
-const capContextSection = (lines: string[]): string => {
-  const kept: string[] = [];
-  let length = 0;
-  for (const line of lines) {
-    if (kept.length > 0 && length + line.length > VIDEO_CONTEXT_SECTION_CAP_CHARS) {
-      kept.push('[… additional segments omitted]');
-      break;
-    }
-    kept.push(line);
-    length += line.length + 1;
-  }
-  return kept.join('\n');
-};
+// Per-section char budgets for the composed video context, replacing the old
+// 6000-char head truncation. The captioning budget is 60 minutes (2026-11-11)
+// and the whisper / audio-event lanes cover the full video, so a long video
+// yields far more evidence than the ~8192-token serving slot can carry;
+// head-only truncation would silently blind the interpretation to everything
+// past the first minutes. Sums to ~10k chars ≈ 2.5k tokens with headers.
+export const VIDEO_CONTEXT_SECTION_BUDGET_CHARS = {
+  captions: 4500,
+  transcripts: 4500,
+  audioEvents: 1000,
+} as const;
 
 const formatContextWindow = (startMs: number, endMs: number): string =>
   `[${(startMs / 1000).toFixed(1)}-${(endMs / 1000).toFixed(1)}s]`;
+
+/** A single evidence line before rendering: a timed text span. */
+export interface EvidenceLine {
+  startMs: number;
+  endMs: number;
+  text: string;
+}
+
+export interface SampledEvidence {
+  /** Rendered lines in timeline order, omission markers interleaved. */
+  lines: string[];
+  /** True when content was dropped — callers label the section/header. */
+  sampled: boolean;
+}
+
+const renderEvidenceLine = (line: EvidenceLine): string =>
+  `${formatContextWindow(line.startMs, line.endMs)} ${line.text}`;
+
+const omissionMarker = (count: number, startMs: number, endMs: number): string =>
+  `[… ${count} segments (${(startMs / 1000).toFixed(1)}s-${(endMs / 1000).toFixed(1)}s) omitted]`;
+
+/** Share of a section's budget spent on the un-strided head (scene-setting). */
+const SAMPLED_HEAD_SHARE = 0.45;
+// Slack reserved while fitting middle lines so the closing marker + tail line
+// always have room.
+const SAMPLED_TAIL_SLACK_CHARS = 80;
+
+/**
+Budgeted whole-timeline sampling (2026-11-11): with a 60-minute caption
+budget a 24-minute video yields hundreds of evidence lines, so a section that
+overflows its budget is sampled across the whole timeline instead of
+truncated at the head —
+  - the head stays in full detail (up to SAMPLED_HEAD_SHARE of the budget,
+    establishing the scene),
+  - the middle is kept at a uniform stride (every k-th line) chosen to fit,
+  - the last line is always kept (how it ends),
+and every dropped stretch is stated with `[… N segments (from-to) omitted]`
+markers that count against the budget. Under-budget sections render
+byte-identical to the plain renderer, so short videos are unaffected.
+*/
+export const sampleEvidenceLines = (lines: EvidenceLine[], budgetChars: number): SampledEvidence => {
+  const rendered = lines.map((line) => renderEvidenceLine(line));
+  const totalChars = rendered.reduce((sum, text) => sum + text.length + 1, 0) - 1;
+  if (rendered.length === 0 || totalChars <= budgetChars) {
+    return { lines: rendered, sampled: false };
+  }
+
+  const headBudget = budgetChars * SAMPLED_HEAD_SHARE;
+  let headCount = 0;
+  let headChars = 0;
+  for (const text of rendered) {
+    if (headCount > 0 && headChars + text.length + 1 > headBudget) {
+      break;
+    }
+    headChars += text.length + 1;
+    headCount++;
+  }
+  if (headCount >= rendered.length) {
+    // Degenerate: a single line that alone busts the budget — nothing to
+    // sample between head and tail, keep it whole.
+    return { lines: rendered, sampled: false };
+  }
+
+  const tailIdx = rendered.length - 1;
+  const tailChars = rendered[tailIdx].length + 1;
+  const middleCount = tailIdx - headCount;
+
+  const render = (stride: number): { out: string[]; chars: number } => {
+    const out: string[] = rendered.slice(0, headCount);
+    let chars = headChars;
+    let dropped = 0;
+    let dropStartMs = lines[headCount].startMs;
+    let dropEndMs = dropStartMs;
+    let stopKeeping = false;
+    for (let index = headCount; index < tailIdx; index++) {
+      const keep = !stopKeeping && (index - headCount) % stride === 0;
+      if (keep) {
+        const lineChars = rendered[index].length + 1;
+        // Once one keep cannot fit, no later one can (chars only grows).
+        if (chars + lineChars + tailChars + SAMPLED_TAIL_SLACK_CHARS > budgetChars) {
+          stopKeeping = true;
+        } else {
+          if (dropped > 0) {
+            const marker = omissionMarker(dropped, dropStartMs, dropEndMs);
+            out.push(marker);
+            chars += marker.length + 1;
+            dropped = 0;
+          }
+          out.push(rendered[index]);
+          chars += lineChars;
+          continue;
+        }
+      }
+      if (dropped === 0) {
+        dropStartMs = lines[index].startMs;
+      }
+      dropped++;
+      dropEndMs = lines[index].endMs;
+    }
+    if (dropped > 0) {
+      const marker = omissionMarker(dropped, dropStartMs, dropEndMs);
+      out.push(marker);
+      chars += marker.length + 1;
+    }
+    out.push(rendered[tailIdx]);
+    chars += tailChars;
+    return { out, chars };
+  };
+
+  // Uniform stride across the middle; widen until the render fits. The
+  // in-render fit check already bounds most cases, so this loop is a belt.
+  let stride = 1;
+  let result = render(stride);
+  while (result.chars > budgetChars && stride < middleCount) {
+    stride++;
+    result = render(stride);
+  }
+  return { lines: result.out, sampled: true };
+};
 
 /**
 Delta captioning (v0.4.0) emits "No change." for static stretches; in the
 interpretation context those lines are info-free, so consecutive ones
 collapse into a single line spanning the whole unchanged window.
 */
-const collapseNoChangeCaptions = (segments: AiVideoCaptionSegment[]): string[] => {
-  const lines: string[] = [];
+const collapseNoChangeCaptions = (segments: AiVideoCaptionSegment[]): EvidenceLine[] => {
+  const lines: EvidenceLine[] = [];
   let pendingNoChange: { startMs: number; endMs: number } | undefined;
   const flushPending = () => {
     if (!pendingNoChange) {
       return;
     }
-    lines.push(`${formatContextWindow(pendingNoChange.startMs, pendingNoChange.endMs)} No change.`);
+    lines.push({ startMs: pendingNoChange.startMs, endMs: pendingNoChange.endMs, text: 'No change.' });
     pendingNoChange = undefined;
   };
   for (const segment of segments) {
@@ -139,7 +255,7 @@ const collapseNoChangeCaptions = (segments: AiVideoCaptionSegment[]): string[] =
       continue;
     }
     flushPending();
-    lines.push(`${formatContextWindow(segment.startMs, segment.endMs)} ${segment.caption}`);
+    lines.push({ startMs: segment.startMs, endMs: segment.endMs, text: segment.caption });
   }
   flushPending();
   return lines;
@@ -167,25 +283,33 @@ empty audio-events run never claims the video is silent.
 export const composeVideoInterpretationContext = (input: AiVideoInterpretationContextInput): string | undefined => {
   const { durationMs, captions, transcripts, audioEvents } = input;
 
-  const captionLines = collapseNoChangeCaptions(captions?.segments ?? []);
-  const transcriptLines = (transcripts?.segments ?? []).map(
-    (segment) => `${formatContextWindow(segment.startMs, segment.endMs)} ${segment.text}`,
+  const captionEvidence = sampleEvidenceLines(
+    collapseNoChangeCaptions(captions?.segments ?? []),
+    VIDEO_CONTEXT_SECTION_BUDGET_CHARS.captions,
   );
-
-  const hasCaptions = captionLines.length > 0;
-  const hasTranscript = transcriptLines.length > 0;
+  const transcriptEvidence = sampleEvidenceLines(
+    (transcripts?.segments ?? []).map((segment) => ({ ...segment })),
+    VIDEO_CONTEXT_SECTION_BUDGET_CHARS.transcripts,
+  );
   // Tagging drops speech-family events when the transcript already had words;
   // a transcript that only arrived after the tagging run is caught here, so
   // speech never shows up both as words and as a sound sentence. Natural
   // sentences, no scores: the bench model ignored label+score telegraph rows.
-  const audioEventLines = renderAudioEventSentences(audioEvents?.events ?? [], {
-    transcriptHasWords: hasTranscript,
-  }).map((line) => `${formatContextWindow(line.startMs, line.endMs)} ${line.sentence}`);
-  const hasAudioEvents = audioEventLines.length > 0;
+  const audioEventEvidence = sampleEvidenceLines(
+    renderAudioEventSentences(audioEvents?.events ?? [], {
+      transcriptHasWords: transcriptEvidence.lines.length > 0,
+    }).map((line) => ({ startMs: line.startMs, endMs: line.endMs, text: line.sentence })),
+    VIDEO_CONTEXT_SECTION_BUDGET_CHARS.audioEvents,
+  );
+
+  const hasCaptions = captionEvidence.lines.length > 0;
+  const hasTranscript = transcriptEvidence.lines.length > 0;
+  const hasAudioEvents = audioEventEvidence.lines.length > 0;
   if (!hasCaptions && !hasTranscript && !hasAudioEvents) {
     return undefined;
   }
 
+  const sampled = captionEvidence.sampled || transcriptEvidence.sampled || audioEventEvidence.sampled;
   const durationSec = durationMs !== undefined ? (durationMs / 1000).toFixed(1) : undefined;
   const sections: string[] = [];
 
@@ -195,6 +319,9 @@ export const composeVideoInterpretationContext = (input: AiVideoInterpretationCo
   }
   header +=
     '. Evidence captured from the full video follows; treat it as direct observation alongside the thumbnail, distinguish it from inference, and include what is said or heard when it matters.';
+  if (sampled) {
+    header += ' The evidence is sampled across the whole timeline; gaps are explicitly marked.';
+  }
   sections.push(header);
 
   if (hasCaptions) {
@@ -204,12 +331,13 @@ export const composeVideoInterpretationContext = (input: AiVideoInterpretationCo
     const captionsHeader = captions?.config.adaptive
       ? 'Visual captions (variable-length segments)'
       : `Visual captions per ${(captions?.config.segmentSeconds ?? 5).toFixed(0)}-second segment`;
-    sections.push(`${captionsHeader}:\n${capContextSection(captionLines)}${truncatedNote}`);
+    sections.push(`${captionsHeader}:\n${captionEvidence.lines.join('\n')}${truncatedNote}`);
   }
 
   if (hasTranscript) {
     const languageNote = transcripts?.language ? ` (detected language: ${transcripts.language})` : '';
-    sections.push(`Speech transcript${languageNote}:\n${capContextSection(transcriptLines)}`);
+    const truncatedNote = transcripts?.truncated ? '\n[Transcript covers only the head of a longer video.]' : '';
+    sections.push(`Speech transcript${languageNote}:\n${transcriptEvidence.lines.join('\n')}${truncatedNote}`);
   } else if (transcripts) {
     // A completed run without segments is a real observation about the audio
     // (no stream, or whisper/VAD heard nothing through the noise filter); a
@@ -218,7 +346,8 @@ export const composeVideoInterpretationContext = (input: AiVideoInterpretationCo
   }
 
   if (hasAudioEvents) {
-    sections.push(`Other sounds detected in the audio:\n${capContextSection(audioEventLines)}`);
+    const truncatedNote = audioEvents?.truncated ? '\n[Sound events cover only the head of a longer video.]' : '';
+    sections.push(`Other sounds detected in the audio:\n${audioEventEvidence.lines.join('\n')}${truncatedNote}`);
   }
 
   return sections.join('\n\n');

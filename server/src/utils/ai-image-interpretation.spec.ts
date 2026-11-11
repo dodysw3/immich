@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon';
 import { describe, expect, it } from 'vitest';
+import type { EvidenceLine } from 'src/utils/ai-image-interpretation.js';
 import {
   AI_IMAGE_INTERPRETATION_MODEL,
   AI_IMAGE_INTERPRETATION_PROMPT,
@@ -11,6 +12,8 @@ import {
   createAiInterpretationRunKey,
   formatAiInterpretationQueueEta,
   interpretationRetryDelayMs,
+  sampleEvidenceLines,
+  VIDEO_CONTEXT_SECTION_BUDGET_CHARS,
 } from 'src/utils/ai-image-interpretation.js';
 
 const audioEvent = (label: string, mid: string, startMs: number, endMs: number, score = 0.5) => ({
@@ -175,19 +178,37 @@ describe('composeVideoInterpretationContext', () => {
     expect(context).toContain('[Captions cover only the head of a longer video.]');
   });
 
-  it('caps each section and marks the omission', () => {
-    const longCaption = 'x'.repeat(4000);
-    const context = composeVideoInterpretationContext({
-      captions: captionRun({
-        segments: [
-          { startMs: 0, endMs: 5000, caption: longCaption },
-          { startMs: 5000, endMs: 10_000, caption: longCaption },
-        ],
-      }),
-    })!;
-    expect(context).toContain('[… additional segments omitted]');
-    expect(context).not.toContain('[5.0-10.0s]');
-    expect(context.indexOf('… additional segments omitted')).toBeGreaterThan(context.lastIndexOf('xxxx'));
+  it('samples an overflowing section across the whole timeline instead of truncating at the head', () => {
+    // 40 realistic caption lines (~110 chars each ≈ 5.4k chars rendered) vs
+    // the 4500 budget: head stays detailed, the middle is strided, the tail
+    // is kept, gaps marked.
+    const segments = Array.from({ length: 40 }, (_, i) => ({
+      startMs: i * 5000,
+      endMs: (i + 1) * 5000,
+      caption: `Segment ${i}: a man walks slowly past a crowded warung while a motorbike idles noisily near the gate.`,
+    }));
+    const context = composeVideoInterpretationContext({ captions: captionRun({ segments }) })!;
+    const captionsSection = context.split('\n\n').find((section) => section.includes('Visual captions'))!;
+    expect(context).toContain('The evidence is sampled across the whole timeline; gaps are explicitly marked.');
+    expect(captionsSection).toMatch(/\[… \d+ segments \(\d+\.\ds-\d+\.\ds\) omitted\]/);
+    expect(captionsSection).toContain('[0.0-5.0s] Segment 0:');
+    expect(captionsSection).toContain('[195.0-200.0s] Segment 39:');
+    // Stride keeps the timeline represented, not just the head.
+    const kept = captionsSection.split('\n').filter((line) => line.startsWith('[') && !line.startsWith('[…'));
+    expect(kept.length).toBeGreaterThan(10);
+    expect(kept.length).toBeLessThan(40);
+    expect(captionsSection.length).toBeLessThan(5200);
+  });
+
+  it('renders under-budget sections without sampling notes', () => {
+    const segments = Array.from({ length: 10 }, (_, i) => ({
+      startMs: i * 5000,
+      endMs: (i + 1) * 5000,
+      caption: `Segment ${i}: a quiet kitchen scene.`,
+    }));
+    const context = composeVideoInterpretationContext({ captions: captionRun({ segments }) })!;
+    expect(context).not.toContain('sampled');
+    expect(context).not.toContain('omitted]');
   });
 
   describe('audio events', () => {
@@ -277,20 +298,79 @@ describe('composeVideoInterpretationContext', () => {
       expect(context).not.toContain('Visual captions');
     });
 
-    it('caps the section like the other evidence sections', () => {
-      const longLabel = 'y'.repeat(4000);
-      const context = composeVideoInterpretationContext({
-        captions: captionRun(),
-        audioEvents: audioEventsRun([
-          audioEvent(longLabel, '/m/test', 0, 1000),
-          audioEvent(longLabel, '/m/test', 5000, 6000),
-        ]),
-      })!;
-      // same fallback sentence, spans 4 s apart (past the 2 s render merge gap)
-      // -> two over-cap lines, the second omitted
-      expect(context).toContain('[0.0-1.0s] A sound like');
-      expect(context).not.toContain('[5.0-6.0s]');
-      expect(context.endsWith('[… additional segments omitted]')).toBe(true);
+    it('samples the sound section within its smaller budget', () => {
+      // The renderer caps at 12 lines, so overflow needs long sentences:
+      // 12 distinct ~90-char sentences ≈ 1.4k chars vs the 1000 budget.
+      const labels = Array.from(
+        { length: 12 },
+        (_, i) => `Sound class number ${i} renders into a fairly long descriptive sentence about the noise`,
+      );
+      const events = labels.map((label, i) => audioEvent(label, `/m/test${i}`, i * 60_000, i * 60_000 + 4000));
+      const context = composeVideoInterpretationContext({ captions: captionRun(), audioEvents: audioEventsRun(events) })!;
+      const soundsSection = context.split('\n\n').find((section) => section.includes('Other sounds'))!;
+      expect(soundsSection).toMatch(/\[… \d+ segments \(\d+\.\ds-\d+\.\ds\) omitted\]/);
+      expect(soundsSection).toContain('[0.0-4.0s] A sound like');
+      expect(soundsSection.length).toBeLessThan(1300);
     });
+  });
+});
+
+describe('sampleEvidenceLines', () => {
+  const filler = 'with a longer filler text so the rendered line spans many chars';
+  const line = (i: number, text = `evidence item number ${i} ${filler}`): EvidenceLine => ({
+    startMs: i * 10_000,
+    endMs: i * 10_000 + 8000,
+    text,
+  });
+
+  it('passes short evidence through untouched', () => {
+    const lines = [line(0), line(1), line(2)];
+    const sampled = sampleEvidenceLines(lines, 4000);
+    expect(sampled.sampled).toBe(false);
+    expect(sampled.lines).toHaveLength(3);
+    expect(sampled.lines[0]).toContain('evidence item number 0');
+  });
+
+  it('keeps the head in detail, strides the middle, and always keeps the tail', () => {
+    const lines = Array.from({ length: 60 }, (_, i) => line(i));
+    const sampled = sampleEvidenceLines(lines, VIDEO_CONTEXT_SECTION_BUDGET_CHARS.transcripts);
+    expect(sampled.sampled).toBe(true);
+    expect(sampled.lines[0]).toContain('number 0');
+    expect(sampled.lines.at(-1)).toContain('number 59');
+    const markers = sampled.lines.filter((text) => text.includes('omitted]'));
+    // Stride sampling: gaps are stated, kept lines spread across the timeline.
+    expect(markers.length).toBeGreaterThanOrEqual(1);
+    const keptIdxs = sampled.lines
+      .filter((text) => !text.includes('omitted]'))
+      .map((text) => Number(text.match(/number (\d+)/)![1]));
+    // Not everything survives, but the stride reaches deep into the timeline.
+    expect(keptIdxs.length).toBeLessThan(60);
+    expect(Math.max(...keptIdxs.filter((index) => index !== 59))).toBeGreaterThan(30);
+    // The rendered block stays within its budget.
+    const totalChars = sampled.lines.reduce((sum, text) => sum + text.length + 1, 0) - 1;
+    expect(totalChars).toBeLessThanOrEqual(VIDEO_CONTEXT_SECTION_BUDGET_CHARS.transcripts + 120);
+  });
+
+  it('states each dropped stretch once, with its full span', () => {
+    const lines = Array.from({ length: 20 }, (_, i) =>
+      line(i, `row ${i} with filler text to grow the rendered evidence line size`),
+    );
+    const sampled = sampleEvidenceLines(lines, 900);
+    expect(sampled.sampled).toBe(true);
+    const markers = sampled.lines.filter((text) => text.includes('omitted]'));
+    for (const marker of markers) {
+      const match = marker.match(/\[… (\d+) segments \((\d+\.\d)s-(\d+\.\d)s\) omitted\]/)!;
+      expect(Number(match[1])).toBeGreaterThanOrEqual(1);
+      expect(Number(match[3])).toBeGreaterThan(Number(match[2]));
+    }
+    // First and last evidence lines survive no matter what.
+    expect(sampled.lines[0]).toContain('row 0');
+    expect(sampled.lines.at(-1)).toContain('row 19');
+  });
+
+  it('keeps a single over-budget line whole rather than dropping all evidence', () => {
+    const sampled = sampleEvidenceLines([line(0, 'x'.repeat(5000))], 1000);
+    expect(sampled.lines).toHaveLength(1);
+    expect(sampled.sampled).toBe(false);
   });
 });
