@@ -495,6 +495,14 @@ const SearchExploreResponseSchema = z
 
 export class SearchExploreResponseDto extends createZodDto(SearchExploreResponseSchema) {}
 
+const SearchExploreCamerasRequestSchema = z
+  .object({
+    make: z.string().describe('Filter by camera make'),
+  })
+  .meta({ id: 'SearchExploreCamerasRequestDto' });
+
+export class SearchExploreCamerasRequestDto extends createZodDto(SearchExploreCamerasRequestSchema) {}
+
 const AiInterpretSearchSchema = z
   .object({
     q: z.string().trim().min(1).describe('Natural language query against AI interpretations'),

@@ -70,11 +70,15 @@ describe(SearchService.name, () => {
     it('should get recent assets and assets by city and tag', async () => {
       const auth = AuthFactory.create();
       const asset = AssetFactory.from()
-        .exif({ latitude: 42, longitude: 69, city: 'city', state: 'state', country: 'country' })
+        .exif({ latitude: 42, longitude: 69, city: 'city', state: 'state', country: 'country', make: 'make' })
         .build();
       mocks.asset.getAssetIdByCity.mockResolvedValue({
         fieldName: 'exifInfo.city',
         items: [{ value: 'city', data: asset.id }],
+      });
+      mocks.asset.getAssetIdByCameraMake.mockResolvedValue({
+        fieldName: 'exifInfo.make',
+        items: [{ value: 'make', data: asset.id }],
       });
       mocks.asset.getRecentlyCreatedAssetIds.mockResolvedValue({
         fieldName: 'createdAt',
@@ -83,6 +87,7 @@ describe(SearchService.name, () => {
       mocks.asset.getByIdsWithAllRelationsButStacks.mockResolvedValue([asset as never]);
       const expectedResponse = [
         { fieldName: 'exifInfo.city', items: [{ value: 'city', data: mapAsset(getForAsset(asset)) }] },
+        { fieldName: 'exifInfo.make', items: [{ value: 'make', data: mapAsset(getForAsset(asset)) }] },
         {
           fieldName: 'createdAt',
           items: [{ value: asset.createdAt.toISOString(), data: mapAsset(getForAsset(asset)) }],
@@ -92,6 +97,26 @@ describe(SearchService.name, () => {
       const result = await sut.getExploreData(auth);
 
       expect(result).toEqual(expectedResponse);
+    });
+
+    it('should get assets by camera model for a make', async () => {
+      const auth = AuthFactory.create();
+      const asset = AssetFactory.from().exif({ make: 'make', model: 'model' }).build();
+      mocks.asset.getAssetIdByCameraModel.mockResolvedValue({
+        fieldName: 'exifInfo.model',
+        items: [{ value: 'model', data: asset.id }],
+      });
+      mocks.asset.getByIdsWithAllRelationsButStacks.mockResolvedValue([asset as never]);
+
+      const result = await sut.getExploreCameraModels(auth, 'make');
+
+      expect(mocks.asset.getAssetIdByCameraModel).toHaveBeenCalledWith(auth.user.id, 'make', {
+        minAssetsPerField: 1,
+        maxFields: 100,
+      });
+      expect(result).toEqual([
+        { fieldName: 'exifInfo.model', items: [{ value: 'model', data: mapAsset(getForAsset(asset)) }] },
+      ]);
     });
   });
 

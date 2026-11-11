@@ -55,6 +55,8 @@ export const Route = {
   // explore
   explore: () => '/explore',
   places: () => '/places',
+  cameras: () => '/cameras',
+  exploreCamera: ({ make }: { make: string }) => `/explore/cameras/${encodeURIComponent(make)}`,
   documents: () => '/documents',
   viewDocument: ({ id }: { id: string }) => `/documents/${id}`,
 

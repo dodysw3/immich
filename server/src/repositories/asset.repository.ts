@@ -1089,6 +1089,70 @@ export class AssetRepository {
     return { fieldName: 'exifInfo.city', items };
   }
 
+  @GenerateSql({ params: [DummyValue.UUID, { minAssetsPerField: 5, maxFields: 12 }] })
+  async getAssetIdByCameraMake(ownerId: string, { minAssetsPerField, maxFields }: AssetExploreFieldOptions) {
+    const items = await this.db
+      .with('makes', (qb) =>
+        qb
+          .selectFrom('asset_exif')
+          .select('make')
+          .where('make', 'is not', null)
+          .where('make', '!=', '')
+          .groupBy('make')
+          .having((eb) => eb.fn('count', [eb.ref('assetId')]), '>=', minAssetsPerField),
+      )
+      .selectFrom('asset')
+      .innerJoin('asset_exif', 'asset.id', 'asset_exif.assetId')
+      .innerJoin('makes', 'asset_exif.make', 'makes.make')
+      .distinctOn('asset_exif.make')
+      .select(['assetId as data', 'asset_exif.make as value'])
+      .$narrowType<{ value: NotNull }>()
+      .where('ownerId', '=', asUuid(ownerId))
+      .where('visibility', '=', AssetVisibility.Timeline)
+      .where('type', '=', AssetType.Image)
+      .where('deletedAt', 'is', null)
+      .orderBy('asset_exif.make')
+      .limit(maxFields)
+      .execute();
+
+    return { fieldName: 'exifInfo.make', items };
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID, DummyValue.STRING, { minAssetsPerField: 1, maxFields: 100 }] })
+  async getAssetIdByCameraModel(
+    ownerId: string,
+    make: string,
+    { minAssetsPerField, maxFields }: AssetExploreFieldOptions,
+  ) {
+    const items = await this.db
+      .with('models', (qb) =>
+        qb
+          .selectFrom('asset_exif')
+          .select('model')
+          .where('make', '=', make)
+          .where('model', 'is not', null)
+          .where('model', '!=', '')
+          .groupBy('model')
+          .having((eb) => eb.fn('count', [eb.ref('assetId')]), '>=', minAssetsPerField),
+      )
+      .selectFrom('asset')
+      .innerJoin('asset_exif', 'asset.id', 'asset_exif.assetId')
+      .innerJoin('models', 'asset_exif.model', 'models.model')
+      .distinctOn('asset_exif.model')
+      .select(['assetId as data', 'asset_exif.model as value'])
+      .$narrowType<{ value: NotNull }>()
+      .where('ownerId', '=', asUuid(ownerId))
+      .where('asset_exif.make', '=', make)
+      .where('visibility', '=', AssetVisibility.Timeline)
+      .where('type', '=', AssetType.Image)
+      .where('deletedAt', 'is', null)
+      .orderBy('asset_exif.model')
+      .limit(maxFields)
+      .execute();
+
+    return { fieldName: 'exifInfo.model', items };
+  }
+
   @GenerateSql({ params: [DummyValue.UUID, 12] })
   async getRecentlyCreatedAssetIds(ownerId: string, maxAssets: number) {
     const items = await this.db

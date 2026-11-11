@@ -242,7 +242,7 @@ limit
   $6
 offset
   $7
-commit
+rollback
 
 -- SearchRepository.getEmbedding
 select
@@ -396,6 +396,50 @@ from
   inner join "cte" on "asset"."id" = "cte"."assetId"
 order by
   "asset_exif"."city"
+
+-- SearchRepository.getAssetsByCameraMake
+select distinct
+  on ("asset_exif"."make") "asset"."id",
+  "asset"."updateId",
+  "asset"."createdAt",
+  "asset"."updatedAt",
+  "asset"."deletedAt",
+  "asset"."status",
+  "asset"."checksum",
+  "asset"."checksumAlgorithm",
+  "asset"."duplicateId",
+  "asset"."duration",
+  "asset"."fileCreatedAt",
+  "asset"."fileModifiedAt",
+  "asset"."isExternal",
+  "asset"."isFavorite",
+  "asset"."isOffline",
+  "asset"."isEdited",
+  "asset"."visibility",
+  "asset"."libraryId",
+  "asset"."livePhotoVideoId",
+  "asset"."localDateTime",
+  "asset"."originalFileName",
+  "asset"."originalPath",
+  "asset"."ownerId",
+  "asset"."stackId",
+  "asset"."thumbhash",
+  "asset"."type",
+  "asset"."width",
+  "asset"."height",
+  to_jsonb("asset_exif") as "exifInfo"
+from
+  "asset"
+  inner join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
+where
+  "asset"."ownerId" = any ($1::uuid[])
+  and "asset_exif"."make" is not null
+  and "asset_exif"."make" != $2
+  and "asset"."visibility" = $3
+  and "asset"."type" = $4
+  and "asset"."deletedAt" is null
+order by
+  "asset_exif"."make"
 
 -- SearchRepository.deleteByAssetId
 delete from "smart_search"
@@ -1867,7 +1911,7 @@ limit
   $5
 offset
   $6
-commit
+rollback
 
 -- SearchRepository.searchSmartV3 (with-filter)
 begin
@@ -1923,7 +1967,7 @@ limit
   $7
 offset
   $8
-commit
+rollback
 
 -- SearchRepository.searchSmartV3 (cursor-offset)
 begin
@@ -1976,7 +2020,7 @@ limit
   $5
 offset
   $6
-commit
+rollback
 
 -- SearchRepository.searchStatisticsV3 (baseline)
 select

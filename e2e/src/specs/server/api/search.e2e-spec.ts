@@ -467,6 +467,63 @@ describe('/search', () => {
           },
         ]),
       );
+      expect(body).toEqual(expect.arrayContaining([{ fieldName: 'exifInfo.make', items: expect.any(Array) }]));
+    });
+  });
+
+  describe('GET /search/explore/cameras', () => {
+    it('should require a make parameter', async () => {
+      const { status } = await request(app)
+        .get('/search/explore/cameras')
+        .set('Authorization', `Bearer ${admin.accessToken}`);
+      expect(status).toBe(400);
+    });
+
+    it('should return a sample asset for each camera model of a make', async () => {
+      const { body: makes } = await request(app)
+        .get('/search/suggestions?type=camera-make')
+        .set('Authorization', `Bearer ${admin.accessToken}`);
+      expect(makes.length).toBeGreaterThan(0);
+
+      const make = makes[0];
+      const { status, body } = await request(app)
+        .get(`/search/explore/cameras?make=${encodeURIComponent(make)}`)
+        .set('Authorization', `Bearer ${admin.accessToken}`);
+
+      expect(status).toBe(200);
+      expect(body).toEqual([
+        {
+          fieldName: 'exifInfo.model',
+          items: expect.arrayContaining([expect.objectContaining({ value: expect.any(String) })]),
+        },
+      ]);
+
+      const model = body[0].items[0].value;
+      const { status: searchStatus, body: searchBody } = await request(app)
+        .post('/search/metadata')
+        .set('Authorization', `Bearer ${admin.accessToken}`)
+        .send({ make, model });
+      expect(searchStatus).toBe(200);
+      expect(searchBody.assets.items.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('GET /search/cameras', () => {
+    it('should return one asset per camera make', async () => {
+      const { status, body } = await request(app)
+        .get('/search/cameras')
+        .set('Authorization', `Bearer ${admin.accessToken}`);
+      expect(status).toBe(200);
+      expect(Array.isArray(body)).toBe(true);
+
+      const makes: Array<string | null | undefined> = body.map(
+        (asset: { exifInfo?: { make?: string | null } }) => asset.exifInfo?.make,
+      );
+      expect(makes.length).toBeGreaterThan(0);
+      for (const make of makes) {
+        expect(make).toBeTruthy();
+      }
+      expect(new Set(makes).size).toBe(makes.length);
     });
   });
 

@@ -24,6 +24,12 @@ describe('Route', () => {
     });
   });
 
+  describe(Route.exploreCamera.name, () => {
+    it('should URI encode the make', () => {
+      expect(Route.exploreCamera({ make: 'NIKON CORPORATION' })).toBe('/explore/cameras/NIKON%20CORPORATION');
+    });
+  });
+
   describe(Route.viewSharedLink.name, () => {
     it('should work with key', () => {
       expect(Route.viewSharedLink({ key: 'uuid-key' })).toBe('/share/uuid-key');

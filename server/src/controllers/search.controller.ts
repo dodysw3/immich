@@ -9,6 +9,7 @@ import {
   MetadataSearchDto,
   PlacesResponseDto,
   RandomSearchDto,
+  SearchExploreCamerasRequestDto,
   SearchExploreResponseDto,
   SearchPeopleDto,
   SearchPlacesDto,
@@ -102,6 +103,21 @@ export class SearchController {
     return this.service.getExploreData(auth);
   }
 
+  @Get('explore/cameras')
+  @Authenticated({ permission: Permission.AssetRead })
+  @Endpoint({
+    summary: 'Retrieve camera models for explore',
+    description:
+      'Retrieve explore data for a specific camera make, with a single sample asset for each camera model of that make.',
+    history: new HistoryBuilder().added('v3.4.0'),
+  })
+  getExploreCameras(
+    @Auth() auth: AuthDto,
+    @Query() dto: SearchExploreCamerasRequestDto,
+  ): Promise<SearchExploreResponseDto[]> {
+    return this.service.getExploreCameraModels(auth, dto.make);
+  }
+
   @Get('person')
   @Authenticated({ permission: Permission.PersonRead })
   @Endpoint({
@@ -134,6 +150,18 @@ export class SearchController {
   })
   getAssetsByCity(@Auth() auth: AuthDto): Promise<AssetResponseDto[]> {
     return this.service.getAssetsByCity(auth);
+  }
+
+  @Get('cameras')
+  @Authenticated({ permission: Permission.AssetRead })
+  @Endpoint({
+    summary: 'Retrieve assets by camera make',
+    description:
+      'Retrieve a list of assets with each asset belonging to a different camera make. This endpoint is used on the cameras page to show a single thumbnail for each camera brand the user has assets from.',
+    history: new HistoryBuilder().added('v3.4.0'),
+  })
+  getAssetsByCameraMake(@Auth() auth: AuthDto): Promise<AssetResponseDto[]> {
+    return this.service.getAssetsByCameraMake(auth);
   }
 
   @Get('suggestions')

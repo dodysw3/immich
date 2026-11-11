@@ -35,6 +35,8 @@ export const newAssetRepositoryMock = (): Mocked<RepositoryInterface<AssetReposi
     getTimeBucket: vitest.fn(),
     getTimeBuckets: vitest.fn(),
     getAssetIdByCity: vitest.fn(),
+    getAssetIdByCameraMake: vitest.fn(),
+    getAssetIdByCameraModel: vitest.fn(),
     getRecentlyCreatedAssetIds: vitest.fn(),
     upsertFile: vitest.fn(),
     upsertFiles: vitest.fn(),

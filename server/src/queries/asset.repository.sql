@@ -99,7 +99,7 @@ delete from "asset_metadata"
 where
   "assetId" = $1
   and "key" = $2
-commit
+rollback
 
 -- AssetRepository.getByDayOfYear
 with
@@ -524,6 +524,72 @@ where
 limit
   $5
 
+-- AssetRepository.getAssetIdByCameraMake
+with
+  "makes" as (
+    select
+      "make"
+    from
+      "asset_exif"
+    where
+      "make" is not null
+      and "make" != $1
+    group by
+      "make"
+    having
+      count("assetId") >= $2
+  )
+select distinct
+  on ("asset_exif"."make") "assetId" as "data",
+  "asset_exif"."make" as "value"
+from
+  "asset"
+  inner join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
+  inner join "makes" on "asset_exif"."make" = "makes"."make"
+where
+  "ownerId" = $3::uuid
+  and "visibility" = $4
+  and "type" = $5
+  and "deletedAt" is null
+order by
+  "asset_exif"."make"
+limit
+  $6
+
+-- AssetRepository.getAssetIdByCameraModel
+with
+  "models" as (
+    select
+      "model"
+    from
+      "asset_exif"
+    where
+      "make" = $1
+      and "model" is not null
+      and "model" != $2
+    group by
+      "model"
+    having
+      count("assetId") >= $3
+  )
+select distinct
+  on ("asset_exif"."model") "assetId" as "data",
+  "asset_exif"."model" as "value"
+from
+  "asset"
+  inner join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
+  inner join "models" on "asset_exif"."model" = "models"."model"
+where
+  "ownerId" = $4::uuid
+  and "asset_exif"."make" = $5
+  and "visibility" = $6
+  and "type" = $7
+  and "deletedAt" is null
+order by
+  "asset_exif"."model"
+limit
+  $8
+
 -- AssetRepository.getRecentlyCreatedAssetIds
 select
   "id" as "data",
@@ -553,10 +619,7 @@ declare offline_check no scroll cursor for (
     and "asset"."isOffline" = $2
     and "asset"."isExternal" = $3
 )
-fetch 10000
-from
-  offline_check
-commit
+rollback
 
 -- AssetRepository.filterNewExternalAssetPaths
 select

@@ -30,6 +30,7 @@
   };
 
   let places = $derived(getFieldItems(data.explore, 'exifInfo.city'));
+  let cameras = $derived(getFieldItems(data.explore, 'exifInfo.make'));
   let recents = $derived(
     getFieldItems(data.explore, 'createdAt').sort((a, b) => new Date(b.value).getTime() - new Date(a.value).getTime()),
   );
@@ -114,6 +115,39 @@
         {#snippet children({ itemCount })}
           {#each places.slice(0, itemCount) as item (item.data.id)}
             <a class="relative" href={Route.search({ city: item.value })} draggable="false">
+              <div class="flex justify-center overflow-hidden rounded-xl brightness-75 filter">
+                <img
+                  src={getAssetMediaUrl({ id: item.data.id, size: AssetMediaSize.Thumbnail })}
+                  alt={item.value}
+                  class="aspect-square w-full object-cover"
+                />
+              </div>
+              <span
+                class="absolute bottom-2 w-full px-1 text-center text-sm font-medium text-ellipsis text-white capitalize backdrop-blur-[1px] hover:cursor-pointer"
+              >
+                {item.value}
+              </span>
+            </a>
+          {/each}
+        {/snippet}
+      </SingleGridRow>
+    </div>
+  {/if}
+
+  {#if cameras.length > 0}
+    <div class="mt-2 mb-6">
+      <div class="flex justify-between">
+        <p class="mb-4 font-medium dark:text-immich-dark-fg">{$t('cameras')}</p>
+        <a
+          href={Route.cameras()}
+          class="pe-4 text-sm font-medium hover:text-immich-primary dark:text-immich-dark-fg dark:hover:text-immich-dark-primary"
+          draggable="false">{$t('view_all')}</a
+        >
+      </div>
+      <SingleGridRow class="grid grid-flow-col grid-auto-fill-28 gap-x-4 md:grid-auto-fill-36">
+        {#snippet children({ itemCount })}
+          {#each cameras.slice(0, itemCount) as item (item.data.id)}
+            <a class="relative" href={Route.exploreCamera({ make: item.value })} draggable="false">
               <div class="flex justify-center overflow-hidden rounded-xl brightness-75 filter">
                 <img
                   src={getAssetMediaUrl({ id: item.data.id, size: AssetMediaSize.Thumbnail })}

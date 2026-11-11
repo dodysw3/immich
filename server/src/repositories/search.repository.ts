@@ -478,6 +478,29 @@ export class SearchRepository {
       .execute();
   }
 
+  @GenerateSql({ params: [[DummyValue.UUID]] })
+  getAssetsByCameraMake(userIds: string[]) {
+    return this.db
+      .selectFrom('asset')
+      .innerJoin('asset_exif', 'asset.id', 'asset_exif.assetId')
+      .select(columns.searchAsset)
+      .select((eb) =>
+        eb
+          .fn('to_jsonb', [eb.table('asset_exif')])
+          .$castTo<ShallowDehydrateObject<Selectable<AssetExifTable>>>()
+          .as('exifInfo'),
+      )
+      .distinctOn('asset_exif.make')
+      .where('asset.ownerId', '=', anyUuid(userIds))
+      .where('asset_exif.make', 'is not', null)
+      .where('asset_exif.make', '!=', '')
+      .where('asset.visibility', '=', AssetVisibility.Timeline)
+      .where('asset.type', '=', AssetType.Image)
+      .where('asset.deletedAt', 'is', null)
+      .orderBy('asset_exif.make')
+      .execute();
+  }
+
   @GenerateSql({ params: [DummyValue.UUID] })
   async deleteByAssetId(assetId: string): Promise<void> {
     await this.db.deleteFrom('smart_search').where('assetId', '=', assetId).execute();

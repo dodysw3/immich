@@ -211,6 +211,12 @@ const adminConfig = (overrides: Partial<ResponseOf<'getAdminConfig'>> = {}): Res
       ocrVetoMaxTokenDiff: 4,
       pdfVeto: true,
       pdfVetoMaxTokenDiff: 1,
+      videoNearDup: {
+        enabled: true,
+        groupThreshold: 0.9,
+        maxDurationDeltaMs: 2000,
+        durationRelTol: 0.03,
+      },
     },
     facialRecognition: {
       enabled: true,

@@ -55,6 +55,13 @@ export class SearchService extends BaseService {
     );
     const cityItems = cityAssets.map((asset) => ({ value: asset.exifInfo!.city!, data: mapAsset(asset, { auth }) }));
 
+    const cameras = await this.assetRepository.getAssetIdByCameraMake(auth.user.id, options);
+    const cameraAssets = await this.assetRepository.getByIdsWithAllRelationsButStacks(
+      cameras.items.map(({ data }) => data),
+      auth.user.id,
+    );
+    const cameraItems = cameraAssets.map((asset) => ({ value: asset.exifInfo!.make!, data: mapAsset(asset, { auth }) }));
+
     const recents = await this.assetRepository.getRecentlyCreatedAssetIds(auth.user.id, options.maxFields);
     const recentAssets = await this.assetRepository.getByIdsWithAllRelationsButStacks(
       recents.items.map((item) => item.data),
@@ -67,8 +74,23 @@ export class SearchService extends BaseService {
 
     return [
       { fieldName: cities.fieldName, items: cityItems },
+      { fieldName: cameras.fieldName, items: cameraItems },
       { fieldName: recents.fieldName, items: recentItems },
     ];
+  }
+
+  async getExploreCameraModels(auth: AuthDto, make: string) {
+    const models = await this.assetRepository.getAssetIdByCameraModel(auth.user.id, make, {
+      minAssetsPerField: 1,
+      maxFields: 100,
+    });
+    const modelAssets = await this.assetRepository.getByIdsWithAllRelationsButStacks(
+      models.items.map(({ data }) => data),
+      auth.user.id,
+    );
+    const modelItems = modelAssets.map((asset) => ({ value: asset.exifInfo!.model!, data: mapAsset(asset, { auth }) }));
+
+    return [{ fieldName: models.fieldName, items: modelItems }];
   }
 
   async searchMetadata(auth: AuthDto, dto: MetadataSearchDto): Promise<SearchResponseDto> {
@@ -200,6 +222,12 @@ export class SearchService extends BaseService {
   async getAssetsByCity(auth: AuthDto): Promise<AssetResponseDto[]> {
     const userIds = await this.getUserIdsToSearch(auth);
     const assets = await this.searchRepository.getAssetsByCity(userIds);
+    return assets.map((asset) => mapAsset(asset));
+  }
+
+  async getAssetsByCameraMake(auth: AuthDto): Promise<AssetResponseDto[]> {
+    const userIds = await this.getUserIdsToSearch(auth);
+    const assets = await this.searchRepository.getAssetsByCameraMake(userIds);
     return assets.map((asset) => mapAsset(asset));
   }
 
