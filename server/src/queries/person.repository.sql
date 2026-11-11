@@ -1299,46 +1299,7 @@ where
       "person"."personGroupId" = "person_group"."id"
       and "person"."ownerId" != $3
   )
-with
-  "shared" as (
-    select distinct
-      "person"."personGroupId" as "oldId"
-    from
-      "person"
-    where
-      "person"."ownerId" = $1
-      and exists (
-        select
-          "other"."personGroupId"
-        from
-          "person" as "other"
-        where
-          "other"."personGroupId" = "person"."personGroupId"
-          and "other"."ownerId" != $2
-      )
-  ),
-  "mapping" as materialized (
-    select
-      "shared"."oldId",
-      uuid_generate_v4 () as "newId"
-    from
-      "shared"
-  ),
-  "created" as (
-    insert into
-      "person_group" ("id", "clusterGroupId")
-    select
-      "mapping"."newId",
-      $3 as "clusterGroupId"
-    from
-      "mapping"
-  )
-select
-  "mapping"."oldId",
-  "mapping"."newId"
-from
-  "mapping"
-commit
+rollback
 
 -- PersonRepository.createGroups
 insert into
@@ -1632,6 +1593,8 @@ where
   and "asset"."deletedAt" is null
   and "person"."ownerId" = $3
   and "person"."isHidden" = $4
+
+-- PersonRepository.getForMergePerson
 select
   "recent"."assetId" as "assetId",
   "person"."personGroupId" as "personId",
@@ -1672,8 +1635,6 @@ limit
   $5
 offset
   $6
-
--- PersonRepository.getForMergePerson
 select
   "person".*
 from

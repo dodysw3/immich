@@ -94,10 +94,6 @@ begin
 delete from "pdf_page"
 where
   "assetId" = $1
-insert into
-  "pdf_page" ("pageNumber", "text")
-values
-  ($1, $2)
 rollback
 
 -- PdfRepository.upsertSearch

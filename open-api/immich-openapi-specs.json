@@ -4509,6 +4509,74 @@
         "x-immich-state": "Beta"
       }
     },
+    "/assets/{id}/av-metadata": {
+      "get": {
+        "description": "Retrieve the probed stream metadata (codec, bitrate, etc.) of a specific asset.",
+        "operationId": "getAssetAvMetadata",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "key",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "slug",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvMetadataResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Retrieve audio/video stream metadata",
+        "tags": [
+          "Assets"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v3.4.0",
+            "state": "Added"
+          }
+        ],
+        "x-immich-permission": "asset.read"
+      }
+    },
     "/assets/{id}/edits": {
       "delete": {
         "description": "Removes all edit actions (crop, rotate, mirror) associated with the specified asset.",
@@ -12868,6 +12936,50 @@
         "x-immich-permission": "asset.read"
       }
     },
+    "/search/cameras": {
+      "get": {
+        "description": "Retrieve a list of assets with each asset belonging to a different camera make. This endpoint is used on the cameras page to show a single thumbnail for each camera brand the user has assets from.",
+        "operationId": "getAssetsByCameraMake",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AssetResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Retrieve assets by camera make",
+        "tags": [
+          "Search"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v3.4.0",
+            "state": "Added"
+          }
+        ],
+        "x-immich-permission": "asset.read"
+      }
+    },
     "/search/cities": {
       "get": {
         "description": "Retrieve a list of assets with each asset belonging to a different city. This endpoint is used on the places pages to show a single thumbnail for each city the user has assets in.",
@@ -12972,6 +13084,60 @@
         ],
         "x-immich-permission": "asset.read",
         "x-immich-state": "Stable"
+      }
+    },
+    "/search/explore/cameras": {
+      "get": {
+        "description": "Retrieve explore data for a specific camera make, with a single sample asset for each camera model of that make.",
+        "operationId": "getExploreCameras",
+        "parameters": [
+          {
+            "name": "make",
+            "required": true,
+            "in": "query",
+            "description": "Filter by camera make",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SearchExploreResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Retrieve camera models for explore",
+        "tags": [
+          "Search"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v3.4.0",
+            "state": "Added"
+          }
+        ],
+        "x-immich-permission": "asset.read"
       }
     },
     "/search/large-assets": {
@@ -20154,6 +20320,9 @@
             "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
+          },
+          "videoNearDup": {
+            "$ref": "#/components/schemas/AdminConfigVideoNearDupDto"
           }
         },
         "required": [
@@ -20162,7 +20331,8 @@
           "ocrVeto",
           "ocrVetoMaxTokenDiff",
           "pdfVeto",
-          "pdfVetoMaxTokenDiff"
+          "pdfVetoMaxTokenDiff",
+          "videoNearDup"
         ],
         "type": "object"
       },
@@ -21338,6 +21508,41 @@
         },
         "required": [
           "deleteDelay"
+        ],
+        "type": "object"
+      },
+      "AdminConfigVideoNearDupDto": {
+        "properties": {
+          "durationRelTol": {
+            "description": "Relative duration tolerance as a fraction of the longer video",
+            "format": "double",
+            "maximum": 0.5,
+            "minimum": 0,
+            "type": "number"
+          },
+          "enabled": {
+            "description": "Group near-duplicate videos via frame, audio, and metadata fingerprints when CLIP preview similarity finds none",
+            "type": "boolean"
+          },
+          "groupThreshold": {
+            "description": "Minimum composite similarity before two videos are grouped as near-duplicates",
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0.5,
+            "type": "number"
+          },
+          "maxDurationDeltaMs": {
+            "description": "Absolute duration tolerance in milliseconds for video near-duplicate candidates",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "durationRelTol",
+          "enabled",
+          "groupThreshold",
+          "maxDurationDeltaMs"
         ],
         "type": "object"
       },
@@ -23298,6 +23503,34 @@
         ],
         "type": "string"
       },
+      "AudioStreamResponseDto": {
+        "description": "Audio stream metadata",
+        "properties": {
+          "bitrate": {
+            "default": null,
+            "description": "Audio bitrate in bits per second",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "nullable": true,
+            "type": "integer"
+          },
+          "codecName": {
+            "default": null,
+            "description": "Audio codec name",
+            "nullable": true,
+            "type": "string"
+          },
+          "profile": {
+            "default": null,
+            "description": "Audio codec profile number",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
       "AuthStatusResponseDto": {
         "properties": {
           "expiresAt": {
@@ -23326,6 +23559,30 @@
           "password",
           "pinCode"
         ],
+        "type": "object"
+      },
+      "AvMetadataResponseDto": {
+        "description": "Audio/video stream metadata probed from the original file",
+        "properties": {
+          "audioStream": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AudioStreamResponseDto"
+              }
+            ],
+            "default": null,
+            "nullable": true
+          },
+          "videoStream": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/VideoStreamResponseDto"
+              }
+            ],
+            "default": null,
+            "nullable": true
+          }
+        },
         "type": "object"
       },
       "AvatarUpdate": {
@@ -24204,9 +24461,23 @@
       "ExifResponseDto": {
         "description": "EXIF response",
         "properties": {
+          "bitsPerSample": {
+            "default": null,
+            "description": "Bits per sample",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "nullable": true,
+            "type": "integer"
+          },
           "city": {
             "default": null,
             "description": "City name",
+            "nullable": true,
+            "type": "string"
+          },
+          "colorspace": {
+            "default": null,
+            "description": "Color space",
             "nullable": true,
             "type": "string"
           },
@@ -24273,6 +24544,13 @@
             "nullable": true,
             "type": "number"
           },
+          "fps": {
+            "default": null,
+            "description": "Frame rate in frames per second",
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
           "iso": {
             "default": null,
             "description": "ISO sensitivity",
@@ -24323,6 +24601,12 @@
           "orientation": {
             "default": null,
             "description": "Image orientation",
+            "nullable": true,
+            "type": "string"
+          },
+          "profileDescription": {
+            "default": null,
+            "description": "Color profile description",
             "nullable": true,
             "type": "string"
           },
@@ -36506,6 +36790,17 @@
           "sightings": {
             "items": {
               "properties": {
+                "imageHeight": {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                "imageWidth": {
+                  "description": "Decoded frame dimensions the box is relative to",
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
                 "score": {
                   "description": "Detection score",
                   "type": "number"
@@ -36515,11 +36810,38 @@
                   "maximum": 9007199254740991,
                   "minimum": -9007199254740991,
                   "type": "integer"
+                },
+                "x1": {
+                  "description": "Pixel box in the decoded frame (≤1440px long edge)",
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                "x2": {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                "y1": {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                "y2": {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
                 }
               },
               "required": [
                 "timeMs",
-                "score"
+                "score",
+                "x1",
+                "y1",
+                "x2",
+                "y2",
+                "imageWidth",
+                "imageHeight"
               ],
               "type": "object"
             },
@@ -36619,6 +36941,84 @@
           "faces",
           "run"
         ],
+        "type": "object"
+      },
+      "VideoStreamResponseDto": {
+        "description": "Video stream metadata",
+        "properties": {
+          "bitrate": {
+            "default": null,
+            "description": "Video bitrate in bits per second",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "nullable": true,
+            "type": "integer"
+          },
+          "codecName": {
+            "default": null,
+            "description": "Video codec name",
+            "nullable": true,
+            "type": "string"
+          },
+          "dvLevel": {
+            "default": null,
+            "description": "Dolby Vision level",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "nullable": true,
+            "type": "integer"
+          },
+          "dvProfile": {
+            "default": null,
+            "description": "Dolby Vision profile",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "nullable": true,
+            "type": "integer"
+          },
+          "formatLongName": {
+            "default": null,
+            "description": "Container format long name",
+            "nullable": true,
+            "type": "string"
+          },
+          "formatName": {
+            "default": null,
+            "description": "Container format name",
+            "nullable": true,
+            "type": "string"
+          },
+          "frameCount": {
+            "default": null,
+            "description": "Frame count",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "nullable": true,
+            "type": "integer"
+          },
+          "level": {
+            "default": null,
+            "description": "Codec level number",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "nullable": true,
+            "type": "integer"
+          },
+          "pixelFormat": {
+            "default": null,
+            "description": "Pixel format",
+            "nullable": true,
+            "type": "string"
+          },
+          "profile": {
+            "default": null,
+            "description": "Codec profile number",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "nullable": true,
+            "type": "integer"
+          }
+        },
         "type": "object"
       },
       "WorkflowCreateDto": {

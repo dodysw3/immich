@@ -214,6 +214,16 @@ export type AdminConfigClipDto = {
     /** Name of the model to use */
     modelName: string;
 };
+export type AdminConfigVideoNearDupDto = {
+    /** Relative duration tolerance as a fraction of the longer video */
+    durationRelTol: number;
+    /** Group near-duplicate videos via frame, audio, and metadata fingerprints when CLIP preview similarity finds none */
+    enabled: boolean;
+    /** Minimum composite similarity before two videos are grouped as near-duplicates */
+    groupThreshold: number;
+    /** Absolute duration tolerance in milliseconds for video near-duplicate candidates */
+    maxDurationDeltaMs: number;
+};
 export type AdminConfigDuplicateDetectionDto = {
     /** Whether the task is enabled */
     enabled: boolean;
@@ -227,6 +237,7 @@ export type AdminConfigDuplicateDetectionDto = {
     pdfVeto: boolean;
     /** Maximum whole-document PDF text token-bag symmetric difference before a candidate is vetoed */
     pdfVetoMaxTokenDiff: number;
+    videoNearDup: AdminConfigVideoNearDupDto;
 };
 export type AdminConfigTilingMinDimWithFacesDto = {
     /** Minimum original image dimension to consider tiling */
@@ -1228,8 +1239,12 @@ export type AssetMetadataBulkResponseDto = {
     };
 };
 export type ExifResponseDto = {
+    /** Bits per sample */
+    bitsPerSample?: number | null;
     /** City name */
     city?: string | null;
+    /** Color space */
+    colorspace?: string | null;
     /** Country name */
     country?: string | null;
     /** Original date/time */
@@ -1248,6 +1263,8 @@ export type ExifResponseDto = {
     fileSizeInByte?: number | null;
     /** Focal length in mm */
     focalLength?: number | null;
+    /** Frame rate in frames per second */
+    fps?: number | null;
     /** ISO sensitivity */
     iso?: number | null;
     /** GPS latitude */
@@ -1264,6 +1281,8 @@ export type ExifResponseDto = {
     modifyDate?: string | null;
     /** Image orientation */
     orientation?: string | null;
+    /** Color profile description */
+    profileDescription?: string | null;
     /** Projection type */
     projectionType?: string | null;
     /** Rating */
@@ -1417,6 +1436,40 @@ export type UpdateAssetDto = {
     rating?: number | null;
     visibility?: AssetVisibility;
 };
+export type AudioStreamResponseDto = {
+    /** Audio bitrate in bits per second */
+    bitrate?: number | null;
+    /** Audio codec name */
+    codecName?: string | null;
+    /** Audio codec profile number */
+    profile?: number | null;
+};
+export type VideoStreamResponseDto = {
+    /** Video bitrate in bits per second */
+    bitrate?: number | null;
+    /** Video codec name */
+    codecName?: string | null;
+    /** Dolby Vision level */
+    dvLevel?: number | null;
+    /** Dolby Vision profile */
+    dvProfile?: number | null;
+    /** Container format long name */
+    formatLongName?: string | null;
+    /** Container format name */
+    formatName?: string | null;
+    /** Frame count */
+    frameCount?: number | null;
+    /** Codec level number */
+    level?: number | null;
+    /** Pixel format */
+    pixelFormat?: string | null;
+    /** Codec profile number */
+    profile?: number | null;
+};
+export type AvMetadataResponseDto = {
+    audioStream?: (AudioStreamResponseDto) | null;
+    videoStream?: (VideoStreamResponseDto) | null;
+};
 export type CropParameters = {
     /** Height of the crop */
     height: number;
@@ -1512,10 +1565,18 @@ export type VideoFaceDto = {
     personName: string | null;
     sightingCount: number;
     sightings: {
+        imageHeight: number;
+        /** Decoded frame dimensions the box is relative to */
+        imageWidth: number;
         /** Detection score */
         score: number;
         /** Decoded presentation timestamp of the sighting */
         timeMs: number;
+        /** Pixel box in the decoded frame (≤1440px long edge) */
+        x1: number;
+        x2: number;
+        y1: number;
+        y2: number;
     }[];
 };
 export type VideoFaceRunDto = {
@@ -5291,6 +5352,24 @@ export function downloadAssetAnnotated({ id, layers }: {
     }));
 }
 /**
+ * Retrieve audio/video stream metadata
+ */
+export function getAssetAvMetadata({ id, key, slug }: {
+    id: string;
+    key?: string;
+    slug?: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: AvMetadataResponseDto;
+    }>(`/assets/${encodeURIComponent(id)}/av-metadata${QS.query(QS.explode({
+        key,
+        slug
+    }))}`, {
+        ...opts
+    }));
+}
+/**
  * Remove edits from an existing asset
  */
 export function removeAssetEdits({ id }: {
@@ -7247,6 +7326,17 @@ export function searchAiInterpret({ aiInterpretSearchDto }: {
     })));
 }
 /**
+ * Retrieve assets by camera make
+ */
+export function getAssetsByCameraMake(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: AssetResponseDto[];
+    }>("/search/cameras", {
+        ...opts
+    }));
+}
+/**
  * Retrieve assets by city
  */
 export function getAssetsByCity(opts?: Oazapfts.RequestOpts) {
@@ -7265,6 +7355,21 @@ export function getExploreData(opts?: Oazapfts.RequestOpts) {
         status: 200;
         data: SearchExploreResponseDto[];
     }>("/search/explore", {
+        ...opts
+    }));
+}
+/**
+ * Retrieve camera models for explore
+ */
+export function getExploreCameras({ make }: {
+    make: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: SearchExploreResponseDto[];
+    }>(`/search/explore/cameras${QS.query(QS.explode({
+        make
+    }))}`, {
         ...opts
     }));
 }

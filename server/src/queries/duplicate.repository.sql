@@ -196,7 +196,7 @@ from
   "cte"
 where
   "cte"."distance" <= $6
-commit
+rollback
 
 -- DuplicateRepository.merge
 update "asset"
@@ -206,3 +206,49 @@ where
     "duplicateId" = any ($1::uuid[])
     or "id" = any ($2::uuid[])
   )
+
+-- DuplicateRepository.getForVideoNearDuplicates
+select
+  "asset"."id",
+  "asset"."ownerId",
+  "asset"."originalPath",
+  "asset"."duration" as "durationMs",
+  "asset"."originalFileName",
+  "asset"."localDateTime",
+  "asset"."width",
+  "asset"."height",
+  "asset_exif"."fps" as "fps",
+  "asset"."duplicateId",
+  encode(asset.checksum, 'hex') as "checksumHex"
+from
+  "asset"
+  left join "asset_exif" on "asset_exif"."assetId" = "asset"."id"
+where
+  "asset"."id" = $1::uuid
+
+-- DuplicateRepository.searchVideoCandidates
+select
+  "asset"."id" as "assetId",
+  "asset"."duplicateId",
+  "asset"."originalPath",
+  "asset"."duration" as "durationMs",
+  "asset"."originalFileName",
+  "asset"."localDateTime",
+  "asset"."width",
+  "asset"."height",
+  "asset_exif"."fps" as "fps",
+  encode(asset.checksum, 'hex') as "checksumHex",
+  smart_search.embedding <=> $1 as "clipDistance"
+from
+  "asset"
+  left join "asset_exif" on "asset_exif"."assetId" = "asset"."id"
+  left join "smart_search" on "smart_search"."assetId" = "asset"."id"
+where
+  "asset"."visibility" in ('archive', 'timeline')
+  and "asset"."ownerId" = $2::uuid
+  and "asset"."deletedAt" is null
+  and "asset"."type" = $3
+  and "asset"."id" != $4::uuid
+  and "asset"."stackId" is null
+  and "asset"."duration" >= $5
+  and "asset"."duration" <= $6

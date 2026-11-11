@@ -131,7 +131,7 @@ order by
   "ai_interpret_search"."assetId" asc
 limit
   $20
-commit
+rollback
 
 -- AiInterpretSearchRepository.searchLexical
 select
