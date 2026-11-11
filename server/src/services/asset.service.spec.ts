@@ -874,6 +874,19 @@ describe(AssetService.name, () => {
       expect(mocks.asset.upsertMetadata).not.toHaveBeenCalled();
     });
 
+    it('should reject the server-managed video audio-events key', async () => {
+      const asset = AssetFactory.create();
+      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set([asset.id]));
+
+      await expect(
+        sut.upsertMetadata(authStub.admin, asset.id, {
+          items: [{ key: AssetMetadataKey.VideoAudioEventsV1, value: { schemaVersion: 1, runs: {} } }],
+        }),
+      ).rejects.toThrowError('server-managed');
+
+      expect(mocks.asset.upsertMetadata).not.toHaveBeenCalled();
+    });
+
     it('should throw a bad request exception if duplicate keys are sent', async () => {
       const asset = AssetFactory.create();
       const items = [
@@ -931,6 +944,17 @@ describe(AssetService.name, () => {
 
       await expect(
         sut.deleteMetadataByKey(authStub.admin, asset.id, AssetMetadataKey.AiInterpretationV1),
+      ).rejects.toThrowError('server-managed');
+
+      expect(mocks.asset.deleteMetadataByKey).not.toHaveBeenCalled();
+    });
+
+    it('should reject the server-managed video audio-events key', async () => {
+      const asset = AssetFactory.create();
+      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set([asset.id]));
+
+      await expect(
+        sut.deleteMetadataByKey(authStub.admin, asset.id, AssetMetadataKey.VideoAudioEventsV1),
       ).rejects.toThrowError('server-managed');
 
       expect(mocks.asset.deleteMetadataByKey).not.toHaveBeenCalled();

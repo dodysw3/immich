@@ -1,8 +1,10 @@
 import { DateTime } from 'luxon';
 import { createHash } from 'node:crypto';
+import type { AiAudioEventsRun } from 'src/dtos/ai-audio-events.dto.js';
 import { AiInterpretationDocumentSchema } from 'src/dtos/ai-image-interpretation.dto.js';
 import type { AiVideoCaptionRun, AiVideoCaptionSegment } from 'src/dtos/ai-video-captioning.dto.js';
 import type { AiVideoTranscriptionRun } from 'src/dtos/ai-video-transcription.dto.js';
+import { renderAudioEventSentences } from 'src/utils/ai-audio-events.js';
 import { isNoChangeCaption } from 'src/utils/ai-video-captioning.js';
 
 export const AI_IMAGE_INTERPRETATION_PROMPT_VERSION = 'image-interpretation-1.2.0';
@@ -149,18 +151,21 @@ export interface AiVideoInterpretationContextInput {
   captions?: AiVideoCaptionRun;
   /** Latest completed transcription run, when the whisper sidecar produced one. */
   transcripts?: AiVideoTranscriptionRun;
+  /** Latest completed audio-events run, when the YAMNet sidecar produced one. */
+  audioEvents?: AiAudioEventsRun;
 }
 
 /**
 Compose the prompt-context block fed to the interpretation model for videos:
-per-segment visual captions plus the whisper transcript, framed as direct
-evidence from the full video (the system prompt only knows about "the supplied
-image"). Returns undefined when there is nothing to add — an absent transcript
-run means "unknown", never "no speech", so it stays silent rather than claiming
-anything about the audio.
+per-segment visual captions, the whisper transcript, and tagged environmental
+sounds, framed as direct evidence from the full video (the system prompt only
+knows about "the supplied image"). Returns undefined when there is nothing to
+add — an absent transcript run means "unknown", never "no speech", so it stays
+silent rather than claiming anything about the audio; likewise a missing or
+empty audio-events run never claims the video is silent.
 */
 export const composeVideoInterpretationContext = (input: AiVideoInterpretationContextInput): string | undefined => {
-  const { durationMs, captions, transcripts } = input;
+  const { durationMs, captions, transcripts, audioEvents } = input;
 
   const captionLines = collapseNoChangeCaptions(captions?.segments ?? []);
   const transcriptLines = (transcripts?.segments ?? []).map(
@@ -169,7 +174,15 @@ export const composeVideoInterpretationContext = (input: AiVideoInterpretationCo
 
   const hasCaptions = captionLines.length > 0;
   const hasTranscript = transcriptLines.length > 0;
-  if (!hasCaptions && !hasTranscript) {
+  // Tagging drops speech-family events when the transcript already had words;
+  // a transcript that only arrived after the tagging run is caught here, so
+  // speech never shows up both as words and as a sound sentence. Natural
+  // sentences, no scores: the bench model ignored label+score telegraph rows.
+  const audioEventLines = renderAudioEventSentences(audioEvents?.events ?? [], {
+    transcriptHasWords: hasTranscript,
+  }).map((line) => `${formatContextWindow(line.startMs, line.endMs)} ${line.sentence}`);
+  const hasAudioEvents = audioEventLines.length > 0;
+  if (!hasCaptions && !hasTranscript && !hasAudioEvents) {
     return undefined;
   }
 
@@ -202,6 +215,10 @@ export const composeVideoInterpretationContext = (input: AiVideoInterpretationCo
     // (no stream, or whisper/VAD heard nothing through the noise filter); a
     // MISSING run would stay silent above instead of claiming this.
     sections.push(transcripts.noAudio ? 'The video has no audio track.' : 'No speech was detected in the video.');
+  }
+
+  if (hasAudioEvents) {
+    sections.push(`Other sounds detected in the audio:\n${capContextSection(audioEventLines)}`);
   }
 
   return sections.join('\n\n');

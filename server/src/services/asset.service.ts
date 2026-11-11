@@ -432,6 +432,7 @@ export class AssetService extends BaseService {
     );
   }
 
+      key === AssetMetadataKey.VideoAudioEventsV1
   async upsertBulkMetadata(auth: AuthDto, dto: AssetMetadataBulkUpsertDto): Promise<AssetMetadataBulkResponseDto[]> {
     await this.requireAccess({ auth, permission: Permission.AssetUpdate, ids: dto.items.map((item) => item.assetId) });
 

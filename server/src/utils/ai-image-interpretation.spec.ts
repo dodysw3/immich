@@ -13,6 +13,15 @@ import {
   interpretationRetryDelayMs,
 } from 'src/utils/ai-image-interpretation.js';
 
+const audioEvent = (label: string, mid: string, startMs: number, endMs: number, score = 0.5) => ({
+  mid,
+  label,
+  score,
+  startMs,
+  endMs,
+});
+const audioEventsRun = (events: ReturnType<typeof audioEvent>[]) => ({ events }) as never;
+
 describe('AI image interpretation contract', () => {
   it('derives a stable run key from the exact tuple', () => {
     expect(
@@ -179,5 +188,109 @@ describe('composeVideoInterpretationContext', () => {
     expect(context).toContain('[… additional segments omitted]');
     expect(context).not.toContain('[5.0-10.0s]');
     expect(context.indexOf('… additional segments omitted')).toBeGreaterThan(context.lastIndexOf('xxxx'));
+  });
+
+  describe('audio events', () => {
+    const beep = audioEvent('Beep, bleep', '/m/02fs_r', 4320, 5280);
+    const childSpeech = audioEvent('Child speech, kid speaking', '/m/0ytgt', 6240, 14_400);
+
+    it('renders events as timed natural sentences without scores, after the transcript section', () => {
+      const context = composeVideoInterpretationContext({
+        captions: captionRun(),
+        transcripts: transcriptRun(),
+        audioEvents: audioEventsRun([beep]),
+      })!;
+      expect(context).toContain('Other sounds detected in the audio:\n[4.3-5.3s] An electronic beep is heard.');
+      expect(context).not.toContain('0.5');
+      expect(context.indexOf('Other sounds detected')).toBeGreaterThan(context.indexOf('Speech transcript'));
+      expect(context.endsWith('[4.3-5.3s] An electronic beep is heard.')).toBe(true);
+    });
+
+    it('keeps strong voice events as presence evidence when the transcript has no words', () => {
+      const context = composeVideoInterpretationContext({
+        captions: captionRun(),
+        transcripts: transcriptRun({ segments: [], noSpeech: true }),
+        audioEvents: audioEventsRun([audioEvent('Child speech, kid speaking', '/m/0ytgt', 6240, 14_400, 0.86)]),
+      })!;
+      expect(context).toContain('No speech was detected in the video.');
+      expect(context).toContain("[6.2-14.4s] A child's voice is heard.");
+    });
+
+    it('drops weak voice events on a no-speech transcript (river-style noise fragments)', () => {
+      const context = composeVideoInterpretationContext({
+        captions: captionRun(),
+        transcripts: transcriptRun({ segments: [], noSpeech: true }),
+        audioEvents: audioEventsRun([audioEvent('Speech', '/m/09x0r', 112_320, 114_240, 0.47)]),
+      })!;
+      expect(context).not.toContain('Other sounds');
+    });
+
+    it('drops speech-family events when the transcript carries the words', () => {
+      const context = composeVideoInterpretationContext({
+        captions: captionRun(),
+        transcripts: transcriptRun(),
+        audioEvents: audioEventsRun([childSpeech, beep]),
+      })!;
+      expect(context).not.toContain('Child speech');
+      expect(context).toContain('An electronic beep is heard.');
+    });
+
+    it('adds no section when only suppressed speech events remain', () => {
+      const withoutRun = composeVideoInterpretationContext({ captions: captionRun(), transcripts: transcriptRun() });
+      const withSpeechOnly = composeVideoInterpretationContext({
+        captions: captionRun(),
+        transcripts: transcriptRun(),
+        audioEvents: audioEventsRun([childSpeech]),
+      });
+      expect(withSpeechOnly).toBe(withoutRun);
+    });
+
+    it('is byte-identical to the pre-events output when the run is missing or empty', () => {
+      // Literal pre-change rendering of captions + transcript: the events lane
+      // must not move a single byte when it has nothing to add.
+      const preEvents = [
+        'The attached image is only the preview thumbnail of a video. Evidence captured from the full video follows; treat it as direct observation alongside the thumbnail, distinguish it from inference, and include what is said or heard when it matters.',
+        'Visual captions per 5-second segment:\n[0.0-5.0s] A train pulls into a night station.',
+        'Speech transcript (detected language: id):\n[24.4-26.4s] selamat datang di LRT Jabodetai',
+      ].join('\n\n');
+      const base = { captions: captionRun(), transcripts: transcriptRun({ language: 'id' }) };
+      expect(composeVideoInterpretationContext(base)).toBe(preEvents);
+      expect(composeVideoInterpretationContext({ ...base, audioEvents: audioEventsRun([]) })).toBe(preEvents);
+
+      const inputs = [
+        { captions: captionRun() },
+        { captions: captionRun(), transcripts: transcriptRun({ segments: [], noAudio: true }) },
+        { transcripts: transcriptRun() },
+      ];
+      for (const input of inputs) {
+        const before = composeVideoInterpretationContext(input);
+        expect(composeVideoInterpretationContext({ ...input, audioEvents: undefined })).toBe(before);
+        expect(composeVideoInterpretationContext({ ...input, audioEvents: audioEventsRun([]) })).toBe(before);
+      }
+      expect(composeVideoInterpretationContext({ audioEvents: audioEventsRun([]) })).toBeUndefined();
+    });
+
+    it('composes an events-only context when the caption and transcript lanes produced nothing', () => {
+      const context = composeVideoInterpretationContext({ durationMs: 14_805, audioEvents: audioEventsRun([beep]) })!;
+      expect(context).toContain('preview thumbnail of a video (14.8s long)');
+      expect(context).toContain('Other sounds detected in the audio:\n[4.3-5.3s] An electronic beep is heard.');
+      expect(context).not.toContain('Visual captions');
+    });
+
+    it('caps the section like the other evidence sections', () => {
+      const longLabel = 'y'.repeat(4000);
+      const context = composeVideoInterpretationContext({
+        captions: captionRun(),
+        audioEvents: audioEventsRun([
+          audioEvent(longLabel, '/m/test', 0, 1000),
+          audioEvent(longLabel, '/m/test', 5000, 6000),
+        ]),
+      })!;
+      // same fallback sentence, spans 4 s apart (past the 2 s render merge gap)
+      // -> two over-cap lines, the second omitted
+      expect(context).toContain('[0.0-1.0s] A sound like');
+      expect(context).not.toContain('[5.0-6.0s]');
+      expect(context.endsWith('[… additional segments omitted]')).toBe(true);
+    });
   });
 });

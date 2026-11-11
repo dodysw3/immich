@@ -16,6 +16,7 @@ import type { ArgOf } from 'src/repositories/event.repository.js';
 import { JobRepository } from 'src/repositories/job.repository.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';
 import { SystemMetadataRepository } from 'src/repositories/system-metadata.repository.js';
+import { AiAudioEventsService } from 'src/services/ai-audio-events.service.js';
 import {
   AiImageInterpretationClient,
   AiImageInterpretationClientError,
@@ -68,6 +69,7 @@ export class AiImageInterpretationService {
     private client: AiImageInterpretationClient,
     private captioningService: AiVideoCaptioningService,
     private transcriptionService: AiVideoTranscriptionService,
+    private audioEventsService: AiAudioEventsService,
   ) {
     this.logger.setContext(AiImageInterpretationService.name);
   }
@@ -383,30 +385,42 @@ export class AiImageInterpretationService {
     return AI_IMAGE_INTERPRETATION_VIDEO_PROMPT_VERSION;
   }
 
-  // Chain the captioning (GPU) and transcription (CPU) lanes concurrently —
-  // they are independent and both must finish before the richer prompt is
-  // composed. Each lane degrades independently: a down sidecar or LFM lane
-  // logs a warning and the context composes from whatever completed runs
-  // exist, never failing the interpretation job.
+  // Chain the captioning (GPU), transcription (CPU whisper), and audio-events
+  // (CPU YAMNet) lanes concurrently — independent work that must all settle
+  // before the richer prompt is composed. Each lane degrades independently: a
+  // down sidecar or LFM lane logs a warning and the context composes from
+  // whatever completed runs exist, never failing the interpretation job.
   private async enrichVideoContext(assetId: string): Promise<string | undefined> {
-    const [captions, transcripts] = await Promise.allSettled([
+    const transcription = this.transcriptionService.transcribeIfMissing(assetId, 'auto-interpret');
+    const [captions, transcripts, audioEvents] = await Promise.allSettled([
       this.captioningService.captionIfMissing(assetId, 'auto-interpret'),
-      this.transcriptionService.transcribeIfMissing(assetId, 'auto-interpret'),
+      transcription,
+      // Tagging itself takes ~0.1-0.3 s, but its speech suppression reads the
+      // transcript run, so it starts once the transcript lane has settled.
+      transcription.catch(() => void 0).then(() => this.audioEventsService.tagIfMissing(assetId, 'auto-interpret')),
     ]);
     const captionRun = captions.status === 'fulfilled' ? captions.value : undefined;
     const transcriptRun = transcripts.status === 'fulfilled' ? transcripts.value : undefined;
-    if (!captionRun && !transcriptRun) {
+    const audioEventsRun = audioEvents.status === 'fulfilled' ? audioEvents.value : undefined;
+    // Tagging always runs (the viewer overlay reads the stored events); the
+    // prompt only sees them once the context switch is on.
+    const promptAudioEvents = this.configRepository.getEnv().aiAudioEvents.context ? audioEventsRun : undefined;
+    if (!captionRun && !transcriptRun && !promptAudioEvents) {
       return undefined;
     }
 
     const context = composeVideoInterpretationContext({
-      durationMs: captionRun?.durationMs ?? transcriptRun?.durationMs,
+      durationMs: captionRun?.durationMs ?? transcriptRun?.durationMs ?? promptAudioEvents?.durationMs,
       captions: captionRun,
       transcripts: transcriptRun,
+      audioEvents: promptAudioEvents,
     });
     if (context) {
+      const audioEventsNote = audioEventsRun
+        ? `${audioEventsRun.events.length} audio events${promptAudioEvents ? '' : ' not in prompt'}`
+        : 'no audio events';
       this.logger.log(
-        `Composed video caption/transcript context for ${assetId} (${captionRun ? 'captions' : 'no captions'}, ${transcriptRun ? 'transcript' : 'no transcript'})`,
+        `Composed video caption/transcript context for ${assetId} (${captionRun ? 'captions' : 'no captions'}, ${transcriptRun ? 'transcript' : 'no transcript'}, ${audioEventsNote})`,
       );
     }
     return context;

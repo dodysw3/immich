@@ -1,4 +1,6 @@
 import { ActivityService } from 'src/services/activity.service.js';
+import { AiAudioEventsClient } from 'src/services/ai-audio-events.client.js';
+import { AiAudioEventsService } from 'src/services/ai-audio-events.service.js';
 import { AiImageInterpretationDiscordClient } from 'src/services/ai-image-interpretation-discord.client.js';
 import { AiImageInterpretationDiscordService } from 'src/services/ai-image-interpretation-discord.service.js';
 import { AiImageInterpretationClient } from 'src/services/ai-image-interpretation.client.js';
@@ -78,6 +80,8 @@ export const services = [
   AiVideoCaptioningService,
   AiVideoTranscriptionClient,
   AiVideoTranscriptionService,
+  AiAudioEventsClient,
+  AiAudioEventsService,
   AiInterpretSearchClient,
   AiInterpretSearchService,
   ActivityService,

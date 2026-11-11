@@ -410,6 +410,7 @@ export enum AssetMetadataKey {
   AiInterpretationV1 = 'ai-interpretation-v1',
   VideoCaptionsV1 = 'video-captions-v1',
   VideoTranscriptsV1 = 'video-transcripts-v1',
+  VideoAudioEventsV1 = 'video-audio-events-v1',
 }
 
 export enum UserAvatarColor {

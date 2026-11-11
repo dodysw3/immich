@@ -207,8 +207,23 @@ export interface EnvData {
     maxDurationSec: number;
   };
 
+  // YAMNet audio-event tagging sidecar (chained from the AI interpretation job
+  // after the transcript lane, stores video-audio-events-v1).
+  aiAudioEvents: {
+    enabled: boolean;
+    /** Feed stored events into the interpretation prompt (off: tagging + overlay only). */
+    context: boolean;
+    url?: string;
+    /** Minimum frame score for an event; part of the run identity. */
+    threshold: number;
+    maxDurationSec: number;
+    timeoutMs: number;
+  };
+
   videoFaceScan: {
     enabled: boolean;
+    // chain a face scan from video captioning when the asset was never scanned
+    onCaption: boolean;
     // analyzed-frame cap per run (resource contract; dry-run CLI can exceed)
     framesBudget: number;
     // cumulative wall-clock deadline per run, including decode
@@ -610,6 +625,22 @@ const getEnv = (): EnvData => {
       maxDurationSec: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_MAX_DURATION_SEC || 300,
     },
 
+    // YAMNet ONNX sidecar tagging environmental sound (water, beeps, a baby
+    // off-camera) into asset_metadata `video-audio-events-v1`; chained from
+    // the interpretation job, never fatal to it. The sidecar floor is 0.05, so
+    // thresholds below that would silently behave like 0.05. `context` gates
+    // only the prompt section: the 2026-11-10 gate showed the first wording
+    // surfacing nothing, so events are stored and shown in the viewer while
+    // the prompt rendering is re-benched.
+    aiAudioEvents: {
+      enabled: dto.IMMICH_AI_AUDIO_EVENTS_ENABLED ?? false,
+      context: dto.IMMICH_AI_AUDIO_EVENTS_CONTEXT ?? false,
+      url: dto.IMMICH_AI_AUDIO_EVENTS_URL,
+      threshold: dto.IMMICH_AI_AUDIO_EVENTS_THRESHOLD ?? 0.15,
+      maxDurationSec: dto.IMMICH_AI_AUDIO_EVENTS_MAX_DURATION_SEC || 300,
+      timeoutMs: dto.IMMICH_AI_AUDIO_EVENTS_TIMEOUT_MS || 60_000,
+    },
+
     // Multi-frame video face discovery. Manual per-video trigger only; the
     // queue runs at concurrency 1. Thresholds are bench-tuned (see
     // immich-app/video-face-bench): 0.55+exemplar-merge keeps full recall on
@@ -617,6 +648,7 @@ const getEnv = (): EnvData => {
     // same-frame guard.
     videoFaceScan: {
       enabled: dto.IMMICH_VIDEO_FACE_SCAN_ENABLED ?? true,
+      onCaption: dto.IMMICH_VIDEO_FACE_SCAN_ON_CAPTION ?? true,
       framesBudget: dto.IMMICH_VIDEO_FACE_SCAN_FRAMES_BUDGET || 64,
       deadlineMs: dto.IMMICH_VIDEO_FACE_SCAN_DEADLINE_MS || 120_000,
       groupThreshold: dto.IMMICH_VIDEO_FACE_SCAN_GROUP_THRESHOLD ?? 0.55,

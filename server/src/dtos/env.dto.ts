@@ -143,6 +143,12 @@ export const EnvSchema = z
     IMMICH_AI_VIDEO_TRANSCRIPTION_TIMEOUT_MS: z.coerce.number().int().min(1).optional(),
     IMMICH_AI_VIDEO_TRANSCRIPTION_LANGUAGE: z.string().max(8).optional(),
     IMMICH_AI_VIDEO_TRANSCRIPTION_MAX_DURATION_SEC: z.coerce.number().int().min(1).optional(),
+    IMMICH_AI_AUDIO_EVENTS_ENABLED: z.preprocess((value) => (value === '' ? undefined : value), stringBool.optional()),
+    IMMICH_AI_AUDIO_EVENTS_CONTEXT: z.preprocess((value) => (value === '' ? undefined : value), stringBool.optional()),
+    IMMICH_AI_AUDIO_EVENTS_URL: z.preprocess(
+    IMMICH_AI_AUDIO_EVENTS_THRESHOLD: z.preprocess(
+    IMMICH_AI_AUDIO_EVENTS_MAX_DURATION_SEC: z.preprocess(
+    IMMICH_AI_AUDIO_EVENTS_TIMEOUT_MS: z.preprocess(
     IMMICH_AI_INTERPRET_SEARCH_ENABLED: stringBool.optional(),
     IMMICH_AI_INTERPRET_SEARCH_URL: z.string().url().optional(),
     IMMICH_AI_INTERPRET_SEARCH_API_KEY: z.preprocess(

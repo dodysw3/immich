@@ -42,6 +42,12 @@ const resetEnv = () => {
     'IMMICH_AI_IMAGE_INTERPRETATION_SKIP_IF_INTERPRETED',
     'IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_WEBHOOK_URL',
     'IMMICH_AI_IMAGE_INTERPRETATION_DISCORD_INCLUDE_THUMBNAIL',
+    'IMMICH_AI_AUDIO_EVENTS_ENABLED',
+    'IMMICH_AI_AUDIO_EVENTS_CONTEXT',
+    'IMMICH_AI_AUDIO_EVENTS_URL',
+    'IMMICH_AI_AUDIO_EVENTS_THRESHOLD',
+    'IMMICH_AI_AUDIO_EVENTS_MAX_DURATION_SEC',
+    'IMMICH_AI_AUDIO_EVENTS_TIMEOUT_MS',
 
     'DB_URL',
     'DB_HOSTNAME',
@@ -491,6 +497,23 @@ describe('getEnv', () => {
       expect(telemetry.metrics).toEqual(new Set([ImmichTelemetry.Api, ImmichTelemetry.Host, ImmichTelemetry.Io]));
     });
   });
+  describe('aiAudioEvents', () => {
+      expect(getEnv().aiAudioEvents).toEqual({
+        'IMMICH_AI_AUDIO_EVENTS_ENABLED',
+        'IMMICH_AI_AUDIO_EVENTS_CONTEXT',
+        'IMMICH_AI_AUDIO_EVENTS_URL',
+        'IMMICH_AI_AUDIO_EVENTS_THRESHOLD',
+        'IMMICH_AI_AUDIO_EVENTS_MAX_DURATION_SEC',
+        'IMMICH_AI_AUDIO_EVENTS_TIMEOUT_MS',
+      expect(getEnv().aiAudioEvents).toMatchObject({ enabled: false, context: false, url: undefined, threshold: 0.15 });
+      process.env.IMMICH_AI_AUDIO_EVENTS_ENABLED = 'true';
+      process.env.IMMICH_AI_AUDIO_EVENTS_CONTEXT = 'true';
+      process.env.IMMICH_AI_AUDIO_EVENTS_URL = 'http://host.docker.internal:51906';
+      process.env.IMMICH_AI_AUDIO_EVENTS_THRESHOLD = '0.2';
+      process.env.IMMICH_AI_AUDIO_EVENTS_MAX_DURATION_SEC = '120';
+      process.env.IMMICH_AI_AUDIO_EVENTS_TIMEOUT_MS = '5000';
+      expect(getEnv().aiAudioEvents).toEqual({
+      process.env.IMMICH_AI_AUDIO_EVENTS_THRESHOLD = '0.01';
 });
 
 describe('applyCspHashes', () => {

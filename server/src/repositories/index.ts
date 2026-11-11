@@ -1,5 +1,6 @@
 import { AccessRepository } from 'src/repositories/access.repository.js';
 import { ActivityRepository } from 'src/repositories/activity.repository.js';
+import { AiAudioEventsRepository } from 'src/repositories/ai-audio-events.repository.js';
 import { AiImageInterpretationRepository } from 'src/repositories/ai-image-interpretation.repository.js';
 import { AiInterpretSearchRepository } from 'src/repositories/ai-interpret-search.repository.js';
 import { AiVideoCaptioningRepository } from 'src/repositories/ai-video-captioning.repository.js';
@@ -67,6 +68,7 @@ import { WorkflowRepository } from 'src/repositories/workflow.repository.js';
 
 export const repositories = [
   AccessRepository,
+  AiAudioEventsRepository,
   AiImageInterpretationRepository,
   AiVideoCaptioningRepository,
   AiVideoTranscriptionRepository,

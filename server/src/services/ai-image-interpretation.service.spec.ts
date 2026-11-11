@@ -89,6 +89,7 @@ const makeService = () => {
     client: { interpret: vi.fn() },
     captioningService: { captionIfMissing: vi.fn().mockResolvedValue(undefined) },
     transcriptionService: { transcribeIfMissing: vi.fn().mockResolvedValue(undefined) },
+    audioEventsService: { tagIfMissing: vi.fn().mockResolvedValue(undefined) },
   };
   const service = new AiImageInterpretationService(
     dependencies.logger as never as LoggingRepository,
@@ -101,6 +102,7 @@ const makeService = () => {
     dependencies.client as never as AiImageInterpretationClient,
     dependencies.captioningService as never as never,
     dependencies.transcriptionService as never as never,
+    dependencies.audioEventsService as never as never,
   );
   return { service, dependencies };
 };
@@ -157,11 +159,37 @@ const enableSkipFlag = (dependencies: ReturnType<typeof makeService>['dependenci
   });
 };
 
-const enableVideoContext = (dependencies: ReturnType<typeof makeService>['dependencies']) => {
+const enableVideoContext = (
+  dependencies: ReturnType<typeof makeService>['dependencies'],
+  options: { audioEventsInPrompt?: boolean } = {},
+) => {
   dependencies.configRepository.getEnv.mockReturnValue({
     aiImageInterpretation: { ...config, skipIfInterpreted: true, videoContext: true },
     aiInterpretSearch: { enabled: false },
+    aiAudioEvents: { context: options.audioEventsInPrompt ?? false },
   });
+};
+
+// A running video delivery with the context feature on and a captioned
+// LFM lane; the transcript and audio-events lanes default to "no run".
+const makeVideoDelivery = (options: { audioEventsInPrompt?: boolean } = {}) => {
+  const { service, dependencies } = makeService();
+  enableVideoContext(dependencies, options);
+  makeRunningAsset(service, dependencies);
+  dependencies.assetRepository.getByIds.mockResolvedValue([{ type: AssetType.Video }]);
+  dependencies.assetJobRepository.getForGenerateThumbnailJob.mockResolvedValue(
+    AssetFactory.from({ type: AssetType.Video, visibility: AssetVisibility.Timeline })
+      .files([AssetFileType.Preview])
+      .build(),
+  );
+  dependencies.client.interpret.mockResolvedValue({ result: {} as never, model: config.model });
+  dependencies.interpretationRepository.complete.mockResolvedValue(true);
+  dependencies.captioningService.captionIfMissing.mockResolvedValue({
+    durationMs: 14_900,
+    config: { segmentSeconds: 5 },
+    segments: [{ startMs: 0, endMs: 5000, caption: 'A man smiles inside a car.' }],
+  });
+  return { service, dependencies };
 };
 
 describe(AiImageInterpretationService.name, () => {
@@ -236,6 +264,90 @@ describe(AiImageInterpretationService.name, () => {
     expect(dependencies.client.interpret).toHaveBeenCalledWith(Buffer.from('preview'), { model: config.model });
     expect(dependencies.interpretationRepository.complete).toHaveBeenCalled();
     expect(dependencies.interpretationRepository.fail).not.toHaveBeenCalled();
+  });
+
+  describe('video context lanes', () => {
+    const beepRun = {
+      durationMs: 14_900,
+      events: [{ mid: '/m/02fs_r', label: 'Beep, bleep', score: 0.243, startMs: 4320, endMs: 5280 }],
+    };
+
+    it('composes tagged sounds into the video context and records the interpretation trigger', async () => {
+      const { service, dependencies } = makeVideoDelivery({ audioEventsInPrompt: true });
+      dependencies.audioEventsService.tagIfMissing.mockResolvedValue(beepRun);
+
+      await expect(service.handleInterpretation({ id: 'asset-1', runKey } as never)).resolves.toBe(JobStatus.Success);
+
+      expect(dependencies.audioEventsService.tagIfMissing).toHaveBeenCalledWith('asset-1', 'auto-interpret');
+      const [, options] = dependencies.client.interpret.mock.calls[0];
+      expect(options.videoContext).toContain(
+        'Other sounds detected in the audio:\n[4.3-5.3s] An electronic beep is heard.',
+      );
+    });
+
+    it('tags and stores events but keeps them out of the prompt while the context switch is off', async () => {
+      const { service, dependencies } = makeVideoDelivery();
+      dependencies.audioEventsService.tagIfMissing.mockResolvedValue(beepRun);
+
+      await expect(service.handleInterpretation({ id: 'asset-1', runKey } as never)).resolves.toBe(JobStatus.Success);
+
+      expect(dependencies.audioEventsService.tagIfMissing).toHaveBeenCalledWith('asset-1', 'auto-interpret');
+      const [, options] = dependencies.client.interpret.mock.calls[0];
+      expect(options.videoContext).toContain('[0.0-5.0s] A man smiles inside a car.');
+      expect(options.videoContext).not.toContain('Other sounds');
+      expect(dependencies.logger.log).toHaveBeenCalledWith(expect.stringContaining('1 audio events not in prompt'));
+    });
+
+    it('does not compose an events-only context while the context switch is off', async () => {
+      const { service, dependencies } = makeVideoDelivery();
+      dependencies.captioningService.captionIfMissing.mockResolvedValue(undefined);
+      dependencies.audioEventsService.tagIfMissing.mockResolvedValue(beepRun);
+
+      await expect(service.handleInterpretation({ id: 'asset-1', runKey } as never)).resolves.toBe(JobStatus.Success);
+
+      const [, options] = dependencies.client.interpret.mock.calls[0];
+      expect(options.videoContext).toBeUndefined();
+    });
+
+    it('tags only after the transcript lane settles, so speech suppression sees the transcript', async () => {
+      const { service, dependencies } = makeVideoDelivery({ audioEventsInPrompt: true });
+      let finishTranscript!: (run: undefined) => void;
+      dependencies.transcriptionService.transcribeIfMissing.mockReturnValue(
+        new Promise((resolve) => (finishTranscript = resolve)),
+      );
+      dependencies.audioEventsService.tagIfMissing.mockResolvedValue(beepRun);
+
+      const delivery = service.handleInterpretation({ id: 'asset-1', runKey } as never);
+      await vi.waitFor(() => expect(dependencies.transcriptionService.transcribeIfMissing).toHaveBeenCalled());
+      expect(dependencies.audioEventsService.tagIfMissing).not.toHaveBeenCalled();
+
+      finishTranscript(undefined);
+      await expect(delivery).resolves.toBe(JobStatus.Success);
+      expect(dependencies.audioEventsService.tagIfMissing).toHaveBeenCalledTimes(1);
+    });
+
+    it('still tags when the transcript lane rejects', async () => {
+      const { service, dependencies } = makeVideoDelivery({ audioEventsInPrompt: true });
+      dependencies.transcriptionService.transcribeIfMissing.mockRejectedValue(new Error('whisper down'));
+      dependencies.audioEventsService.tagIfMissing.mockResolvedValue(beepRun);
+
+      await expect(service.handleInterpretation({ id: 'asset-1', runKey } as never)).resolves.toBe(JobStatus.Success);
+
+      const [, options] = dependencies.client.interpret.mock.calls[0];
+      expect(options.videoContext).toContain('An electronic beep is heard.');
+    });
+
+    it('delivers with captions only when the audio-events lane fails', async () => {
+      const { service, dependencies } = makeVideoDelivery({ audioEventsInPrompt: true });
+      dependencies.audioEventsService.tagIfMissing.mockRejectedValue(new Error('yamnet down'));
+
+      await expect(service.handleInterpretation({ id: 'asset-1', runKey } as never)).resolves.toBe(JobStatus.Success);
+
+      const [, options] = dependencies.client.interpret.mock.calls[0];
+      expect(options.videoContext).toContain('[0.0-5.0s] A man smiles inside a car.');
+      expect(options.videoContext).not.toContain('Other sounds');
+      expect(dependencies.interpretationRepository.fail).not.toHaveBeenCalled();
+    });
   });
 
   it('ignores disabled mode, hidden assets, and duplicate claims', async () => {
