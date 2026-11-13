@@ -60,7 +60,10 @@ export class SearchService extends BaseService {
       cameras.items.map(({ data }) => data),
       auth.user.id,
     );
-    const cameraItems = cameraAssets.map((asset) => ({ value: asset.exifInfo!.make!, data: mapAsset(asset, { auth }) }));
+    const cameraItems = cameraAssets.map((asset) => ({
+      value: asset.exifInfo!.make!,
+      data: mapAsset(asset, { auth }),
+    }));
 
     const recents = await this.assetRepository.getRecentlyCreatedAssetIds(auth.user.id, options.maxFields);
     const recentAssets = await this.assetRepository.getByIdsWithAllRelationsButStacks(

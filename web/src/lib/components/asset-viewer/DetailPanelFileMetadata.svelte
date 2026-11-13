@@ -4,14 +4,9 @@
   import { locale } from '#lib/stores/preferences.store.ts';
   import { getDimensions } from '#lib/utils/asset-utils.ts';
   import { getByteUnitString } from '#lib/utils/byte-units.ts';
-  import { getParentPath } from '#lib/utils/tree-utils.ts';
   import { fromISODateTime, fromISODateTimeUTC } from '#lib/utils/timeline-util.ts';
-  import {
-    AssetTypeEnum,
-    getAssetAvMetadata,
-    type AssetResponseDto,
-    type AvMetadataResponseDto,
-  } from '@immich/sdk';
+  import { getParentPath } from '#lib/utils/tree-utils.ts';
+  import { AssetTypeEnum, getAssetAvMetadata, type AssetResponseDto, type AvMetadataResponseDto } from '@immich/sdk';
   import { Duration } from 'luxon';
   import { onDestroy } from 'svelte';
   import { t } from 'svelte-i18n';
@@ -33,9 +28,7 @@
   let requestId = 0;
 
   // Mirrors the server probe condition (asset type video or animated .gif source) that populates asset_video/asset_audio.
-  const hasAvData = $derived(
-    asset.type === AssetTypeEnum.Video || asset.originalPath.toLowerCase().endsWith('.gif'),
-  );
+  const hasAvData = $derived(asset.type === AssetTypeEnum.Video || asset.originalPath.toLowerCase().endsWith('.gif'));
 
   $effect(() => {
     const assetId = asset.id;
@@ -72,9 +65,7 @@
   };
 
   const formatDateTime = (isoDateTime: string, timeZone?: string) => {
-    const dateTime = timeZone
-      ? fromISODateTime(isoDateTime, timeZone)
-      : fromISODateTimeUTC(isoDateTime);
+    const dateTime = timeZone ? fromISODateTime(isoDateTime, timeZone) : fromISODateTimeUTC(isoDateTime);
 
     return dateTime.toLocaleString(
       {
@@ -97,7 +88,7 @@
   const formatBitrate = (bps: number) =>
     bps >= 1_000_000
       ? `${(bps / 1_000_000).toLocaleString($locale, { maximumFractionDigits: 1 })} Mbps`
-      : `${Math.round(bps / 1_000).toLocaleString($locale)} kbps`;
+      : `${Math.round(bps / 1000).toLocaleString($locale)} kbps`;
 
   const formatCodec = (codecName: string | null | undefined, profile?: number | null, level?: number | null) => {
     const parts = [codecName ?? undefined];
@@ -179,8 +170,10 @@
       rows.push({ label: $t('modify_date'), value: formatDateTime(exifInfo.modifyDate) });
     }
 
-    rows.push({ label: $t('file_created'), value: formatDateTime(asset.fileCreatedAt) });
-    rows.push({ label: $t('file_modified'), value: formatDateTime(asset.fileModifiedAt) });
+    rows.push(
+      { label: $t('file_created'), value: formatDateTime(asset.fileCreatedAt) },
+      { label: $t('file_modified'), value: formatDateTime(asset.fileModifiedAt) },
+    );
 
     if (exifInfo?.timeZone) {
       rows.push({ label: $t('timezone'), value: exifInfo.timeZone });
@@ -229,7 +222,7 @@
     if (videoStream?.dvProfile !== null && videoStream?.dvProfile !== undefined) {
       rows.push({
         label: $t('dolby_vision'),
-        value: `profile ${videoStream.dvProfile}${videoStream.dvLevel !== null && videoStream.dvLevel !== undefined ? `, level ${videoStream.dvLevel}` : ''}`,
+        value: `profile ${videoStream.dvProfile}${videoStream.dvLevel === null || videoStream.dvLevel === undefined ? '' : `, level ${videoStream.dvLevel}`}`,
       });
     }
 
@@ -280,7 +273,7 @@
     {/if}
 
     {#if generalRows.length > 0}
-      <p class="text-immich-fg-muted dark:text-immich-dark-fg-muted pt-1 pb-1 text-sm">{$t('general')}</p>
+      <p class="text-immich-fg-muted dark:text-immich-dark-fg-muted py-1 text-sm">{$t('general')}</p>
       {#each generalRows as row (row.label)}
         {@render metaRow(row)}
       {/each}

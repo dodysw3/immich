@@ -310,7 +310,7 @@ export const composeVideoInterpretationContext = (input: AiVideoInterpretationCo
   }
 
   const sampled = captionEvidence.sampled || transcriptEvidence.sampled || audioEventEvidence.sampled;
-  const durationSec = durationMs !== undefined ? (durationMs / 1000).toFixed(1) : undefined;
+  const durationSec = durationMs === undefined ? undefined : (durationMs / 1000).toFixed(1);
   const sections: string[] = [];
 
   let header = 'The attached image is only the preview thumbnail of a video';

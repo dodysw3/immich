@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { UnrecoverableError } from 'bullmq';
 import { DateTime } from 'luxon';
 import { setTimeout } from 'node:timers/promises';
-import type { JobOf } from 'src/types.js';
 import { AssetFile } from 'src/database.js';
 import { OnJob } from 'src/decorators.js';
 import { AssetFileType, JobName, JobStatus, QueueName } from 'src/enum.js';
@@ -19,6 +18,7 @@ import {
   AiInterpretationDiscordAlertError,
   AiInterpretationDiscordThumbnail,
 } from 'src/services/ai-image-interpretation-discord.client.js';
+import type { JobOf } from 'src/types.js';
 import {
   AiInterpretationLane,
   createAiInterpretationPublicRunKey,

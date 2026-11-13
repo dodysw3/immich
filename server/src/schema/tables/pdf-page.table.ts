@@ -1,4 +1,4 @@
-import { Column, ForeignKeyColumn, type Generated, Index, PrimaryGeneratedColumn, Table } from '@immich/sql-tools';
+import { Column, ForeignKeyColumn, Index, PrimaryGeneratedColumn, Table, type Generated } from '@immich/sql-tools';
 import { PdfDocumentTable } from 'src/schema/tables/pdf-document.table.js';
 
 export type PdfTextSource = 'embedded' | 'ocr' | 'none';

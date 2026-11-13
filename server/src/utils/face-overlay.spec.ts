@@ -1,11 +1,11 @@
 import sharp from 'sharp';
 import {
-  type OverlayFace,
   buildFaceOverlaySvg,
   estimateTextWidth,
   fitLabelFontSize,
   getFaceReferenceLabels,
   isPlaceholderFaceName,
+  type OverlayFace,
 } from 'src/utils/face-overlay.js';
 
 const face = (id: string, x: number, name?: string): OverlayFace => ({

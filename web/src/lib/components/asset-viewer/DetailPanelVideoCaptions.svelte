@@ -65,7 +65,10 @@
     <div class="flex items-baseline justify-between gap-2 pb-2">
       <p class="text-immich-fg-muted dark:text-immich-dark-fg-muted text-sm">{$t('video_captions')}</p>
       {#if statusLabel}
-        <span class="text-immich-fg-muted dark:text-immich-dark-fg-muted shrink-0 text-xs" data-testid="video-captions-status">
+        <span
+          class="text-immich-fg-muted dark:text-immich-dark-fg-muted shrink-0 text-xs"
+          data-testid="video-captions-status"
+        >
           {statusLabel}
         </span>
       {/if}
@@ -104,7 +107,11 @@
             title={$t('video_face_seek_hint', { values: { time: formatTime(segment.startMs) } })}
             data-testid="video-caption-segment"
           >
-            <p class="text-xs font-medium {index === activeIndex ? 'text-immich-primary dark:text-immich-dark-primary' : ''}">
+            <p
+              class="text-xs font-medium {index === activeIndex
+                ? 'text-immich-primary dark:text-immich-dark-primary'
+                : ''}"
+            >
               {formatTime(segment.startMs)} – {formatTime(segment.endMs)}
             </p>
             <p class="text-sm wrap-break-word">{segment.caption}</p>

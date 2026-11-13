@@ -23,13 +23,25 @@ const times2fps = (count: number) => Array.from({ length: count }, (_, i) => i *
 describe('ai-video-captioning utils', () => {
   describe('createVideoCaptionRunKey', () => {
     it('should differ per model, segmentation, and prompt version', () => {
-      const base = createVideoCaptionRunKey('lfm3-omni-2b', fixedSegmentationKey(5, 3), AI_VIDEO_CAPTIONING_PROMPT_VERSION);
+      const base = createVideoCaptionRunKey(
+        'lfm3-omni-2b',
+        fixedSegmentationKey(5, 3),
+        AI_VIDEO_CAPTIONING_PROMPT_VERSION,
+      );
       expect(base).toMatch(/^[a-f0-9]{64}$/);
-      expect(createVideoCaptionRunKey('lfm3-vl-2b', fixedSegmentationKey(5, 3), AI_VIDEO_CAPTIONING_PROMPT_VERSION)).not.toBe(base);
-      expect(createVideoCaptionRunKey('lfm3-omni-2b', fixedSegmentationKey(3, 2), AI_VIDEO_CAPTIONING_PROMPT_VERSION)).not.toBe(base);
+      expect(
+        createVideoCaptionRunKey('lfm3-vl-2b', fixedSegmentationKey(5, 3), AI_VIDEO_CAPTIONING_PROMPT_VERSION),
+      ).not.toBe(base);
+      expect(
+        createVideoCaptionRunKey('lfm3-omni-2b', fixedSegmentationKey(3, 2), AI_VIDEO_CAPTIONING_PROMPT_VERSION),
+      ).not.toBe(base);
       // adaptive runs key separately from the fixed grid they replace
       expect(
-        createVideoCaptionRunKey('lfm3-omni-2b', adaptiveSegmentationKey(2, 2, 20, 40), AI_VIDEO_CAPTIONING_PROMPT_VERSION),
+        createVideoCaptionRunKey(
+          'lfm3-omni-2b',
+          adaptiveSegmentationKey(2, 2, 20, 40),
+          AI_VIDEO_CAPTIONING_PROMPT_VERSION,
+        ),
       ).not.toBe(base);
     });
   });
@@ -96,7 +108,11 @@ describe('ai-video-captioning utils', () => {
     const defaults = { minSegmentMs: 2000, maxSegmentMs: 20_000, changeBudget: 40, cutThreshold: 35, maxCalls: 27 };
 
     it('should merge a static video into maxSegmentMs windows', () => {
-      const windows = planAdaptiveSegments(times2fps(120), times2fps(120).map(() => 1), defaults);
+      const windows = planAdaptiveSegments(
+        times2fps(120),
+        times2fps(120).map(() => 1),
+        defaults,
+      );
       expect(windows).toEqual([
         { startMs: 0, endMs: 20_000 },
         { startMs: 20_000, endMs: 40_000 },
@@ -163,7 +179,11 @@ describe('ai-video-captioning utils', () => {
     const times = Array.from({ length: 80 }, (_, i) => i * 500); // 2 fps, 40s
 
     it('should keep all frames when the window has at most three', () => {
-      const indices = selectWindowFrames(times, times.map(() => 1), { startMs: 0, endMs: 1000 });
+      const indices = selectWindowFrames(
+        times,
+        times.map(() => 1),
+        { startMs: 0, endMs: 1000 },
+      );
       expect(indices).toEqual([0, 1]);
     });
 
@@ -182,7 +202,11 @@ describe('ai-video-captioning utils', () => {
     });
 
     it('should return only frames inside the window', () => {
-      const indices = selectWindowFrames(times, times.map(() => 50), { startMs: 5000, endMs: 6000 });
+      const indices = selectWindowFrames(
+        times,
+        times.map(() => 50),
+        { startMs: 5000, endMs: 6000 },
+      );
       expect(indices).toEqual([10, 11]);
     });
   });

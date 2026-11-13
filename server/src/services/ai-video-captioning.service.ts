@@ -153,7 +153,12 @@ export class AiVideoCaptioningService {
     changeBudget: number;
   }): string {
     const segmentation = config.adaptive
-      ? adaptiveSegmentationKey(config.probeFps, config.minSegmentSeconds, config.maxSegmentSeconds, config.changeBudget)
+      ? adaptiveSegmentationKey(
+          config.probeFps,
+          config.minSegmentSeconds,
+          config.maxSegmentSeconds,
+          config.changeBudget,
+        )
       : fixedSegmentationKey(config.segmentSeconds, config.framesPerSegment);
     return createVideoCaptionRunKey(config.model, segmentation, AI_VIDEO_CAPTIONING_PROMPT_VERSION);
   }
@@ -181,11 +186,11 @@ export class AiVideoCaptioningService {
       maxDurationSec: config.maxDurationSec,
       language: config.language,
       ...(config.adaptive && {
-            adaptive: true,
-            probeFps: config.probeFps,
-            minSegmentSeconds: config.minSegmentSeconds,
-            maxSegmentSeconds: config.maxSegmentSeconds,
-          }),
+        adaptive: true,
+        probeFps: config.probeFps,
+        minSegmentSeconds: config.minSegmentSeconds,
+        maxSegmentSeconds: config.maxSegmentSeconds,
+      }),
     };
   }
 

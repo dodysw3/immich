@@ -22,7 +22,7 @@ const stripedFrame = (invert = false) => {
   const buffer = Buffer.alloc(FINGERPRINT_BYTES);
   for (let y = 0; y < 8; y++) {
     for (let x = 0; x < 9; x++) {
-      buffer[y * 9 + x] = (invert ? x * 20 : 200 - x * 20);
+      buffer[y * 9 + x] = invert ? x * 20 : 200 - x * 20;
     }
   }
   return buffer;
@@ -155,7 +155,11 @@ describe('normalizeVideoFilename', () => {
 describe('passesVideoCheapGate', () => {
   it('passes on equal checksum', () => {
     const a = makeMeta();
-    const b = makeMeta({ id: '00000000-0000-4000-8000-000000000002', originalFileName: 'other.mp4', localDateTime: null });
+    const b = makeMeta({
+      id: '00000000-0000-4000-8000-000000000002',
+      originalFileName: 'other.mp4',
+      localDateTime: null,
+    });
     expect(passesVideoCheapGate(a, b, null)).toBe(true);
   });
 
@@ -171,7 +175,12 @@ describe('passesVideoCheapGate', () => {
 
   it('passes on high clip similarity with matching duration', () => {
     const a = makeMeta({ originalFileName: 'holiday.mp4', localDateTime: null });
-    const b = makeMeta({ id: '00000000-0000-4000-8000-000000000002', originalFileName: 'renamed.mp4', localDateTime: null, durationMs: 474_200 });
+    const b = makeMeta({
+      id: '00000000-0000-4000-8000-000000000002',
+      originalFileName: 'renamed.mp4',
+      localDateTime: null,
+      durationMs: 474_200,
+    });
     expect(passesVideoCheapGate(a, b, 0.93)).toBe(true);
   });
 
@@ -192,7 +201,11 @@ describe('scoreVideoDuplicatePair', () => {
   it('scores a re-encoded duplicate of the same video at ~1', () => {
     const score = scoreVideoDuplicatePair({
       source: makeMeta(),
-      candidate: makeMeta({ id: '00000000-0000-4000-8000-000000000002', durationMs: 473_896, checksumHex: 'bb'.repeat(20) }),
+      candidate: makeMeta({
+        id: '00000000-0000-4000-8000-000000000002',
+        durationMs: 473_896,
+        checksumHex: 'bb'.repeat(20),
+      }),
       sourceFingerprint: makeFingerprint(),
       candidateFingerprint: makeFingerprint(),
       clipSimilarity: 0.95,
@@ -269,7 +282,11 @@ describe('scoreVideoDuplicatePair', () => {
   it('raises the group floor to 0.95 for audioless pairs', () => {
     const score = scoreVideoDuplicatePair({
       source: makeMeta(),
-      candidate: makeMeta({ id: '00000000-0000-4000-8000-000000000002', durationMs: 473_896, checksumHex: 'bb'.repeat(20) }),
+      candidate: makeMeta({
+        id: '00000000-0000-4000-8000-000000000002',
+        durationMs: 473_896,
+        checksumHex: 'bb'.repeat(20),
+      }),
       sourceFingerprint: makeFingerprint({ audioEnvelope: null }),
       candidateFingerprint: makeFingerprint({ audioEnvelope: null }),
       clipSimilarity: 0.9,
@@ -281,7 +298,11 @@ describe('scoreVideoDuplicatePair', () => {
   it('keeps the configured floor when audio is available', () => {
     const score = scoreVideoDuplicatePair({
       source: makeMeta(),
-      candidate: makeMeta({ id: '00000000-0000-4000-8000-000000000002', durationMs: 473_896, checksumHex: 'bb'.repeat(20) }),
+      candidate: makeMeta({
+        id: '00000000-0000-4000-8000-000000000002',
+        durationMs: 473_896,
+        checksumHex: 'bb'.repeat(20),
+      }),
       sourceFingerprint: makeFingerprint(),
       candidateFingerprint: makeFingerprint(),
       clipSimilarity: 0.9,
@@ -293,7 +314,11 @@ describe('scoreVideoDuplicatePair', () => {
   it('accepts string localDateTime values', () => {
     const score = scoreVideoDuplicatePair({
       source: makeMeta({ localDateTime: '2024-07-27T04:51:30Z' }),
-      candidate: makeMeta({ id: '00000000-0000-4000-8000-000000000002', durationMs: 473_896, checksumHex: 'bb'.repeat(20) }),
+      candidate: makeMeta({
+        id: '00000000-0000-4000-8000-000000000002',
+        durationMs: 473_896,
+        checksumHex: 'bb'.repeat(20),
+      }),
       sourceFingerprint: makeFingerprint(),
       candidateFingerprint: makeFingerprint(),
       clipSimilarity: 0.95,

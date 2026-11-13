@@ -1,17 +1,25 @@
 import { Injectable } from '@nestjs/common';
-import type { MachineLearningConfig } from 'src/dtos/config.dto.js';
 import { OnJob } from 'src/decorators.js';
 import { BulkIdErrorReason, BulkIdResponseDto, BulkIdsDto } from 'src/dtos/asset-ids.response.dto.js';
 import { MapAsset, mapAsset } from 'src/dtos/asset-response.dto.js';
 import { AuthDto } from 'src/dtos/auth.dto.js';
+import type { MachineLearningConfig } from 'src/dtos/config.dto.js';
 import { DuplicateResolveDto, DuplicateResolveGroupDto, DuplicateResponseDto } from 'src/dtos/duplicate.dto.js';
-import { AssetStatus, AssetType, AssetVisibility, DatabaseLock, JobName, JobStatus, Permission, QueueName } from 'src/enum.js';
+import {
+  AssetStatus,
+  AssetType,
+  AssetVisibility,
+  DatabaseLock,
+  JobName,
+  JobStatus,
+  Permission,
+  QueueName,
+} from 'src/enum.js';
 import type { VideoDuplicateCandidateRow, VideoNearDupSource } from 'src/repositories/duplicate.repository.js';
 import { AssetDuplicateResult } from 'src/repositories/search.repository.js';
 import { BaseService } from 'src/services/base.service.js';
 import type { JobOf } from 'src/types.js';
 import { ocrTokenBagDiff } from 'src/utils/duplicate-ocr.js';
-import { suggestDuplicateKeepAssetIds } from 'src/utils/duplicate.js';
 import {
   dHash9x8Gray,
   meanAdjacentHamming,
@@ -21,6 +29,7 @@ import {
   type VideoDuplicateMeta,
   type VideoFingerprint,
 } from 'src/utils/duplicate-video.js';
+import { suggestDuplicateKeepAssetIds } from 'src/utils/duplicate.js';
 import { batched, isDuplicateDetectionEnabled, isOcrEnabled } from 'src/utils/misc.js';
 
 // Bound the ffmpeg verification work per video asset: after the cheap gate,
@@ -408,7 +417,9 @@ export class DuplicateService extends BaseService {
         // dissolve for videos whose group was built on these signals.
         const videoCandidates = await this.searchVideoNearDuplicates(asset, machineLearning);
         if (videoCandidates.length > 0) {
-          this.logger.debug(`Found ${videoCandidates.length} video near-duplicate${videoCandidates.length === 1 ? '' : 's'} for asset ${asset.id}`);
+          this.logger.debug(
+            `Found ${videoCandidates.length} video near-duplicate${videoCandidates.length === 1 ? '' : 's'} for asset ${asset.id}`,
+          );
           assetIds = await this.updateDuplicates(asset, videoCandidates);
         } else if (asset.duplicateId) {
           this.logger.debug(`No duplicates found for video asset ${asset.id}, removing duplicateId`);

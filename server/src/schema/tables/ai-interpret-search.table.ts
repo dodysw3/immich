@@ -1,4 +1,4 @@
-import { Column, ForeignKeyColumn, type Generated, Index, Table, Timestamp, UpdateDateColumn } from '@immich/sql-tools';
+import { Column, ForeignKeyColumn, Index, Table, Timestamp, UpdateDateColumn, type Generated } from '@immich/sql-tools';
 import { AssetTable } from 'src/schema/tables/asset.table.js';
 
 @Table('ai_interpret_search')

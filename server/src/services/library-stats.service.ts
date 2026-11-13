@@ -1,7 +1,7 @@
 import { MetricAttributes, ObservableResult } from '@opentelemetry/api';
-import type { LabelCount, Quantiles } from 'src/repositories/library-stats.repository.js';
 import { OnEvent } from 'src/decorators.js';
 import { ImmichTelemetry, ImmichWorker } from 'src/enum.js';
+import type { LabelCount, Quantiles } from 'src/repositories/library-stats.repository.js';
 import { BaseService } from 'src/services/base.service.js';
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000;

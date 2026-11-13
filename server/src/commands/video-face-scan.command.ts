@@ -1,10 +1,9 @@
+import { Command, CommandRunner, Option } from 'nest-commander';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { Command, CommandRunner, Option } from 'nest-commander';
 import sharp from 'sharp';
-import type { ScanResult } from 'src/services/video-face.service.js';
 import { JobStatus } from 'src/enum.js';
-import { VideoFaceService } from 'src/services/video-face.service.js';
+import { VideoFaceService, type ScanResult } from 'src/services/video-face.service.js';
 
 interface VideoFaceScanOptions {
   config?: string;
@@ -81,7 +80,9 @@ export class VideoFaceScanCommand extends CommandRunner {
       writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
       const sheetPath = join(outDir, 'contact-sheet.html');
       writeFileSync(sheetPath, await this.contactSheet(result));
-      console.log(`outcome=${result.outcome} frames=${result.frames.length} detections=${result.detections} identities=${result.identities.length}`);
+      console.log(
+        `outcome=${result.outcome} frames=${result.frames.length} detections=${result.detections} identities=${result.identities.length}`,
+      );
       console.log(`wrote ${manifestPath} and ${sheetPath}`);
       // eslint-disable-next-line unicorn/no-process-exit -- CLI command; see above
       process.exit(0);

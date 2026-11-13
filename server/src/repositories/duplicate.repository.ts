@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { sql, type Kysely, type NotNull, type Selectable, type ShallowDehydrateObject } from 'kysely';
 import { jsonArrayFrom } from 'kysely/helpers/postgres';
 import { InjectKysely } from 'nestjs-kysely';
-import type { PdfDocumentStatus } from 'src/schema/tables/pdf-document.table.js';
 import { columns } from 'src/database.js';
 import { Chunked, DummyValue, GenerateSql } from 'src/decorators.js';
 import { MapAsset } from 'src/dtos/asset-response.dto.js';
@@ -10,6 +9,7 @@ import { AssetType, VectorIndex } from 'src/enum.js';
 import { probes } from 'src/repositories/database.repository.js';
 import { DB } from 'src/schema/index.js';
 import { AssetExifTable } from 'src/schema/tables/asset-exif.table.js';
+import type { PdfDocumentStatus } from 'src/schema/tables/pdf-document.table.js';
 import { anyUuid, asUuid, withDefaultVisibility } from 'src/utils/database.js';
 
 // Maximum number of candidate duplicates to return from vector search

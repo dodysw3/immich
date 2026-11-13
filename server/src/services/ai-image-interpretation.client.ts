@@ -124,9 +124,7 @@ export class AiImageInterpretationClient {
               content: [
                 // Video evidence block travels before the image so the model
                 // reads the thumbnail with the captions/transcript in frame.
-                ...(overrides?.videoContext
-                  ? [{ type: 'text', text: overrides.videoContext }]
-                  : []),
+                ...(overrides?.videoContext ? [{ type: 'text', text: overrides.videoContext }] : []),
                 { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${image.toString('base64')}` } },
                 { type: 'text', text: AI_IMAGE_INTERPRETATION_FORMAT_INSTRUCTION },
               ],

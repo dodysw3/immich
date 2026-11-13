@@ -7,9 +7,7 @@ import sharp from 'sharp';
 import { OnJob } from 'src/decorators.js';
 import type { AuthDto } from 'src/dtos/auth.dto.js';
 import { VideoFaceRunDto, VideoFacesResponseDto, type VideoFaceDto } from 'src/dtos/video-face.dto.js';
-import { requireAccess } from 'src/utils/access.js';
-import { AssetType, AssetVisibility, CacheControl, JobName, JobStatus, QueueName, Permission } from 'src/enum.js';
-import type { JobOf } from 'src/types.js';
+import { AssetType, AssetVisibility, CacheControl, JobName, JobStatus, Permission, QueueName } from 'src/enum.js';
 import { AccessRepository } from 'src/repositories/access.repository.js';
 import { ConfigRepository } from 'src/repositories/config.repository.js';
 import { CryptoRepository } from 'src/repositories/crypto.repository.js';
@@ -21,6 +19,8 @@ import { PersonRepository } from 'src/repositories/person.repository.js';
 import { SearchRepository } from 'src/repositories/search.repository.js';
 import { SystemMetadataRepository } from 'src/repositories/system-metadata.repository.js';
 import { VideoFaceRepository, type VideoFaceUpsert } from 'src/repositories/video-face.repository.js';
+import type { JobOf } from 'src/types.js';
+import { requireAccess } from 'src/utils/access.js';
 import { getConfig } from 'src/utils/config.js';
 import { ImmichFileResponse } from 'src/utils/file.js';
 import {
@@ -105,7 +105,11 @@ export class VideoFaceService {
   Dry run: full sampling + grouping pipeline, nothing written to the
   library. Caller must `cleanup(result)` when done with frame files.
   */
-  async scanDryRun(assetId: string, budgetOverride?: number, overrides: Partial<VideoFaceScanConfig> = {}): Promise<ScanResult> {
+  async scanDryRun(
+    assetId: string,
+    budgetOverride?: number,
+    overrides: Partial<VideoFaceScanConfig> = {},
+  ): Promise<ScanResult> {
     const asset = await this.videoFaceRepository.getScanAsset(assetId);
     if (!asset || asset.type !== AssetType.Video) {
       throw new Error(`asset ${assetId} is not a video`);
@@ -173,7 +177,12 @@ export class VideoFaceService {
 
     const runId = await this.videoFaceRepository.createRun({
       assetId: id,
-      configHash: cfg ? createHash('sha256').update(configFingerprint(cfg, this.modelVersions(machineLearning))).digest('hex').slice(0, 16) : '',
+      configHash: cfg
+        ? createHash('sha256')
+            .update(configFingerprint(cfg, this.modelVersions(machineLearning)))
+            .digest('hex')
+            .slice(0, 16)
+        : '',
       config: cfg as unknown as object,
       modelVersions: this.modelVersions(machineLearning),
       deadlineBudgetMs: cfg.deadlineMs,
@@ -198,7 +207,14 @@ export class VideoFaceService {
 
       const previousPublished = await this.videoFaceRepository.getPublishedFaceIds(id);
       const idMap = await this.videoFaceRepository.persistIdentities(runId, id, upserts);
-      const publishedCount = await this.publish(id, asset.clusterGroupId, result.identities, idMap, previousPublished, machineLearning);
+      const publishedCount = await this.publish(
+        id,
+        asset.clusterGroupId,
+        result.identities,
+        idMap,
+        previousPublished,
+        machineLearning,
+      );
 
       await this.videoFaceRepository.finishRun(runId, {
         outcome: result.outcome,
@@ -249,20 +265,18 @@ export class VideoFaceService {
     const faces = await this.videoFaceRepository.getVideoFaces(assetId, asset.ownerId);
     const run = await this.videoFaceRepository.getLatestRun(assetId);
     return {
-      faces: faces.map(
-        (face): VideoFaceDto => ({
-          id: face.id,
-          firstObservedMs: face.firstObservedMs,
-          lastObservedMs: face.lastObservedMs,
-          sightingCount: face.sightingCount,
-          bestFrameMs: face.bestFrameMs,
-          flagged: face.flagged,
-          personGroupId: face.personGroupId,
-          personName: face.personName,
-          assetFaceId: face.assetFaceId,
-          sightings: face.sightings,
-        }),
-      ),
+      faces: faces.map((face): VideoFaceDto => ({
+        id: face.id,
+        firstObservedMs: face.firstObservedMs,
+        lastObservedMs: face.lastObservedMs,
+        sightingCount: face.sightingCount,
+        bestFrameMs: face.bestFrameMs,
+        flagged: face.flagged,
+        personGroupId: face.personGroupId,
+        personName: face.personName,
+        assetFaceId: face.assetFaceId,
+        sightings: face.sightings,
+      })),
       run: run ? ({ ...run, finishedAt: run.finishedAt?.toISOString() ?? null } as VideoFaceRunDto) : null,
     };
   }
@@ -315,7 +329,7 @@ export class VideoFaceService {
     }
   }
 
-    private modelVersions(machineLearning: Awaited<ReturnType<typeof getConfig>>['machineLearning']): string {
+  private modelVersions(machineLearning: Awaited<ReturnType<typeof getConfig>>['machineLearning']): string {
     return `${machineLearning.facialRecognition.modelName}/scan-core-1`;
   }
 

@@ -113,7 +113,10 @@ Adaptive gap bisection: next sample = midpoint of the highest-priority
 unsampled gap. Priority = length x (signatures differ ? wDiff : 1) x
 (gap has any faces ? wFace : wEmpty). Deterministic tie-break: earliest gap.
 */
-export function nextSampleByGap(state: GapBisectState, cfg: VideoFaceScanConfig): { timeMs: number; reason: SampleReason } | null {
+export function nextSampleByGap(
+  state: GapBisectState,
+  cfg: VideoFaceScanConfig,
+): { timeMs: number; reason: SampleReason } | null {
   const times = state.sampled.map((s) => s.timeMs).sort((a, b) => a - b);
   const bounds = [0, ...times, state.durationMs];
   let best: { mid: number; priority: number } | null = null;
@@ -127,8 +130,7 @@ export function nextSampleByGap(state: GapBisectState, cfg: VideoFaceScanConfig)
     // interior gaps sit between two sampled points; edge gaps against 0/duration
     const before = i > 0 ? state.sampled.find((s) => s.timeMs === start) : undefined;
     const after = i + 1 < bounds.length - 1 ? state.sampled.find((s) => s.timeMs === end) : undefined;
-    const sigDiffers =
-      before && after && !setsEqual(before.identityKeys, after.identityKeys) ? cfg.wDiff : 1;
+    const sigDiffers = before && after && !setsEqual(before.identityKeys, after.identityKeys) ? cfg.wDiff : 1;
     const anyFaces = before?.identityKeys.size || after?.identityKeys.size ? cfg.wFace : cfg.wEmpty;
     const priority = length * sigDiffers * anyFaces;
     const mid = Math.round((start + end) / 2);
@@ -272,9 +274,7 @@ export function groupDetections(frames: GroupInput[], cfg: VideoFaceScanConfig):
     const times = identity.members.map((m) => m.timeMs);
     const best = exemplar(identity);
     const singleSighting =
-      identity.count === 1 &&
-      best.det.sizePx < cfg.singleSightingMinPx &&
-      best.det.score < cfg.singleSightingMinScore;
+      identity.count === 1 && best.det.sizePx < cfg.singleSightingMinPx && best.det.score < cfg.singleSightingMinScore;
     return {
       identityKey: '', // assigned by caller (stable per asset)
       droppedByCrowdGuard: false,
@@ -300,7 +300,7 @@ export function groupDetections(frames: GroupInput[], cfg: VideoFaceScanConfig):
         }))
         .sort((a, b) => a.timeMs - b.timeMs),
     } satisfies VideoFaceIdentity;
-    }) as VideoFaceIdentity[];
+  }) as VideoFaceIdentity[];
 
   // crowd guard: keep the best N by quality (size x score of exemplar), drop the rest
   consolidated.sort((a, b) => b.bestSizePx * b.bestScore - a.bestSizePx * a.bestScore);

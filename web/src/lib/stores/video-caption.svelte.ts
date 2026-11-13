@@ -1,5 +1,5 @@
-import { getAssetMetadataByKey } from '@immich/sdk';
 import { CancellableTask } from '#lib/utils/cancellable-task.ts';
+import { getAssetMetadataByKey } from '@immich/sdk';
 
 const VIDEO_CAPTIONS_KEY = 'video-captions-v1';
 

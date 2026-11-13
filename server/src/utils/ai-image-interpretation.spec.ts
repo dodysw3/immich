@@ -1,6 +1,5 @@
 import { DateTime } from 'luxon';
 import { describe, expect, it } from 'vitest';
-import type { EvidenceLine } from 'src/utils/ai-image-interpretation.js';
 import {
   AI_IMAGE_INTERPRETATION_MODEL,
   AI_IMAGE_INTERPRETATION_PROMPT,
@@ -8,12 +7,13 @@ import {
   AI_IMAGE_INTERPRETATION_QUANT,
   AI_INTERPRETATION_RATE_WINDOW_MS,
   AI_INTERPRETATION_RETRY_MAX_MS,
+  VIDEO_CONTEXT_SECTION_BUDGET_CHARS,
   composeVideoInterpretationContext,
   createAiInterpretationRunKey,
   formatAiInterpretationQueueEta,
   interpretationRetryDelayMs,
   sampleEvidenceLines,
-  VIDEO_CONTEXT_SECTION_BUDGET_CHARS,
+  type EvidenceLine,
 } from 'src/utils/ai-image-interpretation.js';
 
 const audioEvent = (label: string, mid: string, startMs: number, endMs: number, score = 0.5) => ({
@@ -100,20 +100,20 @@ describe('AI image interpretation contract', () => {
   });
 });
 
+const captionRun = (overrides: Partial<Record<string, unknown>> = {}) =>
+  ({
+    segments: [{ startMs: 0, endMs: 5000, caption: 'A train pulls into a night station.' }],
+    config: { segmentSeconds: 5, framesPerSegment: 3, frameEdge: 672, maxDurationSec: 300, language: 'en' },
+    ...overrides,
+  }) as never;
+
+const transcriptRun = (overrides: Partial<Record<string, unknown>> = {}) =>
+  ({
+    segments: [{ startMs: 24_400, endMs: 26_400, text: 'selamat datang di LRT Jabodetai' }],
+    ...overrides,
+  }) as never;
+
 describe('composeVideoInterpretationContext', () => {
-  const captionRun = (overrides: Partial<Record<string, unknown>> = {}) =>
-    ({
-      segments: [{ startMs: 0, endMs: 5000, caption: 'A train pulls into a night station.' }],
-      config: { segmentSeconds: 5, framesPerSegment: 3, frameEdge: 672, maxDurationSec: 300, language: 'en' },
-      ...overrides,
-    }) as never;
-
-  const transcriptRun = (overrides: Partial<Record<string, unknown>> = {}) =>
-    ({
-      segments: [{ startMs: 24_400, endMs: 26_400, text: 'selamat datang di LRT Jabodetai' }],
-      ...overrides,
-    }) as never;
-
   it('returns undefined when neither lane produced a completed run', () => {
     expect(composeVideoInterpretationContext({})).toBeUndefined();
   });
@@ -306,7 +306,10 @@ describe('composeVideoInterpretationContext', () => {
         (_, i) => `Sound class number ${i} renders into a fairly long descriptive sentence about the noise`,
       );
       const events = labels.map((label, i) => audioEvent(label, `/m/test${i}`, i * 60_000, i * 60_000 + 4000));
-      const context = composeVideoInterpretationContext({ captions: captionRun(), audioEvents: audioEventsRun(events) })!;
+      const context = composeVideoInterpretationContext({
+        captions: captionRun(),
+        audioEvents: audioEventsRun(events),
+      })!;
       const soundsSection = context.split('\n\n').find((section) => section.includes('Other sounds'))!;
       expect(soundsSection).toMatch(/\[… \d+ segments \(\d+\.\ds-\d+\.\ds\) omitted\]/);
       expect(soundsSection).toContain('[0.0-4.0s] A sound like');

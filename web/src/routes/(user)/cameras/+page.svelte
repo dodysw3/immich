@@ -1,10 +1,9 @@
 <script lang="ts">
   import UserPageLayout from '#lib/components/layouts/UserPageLayout.svelte';
-  import { locale } from '#lib/stores/preferences.store.ts';
   import { Route } from '#lib/route.ts';
+  import { locale } from '#lib/stores/preferences.store.ts';
   import { getAssetMediaUrl } from '#lib/utils.ts';
   import { AssetMediaSize, type AssetResponseDto } from '@immich/sdk';
-  import { t } from 'svelte-i18n';
   import type { PageData } from './$types';
 
   interface Props {

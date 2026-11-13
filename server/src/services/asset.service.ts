@@ -3,7 +3,6 @@ import { isUndefined, omitBy } from 'lodash-es';
 import { DateTime, Duration } from 'luxon';
 import type { AssetFile } from 'src/database.js';
 import { OnJob } from 'src/decorators.js';
-import { AvMetadataResponseDto } from 'src/dtos/av-metadata.dto.js';
 import { AssetResponseDto, SanitizedAssetResponseDto, mapAsset } from 'src/dtos/asset-response.dto.js';
 import {
   AssetBulkDeleteDto,
@@ -21,6 +20,7 @@ import {
   mapStats,
 } from 'src/dtos/asset.dto.js';
 import type { AuthDto } from 'src/dtos/auth.dto.js';
+import { AvMetadataResponseDto } from 'src/dtos/av-metadata.dto.js';
 import {
   AssetEditAction,
   AssetEditsCreateDto,
@@ -429,13 +429,15 @@ export class AssetService extends BaseService {
   // Keys written exclusively by the server's own pipelines; user-supplied
   // metadata upserts/deletes must never collide with them.
   private isServerManagedMetadataKey(key: string): boolean {
-    return (
-      key === AssetMetadataKey.AiInterpretationV1 ||
-      key === AssetMetadataKey.VideoCaptionsV1 ||
-      key === AssetMetadataKey.VideoTranscriptsV1 ||
-      key === AssetMetadataKey.VideoAudioEventsV1
-    );
+    return this.serverManagedMetadataKeys.has(key);
   }
+
+  private readonly serverManagedMetadataKeys: ReadonlySet<string> = new Set([
+    AssetMetadataKey.AiInterpretationV1,
+    AssetMetadataKey.VideoCaptionsV1,
+    AssetMetadataKey.VideoTranscriptsV1,
+    AssetMetadataKey.VideoAudioEventsV1,
+  ]);
 
   async upsertBulkMetadata(auth: AuthDto, dto: AssetMetadataBulkUpsertDto): Promise<AssetMetadataBulkResponseDto[]> {
     await this.requireAccess({ auth, permission: Permission.AssetUpdate, ids: dto.items.map((item) => item.assetId) });

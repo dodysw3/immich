@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { type Insertable, Kysely, type Selectable, sql } from 'kysely';
+import { Kysely, sql, type Insertable, type Selectable } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { DummyValue, GenerateSql } from 'src/decorators.js';
 import { PdfDocumentStatus as PdfDocumentFilterStatus } from 'src/dtos/pdf.dto.js';
 import { AssetType } from 'src/enum.js';
 import { DB } from 'src/schema/index.js';
-import { type PdfDocumentStatus, PdfDocumentTable } from 'src/schema/tables/pdf-document.table.js';
+import { PdfDocumentTable, type PdfDocumentStatus } from 'src/schema/tables/pdf-document.table.js';
 import { PdfPageTable } from 'src/schema/tables/pdf-page.table.js';
 import { paginationHelper } from 'src/utils/pagination.js';
 

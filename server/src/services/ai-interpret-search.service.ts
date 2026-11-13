@@ -1,8 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { LRUMap } from 'mnemonist';
-import type { EnvData } from 'src/repositories/config.repository.js';
-import type { JobOf } from 'src/types.js';
 import { OnEvent, OnJob } from 'src/decorators.js';
 import { AiInterpretationDocument, AiInterpretationDocumentSchema } from 'src/dtos/ai-image-interpretation.dto.js';
 import { mapAsset } from 'src/dtos/asset-response.dto.js';
@@ -15,11 +13,12 @@ import {
   AiInterpretBranchRow,
   AiInterpretSearchRepository,
 } from 'src/repositories/ai-interpret-search.repository.js';
-import { ConfigRepository } from 'src/repositories/config.repository.js';
+import { ConfigRepository, type EnvData } from 'src/repositories/config.repository.js';
 import { JobRepository } from 'src/repositories/job.repository.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';
 import { PartnerRepository } from 'src/repositories/partner.repository.js';
 import { AiInterpretSearchClient } from 'src/services/ai-interpret-search.client.js';
+import type { JobOf } from 'src/types.js';
 import { requireElevatedPermission } from 'src/utils/access.js';
 import {
   buildAiInterpretDenseDoc,

@@ -1,11 +1,11 @@
 import { Controller, Get, Next, Param, Res } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import type { NextFunction, Response } from 'express';
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
-import { ApiTags } from '@nestjs/swagger';
+import { Endpoint, HistoryBuilder } from 'src/decorators.js';
 import type { AuthDto } from 'src/dtos/auth.dto.js';
 import { VideoFacesResponseDto } from 'src/dtos/video-face.dto.js';
-import { Endpoint, HistoryBuilder } from 'src/decorators.js';
 import { ApiTag, Permission, RouteKey } from 'src/enum.js';
 import { Auth, Authenticated, FileResponse } from 'src/middleware/auth.guard.js';
 import { LoggingRepository } from 'src/repositories/logging.repository.js';

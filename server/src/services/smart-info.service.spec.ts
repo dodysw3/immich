@@ -201,7 +201,11 @@ describe(SmartInfoService.name, () => {
       const asset = AssetFactory.from().file({ type: AssetFileType.Preview }).build();
       const previewFile = asset.files[0].path;
       mocks.machineLearning.encodeImage.mockResolvedValue('[0.01, 0.02, 0.03]');
-      mocks.assetJob.getForClipEncoding.mockResolvedValue({ id: asset.id, visibility: asset.visibility, files: asset.files });
+      mocks.assetJob.getForClipEncoding.mockResolvedValue({
+        id: asset.id,
+        visibility: asset.visibility,
+        files: asset.files,
+      });
 
       expect(await sut.handleEncodeClip({ id: asset.id })).toEqual(JobStatus.Success);
 
@@ -246,7 +250,11 @@ describe(SmartInfoService.name, () => {
       const asset = AssetFactory.from({ visibility: AssetVisibility.Hidden })
         .file({ type: AssetFileType.Preview })
         .build();
-      mocks.assetJob.getForClipEncoding.mockResolvedValue({ id: asset.id, visibility: asset.visibility, files: asset.files });
+      mocks.assetJob.getForClipEncoding.mockResolvedValue({
+        id: asset.id,
+        visibility: asset.visibility,
+        files: asset.files,
+      });
 
       expect(await sut.handleEncodeClip({ id: asset.id })).toEqual(JobStatus.Skipped);
 
@@ -268,7 +276,11 @@ describe(SmartInfoService.name, () => {
       const previewFile = asset.files[0].path;
       mocks.machineLearning.encodeImage.mockResolvedValue('[0.01, 0.02, 0.03]');
       mocks.database.isBusy.mockReturnValue(true);
-      mocks.assetJob.getForClipEncoding.mockResolvedValue({ id: asset.id, visibility: asset.visibility, files: asset.files });
+      mocks.assetJob.getForClipEncoding.mockResolvedValue({
+        id: asset.id,
+        visibility: asset.visibility,
+        files: asset.files,
+      });
 
       expect(await sut.handleEncodeClip({ id: asset.id })).toEqual(JobStatus.Success);
 

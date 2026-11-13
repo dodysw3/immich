@@ -64,7 +64,16 @@ export interface VideoFaceView {
   assetFaceId: string | null;
   personGroupId: string | null;
   personName: string | null;
-  sightings: { timeMs: number; score: number; x1: number; y1: number; x2: number; y2: number; imageWidth: number; imageHeight: number }[];
+  sightings: {
+    timeMs: number;
+    score: number;
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    imageWidth: number;
+    imageHeight: number;
+  }[];
 }
 
 export interface VideoFaceRunView {
@@ -95,7 +104,11 @@ export class VideoFaceRepository {
   }
 
   async finishRun(runId: string, finish: VideoFaceRunFinish): Promise<void> {
-    await this.db.updateTable('video_face_run').set({ ...finish, error: finish.error ?? null }).where('id', '=', runId).execute();
+    await this.db
+      .updateTable('video_face_run')
+      .set({ ...finish, error: finish.error ?? null })
+      .where('id', '=', runId)
+      .execute();
   }
 
   async getLatestRun(assetId: string): Promise<VideoFaceRunView | null> {
@@ -130,11 +143,7 @@ export class VideoFaceRepository {
   re-scan. Identities that no longer match anything are deleted (sightings
   cascade). Returns rows keyed by identityKey with their persisted ids.
   */
-  async persistIdentities(
-    runId: string,
-    assetId: string,
-    identities: VideoFaceUpsert[],
-  ): Promise<Map<string, string>> {
+  async persistIdentities(runId: string, assetId: string, identities: VideoFaceUpsert[]): Promise<Map<string, string>> {
     const existing = await this.db
       .selectFrom('video_face')
       .select(['id', 'identityKey', 'embedding', 'assetFaceId'])
@@ -201,20 +210,18 @@ export class VideoFaceRepository {
         await this.db
           .insertInto('video_face_sighting')
           .values(
-            identity.sightings.map(
-              (s): Insertable<VideoFaceSightingTable> => ({
-                timeMs: s.timeMs,
-                score: s.score,
-                x1: s.x1,
-                y1: s.y1,
-                x2: s.x2,
-                y2: s.y2,
-                imageWidth: s.imageWidth,
-                imageHeight: s.imageHeight,
-                videoFaceId: idByIdentityKey.get(identity.identityKey)!,
-                runId,
-              }),
-            ),
+            identity.sightings.map((s): Insertable<VideoFaceSightingTable> => ({
+              timeMs: s.timeMs,
+              score: s.score,
+              x1: s.x1,
+              y1: s.y1,
+              x2: s.x2,
+              y2: s.y2,
+              imageWidth: s.imageWidth,
+              imageHeight: s.imageHeight,
+              videoFaceId: idByIdentityKey.get(identity.identityKey)!,
+              runId,
+            })),
           )
           .execute();
       }
@@ -287,7 +294,19 @@ export class VideoFaceRepository {
       .orderBy('timeMs', 'asc')
       .execute();
 
-    const byFace = new Map<string, { timeMs: number; score: number; x1: number; y1: number; x2: number; y2: number; imageWidth: number; imageHeight: number }[]>();
+    const byFace = new Map<
+      string,
+      {
+        timeMs: number;
+        score: number;
+        x1: number;
+        y1: number;
+        x2: number;
+        y2: number;
+        imageWidth: number;
+        imageHeight: number;
+      }[]
+    >();
     for (const s of sightings) {
       byFace.set(s.videoFaceId, [
         ...(byFace.get(s.videoFaceId) ?? []),
@@ -304,22 +323,20 @@ export class VideoFaceRepository {
       ]);
     }
 
-    return faces.map(
-      (face): VideoFaceView => ({
-        id: face.id,
-        identityKey: face.identityKey,
-        firstObservedMs: face.firstObservedMs,
-        lastObservedMs: face.lastObservedMs,
-        sightingCount: face.sightingCount,
-        bestFrameMs: face.bestFrameMs,
-        bestScore: face.bestScore,
-        bestSizePx: face.bestSizePx,
-        flagged: face.flagged,
-        assetFaceId: face.assetFaceId,
-        ...(personByFaceId.get(face.assetFaceId ?? '') ?? { personGroupId: null, personName: null }),
-        sightings: byFace.get(face.id) ?? [],
-      }),
-    );
+    return faces.map((face): VideoFaceView => ({
+      id: face.id,
+      identityKey: face.identityKey,
+      firstObservedMs: face.firstObservedMs,
+      lastObservedMs: face.lastObservedMs,
+      sightingCount: face.sightingCount,
+      bestFrameMs: face.bestFrameMs,
+      bestScore: face.bestScore,
+      bestSizePx: face.bestSizePx,
+      flagged: face.flagged,
+      assetFaceId: face.assetFaceId,
+      ...(personByFaceId.get(face.assetFaceId ?? '') ?? { personGroupId: null, personName: null }),
+      sightings: byFace.get(face.id) ?? [],
+    }));
   }
 
   async hasVideoFaces(assetIds: string[]): Promise<Set<string>> {

@@ -75,7 +75,15 @@ describe('groupDetections', () => {
     const v6: number[] = [...v5];
     v6[5] = 0.95;
     v6[21] = 0.31; // ~0.05 cosine distance after normalization
-    const frames: GroupInput[] = [{ timeMs: 1000, detections: [{ ...det(5), embedding: v5 }, { ...det(6), embedding: v6 }] }];
+    const frames: GroupInput[] = [
+      {
+        timeMs: 1000,
+        detections: [
+          { ...det(5), embedding: v5 },
+          { ...det(6), embedding: v6 },
+        ],
+      },
+    ];
     const identities = groupDetections(frames, cfg({ groupThreshold: 0.55 }));
     expect(identities).toHaveLength(2);
   });
@@ -93,17 +101,13 @@ describe('groupDetections', () => {
   });
 
   it('detection gates filter by score and face size', () => {
-    const frames: GroupInput[] = [
-      { timeMs: 1000, detections: [det(1, 10, 0.9), det(2, 80, 0.3), det(3, 80, 0.9)] },
-    ];
+    const frames: GroupInput[] = [{ timeMs: 1000, detections: [det(1, 10, 0.9), det(2, 80, 0.3), det(3, 80, 0.9)] }];
     const identities = groupDetections(frames, cfg());
     expect(identities).toHaveLength(1);
   });
 
   it('flags single sightings below the stricter quality bar but keeps them', () => {
-    const frames: GroupInput[] = [
-      { timeMs: 1000, detections: [det(1, 30, 0.6), det(2, 90, 0.9)] },
-    ];
+    const frames: GroupInput[] = [{ timeMs: 1000, detections: [det(1, 30, 0.6), det(2, 90, 0.9)] }];
     const identities = assignIdentityKeys(groupDetections(frames, cfg()));
     const flagged = identities.find((i) => i.flagged);
     expect(flagged).toBeDefined();
@@ -302,7 +306,9 @@ const benchReference = (frames: ReturnType<typeof loadCache>) => {
 
 const uniformPicked = (frames: ReturnType<typeof loadCache>, durMs: number) => {
   const plan = planUniformSamples(durMs, 16).map((p) => p.timeMs);
-  const grid = frames.filter((f) => f.timeMs > 0 && f.name.startsWith('g') && !f.name.endsWith('m') && !f.name.endsWith('p'));
+  const grid = frames.filter(
+    (f) => f.timeMs > 0 && f.name.startsWith('g') && !f.name.endsWith('m') && !f.name.endsWith('p'),
+  );
   const picked: GroupInput[] = [];
   const used = new Set<string>();
   for (const t of plan) {
@@ -352,11 +358,6 @@ const coverage = (
 };
 
 describe.skipIf(!existsSync(BENCH))('bench parity (owner-verified corpus)', () => {
-
-
-
-
-
   it.each(PARITY_CASES)('$tag: uniform16 + default config finds every person', (c) => {
     const frames = loadCache(join(BENCH, c.cache));
     const reference = benchReference(frames);

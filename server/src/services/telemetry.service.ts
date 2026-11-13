@@ -1,5 +1,5 @@
-import { snakeCase } from 'lodash-es';
 import type { ObservableResult } from '@opentelemetry/api';
+import { snakeCase } from 'lodash-es';
 import { OnEvent } from 'src/decorators.js';
 import { ImmichWorker, JobStatus, QueueName } from 'src/enum.js';
 import type { ArgOf, ArgsOf } from 'src/repositories/event.repository.js';

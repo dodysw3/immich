@@ -63,7 +63,7 @@ describe(AiImageInterpretationClient.name, () => {
       ...env,
       aiImageInterpretation: {
         ...env.aiImageInterpretation,
-         
+
         url: 'http://host.docker.internal:8888/v1',
         apiKey: 'secret-key',
       },
@@ -93,7 +93,7 @@ describe(AiImageInterpretationClient.name, () => {
 
     const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(request.body as string);
-     
+
     expect(url).toBe('http://host.docker.internal:8888/v1/chat/completions');
     expect(request.headers).toEqual({
       'Content-Type': 'application/json',
@@ -255,7 +255,6 @@ describe(AiImageInterpretationClient.name, () => {
       json: vi.fn().mockResolvedValue({ choices: [{ message: { content: lineContract() } }] }),
     });
 
-     
     const url = 'http://host.docker.internal:51900/public/v1';
     await expect(
       client.interpret(Buffer.from('preview'), {

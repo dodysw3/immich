@@ -54,7 +54,14 @@ export interface VideoPairScore {
 }
 
 // Composite weights; renormalized over the signals that are available.
-export const VIDEO_NEAR_DUP_WEIGHTS = { frames: 0.4, audio: 0.25, clip: 0.1, filename: 0.1, time: 0.1, meta: 0.05 } as const;
+export const VIDEO_NEAR_DUP_WEIGHTS = {
+  frames: 0.4,
+  audio: 0.25,
+  clip: 0.1,
+  filename: 0.1,
+  time: 0.1,
+  meta: 0.05,
+} as const;
 
 // Cheap-gate arms (no ffmpeg): a pair must match at least one before
 // extraction runs. Calibrated on 41.6M raw duration-bucket pairs: loose
@@ -202,9 +209,40 @@ export function envelopeSimilarity(a: Float64Array, b: Float64Array, maxOffsetWi
 }
 
 const VIDEO_FILENAME_NOISE_TOKENS = new Set([
-  'copy', 'final', 'converted', 'encoded', 'trim', 'video', 'vid', 'mp4', 'mov', 'avi', 'mkv', 'webm',
-  '720p', '1080p', '480p', '360p', '2160p', '4k', 'x264', 'x265', 'h264', 'h265', 'hevc', 'avc',
-  '1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
+  'copy',
+  'final',
+  'converted',
+  'encoded',
+  'trim',
+  'video',
+  'vid',
+  'mp4',
+  'mov',
+  'avi',
+  'mkv',
+  'webm',
+  '720p',
+  '1080p',
+  '480p',
+  '360p',
+  '2160p',
+  '4k',
+  'x264',
+  'x265',
+  'h264',
+  'h265',
+  'hevc',
+  'avc',
+  '1',
+  '2',
+  '3',
+  '4',
+  '5',
+  '6',
+  '7',
+  '8',
+  '9',
+  '10',
 ]);
 
 export function normalizeVideoFilename(name: string): string {
@@ -320,13 +358,18 @@ export function passesVideoCheapGate(
   }
   const durationDelta = Math.abs(a.durationMs - b.durationMs);
   if (
-    jaroWinkler(normalizeVideoFilename(a.originalFileName), normalizeVideoFilename(b.originalFileName)) >= VIDEO_NEAR_DUP_GATE.name &&
+    jaroWinkler(normalizeVideoFilename(a.originalFileName), normalizeVideoFilename(b.originalFileName)) >=
+      VIDEO_NEAR_DUP_GATE.name &&
     (timeDeltaSec(a, b) ?? Infinity) <= VIDEO_NEAR_DUP_GATE.timeSec &&
     durationDelta <= VIDEO_NEAR_DUP_GATE.durationMsA
   ) {
     return true;
   }
-  if (clipSimilarity !== null && clipSimilarity >= VIDEO_NEAR_DUP_GATE.clip && durationDelta <= VIDEO_NEAR_DUP_GATE.durationMsB) {
+  if (
+    clipSimilarity !== null &&
+    clipSimilarity >= VIDEO_NEAR_DUP_GATE.clip &&
+    durationDelta <= VIDEO_NEAR_DUP_GATE.durationMsB
+  ) {
     return true;
   }
   return false;
@@ -358,7 +401,10 @@ export function scoreVideoDuplicatePair(options: {
     frames: null,
     audio: null,
     clip: clipSimilarity,
-    filename: jaroWinkler(normalizeVideoFilename(source.originalFileName), normalizeVideoFilename(candidate.originalFileName)),
+    filename: jaroWinkler(
+      normalizeVideoFilename(source.originalFileName),
+      normalizeVideoFilename(candidate.originalFileName),
+    ),
     time: timeSimilarity(source, candidate),
     meta: metaSimilarity(source, candidate),
     motionA: sourceFingerprint?.motionBits ?? null,
@@ -368,10 +414,16 @@ export function scoreVideoDuplicatePair(options: {
     signals.frames = frameSimilarity(sourceFingerprint.frameHashes, candidateFingerprint.frameHashes);
   }
   if (sourceFingerprint?.audioEnvelope && candidateFingerprint?.audioEnvelope) {
-    signals.audio = envelopeSimilarity(sourceFingerprint.audioEnvelope, candidateFingerprint.audioEnvelope, AUDIO_MAX_OFFSET_WINDOWS);
+    signals.audio = envelopeSimilarity(
+      sourceFingerprint.audioEnvelope,
+      candidateFingerprint.audioEnvelope,
+      AUDIO_MAX_OFFSET_WINDOWS,
+    );
   }
 
-  const available = Object.entries(VIDEO_NEAR_DUP_WEIGHTS).filter(([key]) => signals[key as keyof VideoPairSignals] !== null);
+  const available = Object.entries(VIDEO_NEAR_DUP_WEIGHTS).filter(
+    ([key]) => signals[key as keyof VideoPairSignals] !== null,
+  );
   let score = 0;
   if (available.length > 0) {
     let weightSum = 0;
@@ -383,13 +435,15 @@ export function scoreVideoDuplicatePair(options: {
   }
 
   const bothStatic =
-    (signals.motionA ?? Infinity) <= VIDEO_STATIC_MOTION_BITS && (signals.motionB ?? Infinity) <= VIDEO_STATIC_MOTION_BITS;
+    (signals.motionA ?? Infinity) <= VIDEO_STATIC_MOTION_BITS &&
+    (signals.motionB ?? Infinity) <= VIDEO_STATIC_MOTION_BITS;
   const deltaSec = timeDeltaSec(source, candidate);
   const anchored =
     (signals.filename ?? 0) >= VIDEO_NEAR_DUP_GATE.name && deltaSec !== null && deltaSec <= VIDEO_NEAR_DUP_GATE.timeSec;
   const noPhysicalEvidence = signals.frames === null && signals.audio === null && !checksumEqual;
   const reviewCap = (bothStatic && !anchored) || noPhysicalEvidence;
-  const groupFloor = signals.audio === null && !checksumEqual ? Math.max(groupThreshold, VIDEO_AUDIOLESS_GROUP_FLOOR) : groupThreshold;
+  const groupFloor =
+    signals.audio === null && !checksumEqual ? Math.max(groupThreshold, VIDEO_AUDIOLESS_GROUP_FLOOR) : groupThreshold;
 
   if (checksumEqual) {
     score = 1;

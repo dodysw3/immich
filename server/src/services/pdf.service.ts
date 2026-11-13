@@ -3,8 +3,6 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import readline from 'node:readline';
-import type { ArgOf } from 'src/repositories/event.repository.js';
-import type { JobItem, JobOf } from 'src/types.js';
 import { JOBS_ASSET_PAGINATION_SIZE } from 'src/constants.js';
 import { OnEvent, OnJob } from 'src/decorators.js';
 import { AuthDto } from 'src/dtos/auth.dto.js';
@@ -20,7 +18,9 @@ import {
   PdfSearchResultDto,
 } from 'src/dtos/pdf.dto.js';
 import { JobName, JobStatus, QueueName } from 'src/enum.js';
+import type { ArgOf } from 'src/repositories/event.repository.js';
 import { BaseService } from 'src/services/base.service.js';
+import type { JobItem, JobOf } from 'src/types.js';
 import { tokenizeForSearch } from 'src/utils/database.js';
 import { isDuplicateDetectionEnabled, isOcrEnabled } from 'src/utils/misc.js';
 

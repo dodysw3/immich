@@ -261,7 +261,7 @@ export class AiImageInterpretationService {
       // (thumbnail-only) interpretation would silently defeat the enrichment
       // this run exists for. Images keep the copy path.
       const copySource =
-        !videoContextEnabled && !isPublic ? await this.interpretationRepository.findCopySource(assetId, runKey) : null;
+        videoContextEnabled || isPublic ? null : await this.interpretationRepository.findCopySource(assetId, runKey);
       if (copySource) {
         completed = await this.interpretationRepository.completeCopy(assetId, runKey, copySource, {
           durationMs: Date.now() - startedAt,

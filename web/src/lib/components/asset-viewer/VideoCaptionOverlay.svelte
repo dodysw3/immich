@@ -54,7 +54,7 @@
       data-testid="video-caption-overlay"
     >
       <div
-        class="w-full rounded-lg bg-black/75 px-4 py-2 text-left text-sm leading-snug text-white shadow-lg"
+        class="w-full rounded-lg bg-black/75 px-4 py-2 text-left text-sm/snug text-white shadow-lg"
         role="status"
         aria-live="polite"
       >
@@ -71,7 +71,7 @@
       data-testid="video-caption-overlay"
     >
       <div
-        class="max-w-[90%] rounded-lg bg-black/75 px-4 py-2 text-center text-sm leading-snug text-white shadow-lg"
+        class="max-w-[90%] rounded-lg bg-black/75 px-4 py-2 text-center text-sm/snug text-white shadow-lg"
         role="status"
         aria-live="polite"
       >

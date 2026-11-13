@@ -62,9 +62,9 @@ import {
   mdiPlus,
   mdiPresentationPlay,
   mdiShareVariantOutline,
+  mdiSubtitles,
   mdiTagMultipleOutline,
   mdiTagPlusOutline,
-  mdiSubtitles,
   mdiTune,
   mdiVideoOutline,
 } from '@mdi/js';

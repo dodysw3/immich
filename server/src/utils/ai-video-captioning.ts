@@ -8,14 +8,8 @@ and run keying from image interpretation so the two features can evolve
 */
 export const AI_VIDEO_CAPTIONING_PROMPT_VERSION = 'video-captioning-0.4.1';
 
-export const createVideoCaptionRunKey = (
-  model: string,
-  segmentation: string,
-  promptVersion: string,
-): string =>
-  createHash('sha256')
-    .update(`${model}\n${segmentation}\n${promptVersion}`, 'utf8')
-    .digest('hex');
+export const createVideoCaptionRunKey = (model: string, segmentation: string, promptVersion: string): string =>
+  createHash('sha256').update(`${model}\n${segmentation}\n${promptVersion}`, 'utf8').digest('hex');
 
 /** Fixed-grid segmentation descriptor ("5x3"). */
 export const fixedSegmentationKey = (segmentSeconds: number, framesPerSegment: number): string =>
@@ -123,7 +117,10 @@ export const planAdaptiveSegments = (
     const spanMs = frameTimesMs[i] - frameTimesMs[starts.at(-1)!];
     const score = diffScores[i] ?? 0;
     accumulated += score;
-    if (!(spanMs >= options.minSegmentMs && (accumulated >= options.changeBudget || score >= options.cutThreshold || spanMs >= options.maxSegmentMs))) {
+    if (!(
+      spanMs >= options.minSegmentMs &&
+      (accumulated >= options.changeBudget || score >= options.cutThreshold || spanMs >= options.maxSegmentMs)
+    )) {
       continue;
     }
 
