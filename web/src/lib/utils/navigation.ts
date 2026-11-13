@@ -1,3 +1,4 @@
+import { QueryParameter } from '#lib/constants.ts';
 import { assetCacheManager } from '#lib/managers/AssetCacheManager.svelte.ts';
 import { Route } from '#lib/route.ts';
 import { goto } from '$app/navigation';
@@ -6,6 +7,13 @@ import type { RouteId } from '$app/types';
 
 export type AssetGridRouteSearchParams = {
   at: string | null | undefined;
+};
+
+/** Selected Transcription match carried in the viewer URL (asset-scoped). */
+export type AssetMatchNavigation = {
+  passageId: string;
+  revision: string;
+  startMs: number;
 };
 
 export const isPhotosRoute = (route?: string | null) => !!route?.startsWith('/(user)/photos/[[assetId=id]]');
@@ -35,10 +43,21 @@ function currentUrlWithoutAsset() {
     : page.url.pathname.replace(/(\/photos.*)$/, '') + page.url.search;
 }
 
-export function currentUrlReplaceAssetId(assetId: string) {
+export function currentUrlReplaceAssetId(assetId: string, match?: AssetMatchNavigation) {
   const params = new URLSearchParams(page.url.search);
   // always remove the assetGridScrollTargetParams
   params.delete('at');
+  // Transcription match params are explicit per navigation: set them when a
+  // match is requested, drop stale ones on every ordinary asset open.
+  if (match) {
+    params.set(QueryParameter.MATCH_START_MS, String(match.startMs));
+    params.set(QueryParameter.MATCH_PASSAGE_ID, match.passageId);
+    params.set(QueryParameter.MATCH_REVISION, match.revision);
+  } else {
+    params.delete(QueryParameter.MATCH_START_MS);
+    params.delete(QueryParameter.MATCH_PASSAGE_ID);
+    params.delete(QueryParameter.MATCH_REVISION);
+  }
   const paramsString = params.toString();
   const searchparams = paramsString === '' ? '' : '?' + params.toString();
   // this contains special casing for the /photos/:assetId photos route, which hangs directly
@@ -77,6 +96,7 @@ interface Route {
 interface AssetRoute extends Route {
   targetRoute: 'current';
   assetId: string | null | undefined;
+  match?: AssetMatchNavigation;
 }
 interface AssetGridRoute extends Route {
   targetRoute: 'current';
@@ -104,8 +124,8 @@ function isAssetGridRoute(route: Route): route is AssetGridRoute {
 }
 
 async function navigateAssetRoute(route: AssetRoute, options?: NavOptions) {
-  const { assetId } = route;
-  const next = assetId ? currentUrlReplaceAssetId(assetId) : currentUrlWithoutAsset();
+  const { assetId, match } = route;
+  const next = assetId ? currentUrlReplaceAssetId(assetId, match) : currentUrlWithoutAsset();
   const current = currentUrl();
   if (next !== current || options?.forceNavigate) {
     await goto(next, options);

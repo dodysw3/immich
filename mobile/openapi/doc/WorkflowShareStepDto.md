@@ -8,7 +8,7 @@ import 'package:openapi/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**config** | [**Map<String, Object>**](Object.md) | Step configuration | [default to const {}]
+**config** | [**BuiltMap&lt;String, JsonObject&gt;**](JsonObject.md) | Step configuration | 
 **enabled** | **bool** | Step is enabled | [optional] 
 **method** | **String** | Step plugin method | 
 

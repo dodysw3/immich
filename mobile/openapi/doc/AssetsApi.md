@@ -15,13 +15,21 @@ Method | HTTP request | Description
 [**deleteAssets**](AssetsApi.md#deleteassets) | **DELETE** /assets | Delete assets
 [**deleteBulkAssetMetadata**](AssetsApi.md#deletebulkassetmetadata) | **DELETE** /assets/metadata | Delete asset metadata
 [**downloadAsset**](AssetsApi.md#downloadasset) | **GET** /assets/{id}/original | Download original asset
+[**downloadAssetAnnotated**](AssetsApi.md#downloadassetannotated) | **GET** /assets/{id}/annotated-original | Download asset with face labels
 [**editAsset**](AssetsApi.md#editasset) | **PUT** /assets/{id}/edits | Apply edits to an existing asset
+[**endSession**](AssetsApi.md#endsession) | **DELETE** /assets/{id}/video/stream/{sessionId} | End HLS streaming session
+[**getAssetAvMetadata**](AssetsApi.md#getassetavmetadata) | **GET** /assets/{id}/av-metadata | Retrieve audio/video stream metadata
 [**getAssetEdits**](AssetsApi.md#getassetedits) | **GET** /assets/{id}/edits | Retrieve edits for an existing asset
 [**getAssetInfo**](AssetsApi.md#getassetinfo) | **GET** /assets/{id} | Retrieve an asset
 [**getAssetMetadata**](AssetsApi.md#getassetmetadata) | **GET** /assets/{id}/metadata | Get asset metadata
 [**getAssetMetadataByKey**](AssetsApi.md#getassetmetadatabykey) | **GET** /assets/{id}/metadata/{key} | Retrieve asset metadata by key
 [**getAssetOcr**](AssetsApi.md#getassetocr) | **GET** /assets/{id}/ocr | Retrieve asset OCR data
 [**getAssetStatistics**](AssetsApi.md#getassetstatistics) | **GET** /assets/statistics | Get asset statistics
+[**getFaceThumbnail**](AssetsApi.md#getfacethumbnail) | **GET** /assets/{id}/video-faces/{faceId}/thumbnail | Face crop from its representative frame
+[**getMainPlaylist**](AssetsApi.md#getmainplaylist) | **GET** /assets/{id}/video/stream/main.m3u8 | Get HLS main playlist
+[**getMediaPlaylist**](AssetsApi.md#getmediaplaylist) | **GET** /assets/{id}/video/stream/{sessionId}/{variantIndex}/playlist.m3u8 | Get HLS media playlist
+[**getSegment**](AssetsApi.md#getsegment) | **GET** /assets/{id}/video/stream/{sessionId}/{variantIndex}/{filename} | Get HLS segment or init file
+[**getVideoFaces**](AssetsApi.md#getvideofaces) | **GET** /assets/{id}/video-faces | List faces discovered in a video
 [**playAssetVideo**](AssetsApi.md#playassetvideo) | **GET** /assets/{id}/video/playback | Play asset video
 [**removeAssetEdits**](AssetsApi.md#removeassetedits) | **DELETE** /assets/{id}/edits | Remove edits from an existing asset
 [**reportFailure**](AssetsApi.md#reportfailure) | **PUT** /external-ocr/assets/{id}/failure | Report external OCR failure
@@ -53,20 +61,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final assetBulkUploadCheckDto = AssetBulkUploadCheckDto(); // AssetBulkUploadCheckDto | 
+final api = Openapi().getAssetsApi();
+final AssetBulkUploadCheckDto assetBulkUploadCheckDto = ; // AssetBulkUploadCheckDto | 
 
 try {
-    final result = api_instance.checkBulkUpload(assetBulkUploadCheckDto);
-    print(result);
-} catch (e) {
+    final response = api.checkBulkUpload(assetBulkUploadCheckDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->checkBulkUpload: $e\n');
 }
 ```
@@ -110,19 +112,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final assetCopyDto = AssetCopyDto(); // AssetCopyDto | 
+final api = Openapi().getAssetsApi();
+final AssetCopyDto assetCopyDto = ; // AssetCopyDto | 
 
 try {
-    api_instance.copyAsset(assetCopyDto);
-} catch (e) {
+    api.copyAsset(assetCopyDto);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->copyAsset: $e\n');
 }
 ```
@@ -166,20 +162,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Asset ID
-final key = key_example; // String | Metadata key
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Asset ID
+final String key = key_example; // String | Metadata key
 
 try {
-    api_instance.deleteAssetMetadata(id, key);
-} catch (e) {
+    api.deleteAssetMetadata(id, key);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->deleteAssetMetadata: $e\n');
 }
 ```
@@ -224,19 +214,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final assetBulkDeleteDto = AssetBulkDeleteDto(); // AssetBulkDeleteDto | 
+final api = Openapi().getAssetsApi();
+final AssetBulkDeleteDto assetBulkDeleteDto = ; // AssetBulkDeleteDto | 
 
 try {
-    api_instance.deleteAssets(assetBulkDeleteDto);
-} catch (e) {
+    api.deleteAssets(assetBulkDeleteDto);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->deleteAssets: $e\n');
 }
 ```
@@ -280,19 +264,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final assetMetadataBulkDeleteDto = AssetMetadataBulkDeleteDto(); // AssetMetadataBulkDeleteDto | 
+final api = Openapi().getAssetsApi();
+final AssetMetadataBulkDeleteDto assetMetadataBulkDeleteDto = ; // AssetMetadataBulkDeleteDto | 
 
 try {
-    api_instance.deleteBulkAssetMetadata(assetMetadataBulkDeleteDto);
-} catch (e) {
+    api.deleteBulkAssetMetadata(assetMetadataBulkDeleteDto);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->deleteBulkAssetMetadata: $e\n');
 }
 ```
@@ -319,7 +297,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **downloadAsset**
-> MultipartFile downloadAsset(id, edited, key, slug)
+> Uint8List downloadAsset(id, edited, key, slug)
 
 Download original asset
 
@@ -336,23 +314,17 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final edited = true; // bool | Return edited asset if available
-final key = key_example; // String | 
-final slug = slug_example; // String | 
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final bool edited = true; // bool | Return edited asset if available
+final String key = key_example; // String | 
+final String slug = slug_example; // String | 
 
 try {
-    final result = api_instance.downloadAsset(id, edited, key, slug);
-    print(result);
-} catch (e) {
+    final response = api.downloadAsset(id, edited, key, slug);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->downloadAsset: $e\n');
 }
 ```
@@ -362,13 +334,66 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **String**|  | 
- **edited** | **bool**| Return edited asset if available | [optional] [default to false]
+ **edited** | **bool**| Return edited asset if available | [optional] 
  **key** | **String**|  | [optional] 
  **slug** | **String**|  | [optional] 
 
 ### Return type
 
-[**MultipartFile**](MultipartFile.md)
+[**Uint8List**](Uint8List.md)
+
+### Authorization
+
+[cookie](../README.md#cookie), [api_key](../README.md#api_key), [bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/octet-stream
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **downloadAssetAnnotated**
+> Uint8List downloadAssetAnnotated(id, layers)
+
+Download asset with face labels
+
+Renders face boxes and labels onto the original or edited image.
+
+### Example
+```dart
+import 'package:openapi/api.dart';
+// TODO Configure API key authorization: cookie
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKeyPrefix = 'Bearer';
+// TODO Configure API key authorization: api_key
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
+
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final DownloadAssetAnnotatedLayersParameter layers = ; // DownloadAssetAnnotatedLayersParameter | Annotation layers to render
+
+try {
+    final response = api.downloadAssetAnnotated(id, layers);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AssetsApi->downloadAssetAnnotated: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **layers** | [**DownloadAssetAnnotatedLayersParameter**](.md)| Annotation layers to render | [optional] 
+
+### Return type
+
+[**Uint8List**](Uint8List.md)
 
 ### Authorization
 
@@ -399,21 +424,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final assetEditsCreateDto = AssetEditsCreateDto(); // AssetEditsCreateDto | 
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final AssetEditsCreateDto assetEditsCreateDto = ; // AssetEditsCreateDto | 
 
 try {
-    final result = api_instance.editAsset(id, assetEditsCreateDto);
-    print(result);
-} catch (e) {
+    final response = api.editAsset(id, assetEditsCreateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->editAsset: $e\n');
 }
 ```
@@ -440,6 +459,117 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **endSession**
+> endSession(id, sessionId, key, slug)
+
+End HLS streaming session
+
+Releases server resources for the streaming session.
+
+### Example
+```dart
+import 'package:openapi/api.dart';
+// TODO Configure API key authorization: cookie
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKeyPrefix = 'Bearer';
+// TODO Configure API key authorization: api_key
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
+
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final String sessionId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final String key = key_example; // String | 
+final String slug = slug_example; // String | 
+
+try {
+    api.endSession(id, sessionId, key, slug);
+} on DioException catch (e) {
+    print('Exception when calling AssetsApi->endSession: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **sessionId** | **String**|  | 
+ **key** | **String**|  | [optional] 
+ **slug** | **String**|  | [optional] 
+
+### Return type
+
+void (empty response body)
+
+### Authorization
+
+[cookie](../README.md#cookie), [api_key](../README.md#api_key), [bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getAssetAvMetadata**
+> AvMetadataResponseDto getAssetAvMetadata(id, key, slug)
+
+Retrieve audio/video stream metadata
+
+Retrieve the probed stream metadata (codec, bitrate, etc.) of a specific asset.
+
+### Example
+```dart
+import 'package:openapi/api.dart';
+// TODO Configure API key authorization: cookie
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKeyPrefix = 'Bearer';
+// TODO Configure API key authorization: api_key
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
+
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final String key = key_example; // String | 
+final String slug = slug_example; // String | 
+
+try {
+    final response = api.getAssetAvMetadata(id, key, slug);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AssetsApi->getAssetAvMetadata: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **key** | **String**|  | [optional] 
+ **slug** | **String**|  | [optional] 
+
+### Return type
+
+[**AvMetadataResponseDto**](AvMetadataResponseDto.md)
+
+### Authorization
+
+[cookie](../README.md#cookie), [api_key](../README.md#api_key), [bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **getAssetEdits**
 > AssetEditsResponseDto getAssetEdits(id)
 
@@ -458,20 +588,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.getAssetEdits(id);
-    print(result);
-} catch (e) {
+    final response = api.getAssetEdits(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->getAssetEdits: $e\n');
 }
 ```
@@ -515,22 +639,16 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final key = key_example; // String | 
-final slug = slug_example; // String | 
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final String key = key_example; // String | 
+final String slug = slug_example; // String | 
 
 try {
-    final result = api_instance.getAssetInfo(id, key, slug);
-    print(result);
-} catch (e) {
+    final response = api.getAssetInfo(id, key, slug);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->getAssetInfo: $e\n');
 }
 ```
@@ -559,7 +677,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getAssetMetadata**
-> List<AssetMetadataResponseDto> getAssetMetadata(id)
+> BuiltList<AssetMetadataResponseDto> getAssetMetadata(id)
 
 Get asset metadata
 
@@ -576,20 +694,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.getAssetMetadata(id);
-    print(result);
-} catch (e) {
+    final response = api.getAssetMetadata(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->getAssetMetadata: $e\n');
 }
 ```
@@ -602,7 +714,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<AssetMetadataResponseDto>**](AssetMetadataResponseDto.md)
+[**BuiltList&lt;AssetMetadataResponseDto&gt;**](AssetMetadataResponseDto.md)
 
 ### Authorization
 
@@ -633,21 +745,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Asset ID
-final key = key_example; // String | Metadata key
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Asset ID
+final String key = key_example; // String | Metadata key
 
 try {
-    final result = api_instance.getAssetMetadataByKey(id, key);
-    print(result);
-} catch (e) {
+    final response = api.getAssetMetadataByKey(id, key);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->getAssetMetadataByKey: $e\n');
 }
 ```
@@ -675,7 +781,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getAssetOcr**
-> List<AssetOcrResponseDto> getAssetOcr(id)
+> BuiltList<AssetOcrResponseDto> getAssetOcr(id)
 
 Retrieve asset OCR data
 
@@ -692,20 +798,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.getAssetOcr(id);
-    print(result);
-} catch (e) {
+    final response = api.getAssetOcr(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->getAssetOcr: $e\n');
 }
 ```
@@ -718,7 +818,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<AssetOcrResponseDto>**](AssetOcrResponseDto.md)
+[**BuiltList&lt;AssetOcrResponseDto&gt;**](AssetOcrResponseDto.md)
 
 ### Authorization
 
@@ -749,22 +849,16 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final isFavorite = true; // bool | Filter by favorite status
-final isTrashed = true; // bool | Filter by trash status
-final visibility = ; // AssetVisibility | 
+final api = Openapi().getAssetsApi();
+final bool isFavorite = true; // bool | Filter by favorite status
+final bool isTrashed = true; // bool | Filter by trash status
+final AssetVisibility visibility = ; // AssetVisibility | 
 
 try {
-    final result = api_instance.getAssetStatistics(isFavorite, isTrashed, visibility);
-    print(result);
-} catch (e) {
+    final response = api.getAssetStatistics(isFavorite, isTrashed, visibility);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->getAssetStatistics: $e\n');
 }
 ```
@@ -792,8 +886,291 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **getFaceThumbnail**
+> Uint8List getFaceThumbnail(faceId, id)
+
+Face crop from its representative frame
+
+Crops the identity representative frame at its timestamp. WebP, cacheable per face until re-scan.
+
+### Example
+```dart
+import 'package:openapi/api.dart';
+// TODO Configure API key authorization: cookie
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKeyPrefix = 'Bearer';
+// TODO Configure API key authorization: api_key
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
+
+final api = Openapi().getAssetsApi();
+final String faceId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final response = api.getFaceThumbnail(faceId, id);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AssetsApi->getFaceThumbnail: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **faceId** | **String**|  | 
+ **id** | **String**|  | 
+
+### Return type
+
+[**Uint8List**](Uint8List.md)
+
+### Authorization
+
+[cookie](../README.md#cookie), [api_key](../README.md#api_key), [bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/octet-stream
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getMainPlaylist**
+> String getMainPlaylist(id, key, slug)
+
+Get HLS main playlist
+
+Returns an HLS main playlist with all available variants for the asset.
+
+### Example
+```dart
+import 'package:openapi/api.dart';
+// TODO Configure API key authorization: cookie
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKeyPrefix = 'Bearer';
+// TODO Configure API key authorization: api_key
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
+
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final String key = key_example; // String | 
+final String slug = slug_example; // String | 
+
+try {
+    final response = api.getMainPlaylist(id, key, slug);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AssetsApi->getMainPlaylist: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **key** | **String**|  | [optional] 
+ **slug** | **String**|  | [optional] 
+
+### Return type
+
+**String**
+
+### Authorization
+
+[cookie](../README.md#cookie), [api_key](../README.md#api_key), [bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/vnd.apple.mpegurl
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getMediaPlaylist**
+> String getMediaPlaylist(id, sessionId, variantIndex, key, slug, xImmichHlsPos)
+
+Get HLS media playlist
+
+Returns an HLS media playlist for one variant of the streaming session.
+
+### Example
+```dart
+import 'package:openapi/api.dart';
+// TODO Configure API key authorization: cookie
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKeyPrefix = 'Bearer';
+// TODO Configure API key authorization: api_key
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
+
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final String sessionId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final int variantIndex = 56; // int | 
+final String key = key_example; // String | 
+final String slug = slug_example; // String | 
+final num xImmichHlsPos = 8.14; // num | 
+
+try {
+    final response = api.getMediaPlaylist(id, sessionId, variantIndex, key, slug, xImmichHlsPos);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AssetsApi->getMediaPlaylist: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **sessionId** | **String**|  | 
+ **variantIndex** | **int**|  | 
+ **key** | **String**|  | [optional] 
+ **slug** | **String**|  | [optional] 
+ **xImmichHlsPos** | **num**|  | [optional] 
+
+### Return type
+
+**String**
+
+### Authorization
+
+[cookie](../README.md#cookie), [api_key](../README.md#api_key), [bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/vnd.apple.mpegurl
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getSegment**
+> Uint8List getSegment(filename, id, sessionId, variantIndex, key, slug, xImmichHlsMsn)
+
+Get HLS segment or init file
+
+Streams an HLS init segment (init.mp4) or media segment (seg_N.m4s).
+
+### Example
+```dart
+import 'package:openapi/api.dart';
+// TODO Configure API key authorization: cookie
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKeyPrefix = 'Bearer';
+// TODO Configure API key authorization: api_key
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
+
+final api = Openapi().getAssetsApi();
+final String filename = filename_example; // String | 
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final String sessionId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final int variantIndex = 56; // int | 
+final String key = key_example; // String | 
+final String slug = slug_example; // String | 
+final int xImmichHlsMsn = 56; // int | 
+
+try {
+    final response = api.getSegment(filename, id, sessionId, variantIndex, key, slug, xImmichHlsMsn);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AssetsApi->getSegment: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **filename** | **String**|  | 
+ **id** | **String**|  | 
+ **sessionId** | **String**|  | 
+ **variantIndex** | **int**|  | 
+ **key** | **String**|  | [optional] 
+ **slug** | **String**|  | [optional] 
+ **xImmichHlsMsn** | **int**|  | [optional] 
+
+### Return type
+
+[**Uint8List**](Uint8List.md)
+
+### Authorization
+
+[cookie](../README.md#cookie), [api_key](../README.md#api_key), [bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/octet-stream
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getVideoFaces**
+> VideoFacesResponseDto getVideoFaces(id)
+
+List faces discovered in a video
+
+Per-identity faces from the multi-frame video scan: first observed, sightings, and the latest run outcome for coverage display.
+
+### Example
+```dart
+import 'package:openapi/api.dart';
+// TODO Configure API key authorization: cookie
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKeyPrefix = 'Bearer';
+// TODO Configure API key authorization: api_key
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
+
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final response = api.getVideoFaces(id);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AssetsApi->getVideoFaces: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+
+### Return type
+
+[**VideoFacesResponseDto**](VideoFacesResponseDto.md)
+
+### Authorization
+
+[cookie](../README.md#cookie), [api_key](../README.md#api_key), [bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **playAssetVideo**
-> MultipartFile playAssetVideo(id, key, slug)
+> Uint8List playAssetVideo(id, key, slug)
 
 Play asset video
 
@@ -810,22 +1187,16 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final key = key_example; // String | 
-final slug = slug_example; // String | 
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final String key = key_example; // String | 
+final String slug = slug_example; // String | 
 
 try {
-    final result = api_instance.playAssetVideo(id, key, slug);
-    print(result);
-} catch (e) {
+    final response = api.playAssetVideo(id, key, slug);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->playAssetVideo: $e\n');
 }
 ```
@@ -840,7 +1211,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**MultipartFile**](MultipartFile.md)
+[**Uint8List**](Uint8List.md)
 
 ### Authorization
 
@@ -871,19 +1242,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    api_instance.removeAssetEdits(id);
-} catch (e) {
+    api.removeAssetEdits(id);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->removeAssetEdits: $e\n');
 }
 ```
@@ -927,20 +1292,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final externalOcrFailureDto = ExternalOcrFailureDto(); // ExternalOcrFailureDto | 
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final ExternalOcrFailureDto externalOcrFailureDto = ; // ExternalOcrFailureDto | 
 
 try {
-    api_instance.reportFailure(id, externalOcrFailureDto);
-} catch (e) {
+    api.reportFailure(id, externalOcrFailureDto);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->reportFailure: $e\n');
 }
 ```
@@ -985,19 +1344,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final assetJobsDto = AssetJobsDto(); // AssetJobsDto | 
+final api = Openapi().getAssetsApi();
+final AssetJobsDto assetJobsDto = ; // AssetJobsDto | 
 
 try {
-    api_instance.runAssetJobs(assetJobsDto);
-} catch (e) {
+    api.runAssetJobs(assetJobsDto);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->runAssetJobs: $e\n');
 }
 ```
@@ -1041,21 +1394,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final updateAssetDto = UpdateAssetDto(); // UpdateAssetDto | 
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final UpdateAssetDto updateAssetDto = ; // UpdateAssetDto | 
 
 try {
-    final result = api_instance.updateAsset(id, updateAssetDto);
-    print(result);
-} catch (e) {
+    final response = api.updateAsset(id, updateAssetDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->updateAsset: $e\n');
 }
 ```
@@ -1083,7 +1430,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **updateAssetMetadata**
-> List<AssetMetadataResponseDto> updateAssetMetadata(id, assetMetadataUpsertDto)
+> BuiltList<AssetMetadataResponseDto> updateAssetMetadata(id, assetMetadataUpsertDto)
 
 Update asset metadata
 
@@ -1100,21 +1447,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final assetMetadataUpsertDto = AssetMetadataUpsertDto(); // AssetMetadataUpsertDto | 
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final AssetMetadataUpsertDto assetMetadataUpsertDto = ; // AssetMetadataUpsertDto | 
 
 try {
-    final result = api_instance.updateAssetMetadata(id, assetMetadataUpsertDto);
-    print(result);
-} catch (e) {
+    final response = api.updateAssetMetadata(id, assetMetadataUpsertDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->updateAssetMetadata: $e\n');
 }
 ```
@@ -1128,7 +1469,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<AssetMetadataResponseDto>**](AssetMetadataResponseDto.md)
+[**BuiltList&lt;AssetMetadataResponseDto&gt;**](AssetMetadataResponseDto.md)
 
 ### Authorization
 
@@ -1159,19 +1500,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final assetBulkUpdateDto = AssetBulkUpdateDto(); // AssetBulkUpdateDto | 
+final api = Openapi().getAssetsApi();
+final AssetBulkUpdateDto assetBulkUpdateDto = ; // AssetBulkUpdateDto | 
 
 try {
-    api_instance.updateAssets(assetBulkUpdateDto);
-} catch (e) {
+    api.updateAssets(assetBulkUpdateDto);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->updateAssets: $e\n');
 }
 ```
@@ -1198,7 +1533,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **updateBulkAssetMetadata**
-> List<AssetMetadataBulkResponseDto> updateBulkAssetMetadata(assetMetadataBulkUpsertDto)
+> BuiltList<AssetMetadataBulkResponseDto> updateBulkAssetMetadata(assetMetadataBulkUpsertDto)
 
 Upsert asset metadata
 
@@ -1215,20 +1550,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final assetMetadataBulkUpsertDto = AssetMetadataBulkUpsertDto(); // AssetMetadataBulkUpsertDto | 
+final api = Openapi().getAssetsApi();
+final AssetMetadataBulkUpsertDto assetMetadataBulkUpsertDto = ; // AssetMetadataBulkUpsertDto | 
 
 try {
-    final result = api_instance.updateBulkAssetMetadata(assetMetadataBulkUpsertDto);
-    print(result);
-} catch (e) {
+    final response = api.updateBulkAssetMetadata(assetMetadataBulkUpsertDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->updateBulkAssetMetadata: $e\n');
 }
 ```
@@ -1241,7 +1570,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<AssetMetadataBulkResponseDto>**](AssetMetadataBulkResponseDto.md)
+[**BuiltList&lt;AssetMetadataBulkResponseDto&gt;**](AssetMetadataBulkResponseDto.md)
 
 ### Authorization
 
@@ -1255,7 +1584,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **uploadAsset**
-> AssetMediaResponseDto uploadAsset(assetData, duration, fileCreatedAt, fileModifiedAt, key, slug, xImmichChecksum, filename, isFavorite, livePhotoVideoId, metadata, sidecarData, visibility)
+> AssetMediaResponseDto uploadAsset(assetData, fileCreatedAt, fileModifiedAt, key, slug, xImmichChecksum, duration, filename, isFavorite, livePhotoVideoId, metadata, sidecarData, visibility)
 
 Upload asset
 
@@ -1272,32 +1601,26 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final assetData = BINARY_DATA_HERE; // MultipartFile | Asset file data
-final duration = 56; // int | Duration in milliseconds (for videos)
-final fileCreatedAt = 2013-10-20T19:20:30+01:00; // DateTime | File creation date
-final fileModifiedAt = 2013-10-20T19:20:30+01:00; // DateTime | File modification date
-final key = key_example; // String | 
-final slug = slug_example; // String | 
-final xImmichChecksum = xImmichChecksum_example; // String | sha1 checksum that can be used for duplicate detection before the file is uploaded
-final filename = filename_example; // String | Filename
-final isFavorite = true; // bool | Mark as favorite
-final livePhotoVideoId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Live photo video ID
-final metadata = []; // List<AssetMetadataUpsertItemDto> | Asset metadata items
-final sidecarData = BINARY_DATA_HERE; // MultipartFile | Sidecar file data
-final visibility = ; // AssetVisibility | 
+final api = Openapi().getAssetsApi();
+final MultipartFile assetData = BINARY_DATA_HERE; // MultipartFile | Asset file data
+final DateTime fileCreatedAt = 2013-10-20T19:20:30+01:00; // DateTime | File creation date
+final DateTime fileModifiedAt = 2013-10-20T19:20:30+01:00; // DateTime | File modification date
+final String key = key_example; // String | 
+final String slug = slug_example; // String | 
+final String xImmichChecksum = xImmichChecksum_example; // String | sha1 checksum that can be used for duplicate detection before the file is uploaded
+final int duration = 56; // int | Duration in milliseconds (for videos)
+final String filename = filename_example; // String | Filename
+final bool isFavorite = true; // bool | Mark as favorite
+final String livePhotoVideoId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Live photo video ID
+final BuiltList<AssetMetadataUpsertItemDto> metadata = ; // BuiltList<AssetMetadataUpsertItemDto> | Asset metadata items
+final MultipartFile sidecarData = BINARY_DATA_HERE; // MultipartFile | Sidecar file data
+final AssetVisibility visibility = ; // AssetVisibility | 
 
 try {
-    final result = api_instance.uploadAsset(assetData, duration, fileCreatedAt, fileModifiedAt, key, slug, xImmichChecksum, filename, isFavorite, livePhotoVideoId, metadata, sidecarData, visibility);
-    print(result);
-} catch (e) {
+    final response = api.uploadAsset(assetData, fileCreatedAt, fileModifiedAt, key, slug, xImmichChecksum, duration, filename, isFavorite, livePhotoVideoId, metadata, sidecarData, visibility);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->uploadAsset: $e\n');
 }
 ```
@@ -1307,16 +1630,16 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **assetData** | **MultipartFile**| Asset file data | 
- **duration** | **int**| Duration in milliseconds (for videos) | 
  **fileCreatedAt** | **DateTime**| File creation date | 
  **fileModifiedAt** | **DateTime**| File modification date | 
  **key** | **String**|  | [optional] 
  **slug** | **String**|  | [optional] 
  **xImmichChecksum** | **String**| sha1 checksum that can be used for duplicate detection before the file is uploaded | [optional] 
+ **duration** | **int**| Duration in milliseconds (for videos) | [optional] 
  **filename** | **String**| Filename | [optional] 
  **isFavorite** | **bool**| Mark as favorite | [optional] 
  **livePhotoVideoId** | **String**| Live photo video ID | [optional] 
- **metadata** | [**List<AssetMetadataUpsertItemDto>**](AssetMetadataUpsertItemDto.md)| Asset metadata items | [optional] 
+ **metadata** | [**BuiltList&lt;AssetMetadataUpsertItemDto&gt;**](AssetMetadataUpsertItemDto.md)| Asset metadata items | [optional] 
  **sidecarData** | **MultipartFile**| Sidecar file data | [optional] 
  **visibility** | [**AssetVisibility**](AssetVisibility.md)|  | [optional] 
 
@@ -1336,7 +1659,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **viewAsset**
-> MultipartFile viewAsset(id, edited, key, size, slug)
+> Uint8List viewAsset(id, edited, key, size, slug)
 
 View asset thumbnail
 
@@ -1353,24 +1676,18 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final edited = true; // bool | Return edited asset if available
-final key = key_example; // String | 
-final size = ; // AssetMediaSize | 
-final slug = slug_example; // String | 
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final bool edited = true; // bool | Return edited asset if available
+final String key = key_example; // String | 
+final AssetMediaSize size = ; // AssetMediaSize | 
+final String slug = slug_example; // String | 
 
 try {
-    final result = api_instance.viewAsset(id, edited, key, size, slug);
-    print(result);
-} catch (e) {
+    final response = api.viewAsset(id, edited, key, size, slug);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->viewAsset: $e\n');
 }
 ```
@@ -1380,14 +1697,14 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **String**|  | 
- **edited** | **bool**| Return edited asset if available | [optional] [default to false]
+ **edited** | **bool**| Return edited asset if available | [optional] 
  **key** | **String**|  | [optional] 
  **size** | [**AssetMediaSize**](.md)|  | [optional] 
  **slug** | **String**|  | [optional] 
 
 ### Return type
 
-[**MultipartFile**](MultipartFile.md)
+[**Uint8List**](Uint8List.md)
 
 ### Authorization
 
@@ -1418,21 +1735,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AssetsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final externalOcrResultDto = ExternalOcrResultDto(); // ExternalOcrResultDto | 
+final api = Openapi().getAssetsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final ExternalOcrResultDto externalOcrResultDto = ; // ExternalOcrResultDto | 
 
 try {
-    final result = api_instance.writeResult(id, externalOcrResultDto);
-    print(result);
-} catch (e) {
+    final response = api.writeResult(id, externalOcrResultDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AssetsApi->writeResult: $e\n');
 }
 ```

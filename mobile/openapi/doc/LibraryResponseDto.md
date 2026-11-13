@@ -10,9 +10,9 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **assetCount** | **int** | Number of assets | 
 **createdAt** | [**DateTime**](DateTime.md) | Creation date | 
-**exclusionPatterns** | **List<String>** | Exclusion patterns | [default to const []]
+**exclusionPatterns** | **BuiltList&lt;String&gt;** | Exclusion patterns | 
 **id** | **String** | Library ID | 
-**importPaths** | **List<String>** | Import paths | [default to const []]
+**importPaths** | **BuiltList&lt;String&gt;** | Import paths | 
 **name** | **String** | Library name | 
 **ownerId** | **String** | Owner user ID | 
 **refreshedAt** | [**DateTime**](DateTime.md) | Last refresh date | 

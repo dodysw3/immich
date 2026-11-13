@@ -21,7 +21,7 @@ Method | HTTP request | Description
 
 
 # **addSharedLinkAssets**
-> List<AssetIdsResponseDto> addSharedLinkAssets(id, assetIdsDto)
+> BuiltList<AssetIdsResponseDto> addSharedLinkAssets(id, assetIdsDto)
 
 Add assets to a shared link
 
@@ -38,21 +38,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SharedLinksApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final assetIdsDto = AssetIdsDto(); // AssetIdsDto | 
+final api = Openapi().getSharedLinksApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final AssetIdsDto assetIdsDto = ; // AssetIdsDto | 
 
 try {
-    final result = api_instance.addSharedLinkAssets(id, assetIdsDto);
-    print(result);
-} catch (e) {
+    final response = api.addSharedLinkAssets(id, assetIdsDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling SharedLinksApi->addSharedLinkAssets: $e\n');
 }
 ```
@@ -66,7 +60,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<AssetIdsResponseDto>**](AssetIdsResponseDto.md)
+[**BuiltList&lt;AssetIdsResponseDto&gt;**](AssetIdsResponseDto.md)
 
 ### Authorization
 
@@ -97,20 +91,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SharedLinksApi();
-final sharedLinkCreateDto = SharedLinkCreateDto(); // SharedLinkCreateDto | 
+final api = Openapi().getSharedLinksApi();
+final SharedLinkCreateDto sharedLinkCreateDto = ; // SharedLinkCreateDto | 
 
 try {
-    final result = api_instance.createSharedLink(sharedLinkCreateDto);
-    print(result);
-} catch (e) {
+    final response = api.createSharedLink(sharedLinkCreateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling SharedLinksApi->createSharedLink: $e\n');
 }
 ```
@@ -137,7 +125,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getAllSharedLinks**
-> List<SharedLinkResponseDto> getAllSharedLinks(albumId, id)
+> BuiltList<SharedLinkResponseDto> getAllSharedLinks(albumId, id)
 
 Retrieve all shared links
 
@@ -154,21 +142,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SharedLinksApi();
-final albumId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Filter by album ID
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Filter by shared link ID
+final api = Openapi().getSharedLinksApi();
+final String albumId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Filter by album ID
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Filter by shared link ID
 
 try {
-    final result = api_instance.getAllSharedLinks(albumId, id);
-    print(result);
-} catch (e) {
+    final response = api.getAllSharedLinks(albumId, id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling SharedLinksApi->getAllSharedLinks: $e\n');
 }
 ```
@@ -182,7 +164,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<SharedLinkResponseDto>**](SharedLinkResponseDto.md)
+[**BuiltList&lt;SharedLinkResponseDto&gt;**](SharedLinkResponseDto.md)
 
 ### Authorization
 
@@ -213,21 +195,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SharedLinksApi();
-final key = key_example; // String | 
-final slug = slug_example; // String | 
+final api = Openapi().getSharedLinksApi();
+final String key = key_example; // String | 
+final String slug = slug_example; // String | 
 
 try {
-    final result = api_instance.getMySharedLink(key, slug);
-    print(result);
-} catch (e) {
+    final response = api.getMySharedLink(key, slug);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling SharedLinksApi->getMySharedLink: $e\n');
 }
 ```
@@ -272,20 +248,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SharedLinksApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getSharedLinksApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.getSharedLinkById(id);
-    print(result);
-} catch (e) {
+    final response = api.getSharedLinkById(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling SharedLinksApi->getSharedLinkById: $e\n');
 }
 ```
@@ -329,19 +299,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SharedLinksApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getSharedLinksApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    api_instance.removeSharedLink(id);
-} catch (e) {
+    api.removeSharedLink(id);
+} on DioException catch (e) {
     print('Exception when calling SharedLinksApi->removeSharedLink: $e\n');
 }
 ```
@@ -368,7 +332,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **removeSharedLinkAssets**
-> List<AssetIdsResponseDto> removeSharedLinkAssets(id, assetIdsDto)
+> BuiltList<AssetIdsResponseDto> removeSharedLinkAssets(id, assetIdsDto)
 
 Remove assets from a shared link
 
@@ -385,21 +349,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SharedLinksApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final assetIdsDto = AssetIdsDto(); // AssetIdsDto | 
+final api = Openapi().getSharedLinksApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final AssetIdsDto assetIdsDto = ; // AssetIdsDto | 
 
 try {
-    final result = api_instance.removeSharedLinkAssets(id, assetIdsDto);
-    print(result);
-} catch (e) {
+    final response = api.removeSharedLinkAssets(id, assetIdsDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling SharedLinksApi->removeSharedLinkAssets: $e\n');
 }
 ```
@@ -413,7 +371,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<AssetIdsResponseDto>**](AssetIdsResponseDto.md)
+[**BuiltList&lt;AssetIdsResponseDto&gt;**](AssetIdsResponseDto.md)
 
 ### Authorization
 
@@ -444,22 +402,16 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SharedLinksApi();
-final sharedLinkLoginDto = SharedLinkLoginDto(); // SharedLinkLoginDto | 
-final key = key_example; // String | 
-final slug = slug_example; // String | 
+final api = Openapi().getSharedLinksApi();
+final SharedLinkLoginDto sharedLinkLoginDto = ; // SharedLinkLoginDto | 
+final String key = key_example; // String | 
+final String slug = slug_example; // String | 
 
 try {
-    final result = api_instance.sharedLinkLogin(sharedLinkLoginDto, key, slug);
-    print(result);
-} catch (e) {
+    final response = api.sharedLinkLogin(sharedLinkLoginDto, key, slug);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling SharedLinksApi->sharedLinkLogin: $e\n');
 }
 ```
@@ -505,21 +457,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SharedLinksApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final sharedLinkEditDto = SharedLinkEditDto(); // SharedLinkEditDto | 
+final api = Openapi().getSharedLinksApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final SharedLinkEditDto sharedLinkEditDto = ; // SharedLinkEditDto | 
 
 try {
-    final result = api_instance.updateSharedLink(id, sharedLinkEditDto);
-    print(result);
-} catch (e) {
+    final response = api.updateSharedLink(id, sharedLinkEditDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling SharedLinksApi->updateSharedLink: $e\n');
 }
 ```

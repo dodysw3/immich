@@ -67,7 +67,8 @@ export type SearchFilter = {
   query: string;
   ocr?: string;
   ai?: string;
-  queryType: 'smart' | 'metadata' | 'description' | 'fullPath' | 'ocr' | 'ai';
+  transcription?: string;
+  queryType: 'smart' | 'metadata' | 'description' | 'fullPath' | 'ocr' | 'ai' | 'transcription';
   personIds: SvelteSet<string>;
   tagIds: SvelteSet<string> | null;
   location: SearchLocationFilter;

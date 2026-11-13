@@ -8,8 +8,8 @@ import 'package:openapi/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**assetIds** | **List<String>** | Asset IDs to associate with memory | [optional] [default to const []]
-**data** | [**OnThisDayDto**](OnThisDayDto.md) |  | 
+**assetIds** | **BuiltList&lt;String&gt;** | Asset IDs to associate with memory | [optional] 
+**data** | [**MemoryDataDto**](MemoryDataDto.md) |  | 
 **hideAt** | [**DateTime**](DateTime.md) | Date when memory should be hidden | [optional] 
 **isSaved** | **bool** | Is memory saved | [optional] 
 **memoryAt** | [**DateTime**](DateTime.md) | Memory date | 

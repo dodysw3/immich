@@ -32,19 +32,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = TrashApi();
+final api = Openapi().getTrashApi();
 
 try {
-    final result = api_instance.emptyTrash();
-    print(result);
-} catch (e) {
+    final response = api.emptyTrash();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling TrashApi->emptyTrash: $e\n');
 }
 ```
@@ -85,20 +79,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = TrashApi();
-final bulkIdsDto = BulkIdsDto(); // BulkIdsDto | 
+final api = Openapi().getTrashApi();
+final BulkIdsDto bulkIdsDto = ; // BulkIdsDto | 
 
 try {
-    final result = api_instance.restoreAssets(bulkIdsDto);
-    print(result);
-} catch (e) {
+    final response = api.restoreAssets(bulkIdsDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling TrashApi->restoreAssets: $e\n');
 }
 ```
@@ -142,19 +130,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = TrashApi();
+final api = Openapi().getTrashApi();
 
 try {
-    final result = api_instance.restoreTrash();
-    print(result);
-} catch (e) {
+    final response = api.restoreTrash();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling TrashApi->restoreTrash: $e\n');
 }
 ```

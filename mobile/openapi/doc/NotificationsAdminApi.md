@@ -32,20 +32,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = NotificationsAdminApi();
-final notificationCreateDto = NotificationCreateDto(); // NotificationCreateDto | 
+final api = Openapi().getNotificationsAdminApi();
+final NotificationCreateDto notificationCreateDto = ; // NotificationCreateDto | 
 
 try {
-    final result = api_instance.createNotification(notificationCreateDto);
-    print(result);
-} catch (e) {
+    final response = api.createNotification(notificationCreateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling NotificationsAdminApi->createNotification: $e\n');
 }
 ```
@@ -89,21 +83,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = NotificationsAdminApi();
-final name = name_example; // String | 
-final templateDto = TemplateDto(); // TemplateDto | 
+final api = Openapi().getNotificationsAdminApi();
+final String name = name_example; // String | 
+final TemplateDto templateDto = ; // TemplateDto | 
 
 try {
-    final result = api_instance.getNotificationTemplateAdmin(name, templateDto);
-    print(result);
-} catch (e) {
+    final response = api.getNotificationTemplateAdmin(name, templateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling NotificationsAdminApi->getNotificationTemplateAdmin: $e\n');
 }
 ```
@@ -131,7 +119,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **sendTestEmailAdmin**
-> TestEmailResponseDto sendTestEmailAdmin(systemConfigSmtpDto)
+> TestEmailResponseDto sendTestEmailAdmin(adminConfigSmtpDto)
 
 Send test email
 
@@ -148,20 +136,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = NotificationsAdminApi();
-final systemConfigSmtpDto = SystemConfigSmtpDto(); // SystemConfigSmtpDto | 
+final api = Openapi().getNotificationsAdminApi();
+final AdminConfigSmtpDto adminConfigSmtpDto = ; // AdminConfigSmtpDto | 
 
 try {
-    final result = api_instance.sendTestEmailAdmin(systemConfigSmtpDto);
-    print(result);
-} catch (e) {
+    final response = api.sendTestEmailAdmin(adminConfigSmtpDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling NotificationsAdminApi->sendTestEmailAdmin: $e\n');
 }
 ```
@@ -170,7 +152,7 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **systemConfigSmtpDto** | [**SystemConfigSmtpDto**](SystemConfigSmtpDto.md)|  | 
+ **adminConfigSmtpDto** | [**AdminConfigSmtpDto**](AdminConfigSmtpDto.md)|  | 
 
 ### Return type
 

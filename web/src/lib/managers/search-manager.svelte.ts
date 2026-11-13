@@ -7,7 +7,7 @@ import type { DateTime } from 'luxon';
 import { SvelteSet } from 'svelte/reactivity';
 import { goto } from '$app/navigation';
 
-type SearchQuery = MetadataSearchDto & SmartSearchDto & { ai?: string };
+type SearchQuery = MetadataSearchDto & SmartSearchDto & { ai?: string; transcription?: string };
 
 const QUERY_TYPE_STORAGE_KEY = 'searchQueryType';
 
@@ -64,10 +64,16 @@ class SearchManager {
       queryType = QueryType.AI;
     }
 
+    if (searchQuery.transcription) {
+      query = searchQuery.transcription;
+      queryType = QueryType.TRANSCRIPTION;
+    }
+
     return {
       query,
       ocr: searchQuery.ocr,
       ai: 'ai' in searchQuery ? searchQuery.ai : undefined,
+      transcription: searchQuery.transcription,
       queryType,
       withStacked: searchQuery.withStacked,
       queryAssetId: 'queryAssetId' in searchQuery ? searchQuery.queryAssetId : undefined,
@@ -124,6 +130,7 @@ class SearchManager {
       queryAssetId: this.filter.queryAssetId || undefined,
       ocr: this.filter.queryType === 'ocr' ? query : undefined,
       ai: this.filter.queryType === 'ai' ? query : undefined,
+      transcription: this.filter.queryType === 'transcription' ? query : undefined,
       originalFileName: this.filter.queryType === 'metadata' ? query : undefined,
       description: this.filter.queryType === 'description' ? query : undefined,
       originalPath: this.filter.queryType === 'fullPath' ? this.filter.query.trim() || undefined : undefined,

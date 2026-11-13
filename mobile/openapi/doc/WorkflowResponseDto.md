@@ -12,8 +12,9 @@ Name | Type | Description | Notes
 **description** | **String** | Workflow description | 
 **enabled** | **bool** | Workflow enabled | 
 **id** | **String** | Workflow ID | 
+**logging** | **bool** | Workflow logs run results | 
 **name** | **String** | Workflow name | 
-**steps** | [**List<WorkflowStepDto>**](WorkflowStepDto.md) | Workflow steps | [default to const []]
+**steps** | [**BuiltList&lt;WorkflowStepDto&gt;**](WorkflowStepDto.md) | Workflow steps | 
 **trigger** | [**WorkflowTrigger**](WorkflowTrigger.md) |  | 
 **updatedAt** | **String** | Update date | 
 

@@ -8,10 +8,10 @@ import 'package:openapi/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**image** | **List<String>** | Supported image MIME types | [default to const []]
-**pdf** | **List<String>** | Supported PDF MIME types | [default to const []]
-**sidecar** | **List<String>** | Supported sidecar MIME types | [default to const []]
-**video** | **List<String>** | Supported video MIME types | [default to const []]
+**image** | **BuiltList&lt;String&gt;** | Supported image MIME types | 
+**pdf** | **BuiltList&lt;String&gt;** | Supported PDF MIME types | 
+**sidecar** | **BuiltList&lt;String&gt;** | Supported sidecar MIME types | 
+**video** | **BuiltList&lt;String&gt;** | Supported video MIME types | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

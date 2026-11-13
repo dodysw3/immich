@@ -8,12 +8,14 @@ import 'package:openapi/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**albumIds** | **List<String>** | Filter by album IDs | [optional] [default to const []]
+**albumIds** | **BuiltList&lt;String&gt;** | Filter by album IDs | [optional] 
 **city** | **String** | Filter by city name | [optional] 
 **country** | **String** | Filter by country name | [optional] 
 **createdAfter** | [**DateTime**](DateTime.md) | Filter by creation date (after) | [optional] 
 **createdBefore** | [**DateTime**](DateTime.md) | Filter by creation date (before) | [optional] 
 **description** | **String** | Filter by description text | [optional] 
+**filter** | [**SearchFilter**](SearchFilter.md) |  | [optional] 
+**hasAiInterpretation** | **bool** | Filter by presence of a completed AI image interpretation | [optional] 
 **isEncoded** | **bool** | Filter by encoded status | [optional] 
 **isFavorite** | **bool** | Filter by favorite status | [optional] 
 **isMotion** | **bool** | Filter by motion photo status | [optional] 
@@ -24,10 +26,10 @@ Name | Type | Description | Notes
 **make** | **String** | Filter by camera make | [optional] 
 **model** | **String** | Filter by camera model | [optional] 
 **ocr** | **String** | Filter by OCR text content | [optional] 
-**personIds** | **List<String>** | Filter by person IDs | [optional] [default to const []]
+**personIds** | **BuiltList&lt;String&gt;** | Filter by person IDs | [optional] 
 **rating** | **int** | Filter by rating [1-5], or null for unrated | [optional] 
 **state** | **String** | Filter by state/province name | [optional] 
-**tagIds** | **List<String>** | Filter by tag IDs | [optional] [default to const []]
+**tagIds** | **BuiltList&lt;String&gt;** | Filter by tag IDs | [optional] 
 **takenAfter** | [**DateTime**](DateTime.md) | Filter by taken date (after) | [optional] 
 **takenBefore** | [**DateTime**](DateTime.md) | Filter by taken date (before) | [optional] 
 **trashedAfter** | [**DateTime**](DateTime.md) | Filter by trash date (after) | [optional] 

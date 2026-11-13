@@ -9,7 +9,7 @@ import 'package:openapi/api.dart';
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **assetId** | **String** | Asset ID these edits belong to | 
-**edits** | [**List<AssetEditActionItemResponseDto>**](AssetEditActionItemResponseDto.md) | List of edit actions applied to the asset | [default to const []]
+**edits** | [**BuiltList&lt;AssetEditActionItemResponseDto&gt;**](AssetEditActionItemResponseDto.md) | List of edit actions applied to the asset | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

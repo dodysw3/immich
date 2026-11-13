@@ -10,6 +10,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **duration** | **int** | Memory duration in seconds | [optional] 
 **enabled** | **bool** | Whether memories are enabled | [optional] 
+**sidebarWeb** | **bool** | Whether memories appear in web sidebar | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

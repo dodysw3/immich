@@ -6,7 +6,6 @@ import { AppController } from 'src/controllers/app.controller.js';
 import { AssetFilesController } from 'src/controllers/asset-file.controller.js';
 import { AssetMediaController } from 'src/controllers/asset-media.controller.js';
 import { AssetController } from 'src/controllers/asset.controller.js';
-import { VideoFaceController } from 'src/controllers/video-face.controller.js';
 import { AuthAdminController } from 'src/controllers/auth-admin.controller.js';
 import { AuthController } from 'src/controllers/auth.controller.js';
 import { ClusterGroupController } from 'src/controllers/cluster-group.controller.js';
@@ -43,9 +42,12 @@ import { SystemConfigController } from 'src/controllers/system-config.controller
 import { SystemMetadataController } from 'src/controllers/system-metadata.controller.js';
 import { TagController } from 'src/controllers/tag.controller.js';
 import { TimelineController } from 'src/controllers/timeline.controller.js';
+import { TranscriptionAdminController } from 'src/controllers/transcription-admin.controller.js';
+import { TranscriptionSearchController } from 'src/controllers/transcription-search.controller.js';
 import { TrashController } from 'src/controllers/trash.controller.js';
 import { UserAdminController } from 'src/controllers/user-admin.controller.js';
 import { UserController } from 'src/controllers/user.controller.js';
+import { VideoFaceController } from 'src/controllers/video-face.controller.js';
 import { VideoStreamController } from 'src/controllers/video-stream.controller.js';
 import { ViewController } from 'src/controllers/view.controller.js';
 import { WorkflowController } from 'src/controllers/workflow.controller.js';
@@ -93,6 +95,8 @@ export const controllers = [
   StackController,
   SyncController,
   SystemConfigController,
+  TranscriptionAdminController,
+  TranscriptionSearchController,
   SystemMetadataController,
   TagController,
   TimelineController,

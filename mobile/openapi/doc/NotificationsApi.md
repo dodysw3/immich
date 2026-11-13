@@ -35,19 +35,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = NotificationsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getNotificationsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    api_instance.deleteNotification(id);
-} catch (e) {
+    api.deleteNotification(id);
+} on DioException catch (e) {
     print('Exception when calling NotificationsApi->deleteNotification: $e\n');
 }
 ```
@@ -91,19 +85,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = NotificationsApi();
-final notificationDeleteAllDto = NotificationDeleteAllDto(); // NotificationDeleteAllDto | 
+final api = Openapi().getNotificationsApi();
+final NotificationDeleteAllDto notificationDeleteAllDto = ; // NotificationDeleteAllDto | 
 
 try {
-    api_instance.deleteNotifications(notificationDeleteAllDto);
-} catch (e) {
+    api.deleteNotifications(notificationDeleteAllDto);
+} on DioException catch (e) {
     print('Exception when calling NotificationsApi->deleteNotifications: $e\n');
 }
 ```
@@ -147,20 +135,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = NotificationsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getNotificationsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.getNotification(id);
-    print(result);
-} catch (e) {
+    final response = api.getNotification(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling NotificationsApi->getNotification: $e\n');
 }
 ```
@@ -187,7 +169,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getNotifications**
-> List<NotificationDto> getNotifications(id, level, type, unread)
+> BuiltList<NotificationDto> getNotifications(id, level, type, unread)
 
 Retrieve notifications
 
@@ -204,23 +186,17 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = NotificationsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Filter by notification ID
-final level = ; // NotificationLevel | 
-final type = ; // NotificationType | 
-final unread = true; // bool | Filter by unread status
+final api = Openapi().getNotificationsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Filter by notification ID
+final NotificationLevel level = ; // NotificationLevel | 
+final NotificationType type = ; // NotificationType | 
+final bool unread = true; // bool | Filter by unread status
 
 try {
-    final result = api_instance.getNotifications(id, level, type, unread);
-    print(result);
-} catch (e) {
+    final response = api.getNotifications(id, level, type, unread);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling NotificationsApi->getNotifications: $e\n');
 }
 ```
@@ -236,7 +212,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<NotificationDto>**](NotificationDto.md)
+[**BuiltList&lt;NotificationDto&gt;**](NotificationDto.md)
 
 ### Authorization
 
@@ -267,21 +243,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = NotificationsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final notificationUpdateDto = NotificationUpdateDto(); // NotificationUpdateDto | 
+final api = Openapi().getNotificationsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final NotificationUpdateDto notificationUpdateDto = ; // NotificationUpdateDto | 
 
 try {
-    final result = api_instance.updateNotification(id, notificationUpdateDto);
-    print(result);
-} catch (e) {
+    final response = api.updateNotification(id, notificationUpdateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling NotificationsApi->updateNotification: $e\n');
 }
 ```
@@ -326,19 +296,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = NotificationsApi();
-final notificationUpdateAllDto = NotificationUpdateAllDto(); // NotificationUpdateAllDto | 
+final api = Openapi().getNotificationsApi();
+final NotificationUpdateAllDto notificationUpdateAllDto = ; // NotificationUpdateAllDto | 
 
 try {
-    api_instance.updateNotifications(notificationUpdateAllDto);
-} catch (e) {
+    api.updateNotifications(notificationUpdateAllDto);
+} on DioException catch (e) {
     print('Exception when calling NotificationsApi->updateNotifications: $e\n');
 }
 ```

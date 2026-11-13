@@ -34,20 +34,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = QueuesApi();
-final name = ; // QueueName | 
-final queueDeleteDto = QueueDeleteDto(); // QueueDeleteDto | 
+final api = Openapi().getQueuesApi();
+final QueueName name = ; // QueueName | 
+final QueueDeleteDto queueDeleteDto = ; // QueueDeleteDto | 
 
 try {
-    api_instance.emptyQueue(name, queueDeleteDto);
-} catch (e) {
+    api.emptyQueue(name, queueDeleteDto);
+} on DioException catch (e) {
     print('Exception when calling QueuesApi->emptyQueue: $e\n');
 }
 ```
@@ -92,20 +86,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = QueuesApi();
-final name = ; // QueueName | 
+final api = Openapi().getQueuesApi();
+final QueueName name = ; // QueueName | 
 
 try {
-    final result = api_instance.getQueue(name);
-    print(result);
-} catch (e) {
+    final response = api.getQueue(name);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling QueuesApi->getQueue: $e\n');
 }
 ```
@@ -132,7 +120,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getQueueJobs**
-> List<QueueJobResponseDto> getQueueJobs(name, status)
+> BuiltList<QueueJobResponseDto> getQueueJobs(name, status)
 
 Retrieve queue jobs
 
@@ -149,21 +137,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = QueuesApi();
-final name = ; // QueueName | 
-final status = []; // List<QueueJobStatus> | Filter jobs by status
+final api = Openapi().getQueuesApi();
+final QueueName name = ; // QueueName | 
+final BuiltList<QueueJobStatus> status = ; // BuiltList<QueueJobStatus> | Filter jobs by status
 
 try {
-    final result = api_instance.getQueueJobs(name, status);
-    print(result);
-} catch (e) {
+    final response = api.getQueueJobs(name, status);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling QueuesApi->getQueueJobs: $e\n');
 }
 ```
@@ -173,11 +155,11 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **name** | [**QueueName**](.md)|  | 
- **status** | [**List<QueueJobStatus>**](QueueJobStatus.md)| Filter jobs by status | [optional] [default to const []]
+ **status** | [**BuiltList&lt;QueueJobStatus&gt;**](QueueJobStatus.md)| Filter jobs by status | [optional] 
 
 ### Return type
 
-[**List<QueueJobResponseDto>**](QueueJobResponseDto.md)
+[**BuiltList&lt;QueueJobResponseDto&gt;**](QueueJobResponseDto.md)
 
 ### Authorization
 
@@ -191,7 +173,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getQueues**
-> List<QueueResponseDto> getQueues()
+> BuiltList<QueueResponseDto> getQueues()
 
 List all queues
 
@@ -208,19 +190,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = QueuesApi();
+final api = Openapi().getQueuesApi();
 
 try {
-    final result = api_instance.getQueues();
-    print(result);
-} catch (e) {
+    final response = api.getQueues();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling QueuesApi->getQueues: $e\n');
 }
 ```
@@ -230,7 +206,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**List<QueueResponseDto>**](QueueResponseDto.md)
+[**BuiltList&lt;QueueResponseDto&gt;**](QueueResponseDto.md)
 
 ### Authorization
 
@@ -261,21 +237,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = QueuesApi();
-final name = ; // QueueName | 
-final queueUpdateDto = QueueUpdateDto(); // QueueUpdateDto | 
+final api = Openapi().getQueuesApi();
+final QueueName name = ; // QueueName | 
+final QueueUpdateDto queueUpdateDto = ; // QueueUpdateDto | 
 
 try {
-    final result = api_instance.updateQueue(name, queueUpdateDto);
-    print(result);
-} catch (e) {
+    final response = api.updateQueue(name, queueUpdateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling QueuesApi->updateQueue: $e\n');
 }
 ```

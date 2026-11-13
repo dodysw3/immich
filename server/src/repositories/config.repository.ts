@@ -173,6 +173,13 @@ export interface EnvData {
     minScore: number;
   };
 
+  // Speech-transcript search lane (pure SQL over transcript passages); the flag
+  // gates the public search mode so the rollout can enable it separately from
+  // transcription inference and indexing.
+  transcriptionSearch: {
+    enabled: boolean;
+  };
+
   // Experimental LFM3-VL-2B video-captioning lane (manual trigger only).
   aiVideoCaptioning: {
     enabled: boolean;
@@ -205,6 +212,12 @@ export interface EnvData {
     /** ISO 639-1 hint; empty = auto-detect. */
     language: string;
     maxDurationSec: number;
+    /** Bounded chunk window for full-duration processing. */
+    chunkDurationSec: number;
+    /** Overlap between adjacent chunk extraction windows (boundary dedup). */
+    chunkOverlapSec: number;
+    /** Worker concurrency; the sidecar serializes inference, so keep at 1. */
+    concurrency: number;
   };
 
   // YAMNet audio-event tagging sidecar (chained from the AI interpretation job
@@ -585,6 +598,10 @@ const getEnv = (): EnvData => {
       minScore: dto.IMMICH_AI_INTERPRET_SEARCH_MIN_SCORE ?? 0.4,
     },
 
+    transcriptionSearch: {
+      enabled: dto.IMMICH_TRANSCRIPTION_SEARCH_ENABLED ?? false,
+    },
+
     // Experimental video captioning via the local LFM3-Omni-2B lane (:51902).
     // Manual trigger only (asset viewer menu); metadata lands in
     // asset_metadata under the separate `video-captions-v1` key so it can be
@@ -623,6 +640,9 @@ const getEnv = (): EnvData => {
       timeoutMs: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_TIMEOUT_MS || 600_000,
       language: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_LANGUAGE || '',
       maxDurationSec: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_MAX_DURATION_SEC || 300,
+      chunkDurationSec: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_CHUNK_SEC || 300,
+      chunkOverlapSec: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_CHUNK_OVERLAP_SEC || 2,
+      concurrency: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_CONCURRENCY || 1,
     },
 
     // YAMNet ONNX sidecar tagging environmental sound (water, beeps, a baby

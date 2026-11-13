@@ -91,6 +91,9 @@ import { SystemMetadataTable } from 'src/schema/tables/system-metadata.table.js'
 import { TagAssetTable } from 'src/schema/tables/tag-asset.table.js';
 import { TagClosureTable } from 'src/schema/tables/tag-closure.table.js';
 import { TagTable } from 'src/schema/tables/tag.table.js';
+import { TranscriptIndexStateTable } from 'src/schema/tables/transcript-index-state.table.js';
+import { TranscriptPassageTokenTable } from 'src/schema/tables/transcript-passage-token.table.js';
+import { TranscriptPassageTable } from 'src/schema/tables/transcript-passage.table.js';
 import { UserAuditTable } from 'src/schema/tables/user-audit.table.js';
 import { UserMetadataAuditTable } from 'src/schema/tables/user-metadata-audit.table.js';
 import { UserMetadataTable } from 'src/schema/tables/user-metadata.table.js';
@@ -112,6 +115,9 @@ export class ImmichDatabase {
   tables = [
     ActivityTable,
     AiInterpretSearchTable,
+    TranscriptIndexStateTable,
+    TranscriptPassageTable,
+    TranscriptPassageTokenTable,
     AlbumAssetTable,
     AlbumAssetAuditTable,
     AlbumAuditTable,
@@ -231,6 +237,10 @@ export interface DB {
   activity: ActivityTable;
 
   ai_interpret_search: AiInterpretSearchTable;
+
+  transcript_index_state: TranscriptIndexStateTable;
+  transcript_passage: TranscriptPassageTable;
+  transcript_passage_token: TranscriptPassageTokenTable;
 
   album: AlbumTable;
   album_audit: AlbumAuditTable;

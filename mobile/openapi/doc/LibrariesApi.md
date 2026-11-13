@@ -37,20 +37,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = LibrariesApi();
-final createLibraryDto = CreateLibraryDto(); // CreateLibraryDto | 
+final api = Openapi().getLibrariesApi();
+final CreateLibraryDto createLibraryDto = ; // CreateLibraryDto | 
 
 try {
-    final result = api_instance.createLibrary(createLibraryDto);
-    print(result);
-} catch (e) {
+    final response = api.createLibrary(createLibraryDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling LibrariesApi->createLibrary: $e\n');
 }
 ```
@@ -94,19 +88,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = LibrariesApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getLibrariesApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    api_instance.deleteLibrary(id);
-} catch (e) {
+    api.deleteLibrary(id);
+} on DioException catch (e) {
     print('Exception when calling LibrariesApi->deleteLibrary: $e\n');
 }
 ```
@@ -133,7 +121,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getAllLibraries**
-> List<LibraryResponseDto> getAllLibraries()
+> BuiltList<LibraryResponseDto> getAllLibraries()
 
 Retrieve libraries
 
@@ -150,19 +138,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = LibrariesApi();
+final api = Openapi().getLibrariesApi();
 
 try {
-    final result = api_instance.getAllLibraries();
-    print(result);
-} catch (e) {
+    final response = api.getAllLibraries();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling LibrariesApi->getAllLibraries: $e\n');
 }
 ```
@@ -172,7 +154,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**List<LibraryResponseDto>**](LibraryResponseDto.md)
+[**BuiltList&lt;LibraryResponseDto&gt;**](LibraryResponseDto.md)
 
 ### Authorization
 
@@ -203,20 +185,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = LibrariesApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getLibrariesApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.getLibrary(id);
-    print(result);
-} catch (e) {
+    final response = api.getLibrary(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling LibrariesApi->getLibrary: $e\n');
 }
 ```
@@ -260,20 +236,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = LibrariesApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getLibrariesApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.getLibraryStatistics(id);
-    print(result);
-} catch (e) {
+    final response = api.getLibraryStatistics(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling LibrariesApi->getLibraryStatistics: $e\n');
 }
 ```
@@ -317,19 +287,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = LibrariesApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getLibrariesApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    api_instance.scanLibrary(id);
-} catch (e) {
+    api.scanLibrary(id);
+} on DioException catch (e) {
     print('Exception when calling LibrariesApi->scanLibrary: $e\n');
 }
 ```
@@ -373,21 +337,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = LibrariesApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final updateLibraryDto = UpdateLibraryDto(); // UpdateLibraryDto | 
+final api = Openapi().getLibrariesApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final UpdateLibraryDto updateLibraryDto = ; // UpdateLibraryDto | 
 
 try {
-    final result = api_instance.updateLibrary(id, updateLibraryDto);
-    print(result);
-} catch (e) {
+    final response = api.updateLibrary(id, updateLibraryDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling LibrariesApi->updateLibrary: $e\n');
 }
 ```
@@ -432,21 +390,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = LibrariesApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final validateLibraryDto = ValidateLibraryDto(); // ValidateLibraryDto | 
+final api = Openapi().getLibrariesApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final ValidateLibraryDto validateLibraryDto = ; // ValidateLibraryDto | 
 
 try {
-    final result = api_instance.validate(id, validateLibraryDto);
-    print(result);
-} catch (e) {
+    final response = api.validate(id, validateLibraryDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling LibrariesApi->validate: $e\n');
 }
 ```

@@ -8,7 +8,7 @@ import 'package:openapi/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**birthDate** | [**DateTime**](DateTime.md) | Person date of birth | [optional] 
+**birthDate** | [**Date**](Date.md) | Person date of birth | [optional] 
 **color** | **String** | Person color (hex) | [optional] 
 **isFavorite** | **bool** | Mark as favorite | [optional] 
 **isHidden** | **bool** | Person visibility (hidden) | [optional] 

@@ -9,6 +9,7 @@ import 'package:openapi/api.dart';
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **avatarColor** | [**UserAvatarColor**](UserAvatarColor.md) |  | 
+**clusterGroupId** | **String** | Cluster group the user is a member of | 
 **createdAt** | [**DateTime**](DateTime.md) | Creation date | 
 **deletedAt** | [**DateTime**](DateTime.md) | Deletion date | 
 **email** | **String** | User email | 

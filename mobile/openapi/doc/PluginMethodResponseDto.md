@@ -12,10 +12,10 @@ Name | Type | Description | Notes
 **hostFunctions** | **bool** |  | 
 **key** | **String** | Key | 
 **name** | **String** | Name | 
-**schema** | [**Object**](.md) |  | [optional] 
+**schema** | [**JsonObject**](.md) |  | [optional] 
 **title** | **String** | Title | 
-**types** | [**List<WorkflowType>**](WorkflowType.md) | Workflow types | [default to const []]
-**uiHints** | **List<String>** | Ui hints | [default to const []]
+**types** | [**BuiltList&lt;WorkflowType&gt;**](WorkflowType.md) | Workflow types | 
+**uiHints** | **BuiltList&lt;String&gt;** | Ui hints | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

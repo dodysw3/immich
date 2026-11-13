@@ -35,20 +35,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SessionsApi();
-final sessionCreateDto = SessionCreateDto(); // SessionCreateDto | 
+final api = Openapi().getSessionsApi();
+final SessionCreateDto sessionCreateDto = ; // SessionCreateDto | 
 
 try {
-    final result = api_instance.createSession(sessionCreateDto);
-    print(result);
-} catch (e) {
+    final response = api.createSession(sessionCreateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling SessionsApi->createSession: $e\n');
 }
 ```
@@ -92,18 +86,12 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SessionsApi();
+final api = Openapi().getSessionsApi();
 
 try {
-    api_instance.deleteAllSessions();
-} catch (e) {
+    api.deleteAllSessions();
+} on DioException catch (e) {
     print('Exception when calling SessionsApi->deleteAllSessions: $e\n');
 }
 ```
@@ -144,19 +132,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SessionsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getSessionsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    api_instance.deleteSession(id);
-} catch (e) {
+    api.deleteSession(id);
+} on DioException catch (e) {
     print('Exception when calling SessionsApi->deleteSession: $e\n');
 }
 ```
@@ -183,7 +165,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getSessions**
-> List<SessionResponseDto> getSessions()
+> BuiltList<SessionResponseDto> getSessions()
 
 Retrieve sessions
 
@@ -200,19 +182,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SessionsApi();
+final api = Openapi().getSessionsApi();
 
 try {
-    final result = api_instance.getSessions();
-    print(result);
-} catch (e) {
+    final response = api.getSessions();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling SessionsApi->getSessions: $e\n');
 }
 ```
@@ -222,7 +198,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**List<SessionResponseDto>**](SessionResponseDto.md)
+[**BuiltList&lt;SessionResponseDto&gt;**](SessionResponseDto.md)
 
 ### Authorization
 
@@ -253,19 +229,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SessionsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getSessionsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    api_instance.lockSession(id);
-} catch (e) {
+    api.lockSession(id);
+} on DioException catch (e) {
     print('Exception when calling SessionsApi->lockSession: $e\n');
 }
 ```
@@ -309,21 +279,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SessionsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final sessionUpdateDto = SessionUpdateDto(); // SessionUpdateDto | 
+final api = Openapi().getSessionsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final SessionUpdateDto sessionUpdateDto = ; // SessionUpdateDto | 
 
 try {
-    final result = api_instance.updateSession(id, sessionUpdateDto);
-    print(result);
-} catch (e) {
+    final response = api.updateSession(id, sessionUpdateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling SessionsApi->updateSession: $e\n');
 }
 ```

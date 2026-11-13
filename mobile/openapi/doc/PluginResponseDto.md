@@ -12,7 +12,7 @@ Name | Type | Description | Notes
 **createdAt** | **String** | Creation date | 
 **description** | **String** | Plugin description | 
 **id** | **String** | Plugin ID | 
-**methods** | [**List<PluginMethodResponseDto>**](PluginMethodResponseDto.md) | Plugin methods | [default to const []]
+**methods** | [**BuiltList&lt;PluginMethodResponseDto&gt;**](PluginMethodResponseDto.md) | Plugin methods | 
 **name** | **String** | Plugin name | 
 **title** | **String** | Plugin title | 
 **updatedAt** | **String** | Last update date | 

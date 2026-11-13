@@ -21,6 +21,7 @@ You can search the following types of content:
 | Full path or folder                 | Full or partial folder names from the original path.  |
 | Description                         | Description added to assets.                          |
 | Optical Character Recognition (OCR) | Text in images                                        |
+| Transcription                       | Words spoken in videos (their audio transcripts)      |
 | Locations                           | Cities, states, and countries from reverse geocoding. |
 | Tags                                | Tags assigned or extracted from assets.               |
 | Camera                              | make, model and lens model                            |
@@ -36,6 +37,16 @@ You can search the following types of content:
 Use this mode when you know a folder name or part of the original asset path.
 
 Example: for /John/Projects/3D_Printing/2026-07-01/IMG_0001.jpg, searches like Projects, 3D, Printing, or 2026 match the asset.
+
+### Transcription (spoken words in videos)
+
+The Transcription mode searches the speech transcript of your videos — what was actually *said* — and nothing else. Captions, AI-interpretation text, and image content are intentionally not searched. Matching is exact-first: an exact phrase ranks above a match containing all query words, which ranks above a close-spelling fallback (so a typo like "anouncement" still finds "announcement" when no exact match exists). Synonyms and meanings are not matched.
+
+Results show one entry per video with its best matching moment: a frame from that moment, a timestamp badge, and the transcript snippet with the matched words highlighted. If a video matches in several distinct places, the card's moments menu lists them, and picking one updates the frame, snippet, and timestamp. Videos remain unique in the results no matter how many moments they contain.
+
+Opening a result seeks the video to the start of the matching transcript segment. Timestamps use segment starts, not exact word positions, so the moment may begin a few words early or late. Playback then follows your existing autoplay preference: it plays if autoplay is enabled and stays paused if it is not — the search never forces either. If a matching frame cannot be decoded, the ordinary video thumbnail is shown with the snippet and timestamp kept.
+
+Administrators can tune ranking weights, the spelling-fallback threshold, and the number of additional moments per video in the server's system configuration (`transcriptionSearch` section, managed through the admin system-config API). Changes apply to new searches immediately; no transcription or re-indexing runs.
 
 ## Configuration
 

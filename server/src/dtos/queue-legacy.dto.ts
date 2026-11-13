@@ -44,6 +44,8 @@ const QueuesResponseLegacySchema = z
     [QueueName.AiInterpretSearch]: QueueResponseLegacySchema,
     [QueueName.VideoFaceScan]: QueueResponseLegacySchema,
     [QueueName.VideoCaptioning]: QueueResponseLegacySchema,
+    [QueueName.VideoTranscription]: QueueResponseLegacySchema,
+    [QueueName.TranscriptIndexSync]: QueueResponseLegacySchema,
   })
   .meta({ id: 'QueuesResponseLegacyDto' });
 

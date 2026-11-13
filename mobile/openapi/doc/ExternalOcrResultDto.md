@@ -9,7 +9,7 @@ import 'package:openapi/api.dart';
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **language** | **String** | Language hint | [optional] 
-**lines** | [**List<ExternalOcrLineDto>**](ExternalOcrLineDto.md) | OCR result lines | [default to const []]
+**lines** | [**BuiltList&lt;ExternalOcrLineDto&gt;**](ExternalOcrLineDto.md) | OCR result lines | 
 **mode** | **String** | OCR write mode | 
 **model** | **String** | Model family/name | 
 **modelRevision** | **String** | Model revision for reprocessing control | 

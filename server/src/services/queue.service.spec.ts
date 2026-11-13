@@ -142,6 +142,8 @@ describe(QueueService.name, () => {
         [QueueName.AiInterpretSearch]: expected,
         [QueueName.VideoFaceScan]: expected,
         [QueueName.VideoCaptioning]: expected,
+        [QueueName.VideoTranscription]: expected,
+        [QueueName.TranscriptIndexSync]: expected,
       });
     });
   });

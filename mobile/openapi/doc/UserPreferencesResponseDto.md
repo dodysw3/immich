@@ -17,6 +17,7 @@ Name | Type | Description | Notes
 **people** | [**PeopleResponse**](PeopleResponse.md) |  | 
 **purchase** | [**PurchaseResponse**](PurchaseResponse.md) |  | 
 **ratings** | [**RatingsResponse**](RatingsResponse.md) |  | 
+**recentlyAdded** | [**RecentlyAddedResponse**](RecentlyAddedResponse.md) |  | 
 **sharedLinks** | [**SharedLinksResponse**](SharedLinksResponse.md) |  | 
 **tags** | [**TagsResponse**](TagsResponse.md) |  | 
 

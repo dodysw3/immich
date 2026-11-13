@@ -8,7 +8,7 @@ import 'package:openapi/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**items** | [**List<AssetMetadataBulkDeleteItemDto>**](AssetMetadataBulkDeleteItemDto.md) | Metadata items to delete | [default to const []]
+**items** | [**BuiltList&lt;AssetMetadataBulkDeleteItemDto&gt;**](AssetMetadataBulkDeleteItemDto.md) | Metadata items to delete | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

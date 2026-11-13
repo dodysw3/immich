@@ -9,7 +9,7 @@ import 'package:openapi/api.dart';
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **createdAt** | [**DateTime**](DateTime.md) | Created at | 
-**data** | [**Map<String, Object>**](Object.md) | Data | [default to const {}]
+**data** | [**BuiltMap&lt;String, JsonObject&gt;**](JsonObject.md) | Data | 
 **deletedAt** | [**DateTime**](DateTime.md) | Deleted at | 
 **hideAt** | [**DateTime**](DateTime.md) | Hide at | 
 **id** | **String** | Memory ID | 
@@ -18,7 +18,7 @@ Name | Type | Description | Notes
 **ownerId** | **String** | Owner ID | 
 **seenAt** | [**DateTime**](DateTime.md) | Seen at | 
 **showAt** | [**DateTime**](DateTime.md) | Show at | 
-**type** | [**MemoryType**](MemoryType.md) |  | 
+**type** | [**MemoryTypeV1**](MemoryTypeV1.md) |  | 
 **updatedAt** | [**DateTime**](DateTime.md) | Updated at | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

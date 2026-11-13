@@ -33,19 +33,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = DuplicatesApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getDuplicatesApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    api_instance.deleteDuplicate(id);
-} catch (e) {
+    api.deleteDuplicate(id);
+} on DioException catch (e) {
     print('Exception when calling DuplicatesApi->deleteDuplicate: $e\n');
 }
 ```
@@ -89,19 +83,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = DuplicatesApi();
-final bulkIdsDto = BulkIdsDto(); // BulkIdsDto | 
+final api = Openapi().getDuplicatesApi();
+final BulkIdsDto bulkIdsDto = ; // BulkIdsDto | 
 
 try {
-    api_instance.deleteDuplicates(bulkIdsDto);
-} catch (e) {
+    api.deleteDuplicates(bulkIdsDto);
+} on DioException catch (e) {
     print('Exception when calling DuplicatesApi->deleteDuplicates: $e\n');
 }
 ```
@@ -128,7 +116,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getAssetDuplicates**
-> List<DuplicateResponseDto> getAssetDuplicates()
+> BuiltList<DuplicateResponseDto> getAssetDuplicates()
 
 Retrieve duplicates
 
@@ -145,19 +133,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = DuplicatesApi();
+final api = Openapi().getDuplicatesApi();
 
 try {
-    final result = api_instance.getAssetDuplicates();
-    print(result);
-} catch (e) {
+    final response = api.getAssetDuplicates();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling DuplicatesApi->getAssetDuplicates: $e\n');
 }
 ```
@@ -167,7 +149,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**List<DuplicateResponseDto>**](DuplicateResponseDto.md)
+[**BuiltList&lt;DuplicateResponseDto&gt;**](DuplicateResponseDto.md)
 
 ### Authorization
 
@@ -181,7 +163,7 @@ This endpoint does not need any parameter.
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **resolveDuplicates**
-> List<BulkIdResponseDto> resolveDuplicates(duplicateResolveDto)
+> BuiltList<BulkIdResponseDto> resolveDuplicates(duplicateResolveDto)
 
 Resolve duplicate groups
 
@@ -198,20 +180,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = DuplicatesApi();
-final duplicateResolveDto = DuplicateResolveDto(); // DuplicateResolveDto | 
+final api = Openapi().getDuplicatesApi();
+final DuplicateResolveDto duplicateResolveDto = ; // DuplicateResolveDto | 
 
 try {
-    final result = api_instance.resolveDuplicates(duplicateResolveDto);
-    print(result);
-} catch (e) {
+    final response = api.resolveDuplicates(duplicateResolveDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling DuplicatesApi->resolveDuplicates: $e\n');
 }
 ```
@@ -224,7 +200,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<BulkIdResponseDto>**](BulkIdResponseDto.md)
+[**BuiltList&lt;BulkIdResponseDto&gt;**](BulkIdResponseDto.md)
 
 ### Authorization
 

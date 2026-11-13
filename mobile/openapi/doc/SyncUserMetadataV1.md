@@ -10,7 +10,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **key** | [**UserMetadataKey**](UserMetadataKey.md) |  | 
 **userId** | **String** | User ID | 
-**value** | [**Map<String, Object>**](Object.md) | User metadata value | [default to const {}]
+**value** | [**BuiltMap&lt;String, JsonObject&gt;**](JsonObject.md) | User metadata value | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

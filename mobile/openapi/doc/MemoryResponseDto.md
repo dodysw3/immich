@@ -8,9 +8,9 @@ import 'package:openapi/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**assets** | [**List<AssetResponseDto>**](AssetResponseDto.md) |  | [default to const []]
+**assets** | [**BuiltList&lt;AssetResponseDto&gt;**](AssetResponseDto.md) |  | 
 **createdAt** | [**DateTime**](DateTime.md) | Creation date | 
-**data** | [**OnThisDayDto**](OnThisDayDto.md) |  | 
+**data** | [**MemoryDataDto**](MemoryDataDto.md) |  | 
 **deletedAt** | [**DateTime**](DateTime.md) | Deletion date | [optional] 
 **hideAt** | [**DateTime**](DateTime.md) | Date when memory should be hidden | [optional] 
 **id** | **String** | Memory ID | 

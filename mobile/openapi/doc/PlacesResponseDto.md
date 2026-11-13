@@ -10,8 +10,8 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **admin1name** | **String** | Administrative level 1 name (state/province) | [optional] 
 **admin2name** | **String** | Administrative level 2 name (county/district) | [optional] 
-**latitude** | **num** | Latitude coordinate | 
-**longitude** | **num** | Longitude coordinate | 
+**latitude** | **double** | Latitude coordinate | 
+**longitude** | **double** | Longitude coordinate | 
 **name** | **String** | Place name | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

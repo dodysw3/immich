@@ -19,7 +19,7 @@ Method | HTTP request | Description
 
 
 # **getDocument**
-> Object getDocument(id)
+> JsonObject getDocument(id)
 
 Get PDF document metadata
 
@@ -36,20 +36,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = DocumentsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | PDF document asset ID
+final api = Openapi().getDocumentsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | PDF document asset ID
 
 try {
-    final result = api_instance.getDocument(id);
-    print(result);
-} catch (e) {
+    final response = api.getDocument(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling DocumentsApi->getDocument: $e\n');
 }
 ```
@@ -62,7 +56,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**Object**](Object.md)
+[**JsonObject**](JsonObject.md)
 
 ### Authorization
 
@@ -76,7 +70,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getDocuments**
-> Object getDocuments(page, size, status)
+> JsonObject getDocuments(page, size, status)
 
 List PDF documents
 
@@ -93,22 +87,16 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = DocumentsApi();
-final page = 56; // int | Page number
-final size = 56; // int | Number of items per page
-final status = status_example; // String | Filter documents by processing status
+final api = Openapi().getDocumentsApi();
+final int page = 56; // int | Page number
+final int size = 56; // int | Number of items per page
+final String status = status_example; // String | Filter documents by processing status
 
 try {
-    final result = api_instance.getDocuments(page, size, status);
-    print(result);
-} catch (e) {
+    final response = api.getDocuments(page, size, status);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling DocumentsApi->getDocuments: $e\n');
 }
 ```
@@ -123,7 +111,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**Object**](Object.md)
+[**JsonObject**](JsonObject.md)
 
 ### Authorization
 
@@ -137,7 +125,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getPage**
-> Object getPage(id, pageNumber)
+> JsonObject getPage(id, pageNumber)
 
 Get PDF page
 
@@ -154,21 +142,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = DocumentsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | PDF document asset ID
-final pageNumber = 56; // int | Page number
+final api = Openapi().getDocumentsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | PDF document asset ID
+final int pageNumber = 56; // int | Page number
 
 try {
-    final result = api_instance.getPage(id, pageNumber);
-    print(result);
-} catch (e) {
+    final response = api.getPage(id, pageNumber);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling DocumentsApi->getPage: $e\n');
 }
 ```
@@ -182,7 +164,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**Object**](Object.md)
+[**JsonObject**](JsonObject.md)
 
 ### Authorization
 
@@ -196,7 +178,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getPages**
-> List<Object> getPages(id)
+> BuiltList<JsonObject> getPages(id)
 
 Get PDF pages
 
@@ -213,20 +195,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = DocumentsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | PDF document asset ID
+final api = Openapi().getDocumentsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | PDF document asset ID
 
 try {
-    final result = api_instance.getPages(id);
-    print(result);
-} catch (e) {
+    final response = api.getPages(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling DocumentsApi->getPages: $e\n');
 }
 ```
@@ -239,7 +215,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<Object>**](Object.md)
+[**BuiltList&lt;JsonObject&gt;**](JsonObject.md)
 
 ### Authorization
 
@@ -270,19 +246,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = DocumentsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | PDF document asset ID
+final api = Openapi().getDocumentsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | PDF document asset ID
 
 try {
-    api_instance.reprocessDocument(id);
-} catch (e) {
+    api.reprocessDocument(id);
+} on DioException catch (e) {
     print('Exception when calling DocumentsApi->reprocessDocument: $e\n');
 }
 ```
@@ -309,7 +279,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **searchDocuments**
-> Object searchDocuments(query, page, size, status)
+> JsonObject searchDocuments(query, page, size, status)
 
 Search PDF documents
 
@@ -326,23 +296,17 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = DocumentsApi();
-final query = query_example; // String | Search phrase
-final page = 56; // int | Page number
-final size = 56; // int | Number of items per page
-final status = status_example; // String | Filter documents by processing status
+final api = Openapi().getDocumentsApi();
+final String query = query_example; // String | Search phrase
+final int page = 56; // int | Page number
+final int size = 56; // int | Number of items per page
+final String status = status_example; // String | Filter documents by processing status
 
 try {
-    final result = api_instance.searchDocuments(query, page, size, status);
-    print(result);
-} catch (e) {
+    final response = api.searchDocuments(query, page, size, status);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling DocumentsApi->searchDocuments: $e\n');
 }
 ```
@@ -358,7 +322,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**Object**](Object.md)
+[**JsonObject**](JsonObject.md)
 
 ### Authorization
 
@@ -372,7 +336,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **searchInDocument**
-> List<Object> searchInDocument(id, query, size)
+> BuiltList<JsonObject> searchInDocument(id, query, size)
 
 Search inside a PDF document
 
@@ -389,22 +353,16 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = DocumentsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | PDF document asset ID
-final query = query_example; // String | Search phrase
-final size = 56; // int | Max matched pages to return
+final api = Openapi().getDocumentsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | PDF document asset ID
+final String query = query_example; // String | Search phrase
+final int size = 56; // int | Max matched pages to return
 
 try {
-    final result = api_instance.searchInDocument(id, query, size);
-    print(result);
-} catch (e) {
+    final response = api.searchInDocument(id, query, size);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling DocumentsApi->searchInDocument: $e\n');
 }
 ```
@@ -419,7 +377,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<Object>**](Object.md)
+[**BuiltList&lt;JsonObject&gt;**](JsonObject.md)
 
 ### Authorization
 

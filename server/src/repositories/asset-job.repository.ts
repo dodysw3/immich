@@ -4,7 +4,7 @@ import { jsonArrayFrom, jsonObjectFrom } from 'kysely/helpers/postgres';
 import { InjectKysely } from 'nestjs-kysely';
 import { columns } from 'src/database.js';
 import { DummyValue, GenerateSql } from 'src/decorators.js';
-import { AssetFileType, AssetStatus, AssetType, AssetVisibility } from 'src/enum.js';
+import { AssetFileType, AssetMetadataKey, AssetStatus, AssetType, AssetVisibility } from 'src/enum.js';
 import { DB } from 'src/schema/index.js';
 import {
   anyUuid,
@@ -25,6 +25,33 @@ import { mimeTypes } from 'src/utils/mime-types.js';
 @Injectable()
 export class AssetJobRepository {
   constructor(@InjectKysely() private db: Kysely<DB>) {}
+
+  /**
+  Keyset stream for transcript-index reconciliation: every non-deleted video
+  with its transcript document and current index-state row (null when never
+  indexed). Index sync decisions compare revisions and format versions — no
+  inference anywhere.
+  */
+  @GenerateSql({ params: [], stream: true })
+  streamForTranscriptIndexReconcile() {
+    return this.db
+      .selectFrom('asset')
+      .leftJoin('asset_metadata as metadata', (join) =>
+        join.onRef('metadata.assetId', '=', 'asset.id').on('metadata.key', '=', AssetMetadataKey.VideoTranscriptsV1),
+      )
+      .leftJoin('transcript_index_state as state', 'state.assetId', 'asset.id')
+      .select([
+        'asset.id as assetId',
+        'metadata.value as transcriptValue',
+        'state.revision as indexedRevision',
+        'state.indexVersion as indexedVersion',
+        'state.error as indexedError',
+      ])
+      .where('asset.type', '=', AssetType.Video)
+      .where('asset.deletedAt', 'is', null)
+      .orderBy('asset.id')
+      .stream();
+  }
 
   @GenerateSql({ params: [DummyValue.UUID] })
   getForSearchDuplicatesJob(id: string) {
@@ -236,6 +263,25 @@ export class AssetJobRepository {
       .$if(!force, (qb) =>
         qb.where((eb) => eb.not((eb) => eb.exists(eb.selectFrom('smart_search').whereRef('assetId', '=', 'asset.id')))),
       )
+      .stream();
+  }
+
+  /**
+  Keyset stream for transcription reconciliation: every non-deleted video with
+  its stored transcript document (null when none). The service judges durable
+  run/coverage state in TypeScript — queue existence alone never decides.
+  */
+  @GenerateSql({ params: [], stream: true })
+  streamForTranscriptionReconcile() {
+    return this.db
+      .selectFrom('asset')
+      .leftJoin('asset_metadata as metadata', (join) =>
+        join.onRef('metadata.assetId', '=', 'asset.id').on('metadata.key', '=', AssetMetadataKey.VideoTranscriptsV1),
+      )
+      .select(['asset.id', 'metadata.value as transcriptValue'])
+      .where('asset.type', '=', AssetType.Video)
+      .where('asset.deletedAt', 'is', null)
+      .orderBy('asset.id')
       .stream();
   }
 

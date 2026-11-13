@@ -20,7 +20,7 @@ Method | HTTP request | Description
 
 
 # **addMemoryAssets**
-> List<BulkIdResponseDto> addMemoryAssets(id, bulkIdsDto)
+> BuiltList<BulkIdResponseDto> addMemoryAssets(id, bulkIdsDto)
 
 Add assets to a memory
 
@@ -37,21 +37,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = MemoriesApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final bulkIdsDto = BulkIdsDto(); // BulkIdsDto | 
+final api = Openapi().getMemoriesApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final BulkIdsDto bulkIdsDto = ; // BulkIdsDto | 
 
 try {
-    final result = api_instance.addMemoryAssets(id, bulkIdsDto);
-    print(result);
-} catch (e) {
+    final response = api.addMemoryAssets(id, bulkIdsDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling MemoriesApi->addMemoryAssets: $e\n');
 }
 ```
@@ -65,7 +59,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<BulkIdResponseDto>**](BulkIdResponseDto.md)
+[**BuiltList&lt;BulkIdResponseDto&gt;**](BulkIdResponseDto.md)
 
 ### Authorization
 
@@ -96,20 +90,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = MemoriesApi();
-final memoryCreateDto = MemoryCreateDto(); // MemoryCreateDto | 
+final api = Openapi().getMemoriesApi();
+final MemoryCreateDto memoryCreateDto = ; // MemoryCreateDto | 
 
 try {
-    final result = api_instance.createMemory(memoryCreateDto);
-    print(result);
-} catch (e) {
+    final response = api.createMemory(memoryCreateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling MemoriesApi->createMemory: $e\n');
 }
 ```
@@ -153,19 +141,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = MemoriesApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getMemoriesApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    api_instance.deleteMemory(id);
-} catch (e) {
+    api.deleteMemory(id);
+} on DioException catch (e) {
     print('Exception when calling MemoriesApi->deleteMemory: $e\n');
 }
 ```
@@ -209,20 +191,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = MemoriesApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getMemoriesApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.getMemory(id);
-    print(result);
-} catch (e) {
+    final response = api.getMemory(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling MemoriesApi->getMemory: $e\n');
 }
 ```
@@ -249,7 +225,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **memoriesStatistics**
-> MemoryStatisticsResponseDto memoriesStatistics(for_, isSaved, isTrashed, order, size, type)
+> MemoryStatisticsResponseDto memoriesStatistics(for_, id, isSaved, isTrashed, isUpcoming, order, page, size, type)
 
 Retrieve memories statistics
 
@@ -266,25 +242,22 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = MemoriesApi();
-final for_ = 2024-01-01T00:00Z; // DateTime | Filter by date
-final isSaved = true; // bool | Filter by saved status
-final isTrashed = true; // bool | Include trashed memories
-final order = ; // MemorySearchOrder | 
-final size = 56; // int | Number of memories to return
-final type = ; // MemoryType | 
+final api = Openapi().getMemoriesApi();
+final Date for_ = Mon Jan 01 07:00:00 WIB 2024; // Date | Filter by date
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Memory ID
+final bool isSaved = true; // bool | Filter by saved status
+final bool isTrashed = true; // bool | Include trashed memories
+final bool isUpcoming = true; // bool | Filter by memories that have not been shown yet
+final MemorySearchOrder order = ; // MemorySearchOrder | 
+final int page = 56; // int | Page number
+final int size = 56; // int | Number of memories to return
+final MemoryType type = ; // MemoryType | 
 
 try {
-    final result = api_instance.memoriesStatistics(for_, isSaved, isTrashed, order, size, type);
-    print(result);
-} catch (e) {
+    final response = api.memoriesStatistics(for_, id, isSaved, isTrashed, isUpcoming, order, page, size, type);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling MemoriesApi->memoriesStatistics: $e\n');
 }
 ```
@@ -293,10 +266,13 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **for_** | **DateTime**| Filter by date | [optional] 
+ **for_** | **Date**| Filter by date | [optional] 
+ **id** | **String**| Memory ID | [optional] 
  **isSaved** | **bool**| Filter by saved status | [optional] 
  **isTrashed** | **bool**| Include trashed memories | [optional] 
+ **isUpcoming** | **bool**| Filter by memories that have not been shown yet | [optional] 
  **order** | [**MemorySearchOrder**](.md)|  | [optional] 
+ **page** | **int**| Page number | [optional] 
  **size** | **int**| Number of memories to return | [optional] 
  **type** | [**MemoryType**](.md)|  | [optional] 
 
@@ -316,7 +292,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **removeMemoryAssets**
-> List<BulkIdResponseDto> removeMemoryAssets(id, bulkIdsDto)
+> BuiltList<BulkIdResponseDto> removeMemoryAssets(id, bulkIdsDto)
 
 Remove assets from a memory
 
@@ -333,21 +309,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = MemoriesApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final bulkIdsDto = BulkIdsDto(); // BulkIdsDto | 
+final api = Openapi().getMemoriesApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final BulkIdsDto bulkIdsDto = ; // BulkIdsDto | 
 
 try {
-    final result = api_instance.removeMemoryAssets(id, bulkIdsDto);
-    print(result);
-} catch (e) {
+    final response = api.removeMemoryAssets(id, bulkIdsDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling MemoriesApi->removeMemoryAssets: $e\n');
 }
 ```
@@ -361,7 +331,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<BulkIdResponseDto>**](BulkIdResponseDto.md)
+[**BuiltList&lt;BulkIdResponseDto&gt;**](BulkIdResponseDto.md)
 
 ### Authorization
 
@@ -375,7 +345,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **searchMemories**
-> List<MemoryResponseDto> searchMemories(for_, isSaved, isTrashed, order, size, type)
+> BuiltList<MemoryResponseDto> searchMemories(for_, id, isSaved, isTrashed, isUpcoming, order, page, size, type)
 
 Retrieve memories
 
@@ -392,25 +362,22 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = MemoriesApi();
-final for_ = 2024-01-01T00:00Z; // DateTime | Filter by date
-final isSaved = true; // bool | Filter by saved status
-final isTrashed = true; // bool | Include trashed memories
-final order = ; // MemorySearchOrder | 
-final size = 56; // int | Number of memories to return
-final type = ; // MemoryType | 
+final api = Openapi().getMemoriesApi();
+final Date for_ = Mon Jan 01 07:00:00 WIB 2024; // Date | Filter by date
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Memory ID
+final bool isSaved = true; // bool | Filter by saved status
+final bool isTrashed = true; // bool | Include trashed memories
+final bool isUpcoming = true; // bool | Filter by memories that have not been shown yet
+final MemorySearchOrder order = ; // MemorySearchOrder | 
+final int page = 56; // int | Page number
+final int size = 56; // int | Number of memories to return
+final MemoryType type = ; // MemoryType | 
 
 try {
-    final result = api_instance.searchMemories(for_, isSaved, isTrashed, order, size, type);
-    print(result);
-} catch (e) {
+    final response = api.searchMemories(for_, id, isSaved, isTrashed, isUpcoming, order, page, size, type);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling MemoriesApi->searchMemories: $e\n');
 }
 ```
@@ -419,16 +386,19 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **for_** | **DateTime**| Filter by date | [optional] 
+ **for_** | **Date**| Filter by date | [optional] 
+ **id** | **String**| Memory ID | [optional] 
  **isSaved** | **bool**| Filter by saved status | [optional] 
  **isTrashed** | **bool**| Include trashed memories | [optional] 
+ **isUpcoming** | **bool**| Filter by memories that have not been shown yet | [optional] 
  **order** | [**MemorySearchOrder**](.md)|  | [optional] 
+ **page** | **int**| Page number | [optional] 
  **size** | **int**| Number of memories to return | [optional] 
  **type** | [**MemoryType**](.md)|  | [optional] 
 
 ### Return type
 
-[**List<MemoryResponseDto>**](MemoryResponseDto.md)
+[**BuiltList&lt;MemoryResponseDto&gt;**](MemoryResponseDto.md)
 
 ### Authorization
 
@@ -459,21 +429,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = MemoriesApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final memoryUpdateDto = MemoryUpdateDto(); // MemoryUpdateDto | 
+final api = Openapi().getMemoriesApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final MemoryUpdateDto memoryUpdateDto = ; // MemoryUpdateDto | 
 
 try {
-    final result = api_instance.updateMemory(id, memoryUpdateDto);
-    print(result);
-} catch (e) {
+    final response = api.updateMemory(id, memoryUpdateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling MemoriesApi->updateMemory: $e\n');
 }
 ```

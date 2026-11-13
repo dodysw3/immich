@@ -8,7 +8,7 @@ import 'package:openapi/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**data** | [**Map<String, Object>**](Object.md) | Additional notification data | [optional] [default to const {}]
+**data** | [**BuiltMap&lt;String, JsonObject&gt;**](JsonObject.md) | Additional notification data | [optional] 
 **description** | **String** | Notification description | [optional] 
 **level** | [**NotificationLevel**](NotificationLevel.md) |  | [optional] 
 **readAt** | [**DateTime**](DateTime.md) | Date when notification was read | [optional] 

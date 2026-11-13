@@ -89,6 +89,7 @@ const serverFeatures = (overrides: Partial<ResponseOf<'getServerFeatures'>> = {}
   oauthAutoLaunch: false,
   ocr: false,
   aiInterpretSearch: false,
+  transcriptionSearch: false,
   passwordLogin: true,
   configFile: false,
   email: false,
@@ -250,6 +251,15 @@ const adminConfig = (overrides: Partial<ResponseOf<'getAdminConfig'>> = {}): Res
   },
   reverseGeocoding: { enabled: true },
   metadata: { faces: { import: false } },
+  transcriptionSearch: {
+    coverageWeight: 0.5,
+    proximityWeight: 0.3,
+    similarityWeight: 0.2,
+    minimumCoverage: 1,
+    fuzzyThreshold: 0.5,
+    minimumFuzzyLength: 4,
+    additionalMoments: 3,
+  },
   oauth: {
     autoLaunch: false,
     autoRegister: true,
@@ -348,6 +358,8 @@ const queues = (): ResponseOf<'getQueuesLegacy'> => ({
   aiInterpretSearch: idleQueue(),
   videoFaceScan: idleQueue(),
   videoCaptioning: idleQueue(),
+  videoTranscription: idleQueue(),
+  transcriptIndexSync: idleQueue(),
 });
 
 const idleQueue = () => ({

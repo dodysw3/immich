@@ -61,6 +61,8 @@
     [QueueName.ImageInterpretationPublic]: $t('admin.ai_image_interpretation_public'),
     [QueueName.VideoFaceScan]: $t('admin.video_face_scan'),
     [QueueName.VideoCaptioning]: 'Video captioning (experimental)',
+    [QueueName.VideoTranscription]: 'Video transcription (experimental)',
+    [QueueName.TranscriptIndexSync]: 'Transcript index sync',
   });
 </script>
 

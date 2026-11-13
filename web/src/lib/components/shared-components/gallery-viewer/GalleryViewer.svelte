@@ -11,6 +11,7 @@
   import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
   import { featureFlagsManager } from '#lib/managers/feature-flags-manager.svelte.ts';
   import type { TimelineAsset, Viewport } from '#lib/managers/timeline-manager/types.ts';
+  import type { TranscriptionPresentation } from '#lib/managers/transcription-presentation-manager.svelte.ts';
   import AssetDeleteConfirmModal from '#lib/modals/AssetDeleteConfirmModal.svelte';
   import ShortcutsModal from '#lib/modals/ShortcutsModal.svelte';
   import { Route } from '#lib/route.ts';
@@ -31,7 +32,7 @@
   } from '#lib/utils/page-map.ts';
   import { isTimelineAsset, toTimelineAsset } from '#lib/utils/timeline-util.ts';
   import { TUNABLES } from '#lib/utils/tunables.ts';
-  import { AssetVisibility, type AssetResponseDto } from '@immich/sdk';
+  import { AssetVisibility, type AssetResponseDto, type TranscriptionMatchDto } from '@immich/sdk';
   import { modalManager } from '@immich/ui';
   import { debounce, throttle } from 'lodash-es';
   import { t } from 'svelte-i18n';
@@ -57,6 +58,13 @@
     allowDeletion?: boolean;
     pageMap?: PageMap | undefined;
     reloadPage?: ((pageNum: number) => Promise<void>) | undefined;
+    /** Transcription match presentation keyed by asset id (Transcription search only). */
+    transcriptionMatches?: SvelteMap<string, TranscriptionPresentation> | undefined;
+    onSelectTranscriptionMoment?: ((assetId: string, match: TranscriptionMatchDto) => void) | undefined;
+    onLoadTranscriptionMoments?:
+      ((assetId: string) => Promise<{ moments: TranscriptionMatchDto[]; nextCursor: string | null }>) | undefined;
+    /** Opens the viewer at the selected match instead of an ordinary asset open. */
+    onOpenTranscriptionMatch?: ((assetId: string, match: TranscriptionMatchDto) => void) | undefined;
   };
 
   let {
@@ -74,6 +82,10 @@
     allowDeletion = true,
     pageMap = undefined,
     reloadPage = undefined,
+    transcriptionMatches = undefined,
+    onSelectTranscriptionMoment = undefined,
+    onLoadTranscriptionMoments = undefined,
+    onOpenTranscriptionMatch = undefined,
   }: Props = $props();
 
   const resolvedAssets = $derived(pageMap ? getLoadedAssets(pageMap) : assets);
@@ -634,10 +646,15 @@
       {#if isInOrNearViewport(index)}
         <div class="absolute" style:overflow="clip" style={getStyle(index)}>
           {const currentAsset = $derived(toTimelineAsset(asset))}
+          {const transcriptionMatch = $derived(transcriptionMatches?.get(asset.id))}
           <Thumbnail
             onClick={() => {
               if (assetInteraction.selectionActive) {
                 handleSelectAssets(currentAsset);
+                return;
+              }
+              if (transcriptionMatch && onOpenTranscriptionMatch) {
+                onOpenTranscriptionMatch(asset.id, transcriptionMatch.selected);
                 return;
               }
               void navigateToAsset(asset);
@@ -651,6 +668,13 @@
             selectionCandidate={assetInteraction.hasSelectionCandidate(currentAsset.id)}
             thumbnailWidth={geometry.getWidth(index)}
             thumbnailHeight={geometry.getHeight(index)}
+            {transcriptionMatch}
+            onSelectMoment={transcriptionMatch && onSelectTranscriptionMoment
+              ? (match) => onSelectTranscriptionMoment(asset.id, match)
+              : undefined}
+            onLoadMoments={transcriptionMatch && onLoadTranscriptionMoments
+              ? () => onLoadTranscriptionMoments(asset.id)
+              : undefined}
           />
           {#if showAssetName && !isTimelineAsset(asset)}
             <div

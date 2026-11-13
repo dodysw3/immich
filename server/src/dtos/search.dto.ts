@@ -550,3 +550,116 @@ const AiInterpretSearchResponseSchema = z
   .meta({ id: 'AiInterpretSearchResponseDto' });
 
 export class AiInterpretSearchResponseDto extends createZodDto(AiInterpretSearchResponseSchema) {}
+
+const TranscriptionSearchSpanSchema = z
+  .object({
+    start: z.int().nonnegative().describe('UTF-16 start offset of the matched text within the snippet'),
+    end: z.int().nonnegative().describe('UTF-16 end offset of the matched text within the snippet'),
+  })
+  .meta({ id: 'TranscriptionSearchSpanDto' });
+export class TranscriptionSearchSpanDto extends createZodDto(TranscriptionSearchSpanSchema) {}
+
+const TranscriptionMatchSchema = z
+  .object({
+    passageId: z.uuidv7().describe('Opaque passage id (used for moment retrieval and frame resolution)'),
+    revision: z.string().describe('Source transcript content revision'),
+    runKey: z.string().describe('Source transcription run identity'),
+    windowId: z.string().describe('Contributing segment range (first:last)'),
+    firstSegment: z.int().nonnegative(),
+    lastSegment: z.int().nonnegative(),
+    startMs: z
+      .int()
+      .nonnegative()
+      .describe('Match moment: the start of the first matched segment (segment precision, not word alignment)'),
+    endMs: z.int().nonnegative(),
+    snippet: z.string().describe('Original transcript text of the passage'),
+    spans: z.array(TranscriptionSearchSpanSchema).describe('Matched text spans within the snippet (never HTML)'),
+    tier: z.enum(['exact-phrase', 'exact-all', 'fuzzy', 'partial']),
+    score: z.number().meta({ format: 'double' }).describe('Normalized within-tier score'),
+    components: z
+      .object({
+        coverage: z.number().meta({ format: 'double' }),
+        proximity: z.number().meta({ format: 'double' }),
+        similarity: z.number().meta({ format: 'double' }),
+      })
+      .optional()
+      .describe('Score components (opt-in diagnostics)'),
+  })
+  .meta({ id: 'TranscriptionMatchDto' });
+export class TranscriptionMatchDto extends createZodDto(TranscriptionMatchSchema) {}
+
+export const TranscriptionSearchSchema = z
+  .object({
+    q: z.string().trim().min(1).max(200).describe('Spoken words to search for (exact-first, spelling fallback)'),
+    cursor: z.string().max(2048).optional().describe('Opaque pagination cursor from a previous page'),
+    size: z.int().min(1).max(50).default(20).describe('Videos per page'),
+    visibility: AssetVisibilitySchema.optional().describe('Filter by visibility'),
+    takenAfter: isoDatetimeToDate.optional().describe('Filter by taken date (after)'),
+    takenBefore: isoDatetimeToDate.optional().describe('Filter by taken date (before)'),
+    isFavorite: z.boolean().optional().describe('Filter by favorite status'),
+    rating: z.int().min(1).max(5).nullish().describe('Filter by rating (null = unrated)'),
+    city: z.string().nullish().describe('Filter by city name (null = no city)'),
+    state: z.string().nullish().describe('Filter by state/province name (null = no state)'),
+    country: z.string().nullish().describe('Filter by country name (null = no country)'),
+    make: z.string().nullish().describe('Filter by camera make (null = no make)'),
+    model: z.string().nullish().describe('Filter by camera model (null = no model)'),
+    lensModel: z.string().nullish().describe('Filter by lens model (null = no lens)'),
+    personIds: z.array(z.uuidv4()).optional().describe('Filter by person IDs (all must match)'),
+    tagIds: z.array(z.uuidv4()).nullish().describe('Filter by tag IDs (all must match; null = untagged)'),
+    isNotInAlbum: z.boolean().optional().describe('Filter assets not in any album'),
+    withStacked: z.boolean().optional().describe('Include stacked assets'),
+    explain: z.boolean().optional().describe('Include score components and scoped coverage counts (diagnostics)'),
+  })
+  .meta({ id: 'TranscriptionSearchDto' });
+export class TranscriptionSearchDto extends createZodDto(TranscriptionSearchSchema) {}
+
+const TranscriptionSearchItemSchema = z
+  .object({
+    asset: AssetResponseSchema,
+    bestMatch: TranscriptionMatchSchema,
+    additionalMatches: z.array(TranscriptionMatchSchema).describe('Distinct additional matching moments'),
+    matchCount: z.int().min(1).describe('Total distinct matching moments for this video'),
+  })
+  .meta({ id: 'TranscriptionSearchItemDto' });
+export class TranscriptionSearchItemDto extends createZodDto(TranscriptionSearchItemSchema) {}
+
+const TranscriptionCoverageSchema = z
+  .object({
+    totalVideos: z.int().nonnegative(),
+    indexedVideos: z.int().nonnegative(),
+    pendingIndex: z.int().nonnegative(),
+    indexErrors: z.int().nonnegative(),
+  })
+  .meta({ id: 'TranscriptionCoverageDto' });
+export class TranscriptionCoverageDto extends createZodDto(TranscriptionCoverageSchema) {}
+
+const TranscriptionSearchResponseSchema = z
+  .object({
+    count: z.int().min(0).describe('Videos on this page'),
+    items: z.array(TranscriptionSearchItemSchema),
+    nextCursor: z.string().nullable(),
+    configVersion: z.string().describe('Ranking configuration identity; cursors are invalid after a change'),
+    coverage: TranscriptionCoverageSchema.optional().describe('Scoped coverage counts (opt-in diagnostics)'),
+  })
+  .meta({ id: 'TranscriptionSearchResponseDto' });
+export class TranscriptionSearchResponseDto extends createZodDto(TranscriptionSearchResponseSchema) {}
+
+const TranscriptionMomentsSchema = z
+  .object({
+    assetId: z.uuid(),
+    q: z.string().trim().min(1).max(200),
+    cursor: z.string().max(2048).optional(),
+    size: z.int().min(1).max(50).default(10).describe('Moments per page'),
+  })
+  .meta({ id: 'TranscriptionMomentsDto' });
+export class TranscriptionMomentsDto extends createZodDto(TranscriptionMomentsSchema) {}
+
+const TranscriptionMomentsResponseSchema = z
+  .object({
+    count: z.int().min(0),
+    moments: z.array(TranscriptionMatchSchema),
+    nextCursor: z.string().nullable(),
+    configVersion: z.string(),
+  })
+  .meta({ id: 'TranscriptionMomentsResponseDto' });
+export class TranscriptionMomentsResponseDto extends createZodDto(TranscriptionMomentsResponseSchema) {}

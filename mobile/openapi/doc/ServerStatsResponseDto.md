@@ -10,7 +10,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **photos** | **int** | Total number of photos | 
 **usage** | **int** | Total storage usage in bytes | 
-**usageByUser** | [**List<UsageByUserDto>**](UsageByUserDto.md) | Array of usage for each user | [default to const []]
+**usageByUser** | [**BuiltList&lt;UsageByUserDto&gt;**](UsageByUserDto.md) | Array of usage for each user | 
 **usagePhotos** | **int** | Storage usage for photos in bytes | 
 **usageVideos** | **int** | Storage usage for videos in bytes | 
 **videos** | **int** | Total number of videos | 

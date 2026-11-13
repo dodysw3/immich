@@ -33,20 +33,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = ActivitiesApi();
-final activityCreateDto = ActivityCreateDto(); // ActivityCreateDto | 
+final api = Openapi().getActivitiesApi();
+final ActivityCreateDto activityCreateDto = ; // ActivityCreateDto | 
 
 try {
-    final result = api_instance.createActivity(activityCreateDto);
-    print(result);
-} catch (e) {
+    final response = api.createActivity(activityCreateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling ActivitiesApi->createActivity: $e\n');
 }
 ```
@@ -90,19 +84,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = ActivitiesApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getActivitiesApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    api_instance.deleteActivity(id);
-} catch (e) {
+    api.deleteActivity(id);
+} on DioException catch (e) {
     print('Exception when calling ActivitiesApi->deleteActivity: $e\n');
 }
 ```
@@ -129,7 +117,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getActivities**
-> List<ActivityResponseDto> getActivities(albumId, assetId, level, type, userId)
+> BuiltList<ActivityResponseDto> getActivities(albumId, assetId, level, type, userId)
 
 List all activities
 
@@ -146,24 +134,18 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = ActivitiesApi();
-final albumId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Album ID
-final assetId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Asset ID (if activity is for an asset)
-final level = ; // ReactionLevel | 
-final type = ; // ReactionType | 
-final userId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Filter by user ID
+final api = Openapi().getActivitiesApi();
+final String albumId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Album ID
+final String assetId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Asset ID (if activity is for an asset)
+final ReactionLevel level = ; // ReactionLevel | 
+final ReactionType type = ; // ReactionType | 
+final String userId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Filter by user ID
 
 try {
-    final result = api_instance.getActivities(albumId, assetId, level, type, userId);
-    print(result);
-} catch (e) {
+    final response = api.getActivities(albumId, assetId, level, type, userId);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling ActivitiesApi->getActivities: $e\n');
 }
 ```
@@ -180,7 +162,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<ActivityResponseDto>**](ActivityResponseDto.md)
+[**BuiltList&lt;ActivityResponseDto&gt;**](ActivityResponseDto.md)
 
 ### Authorization
 
@@ -211,21 +193,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = ActivitiesApi();
-final albumId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Album ID
-final assetId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Asset ID (if activity is for an asset)
+final api = Openapi().getActivitiesApi();
+final String albumId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Album ID
+final String assetId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Asset ID (if activity is for an asset)
 
 try {
-    final result = api_instance.getActivityStatistics(albumId, assetId);
-    print(result);
-} catch (e) {
+    final response = api.getActivityStatistics(albumId, assetId);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling ActivitiesApi->getActivityStatistics: $e\n');
 }
 ```

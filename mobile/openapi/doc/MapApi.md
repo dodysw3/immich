@@ -14,7 +14,7 @@ Method | HTTP request | Description
 
 
 # **getMapMarkers**
-> List<MapMarkerResponseDto> getMapMarkers(fileCreatedAfter, fileCreatedBefore, isArchived, isFavorite, withPartners, withSharedAlbums)
+> BuiltList<MapMarkerResponseDto> getMapMarkers(fileCreatedAfter, fileCreatedBefore, isArchived, isFavorite, withPartners, withSharedAlbums)
 
 Retrieve map markers
 
@@ -31,25 +31,19 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = MapApi();
-final fileCreatedAfter = 2024-01-01T00:00Z; // DateTime | Filter assets created after this date
-final fileCreatedBefore = 2024-01-01T00:00Z; // DateTime | Filter assets created before this date
-final isArchived = true; // bool | Filter by archived status
-final isFavorite = true; // bool | Filter by favorite status
-final withPartners = true; // bool | Include partner assets
-final withSharedAlbums = true; // bool | Include shared album assets
+final api = Openapi().getMapApi();
+final DateTime fileCreatedAfter = 2024-01-01T00:00Z; // DateTime | Filter assets created after this date
+final DateTime fileCreatedBefore = 2024-01-01T00:00Z; // DateTime | Filter assets created before this date
+final bool isArchived = true; // bool | Filter by archived status
+final bool isFavorite = true; // bool | Filter by favorite status
+final bool withPartners = true; // bool | Include partner assets
+final bool withSharedAlbums = true; // bool | Include shared album assets
 
 try {
-    final result = api_instance.getMapMarkers(fileCreatedAfter, fileCreatedBefore, isArchived, isFavorite, withPartners, withSharedAlbums);
-    print(result);
-} catch (e) {
+    final response = api.getMapMarkers(fileCreatedAfter, fileCreatedBefore, isArchived, isFavorite, withPartners, withSharedAlbums);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling MapApi->getMapMarkers: $e\n');
 }
 ```
@@ -67,7 +61,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<MapMarkerResponseDto>**](MapMarkerResponseDto.md)
+[**BuiltList&lt;MapMarkerResponseDto&gt;**](MapMarkerResponseDto.md)
 
 ### Authorization
 
@@ -81,7 +75,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **reverseGeocode**
-> List<MapReverseGeocodeResponseDto> reverseGeocode(lat, lon)
+> BuiltList<MapReverseGeocodeResponseDto> reverseGeocode(lat, lon)
 
 Reverse geocode coordinates
 
@@ -98,21 +92,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = MapApi();
-final lat = 1.2; // double | Latitude (-90 to 90)
-final lon = 1.2; // double | Longitude (-180 to 180)
+final api = Openapi().getMapApi();
+final double lat = 1.2; // double | Latitude (-90 to 90)
+final double lon = 1.2; // double | Longitude (-180 to 180)
 
 try {
-    final result = api_instance.reverseGeocode(lat, lon);
-    print(result);
-} catch (e) {
+    final response = api.reverseGeocode(lat, lon);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling MapApi->reverseGeocode: $e\n');
 }
 ```
@@ -126,7 +114,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<MapReverseGeocodeResponseDto>**](MapReverseGeocodeResponseDto.md)
+[**BuiltList&lt;MapReverseGeocodeResponseDto&gt;**](MapReverseGeocodeResponseDto.md)
 
 ### Authorization
 

@@ -10,7 +10,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **action** | [**AssetUploadAction**](AssetUploadAction.md) |  | 
 **assetId** | **String** | Existing asset ID if duplicate | [optional] 
-**id** | **String** | Asset ID | 
+**id** | **String** | Client-side identifier echoed from the request to match results to inputs | 
 **isTrashed** | **bool** | Whether existing asset is trashed | [optional] 
 **reason** | [**AssetRejectReason**](AssetRejectReason.md) |  | [optional] 
 

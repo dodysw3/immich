@@ -14,18 +14,22 @@
     containerHeight = 0,
     // eslint-disable-next-line no-useless-assignment
     height = $bindable(0),
+    showAtZero = false,
   }: {
     currentTimeMs?: number;
     contentRect?: ContentRect;
     containerHeight?: number;
     /** Rendered height of the line on screen, 0 when none — the sound tags stack above it. */
     height?: number;
+    /** A Transcription match opened at timestamp zero: showing the pinned line is intended there. */
+    showAtZero?: boolean;
   } = $props();
 
   const activeSegment = $derived(videoTranscriptManager.segmentAt(currentTimeMs));
   // Hidden while paused-at-zero: a subtitle pinned at t=0 on an unplayed video
-  // looks like a rendering artifact rather than a caption.
-  const showBar = $derived(videoTranscriptManager.showOverlay && !!activeSegment && currentTimeMs > 0);
+  // looks like a rendering artifact rather than a caption. The exception is a
+  // Transcription match opened at zero, where the pinned line is the point.
+  const showBar = $derived(videoTranscriptManager.showOverlay && !!activeSegment && (currentTimeMs > 0 || showAtZero));
 
   let measuredHeight = $state(0);
   $effect(() => {

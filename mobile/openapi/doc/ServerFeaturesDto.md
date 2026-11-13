@@ -8,6 +8,8 @@ import 'package:openapi/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**aiInterpretSearch** | **bool** | Whether AI interpretation search is enabled | 
+**backups** | **bool** | Whether the backups feature is enabled | 
 **configFile** | **bool** | Whether config file is available | 
 **duplicateDetection** | **bool** | Whether duplicate detection is enabled | 
 **email** | **bool** | Whether email notifications are enabled | 
@@ -18,6 +20,7 @@ Name | Type | Description | Notes
 **oauthAutoLaunch** | **bool** | Whether OAuth auto-launch is enabled | 
 **ocr** | **bool** | Whether OCR is enabled | 
 **passwordLogin** | **bool** | Whether password login is enabled | 
+**realtimeTranscoding** | **bool** | Whether real-time transcoding is enabled | 
 **reverseGeocoding** | **bool** | Whether reverse geocoding is enabled | 
 **search** | **bool** | Whether search is enabled | 
 **sidecar** | **bool** | Whether sidecar files are supported | 

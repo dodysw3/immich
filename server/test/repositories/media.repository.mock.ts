@@ -8,6 +8,7 @@ export const newMediaRepositoryMock = (): Mocked<RepositoryInterface<MediaReposi
     grabVideoFrame: vitest.fn().mockResolvedValue(0),
     extractVideoFrames: vitest.fn().mockResolvedValue([]),
     extractVideoAudio: vitest.fn().mockResolvedValue(null),
+    extractVideoAudioChunk: vitest.fn().mockResolvedValue('/tmp/audio-chunk.wav'),
     extractVideoFingerprintData: vitest.fn().mockResolvedValue({ frames: [], audio: null }),
     writeExif: vitest.fn().mockImplementation(() => Promise.resolve()),
     copyTagGroup: vitest.fn().mockImplementation(() => Promise.resolve()),

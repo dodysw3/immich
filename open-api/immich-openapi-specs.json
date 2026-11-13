@@ -1372,6 +1372,90 @@
         "x-immich-state": "Stable"
       }
     },
+    "/admin/transcription/coverage": {
+      "get": {
+        "description": "Counts of videos per transcription coverage state (missing, in progress, failed, partial, complete, no-audio, no-speech) plus search-index currency. Populated independently of captioning and interpretation.",
+        "operationId": "getCoverageCounts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptionCoverageCounts"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Transcription coverage totals",
+        "tags": [
+          "Maintenance (admin)"
+        ],
+        "x-immich-admin-only": true,
+        "x-immich-history": [
+          {
+            "version": "v3.5.0",
+            "state": "Added"
+          }
+        ],
+        "x-immich-permission": "maintenance"
+      }
+    },
+    "/admin/transcription/reconcile": {
+      "post": {
+        "description": "Schedules the deduplicated keyset sweep that finds missing, partial, and abandoned transcription work. Bounded per sweep; failed media is never auto-retried.",
+        "operationId": "queueReconciliation",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptionReconcileResponse"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Queue transcription reconciliation",
+        "tags": [
+          "Maintenance (admin)"
+        ],
+        "x-immich-admin-only": true,
+        "x-immich-history": [
+          {
+            "version": "v3.5.0",
+            "state": "Added"
+          }
+        ],
+        "x-immich-permission": "maintenance"
+      }
+    },
     "/admin/users": {
       "get": {
         "description": "Search for users.",
@@ -14540,6 +14624,171 @@
         "x-immich-state": "Stable"
       }
     },
+    "/search/transcription": {
+      "post": {
+        "description": "Search videos by words spoken in their audio. Exact phrases outrank exact all-token matches, which outrank spelling variants; timestamps are segment starts, not word-aligned.",
+        "operationId": "searchTranscription",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranscriptionSearchDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptionSearchResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Transcription search",
+        "tags": [
+          "Search"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v3.5.0",
+            "state": "Added"
+          }
+        ],
+        "x-immich-permission": "asset.read"
+      }
+    },
+    "/search/transcription/frame/{assetId}/{passageId}": {
+      "get": {
+        "description": "Decodes (and privately caches) the frame at the selected passage start. Identity is server-resolved from the opaque passage id; access is enforced on every response, including cached ones.",
+        "operationId": "getMatchFrame",
+        "parameters": [
+          {
+            "name": "assetId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "passageId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Matching frame for a Transcription result",
+        "tags": [
+          "Search"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v3.5.0",
+            "state": "Added"
+          }
+        ],
+        "x-immich-permission": "asset.read"
+      }
+    },
+    "/search/transcription/moments": {
+      "post": {
+        "description": "Paginated additional matching moments for one video and query, with the same access rules as the search itself.",
+        "operationId": "searchMoments",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranscriptionMomentsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptionMomentsResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Transcription additional moments",
+        "tags": [
+          "Search"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v3.5.0",
+            "state": "Added"
+          }
+        ],
+        "x-immich-permission": "asset.read"
+      }
+    },
     "/server/about": {
       "get": {
         "description": "Retrieve a list of information about the server.",
@@ -20254,6 +20503,9 @@
           "theme": {
             "$ref": "#/components/schemas/AdminConfigThemeDto"
           },
+          "transcriptionSearch": {
+            "$ref": "#/components/schemas/AdminConfigTranscriptionSearchDto"
+          },
           "trash": {
             "$ref": "#/components/schemas/AdminConfigTrashDto"
           },
@@ -20283,6 +20535,7 @@
           "storageTemplate",
           "templates",
           "theme",
+          "transcriptionSearch",
           "trash",
           "user"
         ],
@@ -21475,6 +21728,68 @@
         "required": [
           "minDimWithFaces",
           "minPass1Faces"
+        ],
+        "type": "object"
+      },
+      "AdminConfigTranscriptionSearchDto": {
+        "properties": {
+          "additionalMoments": {
+            "description": "Additional matching moments returned per video",
+            "maximum": 20,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "coverageWeight": {
+            "description": "Token coverage weight",
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "fuzzyThreshold": {
+            "description": "Strict-word similarity threshold for spelling fallback",
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "minimumCoverage": {
+            "description": "Minimum query-token coverage",
+            "exclusiveMinimum": true,
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "minimumFuzzyLength": {
+            "description": "Minimum query-token length for fuzzy matching",
+            "maximum": 64,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "proximityWeight": {
+            "description": "Proximity weight",
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "similarityWeight": {
+            "description": "Spelling similarity weight",
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "additionalMoments",
+          "coverageWeight",
+          "fuzzyThreshold",
+          "minimumCoverage",
+          "minimumFuzzyLength",
+          "proximityWeight",
+          "similarityWeight"
         ],
         "type": "object"
       },
@@ -25085,6 +25400,10 @@
           "AiInterpretSearchSync",
           "AiInterpretSearchReconcile",
           "AssetCaptionVideo",
+          "AssetTranscribeVideo",
+          "TranscriptionReconcile",
+          "TranscriptIndexSync",
+          "TranscriptIndexReconcile",
           "AuditTableCleanup",
           "AuthChallengeCleanup",
           "DatabaseBackup",
@@ -28926,7 +29245,9 @@
           "imageInterpretationPublic",
           "aiInterpretSearch",
           "videoFaceScan",
-          "videoCaptioning"
+          "videoCaptioning",
+          "videoTranscription",
+          "transcriptIndexSync"
         ],
         "type": "string"
       },
@@ -29121,6 +29442,9 @@
           "thumbnailGeneration": {
             "$ref": "#/components/schemas/QueueResponseLegacyDto"
           },
+          "transcriptIndexSync": {
+            "$ref": "#/components/schemas/QueueResponseLegacyDto"
+          },
           "videoCaptioning": {
             "$ref": "#/components/schemas/QueueResponseLegacyDto"
           },
@@ -29128,6 +29452,9 @@
             "$ref": "#/components/schemas/QueueResponseLegacyDto"
           },
           "videoFaceScan": {
+            "$ref": "#/components/schemas/QueueResponseLegacyDto"
+          },
+          "videoTranscription": {
             "$ref": "#/components/schemas/QueueResponseLegacyDto"
           },
           "workflow": {
@@ -29156,9 +29483,11 @@
           "smartSearch",
           "storageTemplateMigration",
           "thumbnailGeneration",
+          "transcriptIndexSync",
           "videoCaptioning",
           "videoConversion",
           "videoFaceScan",
+          "videoTranscription",
           "workflow"
         ],
         "type": "object"
@@ -30779,6 +31108,10 @@
             "description": "Whether smart search is enabled",
             "type": "boolean"
           },
+          "transcriptionSearch": {
+            "description": "Whether video transcription search is enabled",
+            "type": "boolean"
+          },
           "trash": {
             "description": "Whether trash feature is enabled",
             "type": "boolean"
@@ -30802,6 +31135,7 @@
           "search",
           "sidecar",
           "smartSearch",
+          "transcriptionSearch",
           "trash"
         ],
         "type": "object"
@@ -35553,6 +35887,482 @@
           "disabled"
         ],
         "type": "string"
+      },
+      "TranscriptionCoverageCounts": {
+        "properties": {
+          "complete": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "failed": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "inProgress": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "indexCurrent": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "indexFailed": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "indexPending": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "missing": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "noAudio": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "noSpeech": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "partial": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "complete",
+          "failed",
+          "inProgress",
+          "indexCurrent",
+          "indexFailed",
+          "indexPending",
+          "missing",
+          "noAudio",
+          "noSpeech",
+          "partial"
+        ],
+        "type": "object"
+      },
+      "TranscriptionCoverageDto": {
+        "properties": {
+          "indexErrors": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "indexedVideos": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "pendingIndex": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "totalVideos": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "indexErrors",
+          "indexedVideos",
+          "pendingIndex",
+          "totalVideos"
+        ],
+        "type": "object"
+      },
+      "TranscriptionMatchDto": {
+        "properties": {
+          "components": {
+            "description": "Score components (opt-in diagnostics)",
+            "properties": {
+              "coverage": {
+                "format": "double",
+                "type": "number"
+              },
+              "proximity": {
+                "format": "double",
+                "type": "number"
+              },
+              "similarity": {
+                "format": "double",
+                "type": "number"
+              }
+            },
+            "required": [
+              "coverage",
+              "proximity",
+              "similarity"
+            ],
+            "type": "object"
+          },
+          "endMs": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "firstSegment": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "lastSegment": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "passageId": {
+            "description": "Opaque passage id (used for moment retrieval and frame resolution)",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+            "type": "string"
+          },
+          "revision": {
+            "description": "Source transcript content revision",
+            "type": "string"
+          },
+          "runKey": {
+            "description": "Source transcription run identity",
+            "type": "string"
+          },
+          "score": {
+            "description": "Normalized within-tier score",
+            "format": "double",
+            "type": "number"
+          },
+          "snippet": {
+            "description": "Original transcript text of the passage",
+            "type": "string"
+          },
+          "spans": {
+            "description": "Matched text spans within the snippet (never HTML)",
+            "items": {
+              "$ref": "#/components/schemas/TranscriptionSearchSpanDto"
+            },
+            "type": "array"
+          },
+          "startMs": {
+            "description": "Match moment: the start of the first matched segment (segment precision, not word alignment)",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "tier": {
+            "enum": [
+              "exact-phrase",
+              "exact-all",
+              "fuzzy",
+              "partial"
+            ],
+            "type": "string"
+          },
+          "windowId": {
+            "description": "Contributing segment range (first:last)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "endMs",
+          "firstSegment",
+          "lastSegment",
+          "passageId",
+          "revision",
+          "runKey",
+          "score",
+          "snippet",
+          "spans",
+          "startMs",
+          "tier",
+          "windowId"
+        ],
+        "type": "object"
+      },
+      "TranscriptionMomentsDto": {
+        "properties": {
+          "assetId": {
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "type": "string"
+          },
+          "cursor": {
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "q": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "size": {
+            "default": 10,
+            "description": "Moments per page",
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "assetId",
+          "q"
+        ],
+        "type": "object"
+      },
+      "TranscriptionMomentsResponseDto": {
+        "properties": {
+          "configVersion": {
+            "type": "string"
+          },
+          "count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "moments": {
+            "items": {
+              "$ref": "#/components/schemas/TranscriptionMatchDto"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "configVersion",
+          "count",
+          "moments",
+          "nextCursor"
+        ],
+        "type": "object"
+      },
+      "TranscriptionReconcileResponse": {
+        "properties": {
+          "queued": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "queued"
+        ],
+        "type": "object"
+      },
+      "TranscriptionSearchDto": {
+        "properties": {
+          "city": {
+            "description": "Filter by city name (null = no city)",
+            "nullable": true,
+            "type": "string"
+          },
+          "country": {
+            "description": "Filter by country name (null = no country)",
+            "nullable": true,
+            "type": "string"
+          },
+          "cursor": {
+            "description": "Opaque pagination cursor from a previous page",
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "explain": {
+            "description": "Include score components and scoped coverage counts (diagnostics)",
+            "type": "boolean"
+          },
+          "isFavorite": {
+            "description": "Filter by favorite status",
+            "type": "boolean"
+          },
+          "isNotInAlbum": {
+            "description": "Filter assets not in any album",
+            "type": "boolean"
+          },
+          "lensModel": {
+            "description": "Filter by lens model (null = no lens)",
+            "nullable": true,
+            "type": "string"
+          },
+          "make": {
+            "description": "Filter by camera make (null = no make)",
+            "nullable": true,
+            "type": "string"
+          },
+          "model": {
+            "description": "Filter by camera model (null = no model)",
+            "nullable": true,
+            "type": "string"
+          },
+          "personIds": {
+            "description": "Filter by person IDs (all must match)",
+            "items": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "q": {
+            "description": "Spoken words to search for (exact-first, spelling fallback)",
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "rating": {
+            "description": "Filter by rating (null = unrated)",
+            "maximum": 5,
+            "minimum": 1,
+            "nullable": true,
+            "type": "integer"
+          },
+          "size": {
+            "default": 20,
+            "description": "Videos per page",
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "state": {
+            "description": "Filter by state/province name (null = no state)",
+            "nullable": true,
+            "type": "string"
+          },
+          "tagIds": {
+            "description": "Filter by tag IDs (all must match; null = untagged)",
+            "items": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "takenAfter": {
+            "description": "Filter by taken date (after)",
+            "example": "2024-01-01T00:00:00.000Z",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "type": "string"
+          },
+          "takenBefore": {
+            "description": "Filter by taken date (before)",
+            "example": "2024-01-01T00:00:00.000Z",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "type": "string"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/AssetVisibility",
+            "description": "Filter by visibility"
+          },
+          "withStacked": {
+            "description": "Include stacked assets",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "q"
+        ],
+        "type": "object"
+      },
+      "TranscriptionSearchItemDto": {
+        "properties": {
+          "additionalMatches": {
+            "description": "Distinct additional matching moments",
+            "items": {
+              "$ref": "#/components/schemas/TranscriptionMatchDto"
+            },
+            "type": "array"
+          },
+          "asset": {
+            "$ref": "#/components/schemas/AssetResponseDto"
+          },
+          "bestMatch": {
+            "$ref": "#/components/schemas/TranscriptionMatchDto"
+          },
+          "matchCount": {
+            "description": "Total distinct matching moments for this video",
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "additionalMatches",
+          "asset",
+          "bestMatch",
+          "matchCount"
+        ],
+        "type": "object"
+      },
+      "TranscriptionSearchResponseDto": {
+        "properties": {
+          "configVersion": {
+            "description": "Ranking configuration identity; cursors are invalid after a change",
+            "type": "string"
+          },
+          "count": {
+            "description": "Videos on this page",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/TranscriptionCoverageDto",
+            "description": "Scoped coverage counts (opt-in diagnostics)"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TranscriptionSearchItemDto"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "configVersion",
+          "count",
+          "items",
+          "nextCursor"
+        ],
+        "type": "object"
+      },
+      "TranscriptionSearchSpanDto": {
+        "properties": {
+          "end": {
+            "description": "UTF-16 end offset of the matched text within the snippet",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "start": {
+            "description": "UTF-16 start offset of the matched text within the snippet",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "end",
+          "start"
+        ],
+        "type": "object"
       },
       "TrashResponseDto": {
         "properties": {

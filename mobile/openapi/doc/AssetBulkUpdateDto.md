@@ -9,14 +9,14 @@ import 'package:openapi/api.dart';
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **dateTimeOriginal** | **String** | Original date and time | [optional] 
-**dateTimeRelative** | **int** | Relative time offset in seconds | [optional] 
+**dateTimeRelative** | **int** | Relative time offset in minutes | [optional] 
 **description** | **String** | Asset description | [optional] 
 **duplicateId** | **String** | Duplicate ID | [optional] 
-**ids** | **List<String>** | Asset IDs to update | [default to const []]
+**ids** | **BuiltList&lt;String&gt;** | Asset IDs to update | 
 **isFavorite** | **bool** | Mark as favorite | [optional] 
-**latitude** | **num** | Latitude coordinate | [optional] 
-**longitude** | **num** | Longitude coordinate | [optional] 
-**rating** | **int** | Rating in range [1-5], or null for unrated | [optional] 
+**latitude** | **double** | Latitude coordinate | [optional] 
+**longitude** | **double** | Longitude coordinate | [optional] 
+**rating** | **int** | Rating in range [1-5] (starred), -1 (rejected), or null (unrated) | [optional] 
 **timeZone** | **String** | Time zone (IANA timezone) | [optional] 
 **visibility** | [**AssetVisibility**](AssetVisibility.md) |  | [optional] 
 

@@ -34,19 +34,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = DatabaseBackupsAdminApi();
-final databaseBackupDeleteDto = DatabaseBackupDeleteDto(); // DatabaseBackupDeleteDto | 
+final api = Openapi().getDatabaseBackupsAdminApi();
+final DatabaseBackupDeleteDto databaseBackupDeleteDto = ; // DatabaseBackupDeleteDto | 
 
 try {
-    api_instance.deleteDatabaseBackup(databaseBackupDeleteDto);
-} catch (e) {
+    api.deleteDatabaseBackup(databaseBackupDeleteDto);
+} on DioException catch (e) {
     print('Exception when calling DatabaseBackupsAdminApi->deleteDatabaseBackup: $e\n');
 }
 ```
@@ -73,7 +67,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **downloadDatabaseBackup**
-> MultipartFile downloadDatabaseBackup(filename)
+> Uint8List downloadDatabaseBackup(filename)
 
 Download database backup
 
@@ -90,20 +84,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = DatabaseBackupsAdminApi();
-final filename = filename_example; // String | 
+final api = Openapi().getDatabaseBackupsAdminApi();
+final String filename = filename_example; // String | 
 
 try {
-    final result = api_instance.downloadDatabaseBackup(filename);
-    print(result);
-} catch (e) {
+    final response = api.downloadDatabaseBackup(filename);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling DatabaseBackupsAdminApi->downloadDatabaseBackup: $e\n');
 }
 ```
@@ -116,7 +104,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**MultipartFile**](MultipartFile.md)
+[**Uint8List**](Uint8List.md)
 
 ### Authorization
 
@@ -147,19 +135,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = DatabaseBackupsAdminApi();
+final api = Openapi().getDatabaseBackupsAdminApi();
 
 try {
-    final result = api_instance.listDatabaseBackups();
-    print(result);
-} catch (e) {
+    final response = api.listDatabaseBackups();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling DatabaseBackupsAdminApi->listDatabaseBackups: $e\n');
 }
 ```
@@ -193,11 +175,11 @@ Put Immich into maintenance mode to restore a backup (Immich must not be configu
 ```dart
 import 'package:openapi/api.dart';
 
-final api_instance = DatabaseBackupsAdminApi();
+final api = Openapi().getDatabaseBackupsAdminApi();
 
 try {
-    api_instance.startDatabaseRestoreFlow();
-} catch (e) {
+    api.startDatabaseRestoreFlow();
+} on DioException catch (e) {
     print('Exception when calling DatabaseBackupsAdminApi->startDatabaseRestoreFlow: $e\n');
 }
 ```
@@ -238,19 +220,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = DatabaseBackupsAdminApi();
-final file = BINARY_DATA_HERE; // MultipartFile | Database backup file
+final api = Openapi().getDatabaseBackupsAdminApi();
+final MultipartFile file = BINARY_DATA_HERE; // MultipartFile | Database backup file
 
 try {
-    api_instance.uploadDatabaseBackup(file);
-} catch (e) {
+    api.uploadDatabaseBackup(file);
+} on DioException catch (e) {
     print('Exception when calling DatabaseBackupsAdminApi->uploadDatabaseBackup: $e\n');
 }
 ```

@@ -92,6 +92,9 @@ export const getSearchTypeTitle = (type: string) => {
     case 'ocr': {
       return $t('ocr');
     }
+    case 'transcription': {
+      return $t('transcription');
+    }
     default: {
       return;
     }
@@ -115,6 +118,9 @@ export const getSearchTypePlaceholder = (type: string) => {
     }
     case 'ai': {
       return $t('search_by_ai_example');
+    }
+    case 'transcription': {
+      return $t('search_by_transcription_example');
     }
     case 'smart': {
       return $t('search_by_context_example');

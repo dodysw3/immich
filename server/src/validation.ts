@@ -106,6 +106,12 @@ const UUIDv7ParamSchema = z.object({
 
 export class UUIDv7ParamDto extends createZodDto(UUIDv7ParamSchema) {}
 
+const TranscriptionFrameParamsSchema = z.object({
+  assetId: z.uuid(),
+  passageId: z.uuid(),
+});
+export class TranscriptionFrameParamsDto extends createZodDto(TranscriptionFrameParamsSchema) {}
+
 const UUIDAssetIDParamSchema = z.object({
   id: z.uuidv4(),
   assetId: z.uuidv4(),

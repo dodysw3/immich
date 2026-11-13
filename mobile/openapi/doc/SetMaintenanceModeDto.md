@@ -10,6 +10,8 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **action** | [**MaintenanceAction**](MaintenanceAction.md) |  | 
 **restoreBackupFilename** | **String** | Restore backup filename | [optional] 
+**rollbackRepositoryId** | **String** | Rollback repository ID | [optional] 
+**rollbackSnapshotId** | **String** | Rollback snapshot ID | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

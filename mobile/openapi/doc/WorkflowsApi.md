@@ -13,6 +13,7 @@ Method | HTTP request | Description
 [**deleteWorkflow**](WorkflowsApi.md#deleteworkflow) | **DELETE** /workflows/{id} | Delete a workflow
 [**getWorkflow**](WorkflowsApi.md#getworkflow) | **GET** /workflows/{id} | Retrieve a workflow
 [**getWorkflowForShare**](WorkflowsApi.md#getworkflowforshare) | **GET** /workflows/{id}/share | Retrieve a workflow
+[**getWorkflowLogs**](WorkflowsApi.md#getworkflowlogs) | **GET** /workflows/{id}/logs | Retrieve workflow logs
 [**getWorkflowTriggers**](WorkflowsApi.md#getworkflowtriggers) | **GET** /workflows/triggers | List all workflow triggers
 [**searchWorkflows**](WorkflowsApi.md#searchworkflows) | **GET** /workflows | List all workflows
 [**updateWorkflow**](WorkflowsApi.md#updateworkflow) | **PUT** /workflows/{id} | Update a workflow
@@ -36,20 +37,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = WorkflowsApi();
-final workflowCreateDto = WorkflowCreateDto(); // WorkflowCreateDto | 
+final api = Openapi().getWorkflowsApi();
+final WorkflowCreateDto workflowCreateDto = ; // WorkflowCreateDto | 
 
 try {
-    final result = api_instance.createWorkflow(workflowCreateDto);
-    print(result);
-} catch (e) {
+    final response = api.createWorkflow(workflowCreateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling WorkflowsApi->createWorkflow: $e\n');
 }
 ```
@@ -93,19 +88,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = WorkflowsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getWorkflowsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    api_instance.deleteWorkflow(id);
-} catch (e) {
+    api.deleteWorkflow(id);
+} on DioException catch (e) {
     print('Exception when calling WorkflowsApi->deleteWorkflow: $e\n');
 }
 ```
@@ -149,20 +138,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = WorkflowsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getWorkflowsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.getWorkflow(id);
-    print(result);
-} catch (e) {
+    final response = api.getWorkflow(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling WorkflowsApi->getWorkflow: $e\n');
 }
 ```
@@ -206,20 +189,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = WorkflowsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getWorkflowsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.getWorkflowForShare(id);
-    print(result);
-} catch (e) {
+    final response = api.getWorkflowForShare(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling WorkflowsApi->getWorkflowForShare: $e\n');
 }
 ```
@@ -245,8 +222,65 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **getWorkflowLogs**
+> BuiltList<WorkflowLogEntryDto> getWorkflowLogs(id, before, limit, result)
+
+Retrieve workflow logs
+
+Retrieve logs of a workflows runs by ID
+
+### Example
+```dart
+import 'package:openapi/api.dart';
+// TODO Configure API key authorization: cookie
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKeyPrefix = 'Bearer';
+// TODO Configure API key authorization: api_key
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
+
+final api = Openapi().getWorkflowsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final DateTime before = 2024-01-01T00:00Z; // DateTime | Filter by runs before a date/time
+final int limit = 56; // int | Maximum number of logs
+final WorkflowResult result = ; // WorkflowResult | Filter by run result
+
+try {
+    final response = api.getWorkflowLogs(id, before, limit, result);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling WorkflowsApi->getWorkflowLogs: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **before** | **DateTime**| Filter by runs before a date/time | [optional] 
+ **limit** | **int**| Maximum number of logs | [optional] [default to 50]
+ **result** | [**WorkflowResult**](.md)| Filter by run result | [optional] 
+
+### Return type
+
+[**BuiltList&lt;WorkflowLogEntryDto&gt;**](WorkflowLogEntryDto.md)
+
+### Authorization
+
+[cookie](../README.md#cookie), [api_key](../README.md#api_key), [bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **getWorkflowTriggers**
-> List<WorkflowTriggerResponseDto> getWorkflowTriggers()
+> BuiltList<WorkflowTriggerResponseDto> getWorkflowTriggers()
 
 List all workflow triggers
 
@@ -263,19 +297,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = WorkflowsApi();
+final api = Openapi().getWorkflowsApi();
 
 try {
-    final result = api_instance.getWorkflowTriggers();
-    print(result);
-} catch (e) {
+    final response = api.getWorkflowTriggers();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling WorkflowsApi->getWorkflowTriggers: $e\n');
 }
 ```
@@ -285,7 +313,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**List<WorkflowTriggerResponseDto>**](WorkflowTriggerResponseDto.md)
+[**BuiltList&lt;WorkflowTriggerResponseDto&gt;**](WorkflowTriggerResponseDto.md)
 
 ### Authorization
 
@@ -299,7 +327,7 @@ This endpoint does not need any parameter.
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **searchWorkflows**
-> List<WorkflowResponseDto> searchWorkflows(description, enabled, id, name, trigger)
+> BuiltList<WorkflowResponseDto> searchWorkflows(description, enabled, id, logging, name, trigger)
 
 List all workflows
 
@@ -316,24 +344,19 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = WorkflowsApi();
-final description = description_example; // String | Workflow description
-final enabled = true; // bool | Workflow enabled
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Workflow ID
-final name = name_example; // String | Workflow name
-final trigger = ; // WorkflowTrigger | Workflow trigger type
+final api = Openapi().getWorkflowsApi();
+final String description = description_example; // String | Workflow description
+final bool enabled = true; // bool | Workflow enabled
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Workflow ID
+final bool logging = true; // bool | Workflow logs run results
+final String name = name_example; // String | Workflow name
+final WorkflowTrigger trigger = ; // WorkflowTrigger | Workflow trigger type
 
 try {
-    final result = api_instance.searchWorkflows(description, enabled, id, name, trigger);
-    print(result);
-} catch (e) {
+    final response = api.searchWorkflows(description, enabled, id, logging, name, trigger);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling WorkflowsApi->searchWorkflows: $e\n');
 }
 ```
@@ -345,12 +368,13 @@ Name | Type | Description  | Notes
  **description** | **String**| Workflow description | [optional] 
  **enabled** | **bool**| Workflow enabled | [optional] 
  **id** | **String**| Workflow ID | [optional] 
+ **logging** | **bool**| Workflow logs run results | [optional] 
  **name** | **String**| Workflow name | [optional] 
  **trigger** | [**WorkflowTrigger**](.md)| Workflow trigger type | [optional] 
 
 ### Return type
 
-[**List<WorkflowResponseDto>**](WorkflowResponseDto.md)
+[**BuiltList&lt;WorkflowResponseDto&gt;**](WorkflowResponseDto.md)
 
 ### Authorization
 
@@ -381,21 +405,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = WorkflowsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final workflowUpdateDto = WorkflowUpdateDto(); // WorkflowUpdateDto | 
+final api = Openapi().getWorkflowsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final WorkflowUpdateDto workflowUpdateDto = ; // WorkflowUpdateDto | 
 
 try {
-    final result = api_instance.updateWorkflow(id, workflowUpdateDto);
-    print(result);
-} catch (e) {
+    final response = api.updateWorkflow(id, workflowUpdateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling WorkflowsApi->updateWorkflow: $e\n');
 }
 ```

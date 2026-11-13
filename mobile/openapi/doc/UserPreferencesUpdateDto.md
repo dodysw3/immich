@@ -18,6 +18,7 @@ Name | Type | Description | Notes
 **people** | [**PeopleUpdate**](PeopleUpdate.md) |  | [optional] 
 **purchase** | [**PurchaseUpdate**](PurchaseUpdate.md) |  | [optional] 
 **ratings** | [**RatingsUpdate**](RatingsUpdate.md) |  | [optional] 
+**recentlyAdded** | [**RecentlyAddedUpdate**](RecentlyAddedUpdate.md) |  | [optional] 
 **sharedLinks** | [**SharedLinksUpdate**](SharedLinksUpdate.md) |  | [optional] 
 **tags** | [**TagsUpdate**](TagsUpdate.md) |  | [optional] 
 

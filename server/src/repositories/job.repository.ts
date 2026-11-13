@@ -14,8 +14,8 @@ import type { JobCounts, JobItem, JobOf } from 'src/types.js';
 import {
   AI_INTERPRETATION_RATE_WINDOW_MINUTES,
   AI_INTERPRETATION_RATE_WINDOW_MS,
-  type AiInterpretationLane,
   createAiInterpretationJobId,
+  type AiInterpretationLane,
 } from 'src/utils/ai-image-interpretation.js';
 import { ImmichStartupError, getKeyByValue, getMethodNames } from 'src/utils/misc.js';
 
@@ -396,6 +396,26 @@ export class JobRepository {
       }
       case JobName.AiInterpretSearchReconcile: {
         return { deduplication: { id: JobName.AiInterpretSearchReconcile } };
+      }
+      case JobName.TranscriptionReconcile: {
+        return { deduplication: { id: JobName.TranscriptionReconcile } };
+      }
+      case JobName.TranscriptIndexSync: {
+        // Pure DB work; retry transient lock conflicts.
+        return { jobId: item.data.id, attempts: 3, backoff: { type: 'exponential', delay: 5000 } };
+      }
+      case JobName.TranscriptIndexReconcile: {
+        return { deduplication: { id: JobName.TranscriptIndexReconcile } };
+      }
+      case JobName.AssetTranscribeVideo: {
+        // One job per asset (jobId dedup). Sidecar outages retry with backoff;
+        // chunked progress makes every retry resume instead of restarting.
+        return {
+          jobId: item.data.id,
+          priority: item.data.priority,
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 10_000 },
+        };
       }
       default: {
         return null;

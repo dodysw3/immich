@@ -104,9 +104,13 @@ export class QueueService extends BaseService {
             ? this.configRepository.getEnv().aiImageInterpretation.publicConcurrency
             : queueName === QueueName.VideoCaptioning
               ? this.configRepository.getEnv().aiVideoCaptioning.concurrency
-              : this.isConcurrentQueue(queueName)
-                ? config.job[queueName].concurrency
-                : 1;
+              : queueName === QueueName.VideoTranscription
+                ? this.configRepository.getEnv().aiVideoTranscription.concurrency
+                : queueName === QueueName.TranscriptIndexSync
+                  ? 2
+                  : this.isConcurrentQueue(queueName)
+                    ? config.job[queueName].concurrency
+                    : 1;
       this.logger.debug(`Setting ${queueName} concurrency to ${concurrency}`);
       this.jobRepository.setConcurrency(queueName, concurrency);
     }
@@ -279,6 +283,8 @@ export class QueueService extends BaseService {
       QueueName.AiInterpretSearch,
       QueueName.VideoFaceScan,
       QueueName.VideoCaptioning,
+      QueueName.VideoTranscription,
+      QueueName.TranscriptIndexSync,
     ].includes(name);
   }
 

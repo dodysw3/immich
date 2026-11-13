@@ -14,7 +14,7 @@ Method | HTTP request | Description
 
 
 # **getAssetsByOriginalPath**
-> List<AssetResponseDto> getAssetsByOriginalPath(path)
+> BuiltList<AssetResponseDto> getAssetsByOriginalPath(path)
 
 Retrieve assets by original path
 
@@ -31,20 +31,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = ViewsApi();
-final path = path_example; // String | 
+final api = Openapi().getViewsApi();
+final String path = path_example; // String | 
 
 try {
-    final result = api_instance.getAssetsByOriginalPath(path);
-    print(result);
-} catch (e) {
+    final response = api.getAssetsByOriginalPath(path);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling ViewsApi->getAssetsByOriginalPath: $e\n');
 }
 ```
@@ -57,7 +51,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<AssetResponseDto>**](AssetResponseDto.md)
+[**BuiltList&lt;AssetResponseDto&gt;**](AssetResponseDto.md)
 
 ### Authorization
 
@@ -71,7 +65,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getUniqueOriginalPaths**
-> List<String> getUniqueOriginalPaths()
+> BuiltList<String> getUniqueOriginalPaths()
 
 Retrieve unique paths
 
@@ -88,19 +82,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = ViewsApi();
+final api = Openapi().getViewsApi();
 
 try {
-    final result = api_instance.getUniqueOriginalPaths();
-    print(result);
-} catch (e) {
+    final response = api.getUniqueOriginalPaths();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling ViewsApi->getUniqueOriginalPaths: $e\n');
 }
 ```
@@ -110,7 +98,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-**List<String>**
+**BuiltList&lt;String&gt;**
 
 ### Authorization
 

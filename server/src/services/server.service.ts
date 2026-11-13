@@ -98,7 +98,7 @@ export class ServerService extends BaseService {
       notifications,
       ffmpeg,
     } = await this.getConfig({ withCache: false });
-    const { configFile, aiInterpretSearch } = this.configRepository.getEnv();
+    const { configFile, aiInterpretSearch, transcriptionSearch } = this.configRepository.getEnv();
 
     return {
       smartSearch: isSmartSearchEnabled(machineLearning),
@@ -115,6 +115,7 @@ export class ServerService extends BaseService {
       oauthAutoLaunch: oauth.autoLaunch,
       ocr: isOcrEnabled(machineLearning),
       aiInterpretSearch: aiInterpretSearch.enabled,
+      transcriptionSearch: transcriptionSearch.enabled,
       passwordLogin: passwordLogin.enabled,
       configFile: !!configFile,
       email: notifications.smtp.enabled,

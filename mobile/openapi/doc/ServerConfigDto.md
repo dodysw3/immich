@@ -15,6 +15,8 @@ Name | Type | Description | Notes
 **maintenanceMode** | **bool** | Whether maintenance mode is active | 
 **mapDarkStyleUrl** | **String** | Map dark style URL | 
 **mapLightStyleUrl** | **String** | Map light style URL | 
+**minFaces** | **int** | People min faces server default | 
+**oauthAccountManagementUrl** | **String** | OAuth account management URL | [optional] [default to '']
 **oauthButtonText** | **String** | OAuth button text | 
 **publicUsers** | **bool** | Whether public user registration is enabled | 
 **trashDays** | **int** | Number of days before trashed assets are permanently deleted | 

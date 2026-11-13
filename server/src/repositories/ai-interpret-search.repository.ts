@@ -66,8 +66,10 @@ export interface AiInterpretBranchRow {
 Applies the shared asset-level filters to a query whose driving table is
 `asset` (with `ai_interpret_search` joined). Multiple exif filters each add
 their own join, so the caller must attach the join-deduplication plugin.
+Shared with the transcript search (transcription results obey the same
+authorization semantics).
 */
-function applyAssetFilters<O>(
+export function applyAssetFilters<O>(
   qb: SelectQueryBuilder<DB, 'asset', O>,
   {
     userIds,

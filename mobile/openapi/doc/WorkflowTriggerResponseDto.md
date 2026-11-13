@@ -9,7 +9,7 @@ import 'package:openapi/api.dart';
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **trigger** | [**WorkflowTrigger**](WorkflowTrigger.md) |  | 
-**types** | [**List<WorkflowType>**](WorkflowType.md) | Workflow types | [default to const []]
+**types** | [**BuiltList&lt;WorkflowType&gt;**](WorkflowType.md) | Workflow types | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

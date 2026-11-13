@@ -46,20 +46,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AuthenticationApi();
-final changePasswordDto = ChangePasswordDto(); // ChangePasswordDto | 
+final api = Openapi().getAuthenticationApi();
+final ChangePasswordDto changePasswordDto = ; // ChangePasswordDto | 
 
 try {
-    final result = api_instance.changePassword(changePasswordDto);
-    print(result);
-} catch (e) {
+    final response = api.changePassword(changePasswordDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AuthenticationApi->changePassword: $e\n');
 }
 ```
@@ -103,19 +97,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AuthenticationApi();
-final pinCodeChangeDto = PinCodeChangeDto(); // PinCodeChangeDto | 
+final api = Openapi().getAuthenticationApi();
+final PinCodeChangeDto pinCodeChangeDto = ; // PinCodeChangeDto | 
 
 try {
-    api_instance.changePinCode(pinCodeChangeDto);
-} catch (e) {
+    api.changePinCode(pinCodeChangeDto);
+} on DioException catch (e) {
     print('Exception when calling AuthenticationApi->changePinCode: $e\n');
 }
 ```
@@ -152,13 +140,13 @@ Complete the OAuth authorization process by exchanging the authorization code fo
 ```dart
 import 'package:openapi/api.dart';
 
-final api_instance = AuthenticationApi();
-final oAuthCallbackDto = OAuthCallbackDto(); // OAuthCallbackDto | 
+final api = Openapi().getAuthenticationApi();
+final OAuthCallbackDto oAuthCallbackDto = ; // OAuthCallbackDto | 
 
 try {
-    final result = api_instance.finishOAuth(oAuthCallbackDto);
-    print(result);
-} catch (e) {
+    final response = api.finishOAuth(oAuthCallbackDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AuthenticationApi->finishOAuth: $e\n');
 }
 ```
@@ -202,19 +190,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AuthenticationApi();
+final api = Openapi().getAuthenticationApi();
 
 try {
-    final result = api_instance.getAuthStatus();
-    print(result);
-} catch (e) {
+    final response = api.getAuthStatus();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AuthenticationApi->getAuthStatus: $e\n');
 }
 ```
@@ -255,20 +237,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AuthenticationApi();
-final oAuthCallbackDto = OAuthCallbackDto(); // OAuthCallbackDto | 
+final api = Openapi().getAuthenticationApi();
+final OAuthCallbackDto oAuthCallbackDto = ; // OAuthCallbackDto | 
 
 try {
-    final result = api_instance.linkOAuthAccount(oAuthCallbackDto);
-    print(result);
-} catch (e) {
+    final response = api.linkOAuthAccount(oAuthCallbackDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AuthenticationApi->linkOAuthAccount: $e\n');
 }
 ```
@@ -312,18 +288,12 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AuthenticationApi();
+final api = Openapi().getAuthenticationApi();
 
 try {
-    api_instance.lockAuthSession();
-} catch (e) {
+    api.lockAuthSession();
+} on DioException catch (e) {
     print('Exception when calling AuthenticationApi->lockAuthSession: $e\n');
 }
 ```
@@ -357,13 +327,13 @@ Login with username and password and receive a session token.
 ```dart
 import 'package:openapi/api.dart';
 
-final api_instance = AuthenticationApi();
-final loginCredentialDto = LoginCredentialDto(); // LoginCredentialDto | 
+final api = Openapi().getAuthenticationApi();
+final LoginCredentialDto loginCredentialDto = ; // LoginCredentialDto | 
 
 try {
-    final result = api_instance.login(loginCredentialDto);
-    print(result);
-} catch (e) {
+    final response = api.login(loginCredentialDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AuthenticationApi->login: $e\n');
 }
 ```
@@ -407,19 +377,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AuthenticationApi();
+final api = Openapi().getAuthenticationApi();
 
 try {
-    final result = api_instance.logout();
-    print(result);
-} catch (e) {
+    final response = api.logout();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AuthenticationApi->logout: $e\n');
 }
 ```
@@ -453,12 +417,12 @@ Logout the OAuth account and invalidate the session specified by the sid claim o
 ```dart
 import 'package:openapi/api.dart';
 
-final api_instance = AuthenticationApi();
-final logoutToken = logoutToken_example; // String | OAuth logout token
+final api = Openapi().getAuthenticationApi();
+final String logoutToken = logoutToken_example; // String | OAuth logout token
 
 try {
-    api_instance.logoutOAuth(logoutToken);
-} catch (e) {
+    api.logoutOAuth(logoutToken);
+} on DioException catch (e) {
     print('Exception when calling AuthenticationApi->logoutOAuth: $e\n');
 }
 ```
@@ -495,11 +459,11 @@ Requests to this URL are automatically forwarded to the mobile app, and is used 
 ```dart
 import 'package:openapi/api.dart';
 
-final api_instance = AuthenticationApi();
+final api = Openapi().getAuthenticationApi();
 
 try {
-    api_instance.redirectOAuthToMobile();
-} catch (e) {
+    api.redirectOAuthToMobile();
+} on DioException catch (e) {
     print('Exception when calling AuthenticationApi->redirectOAuthToMobile: $e\n');
 }
 ```
@@ -540,19 +504,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AuthenticationApi();
-final pinCodeResetDto = PinCodeResetDto(); // PinCodeResetDto | 
+final api = Openapi().getAuthenticationApi();
+final PinCodeResetDto pinCodeResetDto = ; // PinCodeResetDto | 
 
 try {
-    api_instance.resetPinCode(pinCodeResetDto);
-} catch (e) {
+    api.resetPinCode(pinCodeResetDto);
+} on DioException catch (e) {
     print('Exception when calling AuthenticationApi->resetPinCode: $e\n');
 }
 ```
@@ -596,19 +554,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AuthenticationApi();
-final pinCodeSetupDto = PinCodeSetupDto(); // PinCodeSetupDto | 
+final api = Openapi().getAuthenticationApi();
+final PinCodeSetupDto pinCodeSetupDto = ; // PinCodeSetupDto | 
 
 try {
-    api_instance.setupPinCode(pinCodeSetupDto);
-} catch (e) {
+    api.setupPinCode(pinCodeSetupDto);
+} on DioException catch (e) {
     print('Exception when calling AuthenticationApi->setupPinCode: $e\n');
 }
 ```
@@ -645,13 +597,13 @@ Create the first admin user in the system.
 ```dart
 import 'package:openapi/api.dart';
 
-final api_instance = AuthenticationApi();
-final signUpDto = SignUpDto(); // SignUpDto | 
+final api = Openapi().getAuthenticationApi();
+final SignUpDto signUpDto = ; // SignUpDto | 
 
 try {
-    final result = api_instance.signUpAdmin(signUpDto);
-    print(result);
-} catch (e) {
+    final response = api.signUpAdmin(signUpDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AuthenticationApi->signUpAdmin: $e\n');
 }
 ```
@@ -688,13 +640,13 @@ Initiate the OAuth authorization process.
 ```dart
 import 'package:openapi/api.dart';
 
-final api_instance = AuthenticationApi();
-final oAuthConfigDto = OAuthConfigDto(); // OAuthConfigDto | 
+final api = Openapi().getAuthenticationApi();
+final OAuthConfigDto oAuthConfigDto = ; // OAuthConfigDto | 
 
 try {
-    final result = api_instance.startOAuth(oAuthConfigDto);
-    print(result);
-} catch (e) {
+    final response = api.startOAuth(oAuthConfigDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AuthenticationApi->startOAuth: $e\n');
 }
 ```
@@ -738,19 +690,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AuthenticationApi();
+final api = Openapi().getAuthenticationApi();
 
 try {
-    final result = api_instance.unlinkOAuthAccount();
-    print(result);
-} catch (e) {
+    final response = api.unlinkOAuthAccount();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AuthenticationApi->unlinkOAuthAccount: $e\n');
 }
 ```
@@ -791,19 +737,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AuthenticationApi();
-final sessionUnlockDto = SessionUnlockDto(); // SessionUnlockDto | 
+final api = Openapi().getAuthenticationApi();
+final SessionUnlockDto sessionUnlockDto = ; // SessionUnlockDto | 
 
 try {
-    api_instance.unlockAuthSession(sessionUnlockDto);
-} catch (e) {
+    api.unlockAuthSession(sessionUnlockDto);
+} on DioException catch (e) {
     print('Exception when calling AuthenticationApi->unlockAuthSession: $e\n');
 }
 ```
@@ -847,19 +787,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AuthenticationApi();
+final api = Openapi().getAuthenticationApi();
 
 try {
-    final result = api_instance.validateAccessToken();
-    print(result);
-} catch (e) {
+    final response = api.validateAccessToken();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AuthenticationApi->validateAccessToken: $e\n');
 }
 ```

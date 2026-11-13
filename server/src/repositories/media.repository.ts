@@ -378,6 +378,58 @@ export class MediaRepository {
   }
 
   /**
+  Extract one bounded audio chunk for full-duration video transcription: a
+  16 kHz mono s16 WAV covering [startSec, startSec + durationSec) via input
+  seek. Strict, unlike `extractVideoAudio`: the caller already probed an
+  audio stream, so a failure here is a retryable error, never silence.
+  Throws on ffmpeg failure; a header-only WAV (possible at stream edges) is
+  returned as-is for the sidecar to judge.
+  */
+  async extractVideoAudioChunk(
+    input: string,
+    outputDir: string,
+    options: { startSec: number; durationSec: number },
+  ): Promise<string> {
+    const audioPath = join(outputDir, `audio-chunk-${options.startSec.toFixed(3)}.wav`);
+    const args = [
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-nostdin',
+      '-y',
+      '-ss',
+      String(Math.max(0, options.startSec)),
+      '-i',
+      input,
+      '-t',
+      String(options.durationSec),
+      '-vn',
+      '-ac',
+      '1',
+      '-ar',
+      '16000',
+      '-c:a',
+      'pcm_s16le',
+      audioPath,
+    ];
+    await new Promise<void>((resolve, reject) => {
+      const proc = spawn('ffmpeg', args, { stdio: ['ignore', 'ignore', 'pipe'] });
+      let stderr = '';
+      proc.stderr.on('data', (chunk) => (stderr += chunk.toString()));
+      proc.on('error', reject);
+      proc.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+          return;
+        }
+        reject(new Error(`ffmpeg audio chunk extraction failed (code ${code}): ${stderr.slice(-300)}`));
+      });
+    });
+    await fs.access(audioPath);
+    return audioPath;
+  }
+
+  /**
   Raw fingerprint data for near-duplicate video detection (DuplicateService):
   `frameCount` frames downscaled to 9x8 grayscale rawvideo (72 bytes each, in
   timeline order, ready for dHash) plus up to `maxAudioSec` of 8 kHz mono
@@ -396,11 +448,24 @@ export class MediaRepository {
     if (durationSec > 0 && durationSec <= 120) {
       const fps = Math.max(frameCount / Math.max(durationSec, 0.5), 1);
       const args = [
-        '-hide_banner', '-loglevel', 'error', '-nostdin', '-i', input,
-        '-an', '-sn', '-dn', '-map', '0:v:0',
-        '-vf', `fps=${fps.toFixed(4)},scale=9:8,format=gray`,
-        '-frames:v', String(frameCount),
-        '-f', 'rawvideo', '-',
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-nostdin',
+        '-i',
+        input,
+        '-an',
+        '-sn',
+        '-dn',
+        '-map',
+        '0:v:0',
+        '-vf',
+        `fps=${fps.toFixed(4)},scale=9:8,format=gray`,
+        '-frames:v',
+        String(frameCount),
+        '-f',
+        'rawvideo',
+        '-',
       ];
       const raw = await new Promise<Buffer>((resolve, reject) => {
         const proc = spawn('ffmpeg', args, { stdio: ['ignore', 'pipe', 'pipe'] });
@@ -428,17 +493,33 @@ export class MediaRepository {
         try {
           const raw = await new Promise<Buffer>((resolve, reject) => {
             const args = [
-              '-hide_banner', '-loglevel', 'error', '-nostdin',
-              '-ss', at.toFixed(3), '-i', input,
-              '-an', '-sn', '-dn', '-map', '0:v:0',
-              '-frames:v', '1', '-vf', 'scale=9:8,format=gray', '-f', 'rawvideo', '-',
+              '-hide_banner',
+              '-loglevel',
+              'error',
+              '-nostdin',
+              '-ss',
+              at.toFixed(3),
+              '-i',
+              input,
+              '-an',
+              '-sn',
+              '-dn',
+              '-map',
+              '0:v:0',
+              '-frames:v',
+              '1',
+              '-vf',
+              'scale=9:8,format=gray',
+              '-f',
+              'rawvideo',
+              '-',
             ];
             const proc = spawn('ffmpeg', args, { stdio: ['ignore', 'pipe', 'pipe'] });
             const chunks: Buffer[] = [];
             let stderr = '';
             proc.stdout.on('data', (chunk) => {
-          chunks.push(chunk as Buffer);
-        });
+              chunks.push(chunk as Buffer);
+            });
             proc.stderr.on('data', (chunk) => (stderr += chunk.toString()));
             proc.on('error', reject);
             proc.on('close', (code) => {
@@ -462,10 +543,26 @@ export class MediaRepository {
     try {
       audio = await new Promise<Buffer>((resolve, reject) => {
         const args = [
-          '-hide_banner', '-loglevel', 'error', '-nostdin', '-i', input,
-          '-vn', '-sn', '-dn', '-map', '0:a:0?',
-          '-t', String(maxAudioSec),
-          '-ac', '1', '-ar', '8000', '-f', 's16le', '-',
+          '-hide_banner',
+          '-loglevel',
+          'error',
+          '-nostdin',
+          '-i',
+          input,
+          '-vn',
+          '-sn',
+          '-dn',
+          '-map',
+          '0:a:0?',
+          '-t',
+          String(maxAudioSec),
+          '-ac',
+          '1',
+          '-ar',
+          '8000',
+          '-f',
+          's16le',
+          '-',
         ];
         const proc = spawn('ffmpeg', args, { stdio: ['ignore', 'pipe', 'pipe'] });
         const chunks: Buffer[] = [];

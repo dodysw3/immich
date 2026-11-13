@@ -455,6 +455,22 @@ export type AdminConfigThemeDto = {
     /** Custom CSS for theming */
     customCss: string;
 };
+export type AdminConfigTranscriptionSearchDto = {
+    /** Additional matching moments returned per video */
+    additionalMoments: number;
+    /** Token coverage weight */
+    coverageWeight: number;
+    /** Strict-word similarity threshold for spelling fallback */
+    fuzzyThreshold: number;
+    /** Minimum query-token coverage */
+    minimumCoverage: number;
+    /** Minimum query-token length for fuzzy matching */
+    minimumFuzzyLength: number;
+    /** Proximity weight */
+    proximityWeight: number;
+    /** Spelling similarity weight */
+    similarityWeight: number;
+};
 export type AdminConfigTrashDto = {
     /** Days */
     days: number;
@@ -487,6 +503,7 @@ export type AdminConfigDto = {
     storageTemplate: AdminConfigStorageTemplateDto;
     templates: AdminConfigTemplatesDto;
     theme: AdminConfigThemeDto;
+    transcriptionSearch: AdminConfigTranscriptionSearchDto;
     trash: AdminConfigTrashDto;
     user: AdminConfigUserDto;
 };
@@ -610,6 +627,21 @@ export type TemplateResponseDto = {
 export type TestEmailResponseDto = {
     /** Email message ID */
     messageId: string;
+};
+export type TranscriptionCoverageCounts = {
+    complete: number;
+    failed: number;
+    inProgress: number;
+    indexCurrent: number;
+    indexFailed: number;
+    indexPending: number;
+    missing: number;
+    noAudio: number;
+    noSpeech: number;
+    partial: number;
+};
+export type TranscriptionReconcileResponse = {
+    queued: boolean;
 };
 export type UserLicense = {
     /** Activation date */
@@ -2015,9 +2047,11 @@ export type QueuesResponseLegacyDto = {
     smartSearch: QueueResponseLegacyDto;
     storageTemplateMigration: QueueResponseLegacyDto;
     thumbnailGeneration: QueueResponseLegacyDto;
+    transcriptIndexSync: QueueResponseLegacyDto;
     videoCaptioning: QueueResponseLegacyDto;
     videoConversion: QueueResponseLegacyDto;
     videoFaceScan: QueueResponseLegacyDto;
+    videoTranscription: QueueResponseLegacyDto;
     workflow: QueueResponseLegacyDto;
 };
 export type JobCreateDto = {
@@ -3165,6 +3199,117 @@ export type SearchStatisticsResponseDto = {
     /** Total number of matching assets */
     total: number;
 };
+export type TranscriptionSearchDto = {
+    /** Filter by city name (null = no city) */
+    city?: string | null;
+    /** Filter by country name (null = no country) */
+    country?: string | null;
+    /** Opaque pagination cursor from a previous page */
+    cursor?: string;
+    /** Include score components and scoped coverage counts (diagnostics) */
+    explain?: boolean;
+    /** Filter by favorite status */
+    isFavorite?: boolean;
+    /** Filter assets not in any album */
+    isNotInAlbum?: boolean;
+    /** Filter by lens model (null = no lens) */
+    lensModel?: string | null;
+    /** Filter by camera make (null = no make) */
+    make?: string | null;
+    /** Filter by camera model (null = no model) */
+    model?: string | null;
+    /** Filter by person IDs (all must match) */
+    personIds?: string[];
+    /** Spoken words to search for (exact-first, spelling fallback) */
+    q: string;
+    /** Filter by rating (null = unrated) */
+    rating?: number | null;
+    /** Videos per page */
+    size?: number;
+    /** Filter by state/province name (null = no state) */
+    state?: string | null;
+    /** Filter by tag IDs (all must match; null = untagged) */
+    tagIds?: string[] | null;
+    /** Filter by taken date (after) */
+    takenAfter?: string;
+    /** Filter by taken date (before) */
+    takenBefore?: string;
+    /** Filter by visibility */
+    visibility?: AssetVisibility;
+    /** Include stacked assets */
+    withStacked?: boolean;
+};
+export type TranscriptionCoverageDto = {
+    indexErrors: number;
+    indexedVideos: number;
+    pendingIndex: number;
+    totalVideos: number;
+};
+export type TranscriptionSearchSpanDto = {
+    /** UTF-16 end offset of the matched text within the snippet */
+    end: number;
+    /** UTF-16 start offset of the matched text within the snippet */
+    start: number;
+};
+export type TranscriptionMatchDto = {
+    /** Score components (opt-in diagnostics) */
+    components?: {
+        coverage: number;
+        proximity: number;
+        similarity: number;
+    };
+    endMs: number;
+    firstSegment: number;
+    lastSegment: number;
+    /** Opaque passage id (used for moment retrieval and frame resolution) */
+    passageId: string;
+    /** Source transcript content revision */
+    revision: string;
+    /** Source transcription run identity */
+    runKey: string;
+    /** Normalized within-tier score */
+    score: number;
+    /** Original transcript text of the passage */
+    snippet: string;
+    /** Matched text spans within the snippet (never HTML) */
+    spans: TranscriptionSearchSpanDto[];
+    /** Match moment: the start of the first matched segment (segment precision, not word alignment) */
+    startMs: number;
+    tier: Tier;
+    /** Contributing segment range (first:last) */
+    windowId: string;
+};
+export type TranscriptionSearchItemDto = {
+    /** Distinct additional matching moments */
+    additionalMatches: TranscriptionMatchDto[];
+    asset: AssetResponseDto;
+    bestMatch: TranscriptionMatchDto;
+    /** Total distinct matching moments for this video */
+    matchCount: number;
+};
+export type TranscriptionSearchResponseDto = {
+    /** Ranking configuration identity; cursors are invalid after a change */
+    configVersion: string;
+    /** Videos on this page */
+    count: number;
+    /** Scoped coverage counts (opt-in diagnostics) */
+    coverage?: TranscriptionCoverageDto;
+    items: TranscriptionSearchItemDto[];
+    nextCursor: string | null;
+};
+export type TranscriptionMomentsDto = {
+    assetId: string;
+    cursor?: string;
+    q: string;
+    /** Moments per page */
+    size?: number;
+};
+export type TranscriptionMomentsResponseDto = {
+    configVersion: string;
+    count: number;
+    moments: TranscriptionMatchDto[];
+    nextCursor: string | null;
+};
 export type ServerAboutResponseDto = {
     /** Build identifier */
     build?: string;
@@ -3282,6 +3427,8 @@ export type ServerFeaturesDto = {
     sidecar: boolean;
     /** Whether smart search is enabled */
     smartSearch: boolean;
+    /** Whether video transcription search is enabled */
+    transcriptionSearch: boolean;
     /** Whether trash feature is enabled */
     trash: boolean;
 };
@@ -4639,6 +4786,29 @@ export function sendTestEmailAdmin({ adminConfigSmtpDto }: {
         method: "POST",
         body: adminConfigSmtpDto
     })));
+}
+/**
+ * Transcription coverage totals
+ */
+export function getCoverageCounts(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: TranscriptionCoverageCounts;
+    }>("/admin/transcription/coverage", {
+        ...opts
+    }));
+}
+/**
+ * Queue transcription reconciliation
+ */
+export function queueReconciliation(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: TranscriptionReconcileResponse;
+    }>("/admin/transcription/reconcile", {
+        ...opts,
+        method: "POST"
+    }));
 }
 /**
  * Search users
@@ -7576,6 +7746,50 @@ export function getSearchSuggestions({ country, includeNull, lensModel, make, mo
     }));
 }
 /**
+ * Transcription search
+ */
+export function searchTranscription({ transcriptionSearchDto }: {
+    transcriptionSearchDto: TranscriptionSearchDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: TranscriptionSearchResponseDto;
+    }>("/search/transcription", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: transcriptionSearchDto
+    })));
+}
+/**
+ * Matching frame for a Transcription result
+ */
+export function getMatchFrame({ assetId, passageId }: {
+    assetId: string;
+    passageId: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchBlob<{
+        status: 200;
+        data: Blob;
+    }>(`/search/transcription/frame/${encodeURIComponent(assetId)}/${encodeURIComponent(passageId)}`, {
+        ...opts
+    }));
+}
+/**
+ * Transcription additional moments
+ */
+export function searchMoments({ transcriptionMomentsDto }: {
+    transcriptionMomentsDto: TranscriptionMomentsDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: TranscriptionMomentsResponseDto;
+    }>("/search/transcription/moments", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: transcriptionMomentsDto
+    })));
+}
+/**
  * Get server information
  */
 export function getAboutInfo(opts?: Oazapfts.RequestOpts) {
@@ -9240,7 +9454,9 @@ export enum QueueName {
     ImageInterpretationPublic = "imageInterpretationPublic",
     AiInterpretSearch = "aiInterpretSearch",
     VideoFaceScan = "videoFaceScan",
-    VideoCaptioning = "videoCaptioning"
+    VideoCaptioning = "videoCaptioning",
+    VideoTranscription = "videoTranscription",
+    TranscriptIndexSync = "transcriptIndexSync"
 }
 export enum QueueCommand {
     Start = "start",
@@ -9310,6 +9526,10 @@ export enum JobName {
     AiInterpretSearchSync = "AiInterpretSearchSync",
     AiInterpretSearchReconcile = "AiInterpretSearchReconcile",
     AssetCaptionVideo = "AssetCaptionVideo",
+    AssetTranscribeVideo = "AssetTranscribeVideo",
+    TranscriptionReconcile = "TranscriptionReconcile",
+    TranscriptIndexSync = "TranscriptIndexSync",
+    TranscriptIndexReconcile = "TranscriptIndexReconcile",
     AuditTableCleanup = "AuditTableCleanup",
     AuthChallengeCleanup = "AuthChallengeCleanup",
     DatabaseBackup = "DatabaseBackup",
@@ -9383,6 +9603,12 @@ export enum SearchSuggestionType {
     CameraMake = "camera-make",
     CameraModel = "camera-model",
     CameraLensModel = "camera-lens-model"
+}
+export enum Tier {
+    ExactPhrase = "exact-phrase",
+    ExactAll = "exact-all",
+    Fuzzy = "fuzzy",
+    Partial = "partial"
 }
 export enum SharedLinkType {
     Album = "ALBUM",

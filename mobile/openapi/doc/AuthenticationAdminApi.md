@@ -30,18 +30,12 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AuthenticationAdminApi();
+final api = Openapi().getAuthenticationAdminApi();
 
 try {
-    api_instance.unlinkAllOAuthAccountsAdmin();
-} catch (e) {
+    api.unlinkAllOAuthAccountsAdmin();
+} on DioException catch (e) {
     print('Exception when calling AuthenticationAdminApi->unlinkAllOAuthAccountsAdmin: $e\n');
 }
 ```

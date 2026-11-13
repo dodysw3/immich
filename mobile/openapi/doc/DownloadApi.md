@@ -14,7 +14,7 @@ Method | HTTP request | Description
 
 
 # **downloadArchive**
-> MultipartFile downloadArchive(downloadArchiveDto, key, slug)
+> Uint8List downloadArchive(downloadArchiveDto, key, slug)
 
 Download asset archive
 
@@ -31,22 +31,16 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = DownloadApi();
-final downloadArchiveDto = DownloadArchiveDto(); // DownloadArchiveDto | 
-final key = key_example; // String | 
-final slug = slug_example; // String | 
+final api = Openapi().getDownloadApi();
+final DownloadArchiveDto downloadArchiveDto = ; // DownloadArchiveDto | 
+final String key = key_example; // String | 
+final String slug = slug_example; // String | 
 
 try {
-    final result = api_instance.downloadArchive(downloadArchiveDto, key, slug);
-    print(result);
-} catch (e) {
+    final response = api.downloadArchive(downloadArchiveDto, key, slug);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling DownloadApi->downloadArchive: $e\n');
 }
 ```
@@ -61,7 +55,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**MultipartFile**](MultipartFile.md)
+[**Uint8List**](Uint8List.md)
 
 ### Authorization
 
@@ -92,22 +86,16 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = DownloadApi();
-final downloadInfoDto = DownloadInfoDto(); // DownloadInfoDto | 
-final key = key_example; // String | 
-final slug = slug_example; // String | 
+final api = Openapi().getDownloadApi();
+final DownloadInfoDto downloadInfoDto = ; // DownloadInfoDto | 
+final String key = key_example; // String | 
+final String slug = slug_example; // String | 
 
 try {
-    final result = api_instance.getDownloadInfo(downloadInfoDto, key, slug);
-    print(result);
-} catch (e) {
+    final response = api.getDownloadInfo(downloadInfoDto, key, slug);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling DownloadApi->getDownloadInfo: $e\n');
 }
 ```

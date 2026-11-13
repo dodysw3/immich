@@ -196,6 +196,8 @@ export const getQueueName = derived(t, ($t) => {
       [QueueName.ImageInterpretationPublic]: 'AI image interpretation (public)',
       [QueueName.VideoFaceScan]: 'Video face scan',
       [QueueName.VideoCaptioning]: 'Video captioning (experimental)',
+      [QueueName.VideoTranscription]: 'Video transcription (experimental)',
+      [QueueName.TranscriptIndexSync]: 'Transcript index sync',
     };
 
     return names[name];

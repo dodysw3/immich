@@ -140,6 +140,10 @@ export const envData: EnvData = {
     minScore: 0.4,
   },
 
+  transcriptionSearch: {
+    enabled: false,
+  },
+
   aiVideoCaptioning: {
     enabled: true,
     model: 'lfm3-omni-2b',
@@ -164,6 +168,9 @@ export const envData: EnvData = {
     timeoutMs: 600_000,
     language: '',
     maxDurationSec: 300,
+    chunkDurationSec: 300,
+    chunkOverlapSec: 2,
+    concurrency: 1,
   },
 
   aiAudioEvents: {

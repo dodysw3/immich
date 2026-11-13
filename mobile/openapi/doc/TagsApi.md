@@ -38,20 +38,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = TagsApi();
-final tagBulkAssetsDto = TagBulkAssetsDto(); // TagBulkAssetsDto | 
+final api = Openapi().getTagsApi();
+final TagBulkAssetsDto tagBulkAssetsDto = ; // TagBulkAssetsDto | 
 
 try {
-    final result = api_instance.bulkTagAssets(tagBulkAssetsDto);
-    print(result);
-} catch (e) {
+    final response = api.bulkTagAssets(tagBulkAssetsDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling TagsApi->bulkTagAssets: $e\n');
 }
 ```
@@ -95,20 +89,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = TagsApi();
-final tagCreateDto = TagCreateDto(); // TagCreateDto | 
+final api = Openapi().getTagsApi();
+final TagCreateDto tagCreateDto = ; // TagCreateDto | 
 
 try {
-    final result = api_instance.createTag(tagCreateDto);
-    print(result);
-} catch (e) {
+    final response = api.createTag(tagCreateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling TagsApi->createTag: $e\n');
 }
 ```
@@ -152,19 +140,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = TagsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getTagsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    api_instance.deleteTag(id);
-} catch (e) {
+    api.deleteTag(id);
+} on DioException catch (e) {
     print('Exception when calling TagsApi->deleteTag: $e\n');
 }
 ```
@@ -191,7 +173,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getAllTags**
-> List<TagResponseDto> getAllTags()
+> BuiltList<TagResponseDto> getAllTags()
 
 Retrieve tags
 
@@ -208,19 +190,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = TagsApi();
+final api = Openapi().getTagsApi();
 
 try {
-    final result = api_instance.getAllTags();
-    print(result);
-} catch (e) {
+    final response = api.getAllTags();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling TagsApi->getAllTags: $e\n');
 }
 ```
@@ -230,7 +206,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**List<TagResponseDto>**](TagResponseDto.md)
+[**BuiltList&lt;TagResponseDto&gt;**](TagResponseDto.md)
 
 ### Authorization
 
@@ -261,20 +237,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = TagsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getTagsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.getTagById(id);
-    print(result);
-} catch (e) {
+    final response = api.getTagById(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling TagsApi->getTagById: $e\n');
 }
 ```
@@ -301,7 +271,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **tagAssets**
-> List<BulkIdResponseDto> tagAssets(id, bulkIdsDto)
+> BuiltList<BulkIdResponseDto> tagAssets(id, bulkIdsDto)
 
 Tag assets
 
@@ -318,21 +288,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = TagsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final bulkIdsDto = BulkIdsDto(); // BulkIdsDto | 
+final api = Openapi().getTagsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final BulkIdsDto bulkIdsDto = ; // BulkIdsDto | 
 
 try {
-    final result = api_instance.tagAssets(id, bulkIdsDto);
-    print(result);
-} catch (e) {
+    final response = api.tagAssets(id, bulkIdsDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling TagsApi->tagAssets: $e\n');
 }
 ```
@@ -346,7 +310,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<BulkIdResponseDto>**](BulkIdResponseDto.md)
+[**BuiltList&lt;BulkIdResponseDto&gt;**](BulkIdResponseDto.md)
 
 ### Authorization
 
@@ -360,7 +324,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **untagAssets**
-> List<BulkIdResponseDto> untagAssets(id, bulkIdsDto)
+> BuiltList<BulkIdResponseDto> untagAssets(id, bulkIdsDto)
 
 Untag assets
 
@@ -377,21 +341,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = TagsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final bulkIdsDto = BulkIdsDto(); // BulkIdsDto | 
+final api = Openapi().getTagsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final BulkIdsDto bulkIdsDto = ; // BulkIdsDto | 
 
 try {
-    final result = api_instance.untagAssets(id, bulkIdsDto);
-    print(result);
-} catch (e) {
+    final response = api.untagAssets(id, bulkIdsDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling TagsApi->untagAssets: $e\n');
 }
 ```
@@ -405,7 +363,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<BulkIdResponseDto>**](BulkIdResponseDto.md)
+[**BuiltList&lt;BulkIdResponseDto&gt;**](BulkIdResponseDto.md)
 
 ### Authorization
 
@@ -436,21 +394,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = TagsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final tagUpdateDto = TagUpdateDto(); // TagUpdateDto | 
+final api = Openapi().getTagsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final TagUpdateDto tagUpdateDto = ; // TagUpdateDto | 
 
 try {
-    final result = api_instance.updateTag(id, tagUpdateDto);
-    print(result);
-} catch (e) {
+    final response = api.updateTag(id, tagUpdateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling TagsApi->updateTag: $e\n');
 }
 ```
@@ -478,7 +430,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **upsertTags**
-> List<TagResponseDto> upsertTags(tagUpsertDto)
+> BuiltList<TagResponseDto> upsertTags(tagUpsertDto)
 
 Upsert tags
 
@@ -495,20 +447,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = TagsApi();
-final tagUpsertDto = TagUpsertDto(); // TagUpsertDto | 
+final api = Openapi().getTagsApi();
+final TagUpsertDto tagUpsertDto = ; // TagUpsertDto | 
 
 try {
-    final result = api_instance.upsertTags(tagUpsertDto);
-    print(result);
-} catch (e) {
+    final response = api.upsertTags(tagUpsertDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling TagsApi->upsertTags: $e\n');
 }
 ```
@@ -521,7 +467,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<TagResponseDto>**](TagResponseDto.md)
+[**BuiltList&lt;TagResponseDto&gt;**](TagResponseDto.md)
 
 ### Authorization
 

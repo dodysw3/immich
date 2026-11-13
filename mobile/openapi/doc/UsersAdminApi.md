@@ -12,6 +12,7 @@ Method | HTTP request | Description
 [**createUserAdmin**](UsersAdminApi.md#createuseradmin) | **POST** /admin/users | Create a user
 [**deleteUserAdmin**](UsersAdminApi.md#deleteuseradmin) | **DELETE** /admin/users/{id} | Delete a user
 [**getUserAdmin**](UsersAdminApi.md#getuseradmin) | **GET** /admin/users/{id} | Retrieve a user
+[**getUserCalendarHeatmapAdmin**](UsersAdminApi.md#getusercalendarheatmapadmin) | **GET** /admin/users/{id}/calendar-heatmap | Retrieve calendar heatmap activity
 [**getUserPreferencesAdmin**](UsersAdminApi.md#getuserpreferencesadmin) | **GET** /admin/users/{id}/preferences | Retrieve user preferences
 [**getUserSessionsAdmin**](UsersAdminApi.md#getusersessionsadmin) | **GET** /admin/users/{id}/sessions | Retrieve user sessions
 [**getUserStatisticsAdmin**](UsersAdminApi.md#getuserstatisticsadmin) | **GET** /admin/users/{id}/statistics | Retrieve user statistics
@@ -39,20 +40,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = UsersAdminApi();
-final userAdminCreateDto = UserAdminCreateDto(); // UserAdminCreateDto | 
+final api = Openapi().getUsersAdminApi();
+final UserAdminCreateDto userAdminCreateDto = ; // UserAdminCreateDto | 
 
 try {
-    final result = api_instance.createUserAdmin(userAdminCreateDto);
-    print(result);
-} catch (e) {
+    final response = api.createUserAdmin(userAdminCreateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling UsersAdminApi->createUserAdmin: $e\n');
 }
 ```
@@ -96,21 +91,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = UsersAdminApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final userAdminDeleteDto = UserAdminDeleteDto(); // UserAdminDeleteDto | 
+final api = Openapi().getUsersAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final UserAdminDeleteDto userAdminDeleteDto = ; // UserAdminDeleteDto | 
 
 try {
-    final result = api_instance.deleteUserAdmin(id, userAdminDeleteDto);
-    print(result);
-} catch (e) {
+    final response = api.deleteUserAdmin(id, userAdminDeleteDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling UsersAdminApi->deleteUserAdmin: $e\n');
 }
 ```
@@ -155,20 +144,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = UsersAdminApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getUsersAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.getUserAdmin(id);
-    print(result);
-} catch (e) {
+    final response = api.getUserAdmin(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling UsersAdminApi->getUserAdmin: $e\n');
 }
 ```
@@ -182,6 +165,63 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**UserAdminResponseDto**](UserAdminResponseDto.md)
+
+### Authorization
+
+[cookie](../README.md#cookie), [api_key](../README.md#api_key), [bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getUserCalendarHeatmapAdmin**
+> CalendarHeatmapResponseDto getUserCalendarHeatmapAdmin(id, from, to, type)
+
+Retrieve calendar heatmap activity
+
+Retrieve activity counts for a specified period, in a calendar heatmap format.
+
+### Example
+```dart
+import 'package:openapi/api.dart';
+// TODO Configure API key authorization: cookie
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKeyPrefix = 'Bearer';
+// TODO Configure API key authorization: api_key
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
+
+final api = Openapi().getUsersAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final Date from = Mon Jan 01 07:00:00 WIB 2024; // Date | Start date in UTC
+final Date to = Mon Jan 01 07:00:00 WIB 2024; // Date | End date in UTC
+final CalendarHeatmapType type = ; // CalendarHeatmapType | 
+
+try {
+    final response = api.getUserCalendarHeatmapAdmin(id, from, to, type);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling UsersAdminApi->getUserCalendarHeatmapAdmin: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **from** | **Date**| Start date in UTC | [optional] 
+ **to** | **Date**| End date in UTC | [optional] 
+ **type** | [**CalendarHeatmapType**](.md)|  | [optional] 
+
+### Return type
+
+[**CalendarHeatmapResponseDto**](CalendarHeatmapResponseDto.md)
 
 ### Authorization
 
@@ -212,20 +252,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = UsersAdminApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getUsersAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.getUserPreferencesAdmin(id);
-    print(result);
-} catch (e) {
+    final response = api.getUserPreferencesAdmin(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling UsersAdminApi->getUserPreferencesAdmin: $e\n');
 }
 ```
@@ -252,7 +286,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getUserSessionsAdmin**
-> List<SessionResponseDto> getUserSessionsAdmin(id)
+> BuiltList<SessionResponseDto> getUserSessionsAdmin(id)
 
 Retrieve user sessions
 
@@ -269,20 +303,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = UsersAdminApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getUsersAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.getUserSessionsAdmin(id);
-    print(result);
-} catch (e) {
+    final response = api.getUserSessionsAdmin(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling UsersAdminApi->getUserSessionsAdmin: $e\n');
 }
 ```
@@ -295,7 +323,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<SessionResponseDto>**](SessionResponseDto.md)
+[**BuiltList&lt;SessionResponseDto&gt;**](SessionResponseDto.md)
 
 ### Authorization
 
@@ -326,23 +354,17 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = UsersAdminApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final isFavorite = true; // bool | Filter by favorite status
-final isTrashed = true; // bool | Filter by trash status
-final visibility = ; // AssetVisibility | 
+final api = Openapi().getUsersAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final bool isFavorite = true; // bool | Filter by favorite status
+final bool isTrashed = true; // bool | Filter by trash status
+final AssetVisibility visibility = ; // AssetVisibility | 
 
 try {
-    final result = api_instance.getUserStatisticsAdmin(id, isFavorite, isTrashed, visibility);
-    print(result);
-} catch (e) {
+    final response = api.getUserStatisticsAdmin(id, isFavorite, isTrashed, visibility);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling UsersAdminApi->getUserStatisticsAdmin: $e\n');
 }
 ```
@@ -389,20 +411,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = UsersAdminApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getUsersAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.restoreUserAdmin(id);
-    print(result);
-} catch (e) {
+    final response = api.restoreUserAdmin(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling UsersAdminApi->restoreUserAdmin: $e\n');
 }
 ```
@@ -429,7 +445,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **searchUsersAdmin**
-> List<UserAdminResponseDto> searchUsersAdmin(id, withDeleted)
+> BuiltList<UserAdminResponseDto> searchUsersAdmin(id, withDeleted)
 
 Search users
 
@@ -446,21 +462,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = UsersAdminApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | User ID filter
-final withDeleted = true; // bool | Include deleted users
+final api = Openapi().getUsersAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | User ID filter
+final bool withDeleted = true; // bool | Include deleted users
 
 try {
-    final result = api_instance.searchUsersAdmin(id, withDeleted);
-    print(result);
-} catch (e) {
+    final response = api.searchUsersAdmin(id, withDeleted);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling UsersAdminApi->searchUsersAdmin: $e\n');
 }
 ```
@@ -474,7 +484,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<UserAdminResponseDto>**](UserAdminResponseDto.md)
+[**BuiltList&lt;UserAdminResponseDto&gt;**](UserAdminResponseDto.md)
 
 ### Authorization
 
@@ -505,21 +515,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = UsersAdminApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final userAdminUpdateDto = UserAdminUpdateDto(); // UserAdminUpdateDto | 
+final api = Openapi().getUsersAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final UserAdminUpdateDto userAdminUpdateDto = ; // UserAdminUpdateDto | 
 
 try {
-    final result = api_instance.updateUserAdmin(id, userAdminUpdateDto);
-    print(result);
-} catch (e) {
+    final response = api.updateUserAdmin(id, userAdminUpdateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling UsersAdminApi->updateUserAdmin: $e\n');
 }
 ```
@@ -564,21 +568,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = UsersAdminApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final userPreferencesUpdateDto = UserPreferencesUpdateDto(); // UserPreferencesUpdateDto | 
+final api = Openapi().getUsersAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final UserPreferencesUpdateDto userPreferencesUpdateDto = ; // UserPreferencesUpdateDto | 
 
 try {
-    final result = api_instance.updateUserPreferencesAdmin(id, userPreferencesUpdateDto);
-    print(result);
-} catch (e) {
+    final response = api.updateUserPreferencesAdmin(id, userPreferencesUpdateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling UsersAdminApi->updateUserPreferencesAdmin: $e\n');
 }
 ```

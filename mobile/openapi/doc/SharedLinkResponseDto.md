@@ -11,7 +11,7 @@ Name | Type | Description | Notes
 **album** | [**AlbumResponseDto**](AlbumResponseDto.md) |  | [optional] 
 **allowDownload** | **bool** | Allow downloads | 
 **allowUpload** | **bool** | Allow uploads | 
-**assets** | [**List<AssetResponseDto>**](AssetResponseDto.md) |  | [default to const []]
+**assets** | [**BuiltList&lt;AssetResponseDto&gt;**](AssetResponseDto.md) |  | 
 **createdAt** | [**DateTime**](DateTime.md) | Creation date | 
 **description** | **String** | Link description | 
 **expiresAt** | [**DateTime**](DateTime.md) | Expiration date | 

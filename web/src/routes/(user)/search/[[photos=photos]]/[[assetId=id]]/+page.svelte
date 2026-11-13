@@ -17,6 +17,7 @@
   import { assetMultiSelectManager } from '#lib/managers/asset-multi-select-manager.svelte.ts';
   import { searchManager } from '#lib/managers/search-manager.svelte.ts';
   import type { TimelineAsset, Viewport } from '#lib/managers/timeline-manager/types.ts';
+  import { TranscriptionPresentationManager } from '#lib/managers/transcription-presentation-manager.svelte.ts';
   import { createPreloadedQuery } from '#lib/queries/client.ts';
   import { getUserConfigQuery } from '#lib/queries/config-user.query.ts';
   import { Route } from '#lib/route.ts';
@@ -25,7 +26,7 @@
   import { handlePromiseError } from '#lib/utils.ts';
   import { parseUtcDate } from '#lib/utils/date-time.ts';
   import { handleError } from '#lib/utils/handle-error.ts';
-  import { isAlbumsRoute, isPeopleRoute } from '#lib/utils/navigation.ts';
+  import { isAlbumsRoute, isPeopleRoute, navigate } from '#lib/utils/navigation.ts';
   import { toTimelineAsset } from '#lib/utils/timeline-util.ts';
   import {
     AssetVisibility,
@@ -33,11 +34,15 @@
     getTagById,
     searchAiInterpret,
     searchAssets,
+    searchMoments,
     searchSmart,
+    searchTranscription,
     type AlbumResponseDto,
     type AssetResponseDto,
     type MetadataSearchDto,
     type SmartSearchDto,
+    type TranscriptionCoverageDto,
+    type TranscriptionMatchDto,
   } from '@immich/sdk';
   import { ActionButton, CommandPaletteDefaultProvider, Icon, IconButton, LoadingSpinner } from '@immich/ui';
   import { mdiArrowLeft, mdiClose, mdiDotsVertical, mdiImageOffOutline, mdiSelectAll } from '@mdi/js';
@@ -64,7 +69,15 @@
   let scrollY = $state(0);
   let scrollYHistory = 0;
 
-  type SearchTerms = MetadataSearchDto & Pick<SmartSearchDto, 'query' | 'queryAssetId'> & { ai?: string };
+  // Transcription search keeps its match presentation keyed by asset id next to
+  // the asset-only gallery list, so cards can show frames/snippets and the
+  // viewer can seek to the selected moment without mutating AssetResponseDto.
+  const transcriptionPresentation = new TranscriptionPresentationManager();
+  let nextTranscriptionCursor = $state<string | null>(null);
+  let transcriptionCoverage = $state<TranscriptionCoverageDto | undefined>(undefined);
+
+  type SearchTerms = MetadataSearchDto &
+    Pick<SmartSearchDto, 'query' | 'queryAssetId'> & { ai?: string; transcription?: string };
   let searchQuery = $derived(page.url.searchParams.get(QueryParameter.QUERY));
   let terms = $derived<SearchTerms>(searchQuery ? JSON.parse(searchQuery) : {});
   let searchTermKeys = $derived(getObjectKeys(terms));
@@ -111,6 +124,7 @@
   const onAssetDelete = (assetIds: string[]) => {
     const assetIdSet = new Set(assetIds);
     searchResultAssets = searchResultAssets.filter((asset: AssetResponseDto) => !assetIdSet.has(asset.id));
+    transcriptionPresentation.removeAssets(assetIdSet);
   };
 
   const handleSetVisibility = (assetIds: string[]) => {
@@ -126,6 +140,9 @@
     nextPage = 1;
     searchResultAssets = [];
     searchResultAlbums = [];
+    transcriptionPresentation.clear();
+    nextTranscriptionCursor = null;
+    transcriptionCoverage = undefined;
     await loadNextPage(true);
   }
 
@@ -144,6 +161,47 @@
 
     try {
       const { albums, assets } = await (async () => {
+        if (searchDto.transcription && !('query' in searchDto || 'queryAssetId' in searchDto)) {
+          // Transcription search has a dedicated endpoint; one result per video
+          // with its match presentation kept in a side map, not on the asset.
+          const response = await searchTranscription({
+            transcriptionSearchDto: {
+              q: searchDto.transcription,
+              visibility: searchDto.visibility ?? AssetVisibility.Timeline,
+              withStacked: searchDto.withStacked,
+              isFavorite: searchDto.isFavorite,
+              rating: searchDto.rating,
+              city: searchDto.city,
+              state: searchDto.state,
+              country: searchDto.country,
+              make: searchDto.make,
+              model: searchDto.model,
+              lensModel: searchDto.lensModel,
+              personIds: searchDto.personIds,
+              tagIds: searchDto.tagIds,
+              isNotInAlbum: searchDto.isNotInAlbum,
+              takenAfter: searchDto.takenAfter,
+              takenBefore: searchDto.takenBefore,
+              // endpoint cap is 50 (Zod max) — larger pages 400
+              size: 50,
+              cursor: nextTranscriptionCursor ?? undefined,
+              explain: !nextTranscriptionCursor,
+            },
+          });
+          transcriptionPresentation.loadPage(response.items);
+          if (response.coverage) {
+            transcriptionCoverage = response.coverage;
+          }
+          nextTranscriptionCursor = response.nextCursor;
+          return {
+            albums: { items: [] as AlbumResponseDto[] },
+            assets: {
+              ...response,
+              items: response.items.map((item) => item.asset),
+              nextPage: response.nextCursor ? 1 : 0,
+            },
+          };
+        }
         if (searchDto.ai && !('query' in searchDto || 'queryAssetId' in searchDto)) {
           // AI interpretation search has a dedicated endpoint and result shape
           const response = await searchAiInterpret({
@@ -290,6 +348,65 @@
     }
   };
 
+  const onSelectTranscriptionMoment = (assetId: string, match: TranscriptionMatchDto) => {
+    transcriptionPresentation.selectMoment(assetId, match);
+  };
+
+  // Opens the viewer at the selected moment; the match identity travels in the
+  // URL so refresh/back/forward restore the same seek target (asset-scoped).
+  const openTranscriptionMatch = (assetId: string, match: TranscriptionMatchDto) => {
+    void navigate({
+      targetRoute: 'current',
+      assetId,
+      match: { passageId: match.passageId, revision: match.revision, startMs: match.startMs },
+    });
+  };
+
+  const transcriptionEmptyHint = $derived.by(() => {
+    const coverage = transcriptionCoverage;
+    if (coverage && coverage.totalVideos > 0 && coverage.indexedVideos === 0) {
+      return $t('transcription_search_unindexed_hint');
+    }
+    if (coverage && coverage.indexedVideos > 0 && coverage.pendingIndex > 0) {
+      return $t('transcription_search_partial_hint');
+    }
+    return $t('transcription_search_no_results_hint');
+  });
+
+  /**
+  Loads further distinct moments for one video, merging pages through the
+  presentation manager until the server reports the list complete (or a page
+  yields nothing new). Returns the newly merged moments so cards can render
+  them without re-reading the map.
+  */
+  const loadTranscriptionMoments = async (
+    assetId: string,
+  ): Promise<{ moments: TranscriptionMatchDto[]; nextCursor: string | null }> => {
+    if (!transcriptionPresentation.get(assetId)) {
+      return { moments: [], nextCursor: null };
+    }
+    const merged: TranscriptionMatchDto[] = [];
+    let cursor: string | undefined = undefined;
+    let nextCursor: string | null = null;
+    // The server pages the full ranked moment list for this video; keep going
+    // while a cursor remains and stop early once a page yields nothing new.
+    for (let page = 0; page < 5; page++) {
+      const response = await searchMoments({
+        transcriptionMomentsDto: { assetId, q: terms.transcription ?? '', cursor, size: 20 },
+      });
+      const addedNow = transcriptionPresentation.mergeMoments(assetId, response);
+      merged.push(...addedNow);
+      nextCursor = response.nextCursor;
+      // Stop at the end of the ranked list, or when a whole page was already
+      // known (the pages are disjoint slices, so we have caught up).
+      if (!nextCursor || addedNow.length === 0) {
+        break;
+      }
+      cursor = nextCursor;
+    }
+    return { moments: merged, nextCursor };
+  };
+
   function getObjectKeys<T extends object>(obj: T): (keyof T)[] {
     return Object.keys(obj) as (keyof T)[];
   }
@@ -376,6 +493,10 @@
         {viewport}
         onReload={onSearchQueryUpdate}
         slidingWindowOffset={searchResultsElement.offsetTop}
+        transcriptionMatches={terms.transcription ? transcriptionPresentation.matches : undefined}
+        {onSelectTranscriptionMoment}
+        onLoadTranscriptionMoments={loadTranscriptionMoments}
+        onOpenTranscriptionMatch={openTranscriptionMatch}
       />
     {:else if !isLoading}
       <div class="flex min-h-[calc(66vh-11rem)] w-full place-content-center items-center dark:text-white">
@@ -384,6 +505,8 @@
           <p class="mt-5 text-3xl font-medium">{$t('no_results')}</p>
           {#if terms.ai}
             <p class="text-base font-normal">{$t('ai_search_no_results_hint')}</p>
+          {:else if terms.transcription}
+            <p class="text-base font-normal">{transcriptionEmptyHint}</p>
           {:else}
             <p class="text-base font-normal">{$t('no_results_description')}</p>
           {/if}

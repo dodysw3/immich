@@ -3,13 +3,14 @@
   import { ProjectionType } from '#lib/constants.ts';
   import { authManager } from '#lib/managers/auth-manager.svelte.ts';
   import type { TimelineAsset } from '#lib/managers/timeline-manager/types.ts';
+  import type { TranscriptionPresentation } from '#lib/managers/transcription-presentation-manager.svelte.ts';
   import { mediaQueryManager } from '#lib/stores/media-query-manager.svelte.ts';
   import { locale, playVideoThumbnailOnHover, showInterpretationTitles } from '#lib/stores/preferences.store.ts';
   import { getAssetMediaUrl, getAssetPlaybackUrl } from '#lib/utils.ts';
   import { moveFocus } from '#lib/utils/focus-util.ts';
   import { currentUrlReplaceAssetId } from '#lib/utils/navigation.ts';
   import { getAltText } from '#lib/utils/thumbnail-util.ts';
-  import { AssetMediaSize, AssetVisibility, type UserResponseDto } from '@immich/sdk';
+  import { AssetMediaSize, AssetVisibility, type TranscriptionMatchDto, type UserResponseDto } from '@immich/sdk';
   import { Icon } from '@immich/ui';
   import {
     mdiArchiveArrowDownOutline,
@@ -26,6 +27,7 @@
   import type { ClassValue } from 'svelte/elements';
   import { fade } from 'svelte/transition';
   import ImageThumbnail from './ImageThumbnail.svelte';
+  import TranscriptionMatchOverlay from './TranscriptionMatchOverlay.svelte';
   import VideoThumbnail from './VideoThumbnail.svelte';
 
   interface Props {
@@ -48,6 +50,10 @@
     onPreview?: (asset: TimelineAsset) => void;
     onSelect?: (asset: TimelineAsset) => void;
     onMouseEvent?: (event: { isMouseOver: boolean; selectedGroupIndex: number }) => void;
+    /** Transcription match presentation for this asset (Transcription search only). */
+    transcriptionMatch?: TranscriptionPresentation | undefined;
+    onSelectMoment?: ((match: TranscriptionMatchDto) => void) | undefined;
+    onLoadMoments?: (() => Promise<{ moments: TranscriptionMatchDto[]; nextCursor: string | null }>) | undefined;
   }
 
   let {
@@ -68,6 +74,9 @@
     onPreview = undefined,
     onSelect = undefined,
     onMouseEvent = undefined,
+    transcriptionMatch = undefined,
+    onSelectMoment = undefined,
+    onLoadMoments = undefined,
     imageClass = '',
     brokenAssetClass = '',
   }: Props = $props();
@@ -403,6 +412,19 @@
           aria-label="Thumbnail URL"
         >
         </a>
+      {/if}
+
+      <!-- Transcription match presentation: matched frame, timestamp badge,
+           highlighted snippet, additional moments. Sits above the hover link so
+           its controls stay clickable; the ordinary thumbnail remains the
+           loading/failure fallback beneath it. -->
+      {#if transcriptionMatch}
+        <TranscriptionMatchOverlay
+          assetId={asset.id}
+          presentation={transcriptionMatch}
+          {onSelectMoment}
+          {onLoadMoments}
+        />
       {/if}
     </div>
 

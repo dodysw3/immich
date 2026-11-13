@@ -1,6 +1,6 @@
-import { NestFactory } from '@nestjs/core';
 import { ApiModule } from './dist/app.module.js';
 import { useSwagger } from './dist/utils/misc.js';
+import { NestFactory } from '@nestjs/core';
 
 process.env.DB_URL = process.env.DB_URL_OVERRIDE;
 process.env.IMMICH_ENV = 'development';

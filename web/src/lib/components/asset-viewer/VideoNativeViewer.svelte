@@ -257,6 +257,11 @@
   $effect(() => {
     // reactive on `assetFileUrl` changes
     hasLoadedMetadata = false;
+    // A source rebuild within this opening must re-arm the match-open seek so
+    // the restored source does not start from zero (same opening only: the
+    // instruction lives in the viewer manager and is cleared on asset switch).
+    matchSeekApplied = false;
+    matchOpenedAtZero = false;
     if (videoPlayer && assetFileUrl) {
       hasFocused = false;
       rebuildCount = 0;
@@ -292,7 +297,13 @@
 
   const handleCanPlay = async (video: HTMLVideoElement) => {
     try {
-      if (!video.paused) {
+      if (applyInitialMatchSeek(video)) {
+        // Normal preference-based playback resumes from the positioned playhead.
+        if ($autoPlayVideo) {
+          await video.play();
+          onVideoStarted();
+        }
+      } else if (!video.paused) {
         await video.play();
         onVideoStarted();
       }
@@ -373,6 +384,34 @@
     }
   });
 
+  // One-shot initial seek for a Transcription match open. Scoped to the asset
+  // it was requested for: an instruction left over from a previous asset never
+  // seeks this one. Applied once per source at readiness (canplay) — native and
+  // HLS share handleCanPlay — and re-armed on source rebuilds for the same
+  // opening. While it is pending, autoplay is suppressed so playback never
+  // intentionally starts from zero; the user preference then decides playback
+  // after the playhead is positioned.
+  let matchSeekApplied = $state(false);
+  let matchOpenedAtZero = $state(false);
+  const pendingMatchSeek = $derived.by(() => {
+    const match = assetViewerManager.matchOpen;
+    return match && match.assetId === assetId && !matchSeekApplied ? match : null;
+  });
+
+  const applyInitialMatchSeek = (video: HTMLVideoElement) => {
+    const match = assetViewerManager.matchOpen;
+    if (matchSeekApplied || !match || match.assetId !== assetId) {
+      return false;
+    }
+    matchSeekApplied = true;
+    matchOpenedAtZero = match.startMs === 0;
+    video.currentTime = match.startMs / 1000;
+    // The clock may already sit at the target (notably at zero); re-emit so the
+    // positioned transcript overlay and sidebar follow immediately.
+    video.dispatchEvent(new Event('timeupdate'));
+    return true;
+  };
+
   // click-to-seek from the video face strip: seek to the observed sighting
   $effect(() => {
     const seekMs = assetViewerManager.videoSeekRequestMs;
@@ -449,7 +488,7 @@
             bind:this={videoPlayer}
             slot="media"
             loop={$loopVideoPreference && loopVideo}
-            autoplay={$autoPlayVideo}
+            autoplay={$autoPlayVideo && !pendingMatchSeek}
             disablePictureInPicture
             playsinline
             {...useSwipe(onSwipe)}
@@ -476,7 +515,7 @@
             slot="media"
             src={assetFileUrl}
             loop={$loopVideoPreference && loopVideo}
-            autoplay={$autoPlayVideo}
+            autoplay={$autoPlayVideo && !pendingMatchSeek}
             disablePictureInPicture
             playsinline
             {...useSwipe(onSwipe)}
@@ -601,6 +640,7 @@
           currentTimeMs={assetViewerManager.videoCurrentTimeMs ?? 0}
           contentRect={overlayContentRect}
           {containerHeight}
+          showAtZero={matchOpenedAtZero}
           bind:height={transcriptLineHeight}
         />
       {/if}

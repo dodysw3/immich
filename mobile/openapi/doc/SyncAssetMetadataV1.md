@@ -10,7 +10,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **assetId** | **String** | Asset ID | 
 **key** | **String** | Key | 
-**value** | [**Map<String, Object>**](Object.md) | Value | [default to const {}]
+**value** | [**BuiltMap&lt;String, JsonObject&gt;**](JsonObject.md) | Value | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

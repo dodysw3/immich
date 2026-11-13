@@ -155,6 +155,7 @@ const ServerFeaturesSchema = z
     email: z.boolean().describe('Whether email notifications are enabled'),
     ocr: z.boolean().describe('Whether OCR is enabled'),
     aiInterpretSearch: z.boolean().describe('Whether AI interpretation search is enabled'),
+    transcriptionSearch: z.boolean().describe('Whether video transcription search is enabled'),
     realtimeTranscoding: z.boolean().describe('Whether real-time transcoding is enabled'),
   })
   .meta({ id: 'ServerFeaturesDto' });

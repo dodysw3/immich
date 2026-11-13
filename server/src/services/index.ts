@@ -61,6 +61,9 @@ import { TagService } from 'src/services/tag.service.js';
 import { TelemetryService } from 'src/services/telemetry.service.js';
 import { TimelineService } from 'src/services/timeline.service.js';
 import { TranscodingService } from 'src/services/transcoding.service.js';
+import { TranscriptFrameService } from 'src/services/transcript-frame.service.js';
+import { TranscriptIndexService } from 'src/services/transcript-index.service.js';
+import { TranscriptSearchService } from 'src/services/transcript-search.service.js';
 import { TrashService } from 'src/services/trash.service.js';
 import { UserAdminService } from 'src/services/user-admin.service.js';
 import { UserService } from 'src/services/user.service.js';
@@ -80,6 +83,9 @@ export const services = [
   AiVideoCaptioningService,
   AiVideoTranscriptionClient,
   AiVideoTranscriptionService,
+  TranscriptIndexService,
+  TranscriptSearchService,
+  TranscriptFrameService,
   AiAudioEventsClient,
   AiAudioEventsService,
   AiInterpretSearchClient,

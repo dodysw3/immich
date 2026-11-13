@@ -9,8 +9,9 @@ import 'package:openapi/api.dart';
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **count** | **int** | Number of assets in this page | 
-**facets** | [**List<SearchFacetResponseDto>**](SearchFacetResponseDto.md) |  | [default to const []]
-**items** | [**List<AssetResponseDto>**](AssetResponseDto.md) |  | [default to const []]
+**facets** | [**BuiltList&lt;SearchFacetResponseDto&gt;**](SearchFacetResponseDto.md) |  | 
+**items** | [**BuiltList&lt;AssetResponseDto&gt;**](AssetResponseDto.md) |  | 
+**nextCursor** | **String** | Cursor for the next page of results | 
 **nextPage** | **String** | Next page token | 
 **total** | **int** | Total number of matching assets | 
 

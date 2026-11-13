@@ -33,6 +33,44 @@ describe('SearchManager', () => {
     expect(searchManager.filter.queryType).toBe('smart');
   });
 
+  it('round-trips a transcription query through the URL payload', async () => {
+    searchManager.setQuery({ transcription: 'boarding announcement' });
+    expect(searchManager.filter.queryType).toBe('transcription');
+    expect(searchManager.filter.query).toBe('boarding announcement');
+    expect(searchManager.filter.transcription).toBe('boarding announcement');
+
+    await searchManager.submit();
+    const url = new URL(vi.mocked(goto).mock.calls.at(-1)![0].toString(), 'http://localhost');
+    const serialized = JSON.parse(url.searchParams.get('query')!);
+    expect(serialized).toMatchObject({ transcription: 'boarding announcement' });
+    expect(serialized.query).toBeUndefined();
+
+    // reloading that URL restores the same mode
+    searchManager.reset();
+    searchManager.setQuery(serialized);
+    expect(searchManager.filter.queryType).toBe('transcription');
+    expect(searchManager.filter.transcription).toBe('boarding announcement');
+  });
+
+  it('treats transcription as a valid saved query type', () => {
+    searchManager.setQueryType('transcription');
+    expect(searchManager.filter.queryType).toBe('transcription');
+
+    searchManager.reset();
+    expect(searchManager.filter.queryType).toBe('transcription');
+  });
+
+  it('keeps transcription distinct from the ai mode', () => {
+    searchManager.setQuery({ transcription: 'selamat pagi' });
+    searchManager.setQuery({ ai: 'sunset over the beach' });
+    expect(searchManager.filter.queryType).toBe('ai');
+    expect(searchManager.filter.transcription).toBeUndefined();
+
+    searchManager.setQuery({ transcription: 'selamat pagi' });
+    expect(searchManager.filter.queryType).toBe('transcription');
+    expect(searchManager.filter.ai).toBeUndefined();
+  });
+
   it('remembers the selected query type', () => {
     searchManager.setQueryType('metadata');
     expect(searchManager.filter.queryType).toBe('metadata');

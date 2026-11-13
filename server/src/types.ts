@@ -353,6 +353,13 @@ export interface IAiInterpretationDiscordAlertJob {
 }
 
 export type IVideoCaptionJob = IEntityJob;
+/** BullMQ priority: lower runs first (2 = new-upload tier, default 3 = backfill tier). */
+export type IVideoTranscriptionJob = IEntityJob & {
+  priority?: number;
+  trigger?: 'upload' | 'reconcile';
+  /** Reconcile-delivered: stale queued rows are reclaimed instead of skipped. */
+  force?: boolean;
+};
 
 export interface JobCounts {
   active: number;
@@ -382,6 +389,10 @@ export type JobItem =
   | { name: JobName.AiInterpretSearchSync; data: IEntityJob }
   | { name: JobName.AiInterpretSearchReconcile; data?: IBaseJob }
   | { name: JobName.AssetCaptionVideo; data: IVideoCaptionJob }
+  | { name: JobName.AssetTranscribeVideo; data: IVideoTranscriptionJob }
+  | { name: JobName.TranscriptionReconcile; data?: IBaseJob }
+  | { name: JobName.TranscriptIndexSync; data: IEntityJob }
+  | { name: JobName.TranscriptIndexReconcile; data?: IBaseJob }
 
   // User
   | { name: JobName.UserDeleteCheck; data?: IBaseJob }

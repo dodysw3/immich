@@ -34,20 +34,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = PartnersApi();
-final partnerCreateDto = PartnerCreateDto(); // PartnerCreateDto | 
+final api = Openapi().getPartnersApi();
+final PartnerCreateDto partnerCreateDto = ; // PartnerCreateDto | 
 
 try {
-    final result = api_instance.createPartner(partnerCreateDto);
-    print(result);
-} catch (e) {
+    final response = api.createPartner(partnerCreateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling PartnersApi->createPartner: $e\n');
 }
 ```
@@ -91,20 +85,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = PartnersApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getPartnersApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.createPartnerDeprecated(id);
-    print(result);
-} catch (e) {
+    final response = api.createPartnerDeprecated(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling PartnersApi->createPartnerDeprecated: $e\n');
 }
 ```
@@ -131,7 +119,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getPartners**
-> List<PartnerResponseDto> getPartners(direction)
+> BuiltList<PartnerResponseDto> getPartners(direction)
 
 Retrieve partners
 
@@ -148,20 +136,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = PartnersApi();
-final direction = ; // PartnerDirection | 
+final api = Openapi().getPartnersApi();
+final PartnerDirection direction = ; // PartnerDirection | 
 
 try {
-    final result = api_instance.getPartners(direction);
-    print(result);
-} catch (e) {
+    final response = api.getPartners(direction);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling PartnersApi->getPartners: $e\n');
 }
 ```
@@ -174,7 +156,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<PartnerResponseDto>**](PartnerResponseDto.md)
+[**BuiltList&lt;PartnerResponseDto&gt;**](PartnerResponseDto.md)
 
 ### Authorization
 
@@ -205,19 +187,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = PartnersApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getPartnersApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    api_instance.removePartner(id);
-} catch (e) {
+    api.removePartner(id);
+} on DioException catch (e) {
     print('Exception when calling PartnersApi->removePartner: $e\n');
 }
 ```
@@ -261,21 +237,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = PartnersApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final partnerUpdateDto = PartnerUpdateDto(); // PartnerUpdateDto | 
+final api = Openapi().getPartnersApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final PartnerUpdateDto partnerUpdateDto = ; // PartnerUpdateDto | 
 
 try {
-    final result = api_instance.updatePartner(id, partnerUpdateDto);
-    print(result);
-} catch (e) {
+    final response = api.updatePartner(id, partnerUpdateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling PartnersApi->updatePartner: $e\n');
 }
 ```

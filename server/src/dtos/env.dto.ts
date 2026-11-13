@@ -143,6 +143,11 @@ export const EnvSchema = z
     IMMICH_AI_VIDEO_TRANSCRIPTION_TIMEOUT_MS: z.coerce.number().int().min(1).optional(),
     IMMICH_AI_VIDEO_TRANSCRIPTION_LANGUAGE: z.string().max(8).optional(),
     IMMICH_AI_VIDEO_TRANSCRIPTION_MAX_DURATION_SEC: z.coerce.number().int().min(1).optional(),
+    // Bounded chunked extraction: full-duration processing in ~chunkSec windows
+    // with a small overlap, instead of one whole-video WAV request.
+    IMMICH_AI_VIDEO_TRANSCRIPTION_CHUNK_SEC: z.coerce.number().int().min(30).optional(),
+    IMMICH_AI_VIDEO_TRANSCRIPTION_CHUNK_OVERLAP_SEC: z.coerce.number().int().min(0).max(30).optional(),
+    IMMICH_AI_VIDEO_TRANSCRIPTION_CONCURRENCY: z.coerce.number().int().min(1).optional(),
     // YAMNet audio-events sidecar (video-audio-events-v1). Empty values (compose
     // `${VAR:-}` passthroughs) mean "unset" instead of crash-looping the boot.
     IMMICH_AI_AUDIO_EVENTS_ENABLED: z.preprocess((value) => (value === '' ? undefined : value), stringBool.optional()),
@@ -174,6 +179,7 @@ export const EnvSchema = z
     IMMICH_AI_INTERPRET_SEARCH_MODEL: z.string().min(1).optional(),
     IMMICH_AI_INTERPRET_SEARCH_TIMEOUT_MS: z.coerce.number().int().min(1).optional(),
     IMMICH_AI_INTERPRET_SEARCH_MIN_SCORE: z.coerce.number().min(0).max(1).optional(),
+    IMMICH_TRANSCRIPTION_SEARCH_ENABLED: stringBool.optional(),
     IMMICH_VIDEO_FACE_SCAN_ENABLED: stringBool.optional(),
     IMMICH_VIDEO_FACE_SCAN_ON_CAPTION: stringBool.optional(),
     IMMICH_VIDEO_FACE_SCAN_FRAMES_BUDGET: z.coerce.number().int().min(1).max(96).optional(),

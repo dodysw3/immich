@@ -8,7 +8,7 @@ import 'package:openapi/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**data** | [**Map<String, Object>**](Object.md) | Job data payload | [default to const {}]
+**data** | [**BuiltMap&lt;String, JsonObject&gt;**](JsonObject.md) | Job data payload | 
 **id** | **String** | Job ID | [optional] 
 **name** | [**JobName**](JobName.md) |  | 
 **timestamp** | **int** | Job creation timestamp | 

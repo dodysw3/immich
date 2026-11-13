@@ -9,7 +9,7 @@ import 'package:openapi/api.dart';
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **createdAt** | [**DateTime**](DateTime.md) | Creation date | 
-**data** | [**Map<String, Object>**](Object.md) | Additional notification data | [optional] [default to const {}]
+**data** | [**BuiltMap&lt;String, JsonObject&gt;**](JsonObject.md) | Additional notification data | [optional] 
 **description** | **String** | Notification description | [optional] 
 **id** | **String** | Notification ID | 
 **level** | [**NotificationLevel**](NotificationLevel.md) |  | 

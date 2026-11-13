@@ -21,7 +21,13 @@ const transcriptionDispatcher = new Agent({ headersTimeout: 0, bodyTimeout: 0 })
 export class AiVideoTranscriptionClientError extends Error {
   constructor(
     readonly code:
-      'timeout' | 'network_error' | 'endpoint_error' | 'invalid_json' | 'invalid_output' | 'feature_disabled',
+      | 'timeout'
+      | 'network_error'
+      | 'endpoint_error'
+      | 'invalid_json'
+      | 'invalid_output'
+      | 'feature_disabled'
+      | 'media_error',
     message: string,
   ) {
     super(message);

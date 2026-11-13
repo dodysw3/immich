@@ -17,10 +17,15 @@ Method | HTTP request | Description
 [**getPersonAssets**](PeopleApi.md#getpersonassets) | **GET** /people/{id}/assets | Get person assets
 [**getPersonStatistics**](PeopleApi.md#getpersonstatistics) | **GET** /people/{id}/statistics | Get person statistics
 [**getPersonThumbnail**](PeopleApi.md#getpersonthumbnail) | **GET** /people/{id}/thumbnail | Get person thumbnail
-[**mergePerson**](PeopleApi.md#mergeperson) | **POST** /people/{id}/merge | Merge people
+[**getRecentlyMatched**](PeopleApi.md#getrecentlymatched) | **GET** /people/recently-matched | Get recently matched faces
+[**getUsersForPeople**](PeopleApi.md#getusersforpeople) | **GET** /people/users | Get people access
+[**mergePeople**](PeopleApi.md#mergepeople) | **POST** /people/merge | Merge people
+[**mergePersonLegacy**](PeopleApi.md#mergepersonlegacy) | **POST** /people/{id}/merge | Merge people
 [**reassignFaces**](PeopleApi.md#reassignfaces) | **PUT** /people/{id}/reassign | Reassign faces
+[**removeUsersFromPeople**](PeopleApi.md#removeusersfrompeople) | **DELETE** /people/users | Remove users from people
 [**updatePeople**](PeopleApi.md#updatepeople) | **PUT** /people | Update people
 [**updatePerson**](PeopleApi.md#updateperson) | **PUT** /people/{id} | Update person
+[**upsertPeopleUsers**](PeopleApi.md#upsertpeopleusers) | **PUT** /people/users | Upsert user access
 
 
 # **createPerson**
@@ -41,20 +46,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = PeopleApi();
-final personCreateDto = PersonCreateDto(); // PersonCreateDto | 
+final api = Openapi().getPeopleApi();
+final PersonCreateDto personCreateDto = ; // PersonCreateDto | 
 
 try {
-    final result = api_instance.createPerson(personCreateDto);
-    print(result);
-} catch (e) {
+    final response = api.createPerson(personCreateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling PeopleApi->createPerson: $e\n');
 }
 ```
@@ -81,7 +80,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **deletePeople**
-> deletePeople(bulkIdsDto)
+> deletePeople(peopleDeleteDto)
 
 Delete people
 
@@ -98,19 +97,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = PeopleApi();
-final bulkIdsDto = BulkIdsDto(); // BulkIdsDto | 
+final api = Openapi().getPeopleApi();
+final PeopleDeleteDto peopleDeleteDto = ; // PeopleDeleteDto | 
 
 try {
-    api_instance.deletePeople(bulkIdsDto);
-} catch (e) {
+    api.deletePeople(peopleDeleteDto);
+} on DioException catch (e) {
     print('Exception when calling PeopleApi->deletePeople: $e\n');
 }
 ```
@@ -119,7 +112,7 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **bulkIdsDto** | [**BulkIdsDto**](BulkIdsDto.md)|  | 
+ **peopleDeleteDto** | [**PeopleDeleteDto**](PeopleDeleteDto.md)|  | 
 
 ### Return type
 
@@ -137,7 +130,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **deletePerson**
-> deletePerson(id)
+> deletePerson(id, personDeleteDto)
 
 Delete person
 
@@ -154,19 +147,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = PeopleApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getPeopleApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final PersonDeleteDto personDeleteDto = ; // PersonDeleteDto | 
 
 try {
-    api_instance.deletePerson(id);
-} catch (e) {
+    api.deletePerson(id, personDeleteDto);
+} on DioException catch (e) {
     print('Exception when calling PeopleApi->deletePerson: $e\n');
 }
 ```
@@ -176,6 +164,7 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **String**|  | 
+ **personDeleteDto** | [**PersonDeleteDto**](PersonDeleteDto.md)|  | 
 
 ### Return type
 
@@ -187,13 +176,13 @@ void (empty response body)
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
+ - **Content-Type**: application/json
  - **Accept**: Not defined
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getAllPeople**
-> PeopleResponseDto getAllPeople(closestAssetId, closestPersonId, page, size, withHidden)
+> PeopleResponseDto getAllPeople(closestAssetId, closestPersonId, isFavorite, isHidden, name, page, sharedById, sharedWithId, size, withHidden)
 
 Get all people
 
@@ -210,24 +199,23 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = PeopleApi();
-final closestAssetId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Closest asset ID for similarity search
-final closestPersonId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Closest person ID for similarity search
-final page = 56; // int | Page number for pagination
-final size = 56; // int | Number of items per page
-final withHidden = true; // bool | Include hidden people
+final api = Openapi().getPeopleApi();
+final String closestAssetId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Closest asset ID for similarity search
+final String closestPersonId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Closest person ID for similarity search
+final bool isFavorite = true; // bool | Filter by favorite status
+final bool isHidden = true; // bool | Filter by hidden status
+final String name = name_example; // String | Filter by person name
+final int page = 56; // int | Page number for pagination
+final String sharedById = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Only include people to which the user gave access
+final String sharedWithId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Only include people to which the user was given access
+final int size = 56; // int | Number of items per page
+final bool withHidden = true; // bool | Include hidden people
 
 try {
-    final result = api_instance.getAllPeople(closestAssetId, closestPersonId, page, size, withHidden);
-    print(result);
-} catch (e) {
+    final response = api.getAllPeople(closestAssetId, closestPersonId, isFavorite, isHidden, name, page, sharedById, sharedWithId, size, withHidden);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling PeopleApi->getAllPeople: $e\n');
 }
 ```
@@ -238,7 +226,12 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **closestAssetId** | **String**| Closest asset ID for similarity search | [optional] 
  **closestPersonId** | **String**| Closest person ID for similarity search | [optional] 
+ **isFavorite** | **bool**| Filter by favorite status | [optional] 
+ **isHidden** | **bool**| Filter by hidden status | [optional] 
+ **name** | **String**| Filter by person name | [optional] 
  **page** | **int**| Page number for pagination | [optional] [default to 1]
+ **sharedById** | **String**| Only include people to which the user gave access | [optional] 
+ **sharedWithId** | **String**| Only include people to which the user was given access | [optional] 
  **size** | **int**| Number of items per page | [optional] [default to 500]
  **withHidden** | **bool**| Include hidden people | [optional] 
 
@@ -275,20 +268,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = PeopleApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getPeopleApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.getPerson(id);
-    print(result);
-} catch (e) {
+    final response = api.getPerson(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling PeopleApi->getPerson: $e\n');
 }
 ```
@@ -332,23 +319,17 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = PeopleApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final limit = 56; // int | Items per page
-final order = order_example; // String | Sort direction by recognition time
-final page = 56; // int | Page number
+final api = Openapi().getPeopleApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final int limit = 56; // int | Items per page
+final String order = order_example; // String | Sort direction by recognition time
+final int page = 56; // int | Page number
 
 try {
-    final result = api_instance.getPersonAssets(id, limit, order, page);
-    print(result);
-} catch (e) {
+    final response = api.getPersonAssets(id, limit, order, page);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling PeopleApi->getPersonAssets: $e\n');
 }
 ```
@@ -395,20 +376,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = PeopleApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getPeopleApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.getPersonStatistics(id);
-    print(result);
-} catch (e) {
+    final response = api.getPersonStatistics(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling PeopleApi->getPersonStatistics: $e\n');
 }
 ```
@@ -435,7 +410,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getPersonThumbnail**
-> MultipartFile getPersonThumbnail(id)
+> Uint8List getPersonThumbnail(id)
 
 Get person thumbnail
 
@@ -452,20 +427,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = PeopleApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getPeopleApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.getPersonThumbnail(id);
-    print(result);
-} catch (e) {
+    final response = api.getPersonThumbnail(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling PeopleApi->getPersonThumbnail: $e\n');
 }
 ```
@@ -478,7 +447,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**MultipartFile**](MultipartFile.md)
+[**Uint8List**](Uint8List.md)
 
 ### Authorization
 
@@ -491,8 +460,171 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **mergePerson**
-> List<BulkIdResponseDto> mergePerson(id, mergePersonDto)
+# **getRecentlyMatched**
+> RecentlyMatchedResponseDto getRecentlyMatched(limit, offset)
+
+Get recently matched faces
+
+Retrieve the most recent face-recognition matches across all of the user's people, one item per asset-person pair, newest first.
+
+### Example
+```dart
+import 'package:openapi/api.dart';
+// TODO Configure API key authorization: cookie
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKeyPrefix = 'Bearer';
+// TODO Configure API key authorization: api_key
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
+
+final api = Openapi().getPeopleApi();
+final int limit = 56; // int | Number of items to return
+final int offset = 56; // int | Number of items to skip
+
+try {
+    final response = api.getRecentlyMatched(limit, offset);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling PeopleApi->getRecentlyMatched: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **limit** | **int**| Number of items to return | [optional] [default to 50]
+ **offset** | **int**| Number of items to skip | [optional] [default to 0]
+
+### Return type
+
+[**RecentlyMatchedResponseDto**](RecentlyMatchedResponseDto.md)
+
+### Authorization
+
+[cookie](../README.md#cookie), [api_key](../README.md#api_key), [bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getUsersForPeople**
+> BuiltList<PersonUsersResponseDtoInner> getUsersForPeople(direction, personId, role, sharedById, sharedWithId)
+
+Get people access
+
+Retrieve a list of users and the people to which they have been given access
+
+### Example
+```dart
+import 'package:openapi/api.dart';
+// TODO Configure API key authorization: cookie
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKeyPrefix = 'Bearer';
+// TODO Configure API key authorization: api_key
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
+
+final api = Openapi().getPeopleApi();
+final SharingDirection direction = ; // SharingDirection | 
+final String personId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Person ID
+final PersonUserRole role = ; // PersonUserRole | Role of user
+final String sharedById = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | User ID of the user that gave access
+final String sharedWithId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | User ID of the user that was given access
+
+try {
+    final response = api.getUsersForPeople(direction, personId, role, sharedById, sharedWithId);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling PeopleApi->getUsersForPeople: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **direction** | [**SharingDirection**](.md)|  | [optional] 
+ **personId** | **String**| Person ID | [optional] 
+ **role** | [**PersonUserRole**](.md)| Role of user | [optional] 
+ **sharedById** | **String**| User ID of the user that gave access | [optional] 
+ **sharedWithId** | **String**| User ID of the user that was given access | [optional] 
+
+### Return type
+
+[**BuiltList&lt;PersonUsersResponseDtoInner&gt;**](PersonUsersResponseDtoInner.md)
+
+### Authorization
+
+[cookie](../README.md#cookie), [api_key](../README.md#api_key), [bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **mergePeople**
+> BuiltList<BulkIdResponseDto> mergePeople(mergePersonDto)
+
+Merge people
+
+Merge an ordered list of people together into a single person. The final name and birth date are always the first defined value, following the order. Also automatically merges people for other users in the cluster group, skipping people that would result in overriding a previously set name or birth date.
+
+### Example
+```dart
+import 'package:openapi/api.dart';
+// TODO Configure API key authorization: cookie
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKeyPrefix = 'Bearer';
+// TODO Configure API key authorization: api_key
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
+
+final api = Openapi().getPeopleApi();
+final MergePersonDto mergePersonDto = ; // MergePersonDto | 
+
+try {
+    final response = api.mergePeople(mergePersonDto);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling PeopleApi->mergePeople: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **mergePersonDto** | [**MergePersonDto**](MergePersonDto.md)|  | 
+
+### Return type
+
+[**BuiltList&lt;BulkIdResponseDto&gt;**](BulkIdResponseDto.md)
+
+### Authorization
+
+[cookie](../README.md#cookie), [api_key](../README.md#api_key), [bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **mergePersonLegacy**
+> BuiltList<BulkIdResponseDto> mergePersonLegacy(id, mergePersonDto)
 
 Merge people
 
@@ -509,22 +641,16 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = PeopleApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final mergePersonDto = MergePersonDto(); // MergePersonDto | 
+final api = Openapi().getPeopleApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final MergePersonDto mergePersonDto = ; // MergePersonDto | 
 
 try {
-    final result = api_instance.mergePerson(id, mergePersonDto);
-    print(result);
-} catch (e) {
-    print('Exception when calling PeopleApi->mergePerson: $e\n');
+    final response = api.mergePersonLegacy(id, mergePersonDto);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling PeopleApi->mergePersonLegacy: $e\n');
 }
 ```
 
@@ -537,7 +663,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<BulkIdResponseDto>**](BulkIdResponseDto.md)
+[**BuiltList&lt;BulkIdResponseDto&gt;**](BulkIdResponseDto.md)
 
 ### Authorization
 
@@ -551,7 +677,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **reassignFaces**
-> List<PersonResponseDto> reassignFaces(id, assetFaceUpdateDto)
+> BuiltList<PersonResponseDto> reassignFaces(id, assetFaceUpdateDto)
 
 Reassign faces
 
@@ -568,21 +694,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = PeopleApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final assetFaceUpdateDto = AssetFaceUpdateDto(); // AssetFaceUpdateDto | 
+final api = Openapi().getPeopleApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final AssetFaceUpdateDto assetFaceUpdateDto = ; // AssetFaceUpdateDto | 
 
 try {
-    final result = api_instance.reassignFaces(id, assetFaceUpdateDto);
-    print(result);
-} catch (e) {
+    final response = api.reassignFaces(id, assetFaceUpdateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling PeopleApi->reassignFaces: $e\n');
 }
 ```
@@ -596,7 +716,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<PersonResponseDto>**](PersonResponseDto.md)
+[**BuiltList&lt;PersonResponseDto&gt;**](PersonResponseDto.md)
 
 ### Authorization
 
@@ -609,8 +729,58 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **removeUsersFromPeople**
+> removeUsersFromPeople(personUsersDeleteDtoInner)
+
+Remove users from people
+
+Remove user access to people
+
+### Example
+```dart
+import 'package:openapi/api.dart';
+// TODO Configure API key authorization: cookie
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKeyPrefix = 'Bearer';
+// TODO Configure API key authorization: api_key
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
+
+final api = Openapi().getPeopleApi();
+final BuiltList<PersonUsersDeleteDtoInner> personUsersDeleteDtoInner = ; // BuiltList<PersonUsersDeleteDtoInner> | 
+
+try {
+    api.removeUsersFromPeople(personUsersDeleteDtoInner);
+} on DioException catch (e) {
+    print('Exception when calling PeopleApi->removeUsersFromPeople: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **personUsersDeleteDtoInner** | [**BuiltList&lt;PersonUsersDeleteDtoInner&gt;**](PersonUsersDeleteDtoInner.md)|  | 
+
+### Return type
+
+void (empty response body)
+
+### Authorization
+
+[cookie](../README.md#cookie), [api_key](../README.md#api_key), [bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **updatePeople**
-> List<BulkIdResponseDto> updatePeople(peopleUpdateDto)
+> BuiltList<BulkIdResponseDto> updatePeople(peopleUpdateDto)
 
 Update people
 
@@ -627,20 +797,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = PeopleApi();
-final peopleUpdateDto = PeopleUpdateDto(); // PeopleUpdateDto | 
+final api = Openapi().getPeopleApi();
+final PeopleUpdateDto peopleUpdateDto = ; // PeopleUpdateDto | 
 
 try {
-    final result = api_instance.updatePeople(peopleUpdateDto);
-    print(result);
-} catch (e) {
+    final response = api.updatePeople(peopleUpdateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling PeopleApi->updatePeople: $e\n');
 }
 ```
@@ -653,7 +817,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<BulkIdResponseDto>**](BulkIdResponseDto.md)
+[**BuiltList&lt;BulkIdResponseDto&gt;**](BulkIdResponseDto.md)
 
 ### Authorization
 
@@ -684,21 +848,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = PeopleApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final personUpdateDto = PersonUpdateDto(); // PersonUpdateDto | 
+final api = Openapi().getPeopleApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final PersonUpdateDto personUpdateDto = ; // PersonUpdateDto | 
 
 try {
-    final result = api_instance.updatePerson(id, personUpdateDto);
-    print(result);
-} catch (e) {
+    final response = api.updatePerson(id, personUpdateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling PeopleApi->updatePerson: $e\n');
 }
 ```
@@ -722,6 +880,56 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: application/json
  - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **upsertPeopleUsers**
+> upsertPeopleUsers(peopleUsersUpsertDto)
+
+Upsert user access
+
+Give users access to people
+
+### Example
+```dart
+import 'package:openapi/api.dart';
+// TODO Configure API key authorization: cookie
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKeyPrefix = 'Bearer';
+// TODO Configure API key authorization: api_key
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
+
+final api = Openapi().getPeopleApi();
+final PeopleUsersUpsertDto peopleUsersUpsertDto = ; // PeopleUsersUpsertDto | 
+
+try {
+    api.upsertPeopleUsers(peopleUsersUpsertDto);
+} on DioException catch (e) {
+    print('Exception when calling PeopleApi->upsertPeopleUsers: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **peopleUsersUpsertDto** | [**PeopleUsersUpsertDto**](PeopleUsersUpsertDto.md)|  | 
+
+### Return type
+
+void (empty response body)
+
+### Authorization
+
+[cookie](../README.md#cookie), [api_key](../README.md#api_key), [bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: Not defined
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 

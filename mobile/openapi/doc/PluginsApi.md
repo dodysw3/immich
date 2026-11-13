@@ -11,6 +11,7 @@ Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**getPlugin**](PluginsApi.md#getplugin) | **GET** /plugins/{id} | Retrieve a plugin
 [**searchPluginMethods**](PluginsApi.md#searchpluginmethods) | **GET** /plugins/methods | Retrieve plugin methods
+[**searchPluginTemplates**](PluginsApi.md#searchplugintemplates) | **GET** /plugins/templates | Retrieve workflow templates
 [**searchPlugins**](PluginsApi.md#searchplugins) | **GET** /plugins | List all plugins
 
 
@@ -32,20 +33,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = PluginsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getPluginsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.getPlugin(id);
-    print(result);
-} catch (e) {
+    final response = api.getPlugin(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling PluginsApi->getPlugin: $e\n');
 }
 ```
@@ -72,7 +67,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **searchPluginMethods**
-> List<PluginMethodResponseDto> searchPluginMethods(description, enabled, id, name, pluginName, pluginVersion, title, trigger, type)
+> BuiltList<PluginMethodResponseDto> searchPluginMethods(description, enabled, id, name, pluginName, pluginVersion, title, trigger, type)
 
 Retrieve plugin methods
 
@@ -89,28 +84,22 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = PluginsApi();
-final description = description_example; // String | 
-final enabled = true; // bool | Whether the plugin method is enabled
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Plugin method ID
-final name = name_example; // String | 
-final pluginName = pluginName_example; // String | Plugin name
-final pluginVersion = pluginVersion_example; // String | Plugin version
-final title = title_example; // String | 
-final trigger = ; // WorkflowTrigger | Workflow trigger
-final type = ; // WorkflowType | Workflow types
+final api = Openapi().getPluginsApi();
+final String description = description_example; // String | 
+final bool enabled = true; // bool | Whether the plugin method is enabled
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Plugin method ID
+final String name = name_example; // String | 
+final String pluginName = pluginName_example; // String | Plugin name
+final String pluginVersion = pluginVersion_example; // String | Plugin version
+final String title = title_example; // String | 
+final WorkflowTrigger trigger = ; // WorkflowTrigger | Workflow trigger
+final WorkflowType type = ; // WorkflowType | Workflow types
 
 try {
-    final result = api_instance.searchPluginMethods(description, enabled, id, name, pluginName, pluginVersion, title, trigger, type);
-    print(result);
-} catch (e) {
+    final response = api.searchPluginMethods(description, enabled, id, name, pluginName, pluginVersion, title, trigger, type);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling PluginsApi->searchPluginMethods: $e\n');
 }
 ```
@@ -131,7 +120,54 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<PluginMethodResponseDto>**](PluginMethodResponseDto.md)
+[**BuiltList&lt;PluginMethodResponseDto&gt;**](PluginMethodResponseDto.md)
+
+### Authorization
+
+[cookie](../README.md#cookie), [api_key](../README.md#api_key), [bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **searchPluginTemplates**
+> BuiltList<PluginTemplateResponseDto> searchPluginTemplates()
+
+Retrieve workflow templates
+
+Retrieve workflow templates provided by installed plugins
+
+### Example
+```dart
+import 'package:openapi/api.dart';
+// TODO Configure API key authorization: cookie
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKeyPrefix = 'Bearer';
+// TODO Configure API key authorization: api_key
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
+
+final api = Openapi().getPluginsApi();
+
+try {
+    final response = api.searchPluginTemplates();
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling PluginsApi->searchPluginTemplates: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**BuiltList&lt;PluginTemplateResponseDto&gt;**](PluginTemplateResponseDto.md)
 
 ### Authorization
 
@@ -145,7 +181,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **searchPlugins**
-> List<PluginResponseDto> searchPlugins(description, enabled, id, name, title, version)
+> BuiltList<PluginResponseDto> searchPlugins(description, enabled, id, name, title, version)
 
 List all plugins
 
@@ -162,25 +198,19 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = PluginsApi();
-final description = description_example; // String | 
-final enabled = true; // bool | Whether the plugin is enabled
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Plugin ID
-final name = name_example; // String | 
-final title = title_example; // String | 
-final version = version_example; // String | 
+final api = Openapi().getPluginsApi();
+final String description = description_example; // String | 
+final bool enabled = true; // bool | Whether the plugin is enabled
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Plugin ID
+final String name = name_example; // String | 
+final String title = title_example; // String | 
+final String version = version_example; // String | 
 
 try {
-    final result = api_instance.searchPlugins(description, enabled, id, name, title, version);
-    print(result);
-} catch (e) {
+    final response = api.searchPlugins(description, enabled, id, name, title, version);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling PluginsApi->searchPlugins: $e\n');
 }
 ```
@@ -198,7 +228,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<PluginResponseDto>**](PluginResponseDto.md)
+[**BuiltList&lt;PluginResponseDto&gt;**](PluginResponseDto.md)
 
 ### Authorization
 

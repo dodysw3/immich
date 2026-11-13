@@ -32,19 +32,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = JobsApi();
-final jobCreateDto = JobCreateDto(); // JobCreateDto | 
+final api = Openapi().getJobsApi();
+final JobCreateDto jobCreateDto = ; // JobCreateDto | 
 
 try {
-    api_instance.createJob(jobCreateDto);
-} catch (e) {
+    api.createJob(jobCreateDto);
+} on DioException catch (e) {
     print('Exception when calling JobsApi->createJob: $e\n');
 }
 ```
@@ -88,19 +82,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = JobsApi();
+final api = Openapi().getJobsApi();
 
 try {
-    final result = api_instance.getQueuesLegacy();
-    print(result);
-} catch (e) {
+    final response = api.getQueuesLegacy();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling JobsApi->getQueuesLegacy: $e\n');
 }
 ```
@@ -141,21 +129,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = JobsApi();
-final name = ; // QueueName | 
-final queueCommandDto = QueueCommandDto(); // QueueCommandDto | 
+final api = Openapi().getJobsApi();
+final QueueName name = ; // QueueName | 
+final QueueCommandDto queueCommandDto = ; // QueueCommandDto | 
 
 try {
-    final result = api_instance.runQueueCommandLegacy(name, queueCommandDto);
-    print(result);
-} catch (e) {
+    final response = api.runQueueCommandLegacy(name, queueCommandDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling JobsApi->runQueueCommandLegacy: $e\n');
 }
 ```

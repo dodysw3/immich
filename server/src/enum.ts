@@ -881,6 +881,8 @@ export enum QueueName {
   AiInterpretSearch = 'aiInterpretSearch',
   VideoFaceScan = 'videoFaceScan',
   VideoCaptioning = 'videoCaptioning',
+  VideoTranscription = 'videoTranscription',
+  TranscriptIndexSync = 'transcriptIndexSync',
 }
 
 export const QueueNameSchema = z.enum(QueueName).describe('Queue name').meta({ id: 'QueueName' });
@@ -920,6 +922,10 @@ export enum JobName {
   AiInterpretSearchSync = 'AiInterpretSearchSync',
   AiInterpretSearchReconcile = 'AiInterpretSearchReconcile',
   AssetCaptionVideo = 'AssetCaptionVideo',
+  AssetTranscribeVideo = 'AssetTranscribeVideo',
+  TranscriptionReconcile = 'TranscriptionReconcile',
+  TranscriptIndexSync = 'TranscriptIndexSync',
+  TranscriptIndexReconcile = 'TranscriptIndexReconcile',
 
   AuditTableCleanup = 'AuditTableCleanup',
 

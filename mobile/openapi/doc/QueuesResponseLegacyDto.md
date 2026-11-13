@@ -8,12 +8,16 @@ import 'package:openapi/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**aiInterpretSearch** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
 **backgroundTask** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
 **backupDatabase** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
 **duplicateDetection** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
 **editor** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
 **faceDetection** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
 **facialRecognition** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
+**imageInterpretation** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
+**imageInterpretationPublic** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
+**integrityCheck** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
 **library_** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
 **metadataExtraction** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
 **migration** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
@@ -25,7 +29,11 @@ Name | Type | Description | Notes
 **smartSearch** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
 **storageTemplateMigration** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
 **thumbnailGeneration** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
+**transcriptIndexSync** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
+**videoCaptioning** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
 **videoConversion** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
+**videoFaceScan** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
+**videoTranscription** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
 **workflow** | [**QueueResponseLegacyDto**](QueueResponseLegacyDto.md) |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

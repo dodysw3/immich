@@ -33,19 +33,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = FacesApi();
-final assetFaceCreateDto = AssetFaceCreateDto(); // AssetFaceCreateDto | 
+final api = Openapi().getFacesApi();
+final AssetFaceCreateDto assetFaceCreateDto = ; // AssetFaceCreateDto | 
 
 try {
-    api_instance.createFace(assetFaceCreateDto);
-} catch (e) {
+    api.createFace(assetFaceCreateDto);
+} on DioException catch (e) {
     print('Exception when calling FacesApi->createFace: $e\n');
 }
 ```
@@ -89,20 +83,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = FacesApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final assetFaceDeleteDto = AssetFaceDeleteDto(); // AssetFaceDeleteDto | 
+final api = Openapi().getFacesApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final AssetFaceDeleteDto assetFaceDeleteDto = ; // AssetFaceDeleteDto | 
 
 try {
-    api_instance.deleteFace(id, assetFaceDeleteDto);
-} catch (e) {
+    api.deleteFace(id, assetFaceDeleteDto);
+} on DioException catch (e) {
     print('Exception when calling FacesApi->deleteFace: $e\n');
 }
 ```
@@ -130,7 +118,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getFaces**
-> List<AssetFaceResponseDto> getFaces(id)
+> BuiltList<AssetFaceResponseDto> getFaces(id)
 
 Retrieve faces for asset
 
@@ -147,20 +135,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = FacesApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Face ID
+final api = Openapi().getFacesApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Face ID
 
 try {
-    final result = api_instance.getFaces(id);
-    print(result);
-} catch (e) {
+    final response = api.getFaces(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling FacesApi->getFaces: $e\n');
 }
 ```
@@ -173,7 +155,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<AssetFaceResponseDto>**](AssetFaceResponseDto.md)
+[**BuiltList&lt;AssetFaceResponseDto&gt;**](AssetFaceResponseDto.md)
 
 ### Authorization
 
@@ -204,21 +186,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = FacesApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final faceDto = FaceDto(); // FaceDto | 
+final api = Openapi().getFacesApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final FaceDto faceDto = ; // FaceDto | 
 
 try {
-    final result = api_instance.reassignFacesById(id, faceDto);
-    print(result);
-} catch (e) {
+    final response = api.reassignFacesById(id, faceDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling FacesApi->reassignFacesById: $e\n');
 }
 ```

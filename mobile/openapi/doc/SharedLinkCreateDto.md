@@ -11,7 +11,7 @@ Name | Type | Description | Notes
 **albumId** | **String** | Album ID (for album sharing) | [optional] 
 **allowDownload** | **bool** | Allow downloads | [optional] [default to true]
 **allowUpload** | **bool** | Allow uploads | [optional] 
-**assetIds** | **List<String>** | Asset IDs (for individual assets) | [optional] [default to const []]
+**assetIds** | **BuiltList&lt;String&gt;** | Asset IDs (for individual assets) | [optional] 
 **description** | **String** | Link description | [optional] 
 **expiresAt** | [**DateTime**](DateTime.md) | Expiration date | [optional] 
 **password** | **String** | Link password | [optional] 

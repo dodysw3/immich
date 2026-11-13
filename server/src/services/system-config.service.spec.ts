@@ -175,6 +175,15 @@ const updatedConfig = Object.freeze<SystemConfig>({
     generateMemories: true,
     syncQuotaUsage: true,
   },
+  transcriptionSearch: {
+    coverageWeight: 0.5,
+    proximityWeight: 0.3,
+    similarityWeight: 0.2,
+    minimumCoverage: 1,
+    fuzzyThreshold: 0.5,
+    minimumFuzzyLength: 4,
+    additionalMoments: 3,
+  },
   reverseGeocoding: {
     enabled: true,
   },
@@ -487,6 +496,35 @@ describe(SystemConfigService.name, () => {
         should: 'validate required oauth fields',
         config: { oauth: { enabled: true } },
         check: (c: SystemConfig) => expect(c.oauth.enabled).toBe(true),
+      },
+      {
+        should: 'validate transcription search weights are finite and non-negative',
+        config: { transcriptionSearch: { coverageWeight: NaN } },
+        throws: '[transcriptionSearch.coverageWeight] Invalid input',
+      },
+      {
+        should: 'validate transcription search weights stay in range',
+        config: { transcriptionSearch: { similarityWeight: 1.5 } },
+        throws: '[transcriptionSearch.similarityWeight] Too big: expected number to be <=1',
+      },
+      {
+        should: 'validate minimum coverage is in (0, 1]',
+        config: { transcriptionSearch: { minimumCoverage: 0 } },
+        throws: '[transcriptionSearch.minimumCoverage] Too small: expected number to be >0',
+      },
+      {
+        should: 'reject a transcription search config with no effective ranking signals',
+        config: { transcriptionSearch: { coverageWeight: 0, proximityWeight: 0, similarityWeight: 0 } },
+        throws: '[transcriptionSearch.coverageWeight] Ranking weights must have a positive total',
+      },
+      {
+        should: 'accept valid transcription search tuning without an index rebuild',
+        config: { transcriptionSearch: { fuzzyThreshold: 0.75, additionalMoments: 5 } },
+        check: (c: SystemConfig) => {
+          expect(c.transcriptionSearch.fuzzyThreshold).toBe(0.75);
+          expect(c.transcriptionSearch.additionalMoments).toBe(5);
+          expect(c.transcriptionSearch.coverageWeight).toBe(0.5);
+        },
       },
       { should: 'warn for top level unknown options', warn: true, config: { unknownOption: true } },
       { should: 'warn for nested unknown options', warn: true, config: { ffmpeg: { unknownOption: true } } },

@@ -14,6 +14,7 @@ Method | HTTP request | Description
 [**getApiKey**](APIKeysApi.md#getapikey) | **GET** /api-keys/{id} | Retrieve an API key
 [**getApiKeys**](APIKeysApi.md#getapikeys) | **GET** /api-keys | List all API keys
 [**getMyApiKey**](APIKeysApi.md#getmyapikey) | **GET** /api-keys/me | Retrieve the current API key
+[**rotateApiKey**](APIKeysApi.md#rotateapikey) | **POST** /api-keys/{id}/rotate | Rotate an API key
 [**updateApiKey**](APIKeysApi.md#updateapikey) | **PUT** /api-keys/{id} | Update an API key
 
 
@@ -35,20 +36,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = APIKeysApi();
-final apiKeyCreateDto = ApiKeyCreateDto(); // ApiKeyCreateDto | 
+final api = Openapi().getAPIKeysApi();
+final ApiKeyCreateDto apiKeyCreateDto = ; // ApiKeyCreateDto | 
 
 try {
-    final result = api_instance.createApiKey(apiKeyCreateDto);
-    print(result);
-} catch (e) {
+    final response = api.createApiKey(apiKeyCreateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling APIKeysApi->createApiKey: $e\n');
 }
 ```
@@ -92,19 +87,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = APIKeysApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getAPIKeysApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    api_instance.deleteApiKey(id);
-} catch (e) {
+    api.deleteApiKey(id);
+} on DioException catch (e) {
     print('Exception when calling APIKeysApi->deleteApiKey: $e\n');
 }
 ```
@@ -148,20 +137,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = APIKeysApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getAPIKeysApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.getApiKey(id);
-    print(result);
-} catch (e) {
+    final response = api.getApiKey(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling APIKeysApi->getApiKey: $e\n');
 }
 ```
@@ -188,7 +171,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getApiKeys**
-> List<ApiKeyResponseDto> getApiKeys()
+> BuiltList<ApiKeyResponseDto> getApiKeys()
 
 List all API keys
 
@@ -205,19 +188,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = APIKeysApi();
+final api = Openapi().getAPIKeysApi();
 
 try {
-    final result = api_instance.getApiKeys();
-    print(result);
-} catch (e) {
+    final response = api.getApiKeys();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling APIKeysApi->getApiKeys: $e\n');
 }
 ```
@@ -227,7 +204,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**List<ApiKeyResponseDto>**](ApiKeyResponseDto.md)
+[**BuiltList&lt;ApiKeyResponseDto&gt;**](ApiKeyResponseDto.md)
 
 ### Authorization
 
@@ -258,19 +235,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = APIKeysApi();
+final api = Openapi().getAPIKeysApi();
 
 try {
-    final result = api_instance.getMyApiKey();
-    print(result);
-} catch (e) {
+    final response = api.getMyApiKey();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling APIKeysApi->getMyApiKey: $e\n');
 }
 ```
@@ -281,6 +252,57 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**ApiKeyResponseDto**](ApiKeyResponseDto.md)
+
+### Authorization
+
+[cookie](../README.md#cookie), [api_key](../README.md#api_key), [bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **rotateApiKey**
+> ApiKeyCreateResponseDto rotateApiKey(id)
+
+Rotate an API key
+
+Generates a new secret for an API key, immediately invalidating the previous one. The current user must own this API key.
+
+### Example
+```dart
+import 'package:openapi/api.dart';
+// TODO Configure API key authorization: cookie
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('cookie').apiKeyPrefix = 'Bearer';
+// TODO Configure API key authorization: api_key
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
+// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+//defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
+
+final api = Openapi().getAPIKeysApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final response = api.rotateApiKey(id);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling APIKeysApi->rotateApiKey: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+
+### Return type
+
+[**ApiKeyCreateResponseDto**](ApiKeyCreateResponseDto.md)
 
 ### Authorization
 
@@ -311,21 +333,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = APIKeysApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final apiKeyUpdateDto = ApiKeyUpdateDto(); // ApiKeyUpdateDto | 
+final api = Openapi().getAPIKeysApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final ApiKeyUpdateDto apiKeyUpdateDto = ; // ApiKeyUpdateDto | 
 
 try {
-    final result = api_instance.updateApiKey(id, apiKeyUpdateDto);
-    print(result);
-} catch (e) {
+    final response = api.updateApiKey(id, apiKeyUpdateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling APIKeysApi->updateApiKey: $e\n');
 }
 ```

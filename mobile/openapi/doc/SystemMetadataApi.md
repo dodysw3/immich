@@ -33,19 +33,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SystemMetadataApi();
+final api = Openapi().getSystemMetadataApi();
 
 try {
-    final result = api_instance.getAdminOnboarding();
-    print(result);
-} catch (e) {
+    final response = api.getAdminOnboarding();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling SystemMetadataApi->getAdminOnboarding: $e\n');
 }
 ```
@@ -86,19 +80,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SystemMetadataApi();
+final api = Openapi().getSystemMetadataApi();
 
 try {
-    final result = api_instance.getReverseGeocodingState();
-    print(result);
-} catch (e) {
+    final response = api.getReverseGeocodingState();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling SystemMetadataApi->getReverseGeocodingState: $e\n');
 }
 ```
@@ -139,19 +127,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SystemMetadataApi();
+final api = Openapi().getSystemMetadataApi();
 
 try {
-    final result = api_instance.getVersionCheckState();
-    print(result);
-} catch (e) {
+    final response = api.getVersionCheckState();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling SystemMetadataApi->getVersionCheckState: $e\n');
 }
 ```
@@ -192,19 +174,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SystemMetadataApi();
-final adminOnboardingUpdateDto = AdminOnboardingUpdateDto(); // AdminOnboardingUpdateDto | 
+final api = Openapi().getSystemMetadataApi();
+final AdminOnboardingUpdateDto adminOnboardingUpdateDto = ; // AdminOnboardingUpdateDto | 
 
 try {
-    api_instance.updateAdminOnboarding(adminOnboardingUpdateDto);
-} catch (e) {
+    api.updateAdminOnboarding(adminOnboardingUpdateDto);
+} on DioException catch (e) {
     print('Exception when calling SystemMetadataApi->updateAdminOnboarding: $e\n');
 }
 ```

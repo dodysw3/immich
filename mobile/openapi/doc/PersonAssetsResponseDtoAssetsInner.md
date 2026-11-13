@@ -31,11 +31,11 @@ Name | Type | Description | Notes
 **originalPath** | **String** | Original file path | 
 **owner** | [**UserResponseDto**](UserResponseDto.md) |  | [optional] 
 **ownerId** | **String** | Owner user ID | 
-**people** | [**List<PersonResponseDto>**](PersonResponseDto.md) |  | [optional] [default to const []]
+**people** | [**BuiltList&lt;PersonResponseDto&gt;**](PersonResponseDto.md) |  | [optional] 
 **recognizedAt** | [**DateTime**](DateTime.md) | When the face was matched to this person | 
 **resized** | **bool** | Is resized | [optional] 
 **stack** | [**AssetStackResponseDto**](AssetStackResponseDto.md) |  | [optional] 
-**tags** | [**List<TagResponseDto>**](TagResponseDto.md) |  | [optional] [default to const []]
+**tags** | [**BuiltList&lt;TagResponseDto&gt;**](TagResponseDto.md) |  | [optional] 
 **thumbhash** | **String** | Thumbhash for thumbnail generation (base64) also used as the c query param for thumbnail cache busting. | 
 **type** | [**AssetTypeEnum**](AssetTypeEnum.md) |  | 
 **updatedAt** | [**DateTime**](DateTime.md) | The UTC timestamp when the asset record was last updated in the database. This is automatically maintained by the database and reflects when any field in the asset was last modified. | 

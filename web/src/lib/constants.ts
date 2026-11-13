@@ -51,6 +51,9 @@ export enum QueryParameter {
   IS_HIDDEN = 'isHidden',
   IS_OPEN = 'isOpen',
   IS_SAVED = 'isSaved',
+  MATCH_PASSAGE_ID = 'matchPassageId',
+  MATCH_REVISION = 'matchRevision',
+  MATCH_START_MS = 'matchStartMs',
   OPEN_SETTING = 'openSetting',
   PREVIOUS_ROUTE = 'previousRoute',
   QUERY = 'query',
@@ -100,6 +103,7 @@ export enum QueryType {
   FULL_PATH = 'fullPath',
   OCR = 'ocr',
   AI = 'ai',
+  TRANSCRIPTION = 'transcription',
 }
 
 export const validQueryTypes = new Set([
@@ -109,6 +113,7 @@ export const validQueryTypes = new Set([
   QueryType.FULL_PATH,
   QueryType.OCR,
   QueryType.AI,
+  QueryType.TRANSCRIPTION,
 ]);
 
 export const locales = [

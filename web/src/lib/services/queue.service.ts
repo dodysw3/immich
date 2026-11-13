@@ -30,6 +30,7 @@ import {
   mdiFolderMove,
   mdiImageSearch,
   mdiLibraryShelves,
+  mdiMicrophoneMessage,
   mdiOcr,
   mdiPause,
   mdiPencil,
@@ -39,6 +40,7 @@ import {
   mdiSubtitles,
   mdiTable,
   mdiTagFaces,
+  mdiTextSearch,
   mdiTrashCanOutline,
   mdiTrayFull,
   mdiVideo,
@@ -280,6 +282,16 @@ export const asQueueItem = ($t: MessageFormatter, queue: { name: QueueName }): Q
       icon: mdiSubtitles,
       title: 'Video captioning (experimental)',
       subtitle: 'Generate timestamped captions for individual videos (manual trigger).',
+    },
+    [QueueName.VideoTranscription]: {
+      icon: mdiMicrophoneMessage,
+      title: 'Video transcription (experimental)',
+      subtitle: 'Transcribe spoken words in videos for transcript search (independent of captioning).',
+    },
+    [QueueName.TranscriptIndexSync]: {
+      icon: mdiTextSearch,
+      title: 'Transcript index sync',
+      subtitle: 'Index completed video transcripts for Transcription search (no inference).',
     },
   };
 

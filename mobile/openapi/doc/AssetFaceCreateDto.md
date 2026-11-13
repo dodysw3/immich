@@ -13,6 +13,7 @@ Name | Type | Description | Notes
 **imageHeight** | **int** | Image height in pixels | 
 **imageWidth** | **int** | Image width in pixels | 
 **personId** | **String** | Person ID | 
+**userId** | **String** | User ID | [optional] 
 **width** | **int** | Face bounding box width | 
 **x** | **int** | Face bounding box X coordinate | 
 **y** | **int** | Face bounding box Y coordinate | 

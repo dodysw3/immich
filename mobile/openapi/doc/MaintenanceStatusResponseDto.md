@@ -11,6 +11,7 @@ Name | Type | Description | Notes
 **action** | [**MaintenanceAction**](MaintenanceAction.md) |  | 
 **active** | **bool** |  | 
 **error** | **String** |  | [optional] 
+**futoBackupsJobId** | **String** | FUTO Backups job ID | [optional] 
 **progress** | **int** |  | [optional] 
 **task** | **String** |  | [optional] 
 

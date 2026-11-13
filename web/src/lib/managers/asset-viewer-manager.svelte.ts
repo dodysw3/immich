@@ -33,6 +33,19 @@ export type Events = {
   FaceEditModeChange: [boolean];
 };
 
+/**
+One-shot initial-seek instruction from a Transcription match open. Scoped to
+the asset it was requested for so it can never seek an unrelated video; the
+video viewer consumes it at source readiness and re-applies it only after a
+source rebuild within the same opening.
+*/
+export type ViewerMatchOpen = {
+  assetId: string;
+  passageId: string;
+  revision: string;
+  startMs: number;
+};
+
 class AssetViewerManager extends BaseEventManager<Events> {
   #zoomState = $state(createDefaultZoomState());
   #animationFrameId: number | null = null;
@@ -59,6 +72,8 @@ class AssetViewerManager extends BaseEventManager<Events> {
   #showingHiddenPeople = $state(false);
   // click-to-seek from the video face strip; consumed by VideoNativeViewer
   #videoSeekRequestMs = $state<number | null>(null);
+  // one-shot match-open seek (Transcription search); consumed by VideoNativeViewer
+  #matchOpen = $state<ViewerMatchOpen | null>(null);
   gridScrollTarget = $state<AssetGridRouteSearchParams | null | undefined>();
 
   get asset() {
@@ -249,6 +264,18 @@ class AssetViewerManager extends BaseEventManager<Events> {
 
   clearVideoSeekRequest() {
     this.#videoSeekRequestMs = null;
+  }
+
+  get matchOpen() {
+    return this.#matchOpen;
+  }
+
+  setMatchOpen(match: ViewerMatchOpen) {
+    this.#matchOpen = match;
+  }
+
+  clearMatchOpen() {
+    this.#matchOpen = null;
   }
 
   /** Live playback clock (ms), updated by the video viewer's ontimeupdate — consumed by the caption overlay and sidebar timeline. */

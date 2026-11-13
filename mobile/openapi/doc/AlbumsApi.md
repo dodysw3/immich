@@ -25,7 +25,7 @@ Method | HTTP request | Description
 
 
 # **addAssetsToAlbum**
-> List<BulkIdResponseDto> addAssetsToAlbum(id, bulkIdsDto)
+> BuiltList<BulkIdResponseDto> addAssetsToAlbum(id, bulkIdsDto)
 
 Add assets to an album
 
@@ -42,21 +42,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AlbumsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final bulkIdsDto = BulkIdsDto(); // BulkIdsDto | 
+final api = Openapi().getAlbumsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final BulkIdsDto bulkIdsDto = ; // BulkIdsDto | 
 
 try {
-    final result = api_instance.addAssetsToAlbum(id, bulkIdsDto);
-    print(result);
-} catch (e) {
+    final response = api.addAssetsToAlbum(id, bulkIdsDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AlbumsApi->addAssetsToAlbum: $e\n');
 }
 ```
@@ -70,7 +64,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<BulkIdResponseDto>**](BulkIdResponseDto.md)
+[**BuiltList&lt;BulkIdResponseDto&gt;**](BulkIdResponseDto.md)
 
 ### Authorization
 
@@ -101,20 +95,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AlbumsApi();
-final albumsAddAssetsDto = AlbumsAddAssetsDto(); // AlbumsAddAssetsDto | 
+final api = Openapi().getAlbumsApi();
+final AlbumsAddAssetsDto albumsAddAssetsDto = ; // AlbumsAddAssetsDto | 
 
 try {
-    final result = api_instance.addAssetsToAlbums(albumsAddAssetsDto);
-    print(result);
-} catch (e) {
+    final response = api.addAssetsToAlbums(albumsAddAssetsDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AlbumsApi->addAssetsToAlbums: $e\n');
 }
 ```
@@ -158,21 +146,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AlbumsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final addUsersDto = AddUsersDto(); // AddUsersDto | 
+final api = Openapi().getAlbumsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final AddUsersDto addUsersDto = ; // AddUsersDto | 
 
 try {
-    final result = api_instance.addUsersToAlbum(id, addUsersDto);
-    print(result);
-} catch (e) {
+    final response = api.addUsersToAlbum(id, addUsersDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AlbumsApi->addUsersToAlbum: $e\n');
 }
 ```
@@ -217,20 +199,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AlbumsApi();
-final createAlbumDto = CreateAlbumDto(); // CreateAlbumDto | 
+final api = Openapi().getAlbumsApi();
+final CreateAlbumDto createAlbumDto = ; // CreateAlbumDto | 
 
 try {
-    final result = api_instance.createAlbum(createAlbumDto);
-    print(result);
-} catch (e) {
+    final response = api.createAlbum(createAlbumDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AlbumsApi->createAlbum: $e\n');
 }
 ```
@@ -274,19 +250,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AlbumsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getAlbumsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    api_instance.deleteAlbum(id);
-} catch (e) {
+    api.deleteAlbum(id);
+} on DioException catch (e) {
     print('Exception when calling AlbumsApi->deleteAlbum: $e\n');
 }
 ```
@@ -330,22 +300,16 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AlbumsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final key = key_example; // String | 
-final slug = slug_example; // String | 
+final api = Openapi().getAlbumsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final String key = key_example; // String | 
+final String slug = slug_example; // String | 
 
 try {
-    final result = api_instance.getAlbumInfo(id, key, slug);
-    print(result);
-} catch (e) {
+    final response = api.getAlbumInfo(id, key, slug);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AlbumsApi->getAlbumInfo: $e\n');
 }
 ```
@@ -374,7 +338,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getAlbumMapMarkers**
-> List<MapMarkerResponseDto> getAlbumMapMarkers(id, key, slug)
+> BuiltList<MapMarkerResponseDto> getAlbumMapMarkers(id, key, slug)
 
 Retrieve album map markers
 
@@ -391,22 +355,16 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AlbumsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final key = key_example; // String | 
-final slug = slug_example; // String | 
+final api = Openapi().getAlbumsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final String key = key_example; // String | 
+final String slug = slug_example; // String | 
 
 try {
-    final result = api_instance.getAlbumMapMarkers(id, key, slug);
-    print(result);
-} catch (e) {
+    final response = api.getAlbumMapMarkers(id, key, slug);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AlbumsApi->getAlbumMapMarkers: $e\n');
 }
 ```
@@ -421,7 +379,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<MapMarkerResponseDto>**](MapMarkerResponseDto.md)
+[**BuiltList&lt;MapMarkerResponseDto&gt;**](MapMarkerResponseDto.md)
 
 ### Authorization
 
@@ -452,19 +410,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AlbumsApi();
+final api = Openapi().getAlbumsApi();
 
 try {
-    final result = api_instance.getAlbumStatistics();
-    print(result);
-} catch (e) {
+    final response = api.getAlbumStatistics();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AlbumsApi->getAlbumStatistics: $e\n');
 }
 ```
@@ -488,7 +440,7 @@ This endpoint does not need any parameter.
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getAllAlbums**
-> List<AlbumResponseDto> getAllAlbums(assetId, isOwned, isShared)
+> BuiltList<AlbumResponseDto> getAllAlbums(assetId, id, isOwned, isShared, name)
 
 List all albums
 
@@ -505,22 +457,18 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AlbumsApi();
-final assetId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Filter albums containing this asset ID (ignores other parameters)
-final isOwned = true; // bool | Filter by ownership: true = only owned, false = only shared-with-me, undefined = no filter
-final isShared = true; // bool | Filter by shared status: true = only shared, false = not shared, undefined = no filter
+final api = Openapi().getAlbumsApi();
+final String assetId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Filter albums containing this asset ID (ignores other parameters)
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Album ID
+final bool isOwned = true; // bool | Filter by ownership: true = only owned, false = only shared-with-me, undefined = no filter
+final bool isShared = true; // bool | Filter by shared status: true = only shared, false = not shared, undefined = no filter
+final String name = name_example; // String | Album name (exact match)
 
 try {
-    final result = api_instance.getAllAlbums(assetId, isOwned, isShared);
-    print(result);
-} catch (e) {
+    final response = api.getAllAlbums(assetId, id, isOwned, isShared, name);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AlbumsApi->getAllAlbums: $e\n');
 }
 ```
@@ -530,12 +478,14 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **assetId** | **String**| Filter albums containing this asset ID (ignores other parameters) | [optional] 
+ **id** | **String**| Album ID | [optional] 
  **isOwned** | **bool**| Filter by ownership: true = only owned, false = only shared-with-me, undefined = no filter | [optional] 
  **isShared** | **bool**| Filter by shared status: true = only shared, false = not shared, undefined = no filter | [optional] 
+ **name** | **String**| Album name (exact match) | [optional] 
 
 ### Return type
 
-[**List<AlbumResponseDto>**](AlbumResponseDto.md)
+[**BuiltList&lt;AlbumResponseDto&gt;**](AlbumResponseDto.md)
 
 ### Authorization
 
@@ -549,7 +499,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **removeAssetFromAlbum**
-> List<BulkIdResponseDto> removeAssetFromAlbum(id, bulkIdsDto)
+> BuiltList<BulkIdResponseDto> removeAssetFromAlbum(id, bulkIdsDto)
 
 Remove assets from an album
 
@@ -566,21 +516,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AlbumsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final bulkIdsDto = BulkIdsDto(); // BulkIdsDto | 
+final api = Openapi().getAlbumsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final BulkIdsDto bulkIdsDto = ; // BulkIdsDto | 
 
 try {
-    final result = api_instance.removeAssetFromAlbum(id, bulkIdsDto);
-    print(result);
-} catch (e) {
+    final response = api.removeAssetFromAlbum(id, bulkIdsDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AlbumsApi->removeAssetFromAlbum: $e\n');
 }
 ```
@@ -594,7 +538,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<BulkIdResponseDto>**](BulkIdResponseDto.md)
+[**BuiltList&lt;BulkIdResponseDto&gt;**](BulkIdResponseDto.md)
 
 ### Authorization
 
@@ -625,20 +569,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AlbumsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final userId = userId_example; // String | 
+final api = Openapi().getAlbumsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Album ID
+final String userId = userId_example; // String | Album user ID, or \"me\" to reference the current user.
 
 try {
-    api_instance.removeUserFromAlbum(id, userId);
-} catch (e) {
+    api.removeUserFromAlbum(id, userId);
+} on DioException catch (e) {
     print('Exception when calling AlbumsApi->removeUserFromAlbum: $e\n');
 }
 ```
@@ -647,8 +585,8 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**|  | 
- **userId** | **String**|  | 
+ **id** | **String**| Album ID | 
+ **userId** | **String**| Album user ID, or \"me\" to reference the current user. | 
 
 ### Return type
 
@@ -683,21 +621,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AlbumsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final updateAlbumDto = UpdateAlbumDto(); // UpdateAlbumDto | 
+final api = Openapi().getAlbumsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final UpdateAlbumDto updateAlbumDto = ; // UpdateAlbumDto | 
 
 try {
-    final result = api_instance.updateAlbumInfo(id, updateAlbumDto);
-    print(result);
-} catch (e) {
+    final response = api.updateAlbumInfo(id, updateAlbumDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling AlbumsApi->updateAlbumInfo: $e\n');
 }
 ```
@@ -742,21 +674,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AlbumsApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final userId = userId_example; // String | 
-final updateAlbumUserDto = UpdateAlbumUserDto(); // UpdateAlbumUserDto | 
+final api = Openapi().getAlbumsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Album ID
+final String userId = userId_example; // String | Album user ID, or \"me\" to reference the current user.
+final UpdateAlbumUserDto updateAlbumUserDto = ; // UpdateAlbumUserDto | 
 
 try {
-    api_instance.updateAlbumUser(id, userId, updateAlbumUserDto);
-} catch (e) {
+    api.updateAlbumUser(id, userId, updateAlbumUserDto);
+} on DioException catch (e) {
     print('Exception when calling AlbumsApi->updateAlbumUser: $e\n');
 }
 ```
@@ -765,8 +691,8 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**|  | 
- **userId** | **String**|  | 
+ **id** | **String**| Album ID | 
+ **userId** | **String**| Album user ID, or \"me\" to reference the current user. | 
  **updateAlbumUserDto** | [**UpdateAlbumUserDto**](UpdateAlbumUserDto.md)|  | 
 
 ### Return type

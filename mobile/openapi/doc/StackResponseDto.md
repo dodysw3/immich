@@ -8,7 +8,7 @@ import 'package:openapi/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**assets** | [**List<AssetResponseDto>**](AssetResponseDto.md) |  | [default to const []]
+**assets** | [**BuiltList&lt;AssetResponseDto&gt;**](AssetResponseDto.md) |  | 
 **id** | **String** | Stack ID | 
 **primaryAssetId** | **String** | Primary asset ID | 
 

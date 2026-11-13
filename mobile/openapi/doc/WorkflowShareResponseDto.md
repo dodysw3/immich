@@ -10,7 +10,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **description** | **String** | Workflow description | 
 **name** | **String** | Workflow name | 
-**steps** | [**List<WorkflowShareStepDto>**](WorkflowShareStepDto.md) | Workflow steps | [default to const []]
+**steps** | [**BuiltList&lt;WorkflowShareStepDto&gt;**](WorkflowShareStepDto.md) | Workflow steps | 
 **trigger** | [**WorkflowTrigger**](WorkflowTrigger.md) |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

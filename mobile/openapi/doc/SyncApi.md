@@ -33,19 +33,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SyncApi();
-final syncAckDeleteDto = SyncAckDeleteDto(); // SyncAckDeleteDto | 
+final api = Openapi().getSyncApi();
+final SyncAckDeleteDto syncAckDeleteDto = ; // SyncAckDeleteDto | 
 
 try {
-    api_instance.deleteSyncAck(syncAckDeleteDto);
-} catch (e) {
+    api.deleteSyncAck(syncAckDeleteDto);
+} on DioException catch (e) {
     print('Exception when calling SyncApi->deleteSyncAck: $e\n');
 }
 ```
@@ -72,7 +66,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getSyncAck**
-> List<SyncAckDto> getSyncAck()
+> BuiltList<SyncAckDto> getSyncAck()
 
 Retrieve acknowledgements
 
@@ -89,19 +83,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SyncApi();
+final api = Openapi().getSyncApi();
 
 try {
-    final result = api_instance.getSyncAck();
-    print(result);
-} catch (e) {
+    final response = api.getSyncAck();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling SyncApi->getSyncAck: $e\n');
 }
 ```
@@ -111,7 +99,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**List<SyncAckDto>**](SyncAckDto.md)
+[**BuiltList&lt;SyncAckDto&gt;**](SyncAckDto.md)
 
 ### Authorization
 
@@ -142,19 +130,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SyncApi();
-final syncStreamDto = SyncStreamDto(); // SyncStreamDto | 
+final api = Openapi().getSyncApi();
+final SyncStreamDto syncStreamDto = ; // SyncStreamDto | 
 
 try {
-    api_instance.getSyncStream(syncStreamDto);
-} catch (e) {
+    api.getSyncStream(syncStreamDto);
+} on DioException catch (e) {
     print('Exception when calling SyncApi->getSyncStream: $e\n');
 }
 ```
@@ -198,19 +180,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SyncApi();
-final syncAckSetDto = SyncAckSetDto(); // SyncAckSetDto | 
+final api = Openapi().getSyncApi();
+final SyncAckSetDto syncAckSetDto = ; // SyncAckSetDto | 
 
 try {
-    api_instance.sendSyncAck(syncAckSetDto);
-} catch (e) {
+    api.sendSyncAck(syncAckSetDto);
+} on DioException catch (e) {
     print('Exception when calling SyncApi->sendSyncAck: $e\n');
 }
 ```

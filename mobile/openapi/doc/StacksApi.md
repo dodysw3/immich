@@ -36,20 +36,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = StacksApi();
-final stackCreateDto = StackCreateDto(); // StackCreateDto | 
+final api = Openapi().getStacksApi();
+final StackCreateDto stackCreateDto = ; // StackCreateDto | 
 
 try {
-    final result = api_instance.createStack(stackCreateDto);
-    print(result);
-} catch (e) {
+    final response = api.createStack(stackCreateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling StacksApi->createStack: $e\n');
 }
 ```
@@ -93,19 +87,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = StacksApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getStacksApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    api_instance.deleteStack(id);
-} catch (e) {
+    api.deleteStack(id);
+} on DioException catch (e) {
     print('Exception when calling StacksApi->deleteStack: $e\n');
 }
 ```
@@ -149,19 +137,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = StacksApi();
-final bulkIdsDto = BulkIdsDto(); // BulkIdsDto | 
+final api = Openapi().getStacksApi();
+final BulkIdsDto bulkIdsDto = ; // BulkIdsDto | 
 
 try {
-    api_instance.deleteStacks(bulkIdsDto);
-} catch (e) {
+    api.deleteStacks(bulkIdsDto);
+} on DioException catch (e) {
     print('Exception when calling StacksApi->deleteStacks: $e\n');
 }
 ```
@@ -205,20 +187,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = StacksApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getStacksApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.getStack(id);
-    print(result);
-} catch (e) {
+    final response = api.getStack(id);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling StacksApi->getStack: $e\n');
 }
 ```
@@ -262,20 +238,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = StacksApi();
-final assetId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = Openapi().getStacksApi();
+final String assetId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    api_instance.removeAssetFromStack(assetId, id);
-} catch (e) {
+    api.removeAssetFromStack(assetId, id);
+} on DioException catch (e) {
     print('Exception when calling StacksApi->removeAssetFromStack: $e\n');
 }
 ```
@@ -303,7 +273,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **searchStacks**
-> List<StackResponseDto> searchStacks(primaryAssetId)
+> BuiltList<StackResponseDto> searchStacks(primaryAssetId)
 
 Retrieve stacks
 
@@ -320,20 +290,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = StacksApi();
-final primaryAssetId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Filter by primary asset ID
+final api = Openapi().getStacksApi();
+final String primaryAssetId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Filter by primary asset ID
 
 try {
-    final result = api_instance.searchStacks(primaryAssetId);
-    print(result);
-} catch (e) {
+    final response = api.searchStacks(primaryAssetId);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling StacksApi->searchStacks: $e\n');
 }
 ```
@@ -346,7 +310,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<StackResponseDto>**](StackResponseDto.md)
+[**BuiltList&lt;StackResponseDto&gt;**](StackResponseDto.md)
 
 ### Authorization
 
@@ -377,21 +341,15 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = StacksApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final stackUpdateDto = StackUpdateDto(); // StackUpdateDto | 
+final api = Openapi().getStacksApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final StackUpdateDto stackUpdateDto = ; // StackUpdateDto | 
 
 try {
-    final result = api_instance.updateStack(id, stackUpdateDto);
-    print(result);
-} catch (e) {
+    final response = api.updateStack(id, stackUpdateDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling StacksApi->updateStack: $e\n');
 }
 ```

@@ -16,7 +16,7 @@ Method | HTTP request | Description
 
 
 # **getConfig**
-> SystemConfigDto getConfig()
+> AdminConfigDto getConfig()
 
 Get system configuration
 
@@ -33,19 +33,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SystemConfigApi();
+final api = Openapi().getSystemConfigApi();
 
 try {
-    final result = api_instance.getConfig();
-    print(result);
-} catch (e) {
+    final response = api.getConfig();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling SystemConfigApi->getConfig: $e\n');
 }
 ```
@@ -55,7 +49,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**SystemConfigDto**](SystemConfigDto.md)
+[**AdminConfigDto**](AdminConfigDto.md)
 
 ### Authorization
 
@@ -69,7 +63,7 @@ This endpoint does not need any parameter.
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getConfigDefaults**
-> SystemConfigDto getConfigDefaults()
+> AdminConfigDto getConfigDefaults()
 
 Get system configuration defaults
 
@@ -86,19 +80,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SystemConfigApi();
+final api = Openapi().getSystemConfigApi();
 
 try {
-    final result = api_instance.getConfigDefaults();
-    print(result);
-} catch (e) {
+    final response = api.getConfigDefaults();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling SystemConfigApi->getConfigDefaults: $e\n');
 }
 ```
@@ -108,7 +96,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**SystemConfigDto**](SystemConfigDto.md)
+[**AdminConfigDto**](AdminConfigDto.md)
 
 ### Authorization
 
@@ -139,19 +127,13 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SystemConfigApi();
+final api = Openapi().getSystemConfigApi();
 
 try {
-    final result = api_instance.getStorageTemplateOptions();
-    print(result);
-} catch (e) {
+    final response = api.getStorageTemplateOptions();
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling SystemConfigApi->getStorageTemplateOptions: $e\n');
 }
 ```
@@ -175,7 +157,7 @@ This endpoint does not need any parameter.
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **updateConfig**
-> SystemConfigDto updateConfig(systemConfigDto)
+> AdminConfigDto updateConfig(adminConfigDto)
 
 Update system configuration
 
@@ -192,20 +174,14 @@ import 'package:openapi/api.dart';
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKey = 'YOUR_API_KEY';
 // uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 //defaultApiClient.getAuthentication<ApiKeyAuth>('api_key').apiKeyPrefix = 'Bearer';
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = SystemConfigApi();
-final systemConfigDto = SystemConfigDto(); // SystemConfigDto | 
+final api = Openapi().getSystemConfigApi();
+final AdminConfigDto adminConfigDto = ; // AdminConfigDto | 
 
 try {
-    final result = api_instance.updateConfig(systemConfigDto);
-    print(result);
-} catch (e) {
+    final response = api.updateConfig(adminConfigDto);
+    print(response);
+} on DioException catch (e) {
     print('Exception when calling SystemConfigApi->updateConfig: $e\n');
 }
 ```
@@ -214,11 +190,11 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **systemConfigDto** | [**SystemConfigDto**](SystemConfigDto.md)|  | 
+ **adminConfigDto** | [**AdminConfigDto**](AdminConfigDto.md)|  | 
 
 ### Return type
 
-[**SystemConfigDto**](SystemConfigDto.md)
+[**AdminConfigDto**](AdminConfigDto.md)
 
 ### Authorization
 

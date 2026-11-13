@@ -482,6 +482,45 @@ const AdminConfigSchemaWithVisibility = z
         syncQuotaUsage: configBool.describe('Sync quota usage'),
       })
       .meta({ id: 'AdminConfigNightlyTasksDto' }),
+    transcriptionSearch: z
+      .object({
+        coverageWeight: z.number().finite().min(0).max(1).meta({ format: 'double' }).describe('Token coverage weight'),
+        proximityWeight: z.number().finite().min(0).max(1).meta({ format: 'double' }).describe('Proximity weight'),
+        similarityWeight: z
+          .number()
+          .finite()
+          .min(0)
+          .max(1)
+          .meta({ format: 'double' })
+          .describe('Spelling similarity weight'),
+        minimumCoverage: z
+          .number()
+          .finite()
+          .gt(0)
+          .lte(1)
+          .meta({ format: 'double' })
+          .describe('Minimum query-token coverage'),
+        fuzzyThreshold: z
+          .number()
+          .finite()
+          .min(0)
+          .max(1)
+          .meta({ format: 'double' })
+          .describe('Strict-word similarity threshold for spelling fallback'),
+        minimumFuzzyLength: z.int().min(1).max(64).describe('Minimum query-token length for fuzzy matching'),
+        additionalMoments: z.int().min(0).max(20).describe('Additional matching moments returned per video'),
+      })
+      .superRefine((settings, ctx) => {
+        const total = settings.coverageWeight + settings.proximityWeight + settings.similarityWeight;
+        if (!Number.isFinite(total) || total <= 0) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Ranking weights must have a positive total',
+            path: ['coverageWeight'],
+          });
+        }
+      })
+      .meta({ id: 'AdminConfigTranscriptionSearchDto' }),
     trash: z
       .object({
         enabled: configBool.describe('Enabled').meta({ visibility: User }),
@@ -874,6 +913,15 @@ export const defaults = Object.freeze<SystemConfig>({
     syncQuotaUsage: true,
     missingThumbnails: true,
     clusterNewFaces: true,
+  },
+  transcriptionSearch: {
+    coverageWeight: 0.5,
+    proximityWeight: 0.3,
+    similarityWeight: 0.2,
+    minimumCoverage: 1,
+    fuzzyThreshold: 0.5,
+    minimumFuzzyLength: 4,
+    additionalMoments: 3,
   },
   trash: {
     enabled: true,
