@@ -343,6 +343,7 @@ const queues = (): ResponseOf<'getQueuesLegacy'> => ({
   library: idleQueue(),
   metadataExtraction: idleQueue(),
   migration: idleQueue(),
+  orientationSuggestion: idleQueue(),
   notifications: idleQueue(),
   ocr: idleQueue(),
   pdfProcessing: idleQueue(),

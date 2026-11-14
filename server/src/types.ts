@@ -210,6 +210,7 @@ export type ConcurrentQueueName = Exclude<
   | QueueName.ImageInterpretationPublic
   | QueueName.AiInterpretSearch
   | QueueName.VideoFaceScan
+  | QueueName.OrientationSuggestion
 >;
 
 export type Jobs = { [K in JobItem['name']]: (JobItem & { name: K })['data'] };
@@ -352,6 +353,9 @@ export interface IAiInterpretationDiscordAlertJob {
   runKey: string;
 }
 
+/** BullMQ priority: lower runs first (2 = upload default, default 3 = backfill tier). */
+export type IOrientationSuggestionJob = IEntityJob & { priority?: number };
+
 export type IVideoCaptionJob = IEntityJob;
 /** BullMQ priority: lower runs first (2 = new-upload tier, default 3 = backfill tier). */
 export type IVideoTranscriptionJob = IEntityJob & {
@@ -386,6 +390,8 @@ export type JobItem =
   | { name: JobName.AssetInterpretImage; data: IAssetInterpretationJob }
   | { name: JobName.AssetInterpretImagePublic; data: IAssetInterpretationJob }
   | { name: JobName.AssetInterpretationReconcile; data?: IBaseJob }
+  | { name: JobName.AssetOrientationSuggestion; data: IOrientationSuggestionJob }
+  | { name: JobName.AssetOrientationSuggestionQueueAll; data?: IBaseJob }
   | { name: JobName.AiInterpretSearchSync; data: IEntityJob }
   | { name: JobName.AiInterpretSearchReconcile; data?: IBaseJob }
   | { name: JobName.AssetCaptionVideo; data: IVideoCaptionJob }

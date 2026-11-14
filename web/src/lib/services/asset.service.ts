@@ -2,6 +2,7 @@ import { ProjectionType } from '#lib/constants.ts';
 import { assetMultiSelectManager } from '#lib/managers/asset-multi-select-manager.svelte.ts';
 import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
 import { authManager } from '#lib/managers/auth-manager.svelte.ts';
+import { editManager } from '#lib/managers/edit/edit-manager.svelte.ts';
 import { eventManager } from '#lib/managers/event-manager.svelte.ts';
 import type { TimelineAsset } from '#lib/managers/timeline-manager/types.ts';
 import AssetAddToAlbumModal from '#lib/modals/AssetAddToAlbumModal.svelte';
@@ -42,6 +43,7 @@ import {
   mdiCogRefreshOutline,
   mdiCompare,
   mdiContentCopy,
+  mdiCropRotate,
   mdiDatabaseRefreshOutline,
   mdiDownload,
   mdiDownloadBox,
@@ -196,6 +198,18 @@ export const getAssetBulkActions = ($t: MessageFormatter, album?: AlbumResponseD
     onAction: () => onAction(AssetJobName.InterpretImagePublic),
   };
 
+  // Applies pending AI rotation suggestions server-side (assets without a
+  // pending suggestion are skipped); see EditManager.applySuggestedRotationBulk.
+  const ApplyRotationSuggestions: ActionItem = {
+    title: $t('apply_rotation_suggestions'),
+    icon: mdiCropRotate,
+    $if: () => ownedAssets.some((asset) => asset.isImage && !asset.isTrashed && !asset.livePhotoVideoId),
+    onAction: async () => {
+      await editManager.applySuggestedRotationBulk(ownedAssets);
+      assetMultiSelectManager.clear();
+    },
+  };
+
   const TranscodeVideoJob: ActionItem = {
     title: $t('refresh_encoded_videos'),
     icon: mdiCogRefreshOutline,
@@ -215,6 +229,7 @@ export const getAssetBulkActions = ($t: MessageFormatter, album?: AlbumResponseD
     RegenerateThumbnailJob,
     InterpretImageJob,
     InterpretImagePublicJob,
+    ApplyRotationSuggestions,
     TranscodeVideoJob,
   };
 };

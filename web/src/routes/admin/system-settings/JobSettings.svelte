@@ -63,6 +63,7 @@
     [QueueName.VideoCaptioning]: 'Video captioning (experimental)',
     [QueueName.VideoTranscription]: 'Video transcription (experimental)',
     [QueueName.TranscriptIndexSync]: 'Transcript index sync',
+    [QueueName.OrientationSuggestion]: 'Orientation suggestions',
   });
 </script>
 

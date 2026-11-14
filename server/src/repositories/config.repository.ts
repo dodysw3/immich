@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { IWorker, citiesFile } from 'src/constants.js';
 import { Telemetry } from 'src/decorators.js';
 import { EnvSchema } from 'src/dtos/env.dto.js';
+import { ROTATION_SUGGESTION_DEFAULT_THRESHOLD } from 'src/utils/rotation-suggestion.js';
 import {
   DatabaseExtension,
   ImmichEnvironment,
@@ -171,6 +172,15 @@ export interface EnvData {
     model: string;
     timeoutMs: number;
     minScore: number;
+  };
+
+  // Suggest-only AI rotation (RightWayUp ONNX in the ML container). Default
+  // off: enable per deployment after the ML image ships the model.
+  orientationSuggestion: {
+    enabled: boolean;
+    modelTier: 'fast' | 'balanced';
+    /** Snapped-class confidence floor; below it the run records an abstention. */
+    threshold: number;
   };
 
   // Speech-transcript search lane (pure SQL over transcript passages); the flag
@@ -600,6 +610,12 @@ const getEnv = (): EnvData => {
 
     transcriptionSearch: {
       enabled: dto.IMMICH_TRANSCRIPTION_SEARCH_ENABLED ?? false,
+    },
+
+    orientationSuggestion: {
+      enabled: dto.IMMICH_ORIENTATION_ENABLED ?? false,
+      modelTier: dto.IMMICH_ORIENTATION_MODEL_TIER ?? 'fast',
+      threshold: dto.IMMICH_ORIENTATION_THRESHOLD ?? ROTATION_SUGGESTION_DEFAULT_THRESHOLD,
     },
 
     // Experimental video captioning via the local LFM3-Omni-2B lane (:51902).

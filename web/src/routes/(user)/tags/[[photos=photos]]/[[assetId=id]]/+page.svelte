@@ -146,6 +146,7 @@
           <hr />
           <ActionMenuItem action={Actions.RefreshFacesJob} />
           <ActionMenuItem action={Actions.InterpretImageJob} />
+        <ActionMenuItem action={Actions.ApplyRotationSuggestions} />
           <ActionMenuItem action={Actions.InterpretImagePublicJob} />
         </ButtonContextMenu>
       </AssetSelectControlBar>

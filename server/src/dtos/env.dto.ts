@@ -148,6 +148,12 @@ export const EnvSchema = z
     IMMICH_AI_VIDEO_TRANSCRIPTION_CHUNK_SEC: z.coerce.number().int().min(30).optional(),
     IMMICH_AI_VIDEO_TRANSCRIPTION_CHUNK_OVERLAP_SEC: z.coerce.number().int().min(0).max(30).optional(),
     IMMICH_AI_VIDEO_TRANSCRIPTION_CONCURRENCY: z.coerce.number().int().min(1).optional(),
+    // Suggest-only AI rotation (RightWayUp ONNX in the ML container). The tier
+    // must stay in lockstep with the runKey identity, so changing it forks
+    // run keys and re-suggests affected assets.
+    IMMICH_ORIENTATION_ENABLED: stringBool.optional(),
+    IMMICH_ORIENTATION_MODEL_TIER: z.enum(['fast', 'balanced']).optional(),
+    IMMICH_ORIENTATION_THRESHOLD: z.coerce.number().min(0).max(1).optional(),
     // YAMNet audio-events sidecar (video-audio-events-v1). Empty values (compose
     // `${VAR:-}` passthroughs) mean "unset" instead of crash-looping the boot.
     IMMICH_AI_AUDIO_EVENTS_ENABLED: z.preprocess((value) => (value === '' ? undefined : value), stringBool.optional()),

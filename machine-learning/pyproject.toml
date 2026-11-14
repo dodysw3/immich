@@ -24,6 +24,10 @@ dependencies = [
     "tokenizers>=0.15.0,<1.0",
     "uvicorn[standard]>=0.22.0,<1.0",
     "rapidocr>=3.1.0",
+    # RightWayUp orientation model (rotation-suggestion pipeline). Its
+    # onnxruntime requirement is satisfied by the device extras below — do NOT
+    # add a bare onnxruntime pin here or the GPU/openvino builds double-install.
+    "rightwayup>=1.0.0,<2",
 ]
 
 [dependency-groups]

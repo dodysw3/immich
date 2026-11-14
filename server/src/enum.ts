@@ -411,6 +411,7 @@ export enum AssetMetadataKey {
   VideoCaptionsV1 = 'video-captions-v1',
   VideoTranscriptsV1 = 'video-transcripts-v1',
   VideoAudioEventsV1 = 'video-audio-events-v1',
+  RotationSuggestionV1 = 'rotation-suggestion-v1',
 }
 
 export enum UserAvatarColor {
@@ -878,6 +879,7 @@ export enum QueueName {
   Editor = 'editor',
   ImageInterpretation = 'imageInterpretation',
   ImageInterpretationPublic = 'imageInterpretationPublic',
+  OrientationSuggestion = 'orientationSuggestion',
   AiInterpretSearch = 'aiInterpretSearch',
   VideoFaceScan = 'videoFaceScan',
   VideoCaptioning = 'videoCaptioning',
@@ -919,6 +921,8 @@ export enum JobName {
   AssetInterpretImage = 'AssetInterpretImage',
   AssetInterpretImagePublic = 'AssetInterpretImagePublic',
   AssetInterpretationReconcile = 'AssetInterpretationReconcile',
+  AssetOrientationSuggestion = 'AssetOrientationSuggestion',
+  AssetOrientationSuggestionQueueAll = 'AssetOrientationSuggestionQueueAll',
   AiInterpretSearchSync = 'AiInterpretSearchSync',
   AiInterpretSearchReconcile = 'AiInterpretSearchReconcile',
   AssetCaptionVideo = 'AssetCaptionVideo',

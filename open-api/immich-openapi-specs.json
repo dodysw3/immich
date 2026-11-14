@@ -4282,6 +4282,47 @@
         "x-immich-state": "Beta"
       }
     },
+    "/assets/rotation-suggestions": {
+      "get": {
+        "description": "List the authenticated user's image assets with a pending AI rotation suggestion (not applied or dismissed).",
+        "operationId": "listRotationSuggestions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RotationSuggestionListResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "List pending rotation suggestions",
+        "tags": [
+          "Assets"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v3.5.0",
+            "state": "Added"
+          }
+        ],
+        "x-immich-permission": "asset.read"
+      }
+    },
     "/assets/statistics": {
       "get": {
         "description": "Retrieve various statistics about the assets owned by the authenticated user.",
@@ -5249,6 +5290,198 @@
         ],
         "x-immich-permission": "asset.download",
         "x-immich-state": "Stable"
+      }
+    },
+    "/assets/{id}/rotation-suggestion": {
+      "get": {
+        "description": "Retrieve the latest AI rotation suggestion for an asset (suggested clockwise rotation or abstention, with model provenance). Responds with 404 when no suggestion exists or the caller cannot read the asset.",
+        "operationId": "getRotationSuggestion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "key",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "slug",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RotationSuggestionResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Get rotation suggestion",
+        "tags": [
+          "Assets"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v3.5.0",
+            "state": "Added"
+          }
+        ],
+        "x-immich-permission": "asset.read"
+      }
+    },
+    "/assets/{id}/rotation-suggestion/apply": {
+      "post": {
+        "description": "Apply the suggested rotation through the non-destructive edit API: the suggested angle is merged into the existing rotate edit (sum mod 360, crop-first preserved) and edited thumbnails are regenerated. Never modifies the original file.",
+        "operationId": "applyRotationSuggestion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RotationSuggestionApplyDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RotationSuggestionResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Apply rotation suggestion",
+        "tags": [
+          "Assets"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v3.5.0",
+            "state": "Added"
+          }
+        ],
+        "x-immich-permission": "asset.edit.create"
+      }
+    },
+    "/assets/{id}/rotation-suggestion/dismiss": {
+      "post": {
+        "description": "Dismiss the suggested rotation so it no longer appears as pending.",
+        "operationId": "dismissRotationSuggestion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RotationSuggestionDismissDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RotationSuggestionResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Dismiss rotation suggestion",
+        "tags": [
+          "Assets"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v3.5.0",
+            "state": "Added"
+          }
+        ],
+        "x-immich-permission": "asset.update"
       }
     },
     "/assets/{id}/thumbnail": {
@@ -25397,6 +25630,8 @@
           "AssetInterpretImage",
           "AssetInterpretImagePublic",
           "AssetInterpretationReconcile",
+          "AssetOrientationSuggestion",
+          "AssetOrientationSuggestionQueueAll",
           "AiInterpretSearchSync",
           "AiInterpretSearchReconcile",
           "AssetCaptionVideo",
@@ -29243,6 +29478,7 @@
           "editor",
           "imageInterpretation",
           "imageInterpretationPublic",
+          "orientationSuggestion",
           "aiInterpretSearch",
           "videoFaceScan",
           "videoCaptioning",
@@ -29424,6 +29660,9 @@
           "ocr": {
             "$ref": "#/components/schemas/QueueResponseLegacyDto"
           },
+          "orientationSuggestion": {
+            "$ref": "#/components/schemas/QueueResponseLegacyDto"
+          },
           "pdfProcessing": {
             "$ref": "#/components/schemas/QueueResponseLegacyDto"
           },
@@ -29477,6 +29716,7 @@
           "migration",
           "notifications",
           "ocr",
+          "orientationSuggestion",
           "pdfProcessing",
           "search",
           "sidecar",
@@ -30358,6 +30598,122 @@
         },
         "required": [
           "angle"
+        ],
+        "type": "object"
+      },
+      "RotationSuggestionApplyDto": {
+        "$ref": "#/components/schemas/RotationSuggestionDismissDto"
+      },
+      "RotationSuggestionDismissDto": {
+        "default": {},
+        "properties": {
+          "runKey": {
+            "description": "Target a specific run; defaults to the latest run",
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RotationSuggestionListResponseDto": {
+        "items": {
+          "$ref": "#/components/schemas/RotationSuggestionResponseDto"
+        },
+        "type": "array"
+      },
+      "RotationSuggestionResponseDto": {
+        "properties": {
+          "abstain": {
+            "type": "boolean"
+          },
+          "assetId": {
+            "description": "Asset the suggestion belongs to",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+            "type": "string"
+          },
+          "confidence": {
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "finishedAt": {
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "type": "string"
+          },
+          "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "predictedRotation": {
+            "anyOf": [
+              {
+                "type": "number",
+                "enum": [
+                  0
+                ]
+              },
+              {
+                "type": "number",
+                "enum": [
+                  90
+                ]
+              },
+              {
+                "type": "number",
+                "enum": [
+                  180
+                ]
+              },
+              {
+                "type": "number",
+                "enum": [
+                  270
+                ]
+              }
+            ],
+            "description": "Suggested rotation in degrees clockwise (null when abstaining)",
+            "nullable": true
+          },
+          "runKey": {
+            "description": "Content-hashed identity of the run",
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "startedAt": {
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "applied",
+              "dismissed"
+            ],
+            "type": "string"
+          },
+          "tier": {
+            "enum": [
+              "fast",
+              "balanced"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "abstain",
+          "assetId",
+          "confidence",
+          "finishedAt",
+          "model",
+          "predictedRotation",
+          "runKey",
+          "startedAt",
+          "status",
+          "tier"
         ],
         "type": "object"
       },

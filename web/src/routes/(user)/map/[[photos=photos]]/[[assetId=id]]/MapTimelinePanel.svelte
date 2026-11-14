@@ -158,6 +158,7 @@
           <ActionMenuItem action={Actions.RefreshFacesJob} />
           <ActionMenuItem action={Actions.RegenerateThumbnailJob} />
           <ActionMenuItem action={Actions.InterpretImageJob} />
+        <ActionMenuItem action={Actions.ApplyRotationSuggestions} />
           <ActionMenuItem action={Actions.InterpretImagePublicJob} />
           <ActionMenuItem action={Actions.RefreshMetadataJob} />
           <ActionMenuItem action={Actions.TranscodeVideoJob} />

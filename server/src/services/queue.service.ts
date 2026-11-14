@@ -285,6 +285,9 @@ export class QueueService extends BaseService {
       QueueName.VideoCaptioning,
       QueueName.VideoTranscription,
       QueueName.TranscriptIndexSync,
+      // Orientation inference is ~25ms/image on the ML side; one at a time
+      // keeps upload-path contention at zero while a backfill drains.
+      QueueName.OrientationSuggestion,
     ].includes(name);
   }
 

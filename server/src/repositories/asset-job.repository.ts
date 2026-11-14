@@ -545,4 +545,15 @@ export class AssetJobRepository {
   streamForMigrationJob() {
     return this.db.selectFrom('asset').select(['id']).where('asset.deletedAt', 'is', null).stream();
   }
+
+  @GenerateSql({ params: [], stream: true })
+  streamForOrientationSuggestion() {
+    return this.db
+      .selectFrom('asset')
+      .select(['asset.id'])
+      .where('asset.deletedAt', 'is', null)
+      .where('asset.visibility', '!=', AssetVisibility.Hidden)
+      .where('asset.type', '=', AssetType.Image)
+      .stream();
+  }
 }

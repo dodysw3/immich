@@ -144,6 +144,12 @@ export const envData: EnvData = {
     enabled: false,
   },
 
+  orientationSuggestion: {
+    enabled: false,
+    modelTier: 'fast',
+    threshold: 0.5,
+  },
+
   aiVideoCaptioning: {
     enabled: true,
     model: 'lfm3-omni-2b',

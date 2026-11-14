@@ -21,15 +21,83 @@ import type { AuthDto } from 'src/dtos/auth.dto.js';
 import { AvMetadataResponseDto } from 'src/dtos/av-metadata.dto.js';
 import { AssetEditsCreateDto, AssetEditsResponseDto } from 'src/dtos/editing.dto.js';
 import { AssetOcrResponseDto } from 'src/dtos/ocr.dto.js';
+import {
+  RotationSuggestionApplyDto,
+  RotationSuggestionDismissDto,
+  RotationSuggestionListResponseDto,
+  RotationSuggestionResponseDto,
+} from 'src/dtos/rotation-suggestion.dto.js';
 import { ApiTag, Permission, RouteKey } from 'src/enum.js';
 import { Auth, Authenticated } from 'src/middleware/auth.guard.js';
 import { AssetService } from 'src/services/asset.service.js';
+import { OrientationSuggestionService } from 'src/services/orientation-suggestion.service.js';
 import { UUIDParamDto } from 'src/validation.js';
 
 @ApiTags(ApiTag.Assets)
 @Controller(RouteKey.Asset)
 export class AssetController {
-  constructor(private service: AssetService) {}
+  constructor(
+    private service: AssetService,
+    private orientationSuggestionService: OrientationSuggestionService,
+  ) {}
+
+  // Declared before any ':id' route so the static path is not shadowed.
+  @Get('rotation-suggestions')
+  @Authenticated({ permission: Permission.AssetRead })
+  @Endpoint({
+    summary: 'List pending rotation suggestions',
+    description:
+      "List the authenticated user's image assets with a pending AI rotation suggestion (not applied or dismissed).",
+    history: new HistoryBuilder().added('v3.5.0'),
+  })
+  listRotationSuggestions(@Auth() auth: AuthDto): Promise<RotationSuggestionListResponseDto> {
+    return this.orientationSuggestionService.listPending(auth);
+  }
+
+  @Get(':id/rotation-suggestion')
+  @Authenticated({ permission: Permission.AssetRead, sharedLink: true })
+  @Endpoint({
+    summary: 'Get rotation suggestion',
+    description:
+      'Retrieve the latest AI rotation suggestion for an asset (suggested clockwise rotation or abstention, with model provenance). Responds with 404 when no suggestion exists or the caller cannot read the asset.',
+    history: new HistoryBuilder().added('v3.5.0'),
+  })
+  getRotationSuggestion(@Auth() auth: AuthDto, @Param() { id }: UUIDParamDto): Promise<RotationSuggestionResponseDto> {
+    return this.orientationSuggestionService.getOrThrow(auth, id);
+  }
+
+  @Post(':id/rotation-suggestion/apply')
+  @Authenticated({ permission: Permission.AssetEditCreate })
+  @HttpCode(HttpStatus.OK)
+  @Endpoint({
+    summary: 'Apply rotation suggestion',
+    description:
+      'Apply the suggested rotation through the non-destructive edit API: the suggested angle is merged into the existing rotate edit (sum mod 360, crop-first preserved) and edited thumbnails are regenerated. Never modifies the original file.',
+    history: new HistoryBuilder().added('v3.5.0'),
+  })
+  applyRotationSuggestion(
+    @Auth() auth: AuthDto,
+    @Param() { id }: UUIDParamDto,
+    @Body() dto?: RotationSuggestionApplyDto,
+  ): Promise<RotationSuggestionResponseDto> {
+    return this.orientationSuggestionService.apply(auth, id, dto);
+  }
+
+  @Post(':id/rotation-suggestion/dismiss')
+  @Authenticated({ permission: Permission.AssetUpdate })
+  @HttpCode(HttpStatus.OK)
+  @Endpoint({
+    summary: 'Dismiss rotation suggestion',
+    description: 'Dismiss the suggested rotation so it no longer appears as pending.',
+    history: new HistoryBuilder().added('v3.5.0'),
+  })
+  dismissRotationSuggestion(
+    @Auth() auth: AuthDto,
+    @Param() { id }: UUIDParamDto,
+    @Body() dto?: RotationSuggestionDismissDto,
+  ): Promise<RotationSuggestionResponseDto> {
+    return this.orientationSuggestionService.dismiss(auth, id, dto);
+  }
 
   @Get('statistics')
   @Authenticated({ permission: Permission.AssetStatistics })

@@ -25,6 +25,7 @@ from immich_ml.sessions.ort import flush_denormals
 from .config import PreloadModelData, log, settings
 from .models.base import InferenceEntry
 from .models.cache import ModelCache
+from .orientation import predict_orientation
 from .pipeline import Clip, FacialRecognition, Ocr, PipelineRequest, Slot
 from .schemas import (
     FaceDetectionOptions,
@@ -181,6 +182,22 @@ async def predict(
         raise HTTPException(400, "Either image or text must be provided")
     response = await run_inference(inputs, entries)
     return ORJSONResponse(response)
+
+
+@app.post("/orientation", dependencies=[Depends(update_state)])
+async def orientation(image: bytes = File(), tier: str | None = Form(default=None)) -> ORJSONResponse:
+    """Rotation-suggestion inference (fork): preview JPEG in, orientation class out.
+
+    The image must be EXIF-oriented already (the server's preview pipeline bakes
+    EXIF), matching the benchmark preprocessing. `tier` overrides
+    MACHINE_LEARNING_ORIENTATION__TIER for this request so the server keeps
+    runKey provenance consistent with its own configuration.
+    """
+    decoded = await run(lambda: decode_pil(image))
+    if decoded.width == 0 or decoded.height == 0:
+        raise HTTPException(400, "Image has zero width or height")
+    result = await run(partial(predict_orientation, decoded, tier))
+    return ORJSONResponse(result)
 
 
 async def run_inference(payload: Image | str, entries: list[InferenceEntry[Any]]) -> InferenceResponse:

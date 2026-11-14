@@ -40,6 +40,7 @@ import {
   mdiSubtitles,
   mdiTable,
   mdiTagFaces,
+  mdiCropRotate,
   mdiTextSearch,
   mdiTrashCanOutline,
   mdiTrayFull,
@@ -292,6 +293,11 @@ export const asQueueItem = ($t: MessageFormatter, queue: { name: QueueName }): Q
       icon: mdiTextSearch,
       title: 'Transcript index sync',
       subtitle: 'Index completed video transcripts for Transcription search (no inference).',
+    },
+    [QueueName.OrientationSuggestion]: {
+      icon: mdiCropRotate,
+      title: 'Orientation suggestions',
+      subtitle: 'Suggest-only photo rotation detection (never auto-applied).',
     },
   };
 

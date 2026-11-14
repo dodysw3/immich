@@ -167,7 +167,7 @@
           const response = await searchTranscription({
             transcriptionSearchDto: {
               q: searchDto.transcription,
-              visibility: searchDto.visibility ?? AssetVisibility.Timeline,
+              visibility: searchDto.visibility,
               withStacked: searchDto.withStacked,
               isFavorite: searchDto.isFavorite,
               rating: searchDto.rating,
@@ -206,7 +206,7 @@
           // AI interpretation search has a dedicated endpoint and result shape
           const response = await searchAiInterpret({
             aiInterpretSearchDto: {
-              visibility: searchDto.visibility ?? AssetVisibility.Timeline,
+              visibility: searchDto.visibility,
               q: searchDto.ai,
               withStacked: searchDto.withStacked,
               type: searchDto.type,
@@ -235,10 +235,10 @@
         }
         if (('query' in searchDto || 'queryAssetId' in searchDto) && config.machineLearning.clip.enabled) {
           return await searchSmart({
-            smartSearchDto: { visibility: AssetVisibility.Timeline, ...searchDto, language: $lang },
+            smartSearchDto: { ...searchDto, language: $lang },
           });
         }
-        return await searchAssets({ metadataSearchDto: { visibility: AssetVisibility.Timeline, ...searchDto } });
+        return await searchAssets({ metadataSearchDto: { ...searchDto } });
       })();
 
       searchResultAlbums.push(...albums.items);
@@ -334,7 +334,7 @@
   };
 
   const onAssetsArchive = (assetIds: string[]) => {
-    if (!terms.visibility || terms.visibility === AssetVisibility.Timeline) {
+    if (terms.visibility === AssetVisibility.Timeline) {
       const assetIdSet = new Set(assetIds);
       searchResultAssets = searchResultAssets.filter((asset) => !assetIdSet.has(asset.id));
     }
@@ -568,6 +568,7 @@
               <ActionMenuItem action={Actions.RefreshFacesJob} />
               <ActionMenuItem action={Actions.RegenerateThumbnailJob} />
               <ActionMenuItem action={Actions.InterpretImageJob} />
+        <ActionMenuItem action={Actions.ApplyRotationSuggestions} />
               <ActionMenuItem action={Actions.InterpretImagePublicJob} />
               <ActionMenuItem action={Actions.RefreshMetadataJob} />
               <ActionMenuItem action={Actions.TranscodeVideoJob} />

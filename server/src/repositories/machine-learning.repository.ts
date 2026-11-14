@@ -28,6 +28,15 @@ export enum ModelType {
 
 export type ModelPayload = { imagePath: string } | { text: string };
 
+export type OrientationResponse = {
+  angleCw: number;
+  correctionCw: number;
+  confidence: number;
+  abstain: boolean;
+  routed: boolean;
+  tier: string;
+};
+
 type ModelOptions = { modelName: string };
 
 // verify: also re-score each face on a standard crop around it (returned as Face.verifyScore)
@@ -209,8 +218,41 @@ export class MachineLearningRepository {
     throw new Error(`Machine learning request '${JSON.stringify(config)}' failed for all URLs`);
   }
 
-  async detectFaces(imagePath: string, { modelName, minScore, verify }: FaceDetectionOptions) {
-    const request = {
+  // Dedicated rotation-suggestion endpoint (fork): multipart image + tier,
+  // failover identical to /predict. The tier travels with the request so the
+  // server's runKey provenance always matches the served model.
+  async orientation(imagePath: string, tier: string): Promise<OrientationResponse> {
+    const image = await readFile(imagePath);
+    const formData = new FormData();
+    formData.append('image', new Blob([new Uint8Array(image)], { type: 'image/jpeg' }));
+    formData.append('tier', tier);
+
+    for (const url of [
+      // try healthy servers first
+      ...this.config.urls.filter((url) => this.isHealthy(url)),
+      ...this.config.urls.filter((url) => !this.isHealthy(url)),
+    ]) {
+      try {
+        const response = await fetch(new URL('orientation', url), { method: 'POST', body: formData });
+        if (response.ok) {
+          this.setHealthy(url, true);
+          return response.json();
+        }
+
+        this.logger.warn(
+          `Machine learning request to "${url}" failed with status ${response.status}: ${response.statusText}`,
+        );
+      } catch (error: Error | unknown) {
+        this.logger.warn(`Machine learning request to "${url}" failed`, error);
+      }
+
+      this.setHealthy(url, false);
+    }
+
+    throw new Error(`Machine learning orientation request failed for all URLs`);
+  }
+
+  async detectFaces(imagePath: string, { modelName, minScore, verify }: FaceDetectionOptions) {    const request = {
       [ModelTask.FACIAL_RECOGNITION]: {
         [ModelType.DETECTION]: { modelName, options: { minScore, ...(verify && { verify }) } },
         [ModelType.RECOGNITION]: { modelName },

@@ -887,6 +887,19 @@ describe(AssetService.name, () => {
       expect(mocks.asset.upsertMetadata).not.toHaveBeenCalled();
     });
 
+    it('should reject the server-managed rotation-suggestion key', async () => {
+      const asset = AssetFactory.create();
+      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set([asset.id]));
+
+      await expect(
+        sut.upsertMetadata(authStub.admin, asset.id, {
+          items: [{ key: AssetMetadataKey.RotationSuggestionV1, value: { schemaVersion: 1, runs: {} } }],
+        }),
+      ).rejects.toThrowError('server-managed');
+
+      expect(mocks.asset.upsertMetadata).not.toHaveBeenCalled();
+    });
+
     it('should throw a bad request exception if duplicate keys are sent', async () => {
       const asset = AssetFactory.create();
       const items = [

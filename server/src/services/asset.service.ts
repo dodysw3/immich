@@ -437,6 +437,7 @@ export class AssetService extends BaseService {
     AssetMetadataKey.VideoCaptionsV1,
     AssetMetadataKey.VideoTranscriptsV1,
     AssetMetadataKey.VideoAudioEventsV1,
+    AssetMetadataKey.RotationSuggestionV1,
   ]);
 
   async upsertBulkMetadata(auth: AuthDto, dto: AssetMetadataBulkUpsertDto): Promise<AssetMetadataBulkResponseDto[]> {

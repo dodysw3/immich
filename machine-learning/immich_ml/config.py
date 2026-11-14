@@ -34,6 +34,14 @@ class OcrSettings(BaseModel):
     max_resolution: int = 736  # must match the server's OCR setting, or the preloaded model will not be used
 
 
+class OrientationSettings(BaseModel):
+    # RightWayUp tier: 'fast' | 'balanced' (see orient-bench/REPORT.md). The
+    # server sends its own tier per request so the runKey provenance stays
+    # consistent; this setting is only the endpoint's default.
+    tier: str = "fast"
+    device: str = "cpu"  # benchmark measured CPU directly (23.6ms p50); 'auto' would grab CUDA where present
+
+
 class PreloadModelData(BaseModel):
     clip: ClipSettings = ClipSettings()
     facial_recognition: FacialRecognitionSettings = FacialRecognitionSettings()
@@ -76,6 +84,7 @@ class Settings(BaseSettings):
     rknn_threads: int | None = None
     preload: PreloadModelData | None = None
     max_batch_size: MaxBatchSize = MaxBatchSize()
+    orientation: OrientationSettings = OrientationSettings()
     model_organization: ModelOrganization = ModelOrganization.APP
     model_revision: str = "main"
 

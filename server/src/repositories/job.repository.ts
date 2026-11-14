@@ -379,6 +379,18 @@ export class JobRepository {
       case JobName.AssetInterpretationReconcile: {
         return { deduplication: { id: JobName.AssetInterpretationReconcile } };
       }
+      case JobName.AssetOrientationSuggestion: {
+        // Deduped by assetId so an upload trigger and a backfill cannot both
+        // hold the same asset in flight; the tier rides BullMQ priority.
+        // Failed jobs are dropped rather than retained (unlike the global
+        // removeOnFail default): a lingering failed job would permanently
+        // swallow every future queue attempt for that assetId. Failures are
+        // stateless here — nothing is persisted until inference succeeds.
+        return { jobId: item.data.id, priority: item.data.priority, attempts: 3, removeOnFail: true, backoff: { type: 'exponential', delay: 5000 } };
+      }
+      case JobName.AssetOrientationSuggestionQueueAll: {
+        return { jobId: JobName.AssetOrientationSuggestionQueueAll };
+      }
       case JobName.SendAiInterpretationDiscordAlert: {
         return {
           jobId: `discord/${item.data.assetId}/${item.data.runKey}`,

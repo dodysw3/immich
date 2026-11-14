@@ -849,6 +849,7 @@ dependencies = [
     { name = "python-multipart" },
     { name = "rapidocr" },
     { name = "rich" },
+    { name = "rightwayup" },
     { name = "tokenizers" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -952,6 +953,7 @@ requires-dist = [
     { name = "python-multipart", specifier = ">=0.0.6,<1.0" },
     { name = "rapidocr", specifier = ">=3.1.0" },
     { name = "rich", specifier = ">=13.4.2" },
+    { name = "rightwayup", specifier = ">=1.0.0,<2" },
     { name = "tokenizers", specifier = ">=0.15.0,<1.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.22.0,<1.0" },
 ]
@@ -2396,6 +2398,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c0/8f/0722ca900cc807c13a6a0c696dacf35430f72e0ec571c4275d2371fca3e9/rich-15.0.0.tar.gz", hash = "sha256:edd07a4824c6b40189fb7ac9bc4c52536e9780fbbfbddf6f1e2502c31b068c36", size = 230680, upload-time = "2026-04-12T08:24:00.75Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/82/3b/64d4899d73f91ba49a8c18a8ff3f0ea8f1c1d75481760df8c68ef5235bf5/rich-15.0.0-py3-none-any.whl", hash = "sha256:33bd4ef74232fb73fe9279a257718407f169c09b78a87ad3d296f548e27de0bb", size = 310654, upload-time = "2026-04-12T08:24:02.83Z" },
+]
+
+[[package]]
+name = "rightwayup"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "huggingface-hub" },
+    { name = "numpy" },
+    { name = "onnxruntime" },
+    { name = "pillow" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/aa/86/088bd25f44fb971ed8ed20c717a5383ec48dff03ec5aabc025bfd2651722/rightwayup-1.0.0.tar.gz", hash = "sha256:25b73cb34d7dc68d241934604928d2e20515e3e9e0fa8537e80334d51fa1b534", size = 19202, upload-time = "2026-09-30T11:23:39.893Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/67/f4/b79294c988146c1deca3ee0ee8fa7c4b9f90b0adac165c5c2d69d06c00cc/rightwayup-1.0.0-py3-none-any.whl", hash = "sha256:694aa8b27f6dd229ab811eecb1962af0e1fb508c3c23f11609a6adc00ab657db", size = 16335, upload-time = "2026-09-30T11:23:38.424Z" },
 ]
 
 [[package]]

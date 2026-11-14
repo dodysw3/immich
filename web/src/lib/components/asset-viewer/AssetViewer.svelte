@@ -55,6 +55,7 @@
   import DetailPanel from './DetailPanel.svelte';
   import ImagePanoramaViewer from './ImagePanoramaViewer.svelte';
   import OcrButton from './OcrButton.svelte';
+  import RotationSuggestionChip from './RotationSuggestionChip.svelte';
   import PhotoViewer from './PhotoViewer.svelte';
   import SlideshowBar from './SlideshowBar.svelte';
   import SlideshowMetadataOverlay from './SlideshowMetadataOverlay.svelte';
@@ -755,6 +756,7 @@
 
     {#if $slideshowState === SlideshowState.None && !assetViewerManager.isShowEditor}
       <AiInterpretationOverlay {asset} buttonBottom={aiInterpretationButtonBottom} />
+      <RotationSuggestionChip {asset} buttonBottom={aiInterpretationButtonBottom + 56} />
     {/if}
 
     {#if $slideshowState !== SlideshowState.None}

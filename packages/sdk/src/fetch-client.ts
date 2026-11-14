@@ -1270,6 +1270,22 @@ export type AssetMetadataBulkResponseDto = {
         [key: string]: any;
     };
 };
+export type RotationSuggestionResponseDto = {
+    abstain: boolean;
+    /** Asset the suggestion belongs to */
+    assetId: string;
+    confidence: number;
+    finishedAt: string;
+    model: string;
+    /** Suggested rotation in degrees clockwise (null when abstaining) */
+    predictedRotation: (0 | 90 | 180 | 270) | null;
+    /** Content-hashed identity of the run */
+    runKey: string;
+    startedAt: string;
+    status: Status;
+    tier: Tier;
+};
+export type RotationSuggestionListResponseDto = RotationSuggestionResponseDto[];
 export type ExifResponseDto = {
     /** Bits per sample */
     bitsPerSample?: number | null;
@@ -1580,6 +1596,10 @@ export type AssetOcrResponseDto = {
     y3: number;
     /** Normalized y coordinate of box corner 4 (0-1) */
     y4: number;
+};
+export type RotationSuggestionDismissDto = {
+    /** Target a specific run; defaults to the latest run */
+    runKey?: string;
 };
 export type VideoFaceDto = {
     assetFaceId: string | null;
@@ -2041,6 +2061,7 @@ export type QueuesResponseLegacyDto = {
     migration: QueueResponseLegacyDto;
     notifications: QueueResponseLegacyDto;
     ocr: QueueResponseLegacyDto;
+    orientationSuggestion: QueueResponseLegacyDto;
     pdfProcessing: QueueResponseLegacyDto;
     search: QueueResponseLegacyDto;
     sidecar: QueueResponseLegacyDto;
@@ -3275,7 +3296,7 @@ export type TranscriptionMatchDto = {
     spans: TranscriptionSearchSpanDto[];
     /** Match moment: the start of the first matched segment (segment precision, not word alignment) */
     startMs: number;
-    tier: Tier;
+    tier: Tier2;
     /** Contributing segment range (first:last) */
     windowId: string;
 };
@@ -3916,6 +3937,7 @@ export type ReleaseEventV1 = {
     /** Release type */
     "type": ReleaseType;
 };
+export type RotationSuggestionApplyDto = RotationSuggestionDismissDto;
 export type SyncAckV1 = {};
 export type SyncAlbumDeleteV1 = {
     /** Album ID */
@@ -5453,6 +5475,17 @@ export function updateBulkAssetMetadata({ assetMetadataBulkUpsertDto }: {
     })));
 }
 /**
+ * List pending rotation suggestions
+ */
+export function listRotationSuggestions(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RotationSuggestionListResponseDto;
+    }>("/assets/rotation-suggestions", {
+        ...opts
+    }));
+}
+/**
  * Get asset statistics
  */
 export function getAssetStatistics({ isFavorite, isTrashed, visibility }: {
@@ -5666,6 +5699,56 @@ export function downloadAsset({ edited, id, key, slug }: {
     }))}`, {
         ...opts
     }));
+}
+/**
+ * Get rotation suggestion
+ */
+export function getRotationSuggestion({ id, key, slug }: {
+    id: string;
+    key?: string;
+    slug?: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RotationSuggestionResponseDto;
+    }>(`/assets/${encodeURIComponent(id)}/rotation-suggestion${QS.query(QS.explode({
+        key,
+        slug
+    }))}`, {
+        ...opts
+    }));
+}
+/**
+ * Apply rotation suggestion
+ */
+export function applyRotationSuggestion({ id, rotationSuggestionDismissDto }: {
+    id: string;
+    rotationSuggestionDismissDto: RotationSuggestionDismissDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RotationSuggestionResponseDto;
+    }>(`/assets/${encodeURIComponent(id)}/rotation-suggestion/apply`, oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: rotationSuggestionDismissDto
+    })));
+}
+/**
+ * Dismiss rotation suggestion
+ */
+export function dismissRotationSuggestion({ id, rotationSuggestionDismissDto }: {
+    id: string;
+    rotationSuggestionDismissDto: RotationSuggestionDismissDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RotationSuggestionResponseDto;
+    }>(`/assets/${encodeURIComponent(id)}/rotation-suggestion/dismiss`, oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: rotationSuggestionDismissDto
+    })));
 }
 /**
  * View asset thumbnail
@@ -9370,6 +9453,15 @@ export enum AssetJobName {
     CaptionVideo = "caption-video",
     TranscodeVideo = "transcode-video"
 }
+export enum Status {
+    Pending = "pending",
+    Applied = "applied",
+    Dismissed = "dismissed"
+}
+export enum Tier {
+    Fast = "fast",
+    Balanced = "balanced"
+}
 export enum PersonUserRole {
     Read = "read",
     Write = "write",
@@ -9452,6 +9544,7 @@ export enum QueueName {
     Editor = "editor",
     ImageInterpretation = "imageInterpretation",
     ImageInterpretationPublic = "imageInterpretationPublic",
+    OrientationSuggestion = "orientationSuggestion",
     AiInterpretSearch = "aiInterpretSearch",
     VideoFaceScan = "videoFaceScan",
     VideoCaptioning = "videoCaptioning",
@@ -9523,6 +9616,8 @@ export enum JobName {
     AssetInterpretImage = "AssetInterpretImage",
     AssetInterpretImagePublic = "AssetInterpretImagePublic",
     AssetInterpretationReconcile = "AssetInterpretationReconcile",
+    AssetOrientationSuggestion = "AssetOrientationSuggestion",
+    AssetOrientationSuggestionQueueAll = "AssetOrientationSuggestionQueueAll",
     AiInterpretSearchSync = "AiInterpretSearchSync",
     AiInterpretSearchReconcile = "AiInterpretSearchReconcile",
     AssetCaptionVideo = "AssetCaptionVideo",
@@ -9604,7 +9699,7 @@ export enum SearchSuggestionType {
     CameraModel = "camera-model",
     CameraLensModel = "camera-lens-model"
 }
-export enum Tier {
+export enum Tier2 {
     ExactPhrase = "exact-phrase",
     ExactAll = "exact-all",
     Fuzzy = "fuzzy",

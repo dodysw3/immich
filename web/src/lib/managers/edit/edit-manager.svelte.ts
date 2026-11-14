@@ -4,10 +4,13 @@ import { eventManager } from '#lib/managers/event-manager.svelte.ts';
 import { waitForWebsocketEvent } from '#lib/stores/websocket.ts';
 import { getFormatter } from '#lib/utils/i18n.ts';
 import {
+  applyRotationSuggestion,
   AssetEditAction,
+  dismissRotationSuggestion as dismissRotationSuggestionApi,
   editAsset,
   getAssetEdits,
   getAssetInfo,
+  listRotationSuggestions,
   removeAssetEdits,
   type AssetEditsCreateDto,
   type AssetResponseDto,
@@ -270,6 +273,105 @@ export class EditManager {
       toastManager.warning(
         t('rotated_count_of_total', { values: { successCount: succeeded, totalCount: assets.length } }),
       );
+    }
+  }
+
+  // AI rotation suggestions ride the server-side apply endpoint (which merges
+  // the angle into the existing rotate edit through the same editAsset path),
+  // then wait for the same completion event as an instant rotate.
+  async #applySuggestedRotation(assetId: string): Promise<void> {
+    const editCompleted = waitForWebsocketEvent('AssetEditReadyV2', (event) => event.asset.id === assetId, 10_000);
+
+    await applyRotationSuggestion({ id: assetId, rotationSuggestionDismissDto: {} });
+    await editCompleted;
+
+    eventManager.emit('AssetEditsApplied', assetId);
+
+    const updatedAsset = await getAssetInfo({ id: assetId });
+    eventManager.emit('AssetUpdate', updatedAsset);
+  }
+
+  async applySuggestedRotation(assetId: string): Promise<boolean> {
+    if (this.isApplyingEdits) {
+      return false;
+    }
+
+    this.isApplyingEdits = true;
+
+    const t = await getFormatter();
+
+    try {
+      await this.#applySuggestedRotation(assetId);
+      toastManager.success(t('editor_edits_applied_success'));
+      return true;
+    } catch {
+      toastManager.danger(t('editor_edits_applied_error'));
+      return false;
+    } finally {
+      this.isApplyingEdits = false;
+    }
+  }
+
+  async applySuggestedRotationBulk(assets: { id: string }[]): Promise<void> {
+    if (this.isApplyingEdits || assets.length === 0) {
+      return;
+    }
+
+    const t = await getFormatter();
+
+    let pending;
+    try {
+      pending = await listRotationSuggestions();
+    } catch {
+      toastManager.danger(t('errors.unable_to_load_rotation_suggestions'));
+      return;
+    }
+
+    const selected = new Set(assets.map(({ id }) => id));
+    const targets = pending.filter((suggestion) => selected.has(suggestion.assetId));
+    if (targets.length === 0) {
+      toastManager.primary(t('rotation_suggestions_none_pending'));
+      return;
+    }
+
+    this.isApplyingEdits = true;
+
+    let succeeded = 0;
+    let failed = 0;
+
+    try {
+      for (const { assetId } of targets) {
+        try {
+          await this.#applySuggestedRotation(assetId);
+          succeeded++;
+        } catch {
+          failed++;
+        }
+      }
+    } finally {
+      this.isApplyingEdits = false;
+    }
+
+    if (failed === 0) {
+      toastManager.success(t('rotated_count', { values: { count: succeeded } }));
+    } else if (succeeded === 0) {
+      toastManager.danger(t('editor_edits_applied_error'));
+    } else {
+      toastManager.warning(
+        t('rotated_count_of_total', { values: { successCount: succeeded, totalCount: targets.length } }),
+      );
+    }
+  }
+
+  async dismissRotationSuggestion(assetId: string): Promise<boolean> {
+    const t = await getFormatter();
+
+    try {
+      await dismissRotationSuggestionApi({ id: assetId, rotationSuggestionDismissDto: {} });
+      return true;
+    } catch {
+      toastManager.danger(t('errors.unable_to_dismiss_rotation_suggestion'));
+      return false;
     }
   }
 }
