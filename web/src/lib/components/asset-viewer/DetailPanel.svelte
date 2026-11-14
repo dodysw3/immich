@@ -338,7 +338,7 @@
         <Text size="small" color="muted">{$t('appears_in')}</Text>
       </div>
       {#each albums as album (album.id)}
-        <a href={Route.viewAlbum(album)}>
+        <a href={Route.viewAlbumAsset({ albumId: album.id, assetId: asset.id })}>
           <div class="flex items-center gap-4 pt-2 hover:cursor-pointer">
             <div>
               <img
