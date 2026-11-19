@@ -698,7 +698,7 @@ describe(AiVideoTranscriptionService.name, () => {
       });
     });
 
-    it('never re-enqueues failed runs (operator retry) or trustworthy legacy coverage', async () => {
+    it('never re-enqueues media-level failed runs (operator retry) or trustworthy legacy coverage', async () => {
       const { service, dependencies } = makeService();
       const legacyKey = createLegacyVideoTranscriptionRunKey(config.model, 'video-transcription-0.2.0');
       dependencies.assetJobRepository.streamForTranscriptionReconcile.mockReturnValue(
@@ -739,6 +739,107 @@ describe(AiVideoTranscriptionService.name, () => {
       expect((dependencies.jobRepository.queue.mock.calls[0] as unknown[])[0]).toMatchObject({
         data: { id: 'legacy-truncated' },
       });
+    });
+
+    it('re-enqueues a service-level failed run after the 24h cool-down (no force)', async () => {
+      const { service, dependencies } = makeService();
+      dependencies.assetJobRepository.streamForTranscriptionReconcile.mockReturnValue(
+        streamOf([
+          video(
+            'endpoint-outage',
+            doc({
+              [runKey]: sweepRun({
+                status: 'failed',
+                error: { code: 'endpoint_error', message: '503' },
+                finishedAt: '2026-11-01T00:00:00.000Z',
+              }),
+            }),
+          ),
+        ]),
+      );
+
+      expect(await reconcileSweep(service)).toBe(1);
+      expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
+        name: JobName.AssetTranscribeVideo,
+        data: { id: 'endpoint-outage', priority: 3, trigger: 'reconcile', force: false },
+      });
+    });
+
+    it('waits out the cool-down for a recent service-level failure', async () => {
+      const { service, dependencies } = makeService();
+      dependencies.assetJobRepository.streamForTranscriptionReconcile.mockReturnValue(
+        streamOf([
+          video(
+            'fresh-endpoint-error',
+            doc({
+              [runKey]: sweepRun({
+                status: 'failed',
+                error: { code: 'endpoint_error', message: '503' },
+                finishedAt: '2099-01-01T00:00:00.000Z',
+              }),
+            }),
+          ),
+        ]),
+      );
+
+      expect(await reconcileSweep(service)).toBe(0);
+      expect(dependencies.jobRepository.queue).not.toHaveBeenCalled();
+    });
+
+    it('keeps media-level failures terminal even after the cool-down', async () => {
+      const { service, dependencies } = makeService();
+      dependencies.assetJobRepository.streamForTranscriptionReconcile.mockReturnValue(
+        streamOf([
+          video(
+            'corrupt',
+            doc({
+              [runKey]: sweepRun({
+                status: 'failed',
+                error: { code: 'media_error', message: 'corrupt' },
+                finishedAt: '2026-11-01T00:00:00.000Z',
+              }),
+            }),
+          ),
+          video(
+            'invalid-output',
+            doc({
+              [runKey]: sweepRun({
+                status: 'failed',
+                error: { code: 'invalid_output', message: 'garbage' },
+                finishedAt: '2026-11-01T00:00:00.000Z',
+              }),
+            }),
+          ),
+        ]),
+      );
+
+      expect(await reconcileSweep(service)).toBe(0);
+      expect(dependencies.jobRepository.queue).not.toHaveBeenCalled();
+    });
+
+    it('treats unknown error codes and failed runs without finishedAt as terminal', async () => {
+      const { service, dependencies } = makeService();
+      dependencies.assetJobRepository.streamForTranscriptionReconcile.mockReturnValue(
+        streamOf([
+          video(
+            'unknown-code',
+            doc({
+              [runKey]: sweepRun({
+                status: 'failed',
+                error: { code: 'some_future_code', message: '?' },
+                finishedAt: '2026-11-01T00:00:00.000Z',
+              }),
+            }),
+          ),
+          video(
+            'no-finished-at',
+            doc({ [runKey]: sweepRun({ status: 'failed', error: { code: 'endpoint_error', message: '503' } }) }),
+          ),
+        ]),
+      );
+
+      expect(await reconcileSweep(service)).toBe(0);
+      expect(dependencies.jobRepository.queue).not.toHaveBeenCalled();
     });
 
     it('bounds each sweep with an enqueue budget (repeated sweeps continue)', async () => {

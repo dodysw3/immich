@@ -58,6 +58,21 @@ long backlog is not loss.
 const RECONCILE_STALE_QUEUED_MS = 24 * 60 * 60_000;
 
 /**
+Service-level failed runs re-enter the sweep after this cool-down; a retry
+that fails again refreshes `finishedAt`, bounding churn to ≤1 attempt/day.
+Media-level codes never retry (invalid media stays visible for operator
+retry), and a failed run without `finishedAt` is treated as fresh.
+*/
+const TRANSCRIPTION_FAILURE_RETRY_COOLDOWN_MS = 24 * 60 * 60_000;
+const RETRYABLE_TRANSCRIPTION_ERROR_CODES = new Set([
+  'endpoint_error',
+  'internal_error',
+  'timeout',
+  'network_error',
+  'invalid_json',
+]);
+
+/**
 Speech transcription for videos via a faster-whisper CPU sidecar (:51905).
 Stores timestamped segments in asset_metadata `video-transcripts-v1` (kept
 separate from captions and interpretation so the data survives either
@@ -201,9 +216,9 @@ export class AiVideoTranscriptionService {
   Keyset reconciliation over the whole video library (streamed, bounded
   enqueueing): missing, partial (legacy truncated/unverified), and abandoned
   (expired-lease or lost-queued-job) work gets re-enqueued from durable
-  run/coverage state — queue existence alone never decides. Failed runs are
-  terminal for the sweep: invalid media stays visible for operator retry
-  instead of churning.
+  run/coverage state — queue existence alone never decides. Media-level
+  failed runs are terminal for the sweep (invalid media stays visible for
+  operator retry); service-level failed runs retry after a 24h cool-down.
   */
   @OnJob({ name: JobName.TranscriptionReconcile, queue: QueueName.VideoTranscription })
   async handleReconcile(): Promise<JobStatus> {
@@ -231,6 +246,7 @@ export class AiVideoTranscriptionService {
       AI_VIDEO_TRANSCRIPTION_PROMPT_VERSION,
     );
     const staleQueuedBefore = new Date(Date.now() - RECONCILE_STALE_QUEUED_MS).toISOString();
+    const retryableBefore = new Date(Date.now() - TRANSCRIPTION_FAILURE_RETRY_COOLDOWN_MS).toISOString();
 
     let enqueued = 0;
     for await (const assets of batched(this.assetJobRepository.streamForTranscriptionReconcile(), 500)) {
@@ -238,7 +254,13 @@ export class AiVideoTranscriptionService {
         if (enqueued >= budget) {
           return enqueued;
         }
-        const decision = this.needsTranscriptionWork(asset.transcriptValue, runKey, legacyRunKey, staleQueuedBefore);
+        const decision = this.needsTranscriptionWork(
+          asset.transcriptValue,
+          runKey,
+          legacyRunKey,
+          staleQueuedBefore,
+          retryableBefore,
+        );
         if (!decision.work) {
           continue;
         }
@@ -262,6 +284,7 @@ export class AiVideoTranscriptionService {
     runKey: string,
     legacyRunKey: string,
     staleQueuedBefore: string,
+    retryableBefore: string,
   ): { work: boolean; force?: boolean } {
     if (transcriptValue === null || transcriptValue === undefined) {
       return { work: true };
@@ -277,9 +300,20 @@ export class AiVideoTranscriptionService {
     const current = document.runs[runKey];
     if (current) {
       if (current.status === 'failed') {
-        // Terminal for the sweep: invalid media stays visible for operator
-        // retry instead of churning through reconciliation forever.
-        return { work: false };
+        // Media-level failures are terminal for the sweep: invalid media stays
+        // visible for operator retry instead of churning through reconciliation
+        // forever. Service-level failures (endpoint/network/parse) re-enter the
+        // sweep once the cool-down has elapsed — a failed retry refreshes
+        // finishedAt, so an outage costs ≤1 attempt per day.
+        const code = current.error?.code;
+        if (
+          !code ||
+          !RETRYABLE_TRANSCRIPTION_ERROR_CODES.has(code) ||
+          (current.finishedAt === undefined || current.finishedAt >= retryableBefore)
+        ) {
+          return { work: false };
+        }
+        return { work: true };
       }
       if (current.status === 'queued') {
         // A fresh queued row has a (probably) live BullMQ job; a stale one was
