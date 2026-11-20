@@ -1,6 +1,7 @@
 import { AssetType, ImmichWorker, JobName, JobStatus, QueueName } from 'src/enum.js';
 import { JobService } from 'src/services/job.service.js';
 import type { JobItem } from 'src/types.js';
+import { TranscriptionDeferred } from 'src/utils/transcription-admission.js';
 import { AssetFactory } from 'test/factories/asset.factory.js';
 import { newUuid } from 'test/small.factory.js';
 import { ServiceMocks, newTestService } from 'test/utils.js';
@@ -20,6 +21,13 @@ describe(JobService.name, () => {
   });
 
   describe('onJobRun', () => {
+    it('passes transcription deferral to BullMQ without reporting a failure or success', async () => {
+      const job: JobItem = { name: JobName.AssetTranscribeVideo, data: { id: 'asset-1' } };
+      const deferred = new TranscriptionDeferred('gpu_capacity');
+      mocks.job.run.mockRejectedValueOnce(deferred);
+      await expect(sut.onJobRun(QueueName.VideoTranscription, job)).rejects.toBe(deferred);
+      expect(mocks.event.emit.mock.calls.map(([event]) => event)).toEqual(['JobStart', 'JobComplete']);
+    });
     it('should queue metadata extraction when sidecar discovery is skipped', async () => {
       const job: JobItem = { name: JobName.SidecarCheck, data: { id: 'asset-1', source: 'upload' } };
       mocks.job.run.mockResolvedValue(JobStatus.Skipped);

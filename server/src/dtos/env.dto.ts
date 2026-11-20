@@ -145,9 +145,49 @@ export const EnvSchema = z
     IMMICH_AI_VIDEO_TRANSCRIPTION_MAX_DURATION_SEC: z.coerce.number().int().min(1).optional(),
     // Bounded chunked extraction: full-duration processing in ~chunkSec windows
     // with a small overlap, instead of one whole-video WAV request.
+    IMMICH_AI_VIDEO_TRANSCRIPTION_DUAL_GPU: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      stringBool.optional(),
+    ),
     IMMICH_AI_VIDEO_TRANSCRIPTION_CHUNK_SEC: z.coerce.number().int().min(30).optional(),
     IMMICH_AI_VIDEO_TRANSCRIPTION_CHUNK_OVERLAP_SEC: z.coerce.number().int().min(0).max(30).optional(),
     IMMICH_AI_VIDEO_TRANSCRIPTION_CONCURRENCY: z.coerce.number().int().min(1).optional(),
+    // Gated voice-isolation second pass: empty URL disables the pass entirely.
+    IMMICH_AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION_URL: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      z.string().url().optional(),
+    ),
+    // Kill switch for the gated second pass. Defaults to enabled when the URL
+    // is set; turning it off stops scheduling and makes serving prefer raw.
+    IMMICH_AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION_ENABLED: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      stringBool.optional(),
+    ),
+    // YAMNet Speech score required before isolating a clip whose first pass
+    // found no speech at all.
+    IMMICH_AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION_MIN_SPEECH: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      z.coerce.number().min(0).max(1).optional(),
+    ),
+    // Gate v2: sustained speech (unioned span ms) required for an empty first
+    // pass, and music/singing dominance ratio for all untrustworthy passes.
+    IMMICH_AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION_MIN_SPEECH_MS: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      z.coerce.number().int().min(0).optional(),
+    ),
+    IMMICH_AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION_MUSIC_DOMINANCE_RATIO: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      z.coerce.number().min(0).max(100).optional(),
+    ),
+    IMMICH_AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION_MUSIC_EXCLUSION: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      stringBool.optional(),
+    ),
+    // Max assets the backlog sweep schedules per run (hourly cron + admin).
+    IMMICH_AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION_BACKFILL_BUDGET: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      z.coerce.number().int().min(1).optional(),
+    ),
     // Suggest-only AI rotation (RightWayUp ONNX in the ML container). The tier
     // must stay in lockstep with the runKey identity, so changing it forks
     // run keys and re-suggests affected assets.

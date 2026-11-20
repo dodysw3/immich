@@ -3,6 +3,7 @@ import { Kysely, sql } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import {
   AiVideoTranscriptionChunk,
+  AiVideoTranscriptionChunkEvidence,
   AiVideoTranscriptionCoverageInterval,
   AiVideoTranscriptionDocument,
   AiVideoTranscriptionDocumentSchema,
@@ -14,9 +15,9 @@ import {
   AiVideoTranscriptionTrigger,
   TranscriptionCoverageCounts,
 } from 'src/dtos/ai-video-transcription.dto.js';
-import { AssetMetadataKey } from 'src/enum.js';
+import { AssetMetadataKey, AssetType } from 'src/enum.js';
 import { DB } from 'src/schema/index.js';
-import { createTranscriptionRevision } from 'src/utils/ai-video-transcription.js';
+import { createTranscriptionRevision, selectEffectiveCompletedRun } from 'src/utils/ai-video-transcription.js';
 
 export type AiVideoTranscriptionClaim =
   | {
@@ -38,6 +39,13 @@ export type AiVideoTranscriptionClaim =
 export interface AiVideoTranscriptionLease {
   ownerId: string;
   leaseMs: number;
+}
+
+/** One page of raw runs eligible for the gated second pass. */
+export interface VoiceIsolationCandidate {
+  id: string;
+  transcriptValue: unknown;
+  audioEventsValue: unknown;
 }
 
 /** Current on-disk document format; parses accept legacy schemaVersion 1. */
@@ -73,18 +81,17 @@ export class AiVideoTranscriptionRepository {
     return latest;
   }
 
-  /** Latest completed run — the context composer's view. */
-  findLatestCompletedRun(document: AiVideoTranscriptionDocument): AiVideoTranscriptionRun | null {
-    let latest: AiVideoTranscriptionRun | null = null;
-    for (const run of Object.values(document.runs)) {
-      if (run.status !== 'completed') {
-        continue;
-      }
-      if (!latest || (run.finishedAt ?? run.requestedAt) > (latest.finishedAt ?? latest.requestedAt)) {
-        latest = run;
-      }
-    }
-    return latest;
+  /**
+  Latest completed run — the context composer's and index's view. Prefers an
+  accepted voice-isolated run over the raw-audio one it was derived from; a
+  rejected isolated run never replaces a usable raw transcript, and the kill
+  switch reverts serving to raw without deleting stored runs.
+  */
+  findLatestCompletedRun(
+    document: AiVideoTranscriptionDocument,
+    options: { voiceIsolationEnabled?: boolean } = {},
+  ): AiVideoTranscriptionRun | null {
+    return selectEffectiveCompletedRun(document, options);
   }
 
   /**
@@ -107,6 +114,7 @@ export class AiVideoTranscriptionRepository {
       producer?: AiVideoTranscriptionProducer;
       targetDurationMs?: number;
       chunks?: AiVideoTranscriptionChunk[];
+      resumeQueued?: boolean;
     },
     lease: AiVideoTranscriptionLease,
     requestedAt = new Date(),
@@ -129,7 +137,8 @@ export class AiVideoTranscriptionRepository {
           current.status === 'running' &&
           current.lease !== undefined &&
           Date.parse(current.lease.expiresAt) > requestedAt.getTime();
-        if (leaseLive) {
+        const handedBackToQueue = current.status === 'queued' && !!current.startedAt;
+        if (leaseLive || (handedBackToQueue && !identity.resumeQueued)) {
           return { alreadyExists: true, runKey: identity.runKey, run: current, reason: 'active-lease' };
         }
 
@@ -194,6 +203,19 @@ export class AiVideoTranscriptionRepository {
     return next !== null;
   }
 
+  /** Release only the current owner's lease, preserving partial work and avoiding the failure cooldown. */
+  async releaseLease(assetId: string, runKey: string, ownerId: string, fromQueue: boolean): Promise<boolean> {
+    const next = await this.updateRun(assetId, runKey, (run) => {
+      if (run.status !== 'running' || run.lease?.ownerId !== ownerId) {
+        return;
+      }
+      // Queued work is reserved for the existing stable BullMQ job. Inline
+      // callers without a queue job leave the run reclaimable by any producer.
+      return { ...run, status: fromQueue ? 'queued' : 'running', lease: undefined, finishedAt: undefined };
+    });
+    return next !== null;
+  }
+
   /** Append segments to the active run; completed/failed runs are immutable. */
   async appendSegments(assetId: string, runKey: string, segments: AiVideoTranscriptionSegment[]): Promise<void> {
     await this.updateRun(assetId, runKey, (run) => {
@@ -215,6 +237,10 @@ export class AiVideoTranscriptionRepository {
       truncated?: boolean;
       coverage?: { intervals: AiVideoTranscriptionCoverageInterval[] };
       metrics?: AiVideoTranscriptionMetrics;
+      /** Confidence evidence of the produced transcript (voice-isolation pass). */
+      quality?: { meanAvgLogProb?: number; speechRatio?: number };
+      /** Voice-isolation verdict; only meaningful on isolated runs. */
+      voiceIsolation?: { accepted: boolean };
     },
     finishedAt = new Date(),
   ): Promise<boolean> {
@@ -233,6 +259,14 @@ export class AiVideoTranscriptionRepository {
         truncated: options.truncated,
         coverage: options.coverage ?? run.coverage,
         metrics: options.metrics ?? run.metrics,
+        quality: options.quality ?? run.quality,
+        voiceIsolation: options.voiceIsolation ?? run.voiceIsolation,
+        // Raw backfill may yield too. Keep its diagnostics only while needed
+        // for resume; completed raw metadata retains its existing format.
+        ...(!run.config.voiceIsolation &&
+          run.chunks?.some((chunk) => chunk.evidence) && {
+            chunks: run.chunks.map((chunk) => ({ ...chunk, evidence: undefined })),
+          }),
         error: undefined,
         lease: undefined,
       };
@@ -254,7 +288,7 @@ export class AiVideoTranscriptionRepository {
     chunkIndex: number,
     segments: AiVideoTranscriptionSegment[],
     covered: AiVideoTranscriptionCoverageInterval,
-    completedAt = new Date(),
+    options?: { completedAt?: Date; evidence?: AiVideoTranscriptionChunkEvidence },
   ): Promise<boolean> {
     const next = await this.updateRun(assetId, runKey, (run) => {
       if (run.status !== 'running' || !run.chunks) {
@@ -262,7 +296,13 @@ export class AiVideoTranscriptionRepository {
       }
       const chunks = run.chunks.map((chunk) =>
         chunk.index === chunkIndex
-          ? { ...chunk, status: 'completed' as const, completedAt: completedAt.toISOString(), error: undefined }
+          ? {
+              ...chunk,
+              status: 'completed' as const,
+              completedAt: (options?.completedAt ?? new Date()).toISOString(),
+              ...(options?.evidence && { evidence: options.evidence }),
+              error: undefined,
+            }
           : chunk,
       );
       const intervals = [...(run.coverage?.intervals ?? []), covered];
@@ -371,25 +411,84 @@ export class AiVideoTranscriptionRepository {
   }
 
   /**
+  Keyset page of backlog candidates for the gated voice-isolation second pass:
+  non-deleted videos whose raw run completed with audio, and which have no
+  completed isolated run. Queued/running isolated work is left alone; failed
+  isolated runs re-enter only after the caller's cool-down. Audio-event
+  metadata is joined so the gate can be evaluated without a second query.
+  The caller loops the keyset (asset id order) under its per-sweep budget.
+  */
+  async streamVoiceIsolationCandidates(options: {
+    rawRunKey: string;
+    isolatedRunKey: string;
+    limit: number;
+    /** Exclusive lower bound from the previous page (keyset resume). */
+    afterId?: string;
+    /** ISO timestamp: failed isolated runs finished before this retry. */
+    retryableBefore: string;
+  }): Promise<VoiceIsolationCandidate[]> {
+    const rawRun = sql`transcript.value -> 'runs' -> ${options.rawRunKey}`;
+    const isolatedRun = sql`transcript.value -> 'runs' -> ${options.isolatedRunKey}`;
+    return this.db
+      .selectFrom('asset')
+      .leftJoin('asset_metadata as transcript', (join) =>
+        join
+          .onRef('transcript.assetId', '=', 'asset.id')
+          .on('transcript.key', '=', AssetMetadataKey.VideoTranscriptsV1),
+      )
+      .leftJoin('asset_metadata as events', (join) =>
+        join.onRef('events.assetId', '=', 'asset.id').on('events.key', '=', AssetMetadataKey.VideoAudioEventsV1),
+      )
+      .select(['asset.id', 'transcript.value as transcriptValue', 'events.value as audioEventsValue'])
+      .where('asset.type', '=', AssetType.Video)
+      .where('asset.deletedAt', 'is', null)
+      .where(sql<boolean>`${rawRun} ->> 'status' = 'completed'`)
+      .where(sql<boolean>`coalesce(${rawRun} -> 'noAudio', 'false'::jsonb) <> 'true'::jsonb`)
+      .where(
+        sql<boolean>`(
+        ${isolatedRun} is null
+        or (${isolatedRun} ->> 'status' = 'running' and ${isolatedRun} ->> 'lease' is null)
+        or (
+          ${isolatedRun} ->> 'status' = 'failed'
+          and (${isolatedRun} ->> 'finishedAt' is null or ${isolatedRun} ->> 'finishedAt' < ${options.retryableBefore})
+        )
+      )`,
+      )
+      .$if(options.afterId !== undefined, (qb) => qb.where('asset.id', '>', options.afterId!))
+      .orderBy('asset.id')
+      .limit(options.limit)
+      .execute();
+  }
+
+  /**
   Admin coverage totals over every non-deleted video, classified in SQL with
   the same precedence as `classifyTranscriptionRun` (status → noAudio →
   noSpeech → truncated → coverage-vs-target). Coverage completeness uses the
   min-start / max-end approximation of the union check; scheduling decisions
   still use the exact TypeScript rule.
+
+  Isolated totals answer two separate questions: `stored` counts assets with a
+  completed isolated run (accepted or rejected), `effective` counts those whose
+  accepted run is actually served — which the kill switch can turn off without
+  deleting any data.
   */
   async getCoverageCounts(
     currentRunKey: string,
     legacyRunKey: string,
     indexVersion: number,
+    options: { isolatedRunKey?: string; voiceIsolationEnabled?: boolean } = {},
   ): Promise<TranscriptionCoverageCounts> {
+    const isolatedRunKey = options.isolatedRunKey ?? null;
+    const voiceIsolationEnabled = options.voiceIsolationEnabled ?? true;
     const { rows } = await sql`
       with documents as (
         select
           a.id as asset_id,
           coalesce(m.value -> 'runs' -> ${currentRunKey}, null) as current_run,
           coalesce(m.value -> 'runs' -> ${legacyRunKey}, null) as legacy_run,
+          coalesce(m.value -> 'runs' -> ${isolatedRunKey}::text, null) as isolated_run,
           s.error as index_error,
-          s.indexVersion as index_version,
+          s."indexVersion" as index_version,
           s.revision as index_revision
         from asset a
         left join asset_metadata m on m."assetId" = a.id and m.key = ${AssetMetadataKey.VideoTranscriptsV1}
@@ -430,7 +529,8 @@ export class AiVideoTranscriptionRepository {
           index_error,
           index_version,
           index_revision,
-          current_run
+          current_run,
+          isolated_run
         from documents
       ),
       indexed as (
@@ -442,6 +542,8 @@ export class AiVideoTranscriptionRepository {
         -- and the TS reconcile sweep does the exact revision check.
         select
           state,
+          current_run,
+          isolated_run,
           case
             when index_error is not null then 'failed'
             -- Only videos with a usable completed transcript have an index
@@ -466,7 +568,13 @@ export class AiVideoTranscriptionRepository {
         count(*) filter (where state = 'no-speech')::int as "noSpeech",
         count(*) filter (where index_state = 'current')::int as "indexCurrent",
         count(*) filter (where index_state = 'pending')::int as "indexPending",
-        count(*) filter (where index_state = 'failed')::int as "indexFailed"
+        count(*) filter (where index_state = 'failed')::int as "indexFailed",
+        count(*) filter (where isolated_run ->> 'status' = 'completed')::int as "isolatedStored",
+        count(*) filter (
+          where isolated_run ->> 'status' = 'completed'
+            and isolated_run -> 'voiceIsolation' ->> 'accepted' = 'true'
+            and ${voiceIsolationEnabled}::boolean
+        )::int as "isolatedEffective"
       from indexed
     `.execute(this.db);
     const row = rows[0] as Record<string, number | null>;
@@ -481,6 +589,10 @@ export class AiVideoTranscriptionRepository {
       indexCurrent: row['indexCurrent'] ?? 0,
       indexPending: row['indexPending'] ?? 0,
       indexFailed: row['indexFailed'] ?? 0,
+      isolated: {
+        stored: row['isolatedStored'] ?? 0,
+        effective: row['isolatedEffective'] ?? 0,
+      },
     };
   }
 }

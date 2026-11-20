@@ -1456,6 +1456,48 @@
         "x-immich-permission": "maintenance"
       }
     },
+    "/admin/transcription/voice-isolation": {
+      "post": {
+        "description": "Schedules the deduplicated, budgeted keyset sweep that queues the gated voice-isolated second pass for already-completed raw transcripts. No-op when the isolator is unconfigured or the kill switch is off.",
+        "operationId": "queueVoiceIsolation",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptionVoiceIsolationResponse"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Queue voice-isolation backfill",
+        "tags": [
+          "Maintenance (admin)"
+        ],
+        "x-immich-admin-only": true,
+        "x-immich-history": [
+          {
+            "version": "v3.6.0",
+            "state": "Added"
+          }
+        ],
+        "x-immich-permission": "maintenance"
+      }
+    },
     "/admin/users": {
       "get": {
         "description": "Search for users.",
@@ -25637,6 +25679,7 @@
           "AssetCaptionVideo",
           "AssetTranscribeVideo",
           "TranscriptionReconcile",
+          "VoiceIsolationBackfill",
           "TranscriptIndexSync",
           "TranscriptIndexReconcile",
           "AuditTableCleanup",
@@ -36276,6 +36319,25 @@
             "minimum": 0,
             "type": "integer"
           },
+          "isolated": {
+            "properties": {
+              "effective": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "stored": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "stored",
+              "effective"
+            ],
+            "type": "object"
+          },
           "missing": {
             "maximum": 9007199254740991,
             "minimum": 0,
@@ -36304,6 +36366,7 @@
           "indexCurrent",
           "indexFailed",
           "indexPending",
+          "isolated",
           "missing",
           "noAudio",
           "noSpeech",
@@ -36717,6 +36780,23 @@
         "required": [
           "end",
           "start"
+        ],
+        "type": "object"
+      },
+      "TranscriptionVoiceIsolationResponse": {
+        "properties": {
+          "budget": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "queued": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "budget",
+          "queued"
         ],
         "type": "object"
       },

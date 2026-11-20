@@ -5,6 +5,7 @@ import { Endpoint, HistoryBuilder } from 'src/decorators.js';
 import {
   TranscriptionCoverageCountsSchema,
   TranscriptionReconcileResponseSchema,
+  TranscriptionVoiceIsolationResponseSchema,
 } from 'src/dtos/ai-video-transcription.dto.js';
 import { ApiTag, Permission } from 'src/enum.js';
 import { Authenticated } from 'src/middleware/auth.guard.js';
@@ -12,6 +13,7 @@ import { AiVideoTranscriptionService } from 'src/services/ai-video-transcription
 
 export class TranscriptionCoverageCountsDto extends createZodDto(TranscriptionCoverageCountsSchema) {}
 export class TranscriptionReconcileResponseDto extends createZodDto(TranscriptionReconcileResponseSchema) {}
+export class TranscriptionVoiceIsolationResponseDto extends createZodDto(TranscriptionVoiceIsolationResponseSchema) {}
 
 /**
 Admin transcription coverage and reconciliation controls, independent of
@@ -47,5 +49,18 @@ export class TranscriptionAdminController {
   async queueReconciliation(): Promise<TranscriptionReconcileResponseDto> {
     await this.service.queueReconciliation();
     return { queued: true };
+  }
+
+  @Post('voice-isolation')
+  @HttpCode(HttpStatus.OK)
+  @Endpoint({
+    summary: 'Queue voice-isolation backfill',
+    description:
+      'Schedules the deduplicated, budgeted keyset sweep that queues the gated voice-isolated second pass for already-completed raw transcripts. No-op when the isolator is unconfigured or the kill switch is off.',
+    history: new HistoryBuilder().added('v3.6.0'),
+  })
+  @Authenticated({ permission: Permission.Maintenance, admin: true })
+  queueVoiceIsolation(): Promise<TranscriptionVoiceIsolationResponseDto> {
+    return this.service.queueVoiceIsolationBackfill();
   }
 }

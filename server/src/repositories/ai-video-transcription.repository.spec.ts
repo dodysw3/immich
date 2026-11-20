@@ -135,11 +135,25 @@ describe(AiVideoTranscriptionRepository.name, () => {
 
   it('reclaims an interrupted run after lease expiry without losing completed chunks', async () => {
     const { repository, getCurrent } = makeRepository();
+    const evidence = {
+      language: 'id',
+      languageProbability: 0.96,
+      meanAvgLogProb: -0.2,
+      speechRatio: 0.8,
+      segmentCount: 1,
+    };
     await repository.claim('asset-1', claimIdentity, lease, at('2026-11-11T00:00:00.000Z'));
-    await repository.completeChunk('asset-1', runKey, 0, [{ startMs: 0, endMs: 4000, text: 'satu' }], {
-      startMs: 0,
-      endMs: 5000,
-    });
+    await repository.completeChunk(
+      'asset-1',
+      runKey,
+      0,
+      [{ startMs: 0, endMs: 4000, text: 'satu' }],
+      {
+        startMs: 0,
+        endMs: 5000,
+      },
+      { evidence },
+    );
 
     // Worker-1 died; worker-2 arrives after the lease expired.
     const reclaim = await repository.claim(
@@ -157,9 +171,99 @@ describe(AiVideoTranscriptionRepository.name, () => {
     expect(run.status).toBe('running');
     expect(run.segments).toEqual([{ startMs: 0, endMs: 4000, text: 'satu' }]);
     expect(run.coverage).toEqual({ intervals: [{ startMs: 0, endMs: 5000 }] });
-    expect(run.chunks![0].status).toBe('completed');
+    expect(run.chunks![0]).toMatchObject({ status: 'completed', evidence });
+    expect(AiVideoTranscriptionDocumentSchema.parse(getCurrent()).runs[runKey].chunks![0].evidence).toEqual(evidence);
     // The original requestedAt survives the reclaim.
     expect(run.requestedAt).toBe('2026-11-11T00:00:00.000Z');
+  });
+
+  it('reads canary documents with null language on a completed silent chunk without hiding the raw run', async () => {
+    const initial = {
+      schemaVersion: 2,
+      runs: {
+        [legacyKey]: legacyRun,
+        [runKey]: {
+          ...legacyRun,
+          status: 'running',
+          segments: [],
+          chunks: [
+            {
+              ...claimIdentity.chunks[0],
+              status: 'completed',
+              evidence: { language: null, languageProbability: null, segmentCount: 0 },
+            },
+          ],
+        },
+      },
+    };
+    const { repository, saved } = makeRepository(initial as never);
+    const document = await repository.get('asset-1');
+    expect(document?.runs[legacyKey]).toEqual(legacyRun);
+    expect(document?.runs[runKey].chunks?.[0]).toMatchObject({
+      status: 'completed',
+      evidence: { language: undefined, languageProbability: undefined, segmentCount: 0 },
+    });
+    expect(saved).toHaveLength(0);
+  });
+
+  it('discards transient raw chunk evidence when storing the completed transcript', async () => {
+    const completed = [];
+    const now = at('2026-11-11T00:00:00.000Z');
+    for (const withEvidence of [false, true]) {
+      const { repository, getCurrent } = makeRepository();
+      await repository.claim('asset-1', claimIdentity, lease, now);
+      await repository.completeChunk(
+        'asset-1',
+        runKey,
+        0,
+        [{ startMs: 0, endMs: 1000, text: 'speech' }],
+        { startMs: 0, endMs: 5000 },
+        { completedAt: now, ...(withEvidence && { evidence: { segmentCount: 1 } }) },
+      );
+      await repository.complete('asset-1', runKey, { language: 'en' }, now);
+      const persisted = AiVideoTranscriptionDocumentSchema.parse(JSON.parse(JSON.stringify(getCurrent())));
+      expect(persisted.runs[runKey].chunks![0]).not.toHaveProperty('evidence');
+      completed.push(persisted);
+    }
+    expect(completed[1]).toEqual(completed[0]);
+  });
+
+  it('hands completed chunks back only for the current owner and resumes immediately from the queue', async () => {
+    const { repository, getCurrent } = makeRepository();
+    const now = at('2026-11-11T00:00:00.000Z');
+    const evidence = { meanAvgLogProb: -0.2, segmentCount: 1 };
+    await repository.claim('asset-1', claimIdentity, lease, now);
+    await repository.completeChunk(
+      'asset-1',
+      runKey,
+      0,
+      [{ startMs: 0, endMs: 1000, text: 'speech' }],
+      {
+        startMs: 0,
+        endMs: 5000,
+      },
+      { evidence },
+    );
+    const before = getCurrent()!.runs[runKey];
+    expect(await repository.releaseLease('asset-1', runKey, 'stale-owner', true)).toBe(false);
+    expect(getCurrent()!.runs[runKey]).toEqual(before);
+    expect(await repository.releaseLease('asset-1', runKey, lease.ownerId, true)).toBe(true);
+    expect(getCurrent()!.runs[runKey]).toMatchObject({
+      status: 'queued',
+      chunks: before.chunks,
+      segments: before.segments,
+    });
+    expect(getCurrent()!.runs[runKey].lease).toBeUndefined();
+    expect(getCurrent()!.runs[runKey].finishedAt).toBeUndefined();
+
+    const nextLease = { ...lease, ownerId: 'worker-2' };
+    expect(await repository.claim('asset-1', claimIdentity, nextLease, now)).toMatchObject({ alreadyExists: true });
+    expect(await repository.claim('asset-1', { ...claimIdentity, resumeQueued: true }, nextLease, now)).toMatchObject({
+      alreadyExists: false,
+      resumedChunks: 1,
+      run: { chunks: before.chunks, lease: { ownerId: nextLease.ownerId } },
+    });
+    expect(await repository.releaseLease('asset-1', runKey, lease.ownerId, true)).toBe(false);
   });
 
   it('reclaims a failed run as a retry', async () => {

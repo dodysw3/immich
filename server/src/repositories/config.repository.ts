@@ -12,7 +12,6 @@ import { join } from 'node:path';
 import { IWorker, citiesFile } from 'src/constants.js';
 import { Telemetry } from 'src/decorators.js';
 import { EnvSchema } from 'src/dtos/env.dto.js';
-import { ROTATION_SUGGESTION_DEFAULT_THRESHOLD } from 'src/utils/rotation-suggestion.js';
 import {
   DatabaseExtension,
   ImmichEnvironment,
@@ -24,6 +23,7 @@ import {
   QueueName,
 } from 'src/enum.js';
 import type { VectorExtension } from 'src/types.js';
+import { ROTATION_SUGGESTION_DEFAULT_THRESHOLD } from 'src/utils/rotation-suggestion.js';
 
 export interface EnvData {
   host?: string;
@@ -228,6 +228,22 @@ export interface EnvData {
     chunkOverlapSec: number;
     /** Worker concurrency; the sidecar serializes inference, so keep at 1. */
     concurrency: number;
+    /** Voice-isolator sidecar (gated second pass); unset = pass disabled. */
+    voiceIsolationUrl?: string;
+    /** Opt in to shared GPU admission and queue yielding. */
+    dualGpu?: boolean;
+    /** Kill switch: queue new passes and serve accepted isolated runs. */
+    voiceIsolationEnabled: boolean;
+    /** Min YAMNet Speech score to justify isolating a no-speech clip. */
+    voiceIsolationMinSpeechScore: number;
+    /** Gate v2: sustained speech required for an empty first pass. */
+    voiceIsolationMinSpeechMs: number;
+    /** Gate v2: speech must be at least this multiple of music/singing duration. */
+    voiceIsolationMusicDominanceRatio: number;
+    /** Gate v2: compare speech against music/singing evidence at all. */
+    voiceIsolationMusicExclusion: boolean;
+    /** Max assets the backlog sweep schedules per run. */
+    voiceIsolationBackfillBudget: number;
   };
 
   // YAMNet audio-event tagging sidecar (chained from the AI interpretation job
@@ -659,6 +675,16 @@ const getEnv = (): EnvData => {
       chunkDurationSec: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_CHUNK_SEC || 300,
       chunkOverlapSec: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_CHUNK_OVERLAP_SEC || 2,
       concurrency: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_CONCURRENCY || 1,
+      voiceIsolationUrl: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION_URL,
+      dualGpu: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_DUAL_GPU ?? false,
+      voiceIsolationEnabled:
+        dto.IMMICH_AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION_ENABLED ??
+        dto.IMMICH_AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION_URL !== undefined,
+      voiceIsolationMinSpeechScore: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION_MIN_SPEECH ?? 0.8,
+      voiceIsolationMinSpeechMs: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION_MIN_SPEECH_MS ?? 600,
+      voiceIsolationMusicDominanceRatio: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION_MUSIC_DOMINANCE_RATIO ?? 1,
+      voiceIsolationMusicExclusion: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION_MUSIC_EXCLUSION ?? true,
+      voiceIsolationBackfillBudget: dto.IMMICH_AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION_BACKFILL_BUDGET ?? 200,
     },
 
     // YAMNet ONNX sidecar tagging environmental sound (water, beeps, a baby

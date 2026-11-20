@@ -2,8 +2,10 @@ import { createHash } from 'node:crypto';
 import type {
   AiVideoTranscriptionChunk,
   AiVideoTranscriptionCoverageInterval,
+  AiVideoTranscriptionDocument,
   AiVideoTranscriptionRun,
 } from 'src/dtos/ai-video-transcription.dto.js';
+import type { VoiceIsolationEvidence } from 'src/utils/ai-audio-events.js';
 
 /**
 Experimental video transcription (faster-whisper CPU sidecar) — separate run
@@ -25,12 +27,50 @@ export const AI_VIDEO_TRANSCRIPTION_COVERAGE_POLICY = 'chunked-full-duration-v1'
 
 export const AI_VIDEO_TRANSCRIPTION_SERVICE = 'faster-whisper-sidecar';
 
+/**
+Gated second pass (experiment 2026-11-19): the same ASR over voice-isolated
+audio, stored as its own run under this producer id. The raw-audio run keeps
+its original identity, so adding this pass never invalidates existing runs.
+*/
+export const AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION = 'inworld-voice-isolator-v1';
+
+/**
+Gate thresholds, validated on the 22-clip bench (voice-isolator-bench/REPORT.md).
+The first pass must look untrustworthy on at least one of these before the
+isolator runs; running it on everything costs ~8x ASR compute for no gain on
+the 7/22 clips that were already fine.
+*/
+export const VOICE_ISOLATION_GATE_MIN_LOG_PROB = -0.5;
+export const VOICE_ISOLATION_GATE_MIN_LANGUAGE_PROB = 0.65;
+/** YAMNet Speech peak must clear this when the first pass found no speech at all (music-only clips stay noSpeech). */
+export const VOICE_ISOLATION_GATE_MIN_YAMNET_SPEECH = 0.8;
+/**
+Gate v2: a peak score alone is not enough. The union of speech-family spans
+must be sustained, and music/singing must not dominate the audio (the scale run
+turned sung lyrics into "recovered speech").
+*/
+export const VOICE_ISOLATION_GATE_MIN_SPEECH_MS = 600;
+export const VOICE_ISOLATION_GATE_MUSIC_DOMINANCE_RATIO = 1;
+/** A speech-led clip with a music bed still passes when speech covers 2× the minimum. */
+export const VOICE_ISOLATION_GATE_MUSIC_DOMINANCE_BYPASS_FACTOR = 2;
+
+/**
+Acceptance of an isolated transcript. The bench produced two failure modes the
+raw pass does not: whisper amplifying near-silent isolation residue into
+semi-coherent nonsense (low log prob), and language drift on non-English clips
+(confident English invented from an Indonesian video).
+*/
+export const VOICE_ISOLATION_ACCEPT_MIN_LOG_PROB = -0.7;
+export const VOICE_ISOLATION_ACCEPT_MIN_LANGUAGE_PROB = 0.65;
+
 export interface AiVideoTranscriptionProducerIdentity {
   model: string;
   producerVersion: string;
   /** Language hint used ('' = auto-detect). */
   language: string;
   coveragePolicy: string;
+  /** Voice-isolator id for the gated second pass; empty = raw audio. */
+  voiceIsolation?: string;
 }
 
 /**
@@ -41,7 +81,12 @@ key instead of being skipped by an older completed run.
 */
 export const createVideoTranscriptionRunKey = (identity: AiVideoTranscriptionProducerIdentity): string =>
   createHash('sha256')
-    .update(`${identity.model}\n${identity.producerVersion}\n${identity.language}\n${identity.coveragePolicy}`, 'utf8')
+    .update(
+      `${identity.model}\n${identity.producerVersion}\n${identity.language}\n${identity.coveragePolicy}` +
+        // Appended only when set: every existing raw-audio run keeps its key.
+        (identity.voiceIsolation ? `\n${identity.voiceIsolation}` : ''),
+      'utf8',
+    )
     .digest('hex');
 
 /** Legacy pre-chunking run key (model + promptVersion only) for reading existing documents. */
@@ -78,6 +123,145 @@ export const isTranscriptionSegmentAudible = (segment: { noSpeechProb?: number; 
   const noSpeechProb = segment.noSpeechProb ?? 0;
   const avgLogProb = segment.avgLogProb ?? 0;
   return !(noSpeechProb > 0.6 && avgLogProb < -1);
+};
+
+/** Evidence the isolation gate decides on, all from the raw-audio run. */
+export interface VoiceIsolationGateInput {
+  noSpeech: boolean;
+  meanAvgLogProb?: number;
+  languageProbability?: number;
+  /** Sustained speech/music evidence from the latest completed audio-event run. */
+  evidence: VoiceIsolationEvidence;
+  /** Rollout knobs; omitted values use the code defaults. */
+  thresholds?: Partial<VoiceIsolationGateThresholds>;
+}
+
+export interface VoiceIsolationGateThresholds {
+  /** Peak generic-Speech score required for an empty transcript. */
+  minSpeechScore: number;
+  /** Sustained speech required for an empty transcript. */
+  minSpeechMs: number;
+  /** Speech duration must be at least this multiple of music duration. */
+  musicDominanceRatio: number;
+  musicExclusion: boolean;
+}
+
+/** Telemetry labels: one decision per evaluated raw run. */
+export type VoiceIsolationGateReason = 'trustworthy' | 'no-speech-evidence' | 'music-excluded' | 'scheduled';
+
+/**
+Gate v2 decision over the evidence summary.
+
+- A confident transcript is left alone (the 7/22 neutral clips).
+- An empty transcript needs a Speech peak *and* sustained speech evidence, so
+  one loud transient cannot open the gate.
+- Music/singing dominance blocks the pass for both empty and untrustworthy
+  non-empty runs (sung lyrics enter through both paths); speech at 2× the
+  configured minimum still wins over a background music bed.
+*/
+export const evaluateVoiceIsolationGate = (
+  input: VoiceIsolationGateInput,
+): { isolate: boolean; reason: VoiceIsolationGateReason } => {
+  const thresholds: VoiceIsolationGateThresholds = {
+    minSpeechScore: VOICE_ISOLATION_GATE_MIN_YAMNET_SPEECH,
+    minSpeechMs: VOICE_ISOLATION_GATE_MIN_SPEECH_MS,
+    musicDominanceRatio: VOICE_ISOLATION_GATE_MUSIC_DOMINANCE_RATIO,
+    musicExclusion: true,
+    ...input.thresholds,
+  };
+
+  const confident =
+    !input.noSpeech &&
+    (input.meanAvgLogProb === undefined || input.meanAvgLogProb >= VOICE_ISOLATION_GATE_MIN_LOG_PROB) &&
+    (input.languageProbability === undefined || input.languageProbability >= VOICE_ISOLATION_GATE_MIN_LANGUAGE_PROB);
+  if (confident) {
+    return { isolate: false, reason: 'trustworthy' };
+  }
+
+  const { speechMs, speechPeak, musicMs } = input.evidence;
+  if (input.noSpeech && (speechPeak < thresholds.minSpeechScore || speechMs < thresholds.minSpeechMs)) {
+    return { isolate: false, reason: 'no-speech-evidence' };
+  }
+
+  if (thresholds.musicExclusion && musicMs > 0) {
+    const speechLeads =
+      speechMs >= musicMs * thresholds.musicDominanceRatio ||
+      speechMs >= thresholds.minSpeechMs * VOICE_ISOLATION_GATE_MUSIC_DOMINANCE_BYPASS_FACTOR;
+    if (!speechLeads) {
+      return { isolate: false, reason: 'music-excluded' };
+    }
+  }
+
+  return { isolate: true, reason: 'scheduled' };
+};
+
+export const shouldIsolateVoice = (input: VoiceIsolationGateInput): boolean =>
+  evaluateVoiceIsolationGate(input).isolate;
+
+/** May this isolated transcript replace the raw-audio one downstream? */
+export interface IsolatedTranscriptAcceptance {
+  segments: number;
+  meanAvgLogProb?: number;
+  languageProbability?: number;
+  language?: string;
+  /** Language of the raw-audio run that triggered the pass. */
+  baselineLanguage?: string;
+  baselineLanguageProbability?: number;
+}
+
+export const acceptsIsolatedTranscript = (input: IsolatedTranscriptAcceptance): boolean => {
+  if (input.segments === 0) {
+    return false;
+  }
+  if (input.meanAvgLogProb !== undefined && input.meanAvgLogProb < VOICE_ISOLATION_ACCEPT_MIN_LOG_PROB) {
+    return false;
+  }
+  if (input.languageProbability !== undefined && input.languageProbability < VOICE_ISOLATION_ACCEPT_MIN_LANGUAGE_PROB) {
+    return false;
+  }
+  // A source language the raw pass was confident about must not change under
+  // isolation (the pt->en drift observed on an Indonesian clip); a weak raw
+  // detection carries no such authority.
+  if (
+    input.baselineLanguage &&
+    (input.baselineLanguageProbability ?? 0) >= VOICE_ISOLATION_ACCEPT_MIN_LANGUAGE_PROB &&
+    input.language &&
+    input.language !== input.baselineLanguage
+  ) {
+    return false;
+  }
+  return true;
+};
+
+/**
+The transcript downstream consumers (interpretation, search index) should see:
+the newest completed raw-audio run, or a newer *accepted* isolated run. An
+unaccepted isolated run stays in the document as audit evidence only. With the
+kill switch off, accepted runs stay stored but raw audio wins again.
+*/
+export const selectEffectiveCompletedRun = (
+  document: AiVideoTranscriptionDocument,
+  options: { voiceIsolationEnabled?: boolean } = {},
+): AiVideoTranscriptionRun | null => {
+  const voiceIsolationEnabled = options.voiceIsolationEnabled ?? true;
+  const completed = Object.values(document.runs).filter((run) => run.status === 'completed');
+  if (completed.length === 0) {
+    return null;
+  }
+  const newest = (a: AiVideoTranscriptionRun, b: AiVideoTranscriptionRun) =>
+    (b.finishedAt ?? b.requestedAt) > (a.finishedAt ?? a.requestedAt) ? 1 : -1;
+  for (const run of completed.sort(newest)) {
+    if (run.producer?.voiceIsolation) {
+      if (voiceIsolationEnabled && run.voiceIsolation?.accepted === true) {
+        return run;
+      }
+      continue;
+    }
+    return run;
+  }
+  // Only rejected isolated runs exist (should not happen: the raw run that
+  // triggered them always completes first); newest is the least surprising.
+  return completed[0] ?? null;
 };
 
 /**

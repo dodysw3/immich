@@ -5,7 +5,9 @@ import {
   AI_AUDIO_EVENTS_PROMPT_VERSION,
   AudioTagFrame,
   assembleAudioEvents,
+  buildVoiceIsolationEvidence,
   createAudioEventsRunKey,
+  isMusicFamilyAudioEvent,
   isSpeechFamilyAudioEvent,
   renderAudioEventSentences,
 } from 'src/utils/ai-audio-events.js';
@@ -54,6 +56,53 @@ describe('ai-audio-events utils', () => {
       expect(createAudioEventsRunKey(AI_AUDIO_EVENTS_MODEL, { threshold: 0.15 }, 'video-audio-events-0.2.0')).not.toBe(
         base,
       );
+    });
+  });
+
+  describe('buildVoiceIsolationEvidence', () => {
+    const event = (mid: string, startMs: number, endMs: number, score = 0.9) => ({
+      mid,
+      label: mid,
+      score,
+      startMs,
+      endMs,
+    });
+
+    it('merges overlapping speech-family spans instead of double-counting them', () => {
+      const evidence = buildVoiceIsolationEvidence([
+        event('/m/09x0r', 0, 2000, 0.95),
+        event('/m/01h8n0', 1000, 3000, 0.7),
+      ]);
+
+      expect(evidence.speechMs).toBe(3000);
+      expect(evidence.speechPeak).toBe(0.95);
+      expect(evidence.musicMs).toBe(0);
+    });
+
+    it('ignores short blips below the assembly min span', () => {
+      const evidence = buildVoiceIsolationEvidence([
+        event('/m/09x0r', 0, 150, 0.99),
+        event('/m/09x0r', 5000, 5299, 0.99),
+      ]);
+
+      expect(evidence).toEqual({ speechMs: 0, speechPeak: 0, musicMs: 0 });
+    });
+
+    it('reports coexisting music and speech with their own durations', () => {
+      const evidence = buildVoiceIsolationEvidence([
+        event('/m/09x0r', 0, 4000, 0.9),
+        event('/m/04rlf', 0, 4000, 0.8),
+        event('/m/015lz1', 3000, 6000, 0.85),
+      ]);
+
+      expect(evidence).toEqual({ speechMs: 4000, speechPeak: 0.9, musicMs: 6000 });
+    });
+
+    it('classifies the singing variants as music family', () => {
+      for (const mid of ['/m/04rlf', '/m/015lz1', '/t/dd00005', '/t/dd00006']) {
+        expect(isMusicFamilyAudioEvent({ mid })).toBe(true);
+      }
+      expect(isMusicFamilyAudioEvent({ mid: '/m/09x0r' })).toBe(false);
     });
   });
 

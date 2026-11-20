@@ -8,15 +8,19 @@ import {
 import {
   AI_VIDEO_TRANSCRIPTION_COVERAGE_POLICY,
   AI_VIDEO_TRANSCRIPTION_PRODUCER_VERSION,
+  AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION,
+  acceptsIsolatedTranscript,
   assessLegacyTranscriptionRun,
   buildTranscriptionChunkPlan,
   classifyTranscriptionRun,
   coversTranscriptionCoverage,
   createTranscriptionRevision,
   createVideoTranscriptionRunKey,
+  evaluateVoiceIsolationGate,
   isRunActive,
   isTranscriptionSegmentAudible,
   mergeCoverageIntervals,
+  selectEffectiveCompletedRun,
 } from 'src/utils/ai-video-transcription.js';
 
 const segment = (startMs: number, endMs: number, text: string) => ({ startMs, endMs, text });
@@ -27,6 +31,22 @@ const producerIdentity = {
   language: '',
   coveragePolicy: AI_VIDEO_TRANSCRIPTION_COVERAGE_POLICY,
 };
+
+/** A completed isolated run, newer than `legacyRun` so it can win selection. */
+const isolatedRun = (overrides: Partial<AiVideoTranscriptionRun>): AiVideoTranscriptionRun => ({
+  ...legacyRun,
+  requestedAt: '2026-11-19T00:00:00.000Z',
+  finishedAt: '2026-11-19T00:05:00.000Z',
+  producer: {
+    service: 'faster-whisper-sidecar',
+    model: 'faster-whisper-large-v3',
+    producerVersion: AI_VIDEO_TRANSCRIPTION_PRODUCER_VERSION,
+    language: '',
+    coveragePolicy: AI_VIDEO_TRANSCRIPTION_COVERAGE_POLICY,
+    voiceIsolation: AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION,
+  },
+  ...overrides,
+});
 
 const legacyRun: AiVideoTranscriptionRun = {
   model: 'faster-whisper-large-v3',
@@ -57,6 +77,172 @@ describe('ai-video-transcription utils', () => {
         expect(createVideoTranscriptionRunKey(changed)).not.toBe(base);
       }
       expect(createVideoTranscriptionRunKey(producerIdentity)).toBe(base);
+    });
+
+    it('keeps the raw-audio key stable and forks it only for the isolated pass', () => {
+      const base = createVideoTranscriptionRunKey(producerIdentity);
+      // Adding the isolation pass must not orphan the 52k existing raw runs.
+      expect(createVideoTranscriptionRunKey({ ...producerIdentity, voiceIsolation: undefined })).toBe(base);
+      const isolated = createVideoTranscriptionRunKey({
+        ...producerIdentity,
+        voiceIsolation: AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION,
+      });
+      expect(isolated).toMatch(/^[a-f0-9]{64}$/);
+      expect(isolated).not.toBe(base);
+    });
+  });
+
+  describe('shouldIsolateVoice', () => {
+    const evidence = (speechMs = 0, speechPeak = 0, musicMs = 0) => ({ speechMs, speechPeak, musicMs });
+
+    it('leaves a confident first pass alone', () => {
+      expect(
+        evaluateVoiceIsolationGate({
+          noSpeech: false,
+          meanAvgLogProb: -0.2,
+          languageProbability: 0.95,
+          evidence: evidence(5000, 0.99),
+        }),
+      ).toEqual({ isolate: false, reason: 'trustworthy' });
+    });
+
+    it('isolates a low-confidence transcript even without audio-event evidence', () => {
+      expect(evaluateVoiceIsolationGate({ noSpeech: false, meanAvgLogProb: -0.62, evidence: evidence() })).toEqual({
+        isolate: true,
+        reason: 'scheduled',
+      });
+      expect(evaluateVoiceIsolationGate({ noSpeech: false, languageProbability: 0.4, evidence: evidence() })).toEqual({
+        isolate: true,
+        reason: 'scheduled',
+      });
+    });
+
+    it('requires both a speech peak and sustained speech for an empty transcript', () => {
+      expect(evaluateVoiceIsolationGate({ noSpeech: true, evidence: evidence(0, 0.3) })).toEqual({
+        isolate: false,
+        reason: 'no-speech-evidence',
+      });
+      expect(evaluateVoiceIsolationGate({ noSpeech: true, evidence: evidence(300, 0.9) })).toEqual({
+        isolate: false,
+        reason: 'no-speech-evidence',
+      });
+      expect(evaluateVoiceIsolationGate({ noSpeech: true, evidence: evidence(1600, 0.9) })).toEqual({
+        isolate: true,
+        reason: 'scheduled',
+      });
+    });
+
+    it('excludes a sung chorus where music and singing dominate incidental speech', () => {
+      expect(
+        evaluateVoiceIsolationGate({
+          noSpeech: true,
+          evidence: { speechMs: 700, speechPeak: 0.95, musicMs: 4000 },
+        }),
+      ).toEqual({ isolate: false, reason: 'music-excluded' });
+    });
+
+    it('keeps a speech-led clip with a music bed', () => {
+      expect(
+        evaluateVoiceIsolationGate({
+          noSpeech: true,
+          evidence: { speechMs: 3000, speechPeak: 0.9, musicMs: 1000 },
+        }),
+      ).toEqual({ isolate: true, reason: 'scheduled' });
+    });
+
+    it('applies the music test to untrustworthy non-empty runs too', () => {
+      expect(
+        evaluateVoiceIsolationGate({
+          noSpeech: false,
+          meanAvgLogProb: -0.8,
+          evidence: { speechMs: 500, speechPeak: 0.9, musicMs: 3000 },
+        }),
+      ).toEqual({ isolate: false, reason: 'music-excluded' });
+    });
+
+    it('can turn music exclusion off', () => {
+      expect(
+        evaluateVoiceIsolationGate({
+          noSpeech: true,
+          evidence: { speechMs: 700, speechPeak: 0.95, musicMs: 4000 },
+          thresholds: { musicExclusion: false },
+        }),
+      ).toEqual({ isolate: true, reason: 'scheduled' });
+    });
+  });
+
+  describe('acceptsIsolatedTranscript', () => {
+    it('rejects an empty or low-confidence isolated transcript', () => {
+      expect(acceptsIsolatedTranscript({ segments: 0, meanAvgLogProb: -0.2 })).toBe(false);
+      expect(acceptsIsolatedTranscript({ segments: 3, meanAvgLogProb: -1.2 })).toBe(false);
+      expect(acceptsIsolatedTranscript({ segments: 3, languageProbability: 0.4 })).toBe(false);
+    });
+
+    it('rejects language drift away from a confident source language', () => {
+      expect(
+        acceptsIsolatedTranscript({
+          segments: 4,
+          meanAvgLogProb: -0.4,
+          language: 'en',
+          languageProbability: 0.8,
+          baselineLanguage: 'id',
+          baselineLanguageProbability: 0.97,
+        }),
+      ).toBe(false);
+      // A weak baseline detection has no authority to block the change.
+      expect(
+        acceptsIsolatedTranscript({
+          segments: 4,
+          meanAvgLogProb: -0.4,
+          language: 'en',
+          languageProbability: 0.8,
+          baselineLanguage: 'pt',
+          baselineLanguageProbability: 0.32,
+        }),
+      ).toBe(true);
+    });
+
+    it('accepts a confident isolated transcript', () => {
+      expect(acceptsIsolatedTranscript({ segments: 2, meanAvgLogProb: -0.5, languageProbability: 0.9 })).toBe(true);
+    });
+  });
+
+  describe('selectEffectiveCompletedRun', () => {
+    it('prefers an accepted isolated run and skips a rejected one', () => {
+      const baselineKey = createVideoTranscriptionRunKey(producerIdentity);
+      const isolatedKey = createVideoTranscriptionRunKey({
+        ...producerIdentity,
+        voiceIsolation: AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION,
+      });
+      const accepted = isolatedRun({ voiceIsolation: { accepted: true } });
+      const rejected = isolatedRun({ voiceIsolation: { accepted: false } });
+      const document = (run: AiVideoTranscriptionRun): AiVideoTranscriptionDocument => ({
+        schemaVersion: 2,
+        runs: { [baselineKey]: legacyRun, [isolatedKey]: run },
+      });
+      expect(selectEffectiveCompletedRun(document(accepted))).toBe(accepted);
+      expect(selectEffectiveCompletedRun(document(rejected))).toBe(legacyRun);
+      // The kill switch hides accepted isolated runs without deleting them.
+      expect(selectEffectiveCompletedRun(document(accepted), { voiceIsolationEnabled: false })).toBe(legacyRun);
+      expect(selectEffectiveCompletedRun(document(accepted), { voiceIsolationEnabled: true })).toBe(accepted);
+    });
+
+    it('keeps a newer raw run over an older accepted isolated run', () => {
+      const baselineKey = createVideoTranscriptionRunKey(producerIdentity);
+      const isolatedKey = createVideoTranscriptionRunKey({
+        ...producerIdentity,
+        voiceIsolation: AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION,
+      });
+      const newerBaseline: AiVideoTranscriptionRun = {
+        ...legacyRun,
+        requestedAt: '2026-11-20T00:00:00.000Z',
+        finishedAt: '2026-11-20T00:01:00.000Z',
+      };
+      const document: AiVideoTranscriptionDocument = {
+        schemaVersion: 2,
+        runs: { [baselineKey]: newerBaseline, [isolatedKey]: isolatedRun({ voiceIsolation: { accepted: true } }) },
+      };
+      expect(selectEffectiveCompletedRun(document)).toBe(newerBaseline);
     });
   });
 

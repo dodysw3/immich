@@ -388,9 +388,15 @@ export class MediaRepository {
   async extractVideoAudioChunk(
     input: string,
     outputDir: string,
-    options: { startSec: number; durationSec: number },
+    options: { startSec: number; durationSec: number; sampleRate?: number },
   ): Promise<string> {
-    const audioPath = join(outputDir, `audio-chunk-${options.startSec.toFixed(3)}.wav`);
+    // 16 kHz s16 is the ASR lane; the voice-isolator lane needs the source's
+    // 48 kHz so the model keeps the band it was trained on.
+    const sampleRate = options.sampleRate ?? 16_000;
+    const audioPath = join(
+      outputDir,
+      `audio-chunk-${options.startSec.toFixed(3)}${sampleRate === 16_000 ? '' : `-${sampleRate}hz`}.wav`,
+    );
     const args = [
       '-hide_banner',
       '-loglevel',
@@ -407,7 +413,7 @@ export class MediaRepository {
       '-ac',
       '1',
       '-ar',
-      '16000',
+      String(sampleRate),
       '-c:a',
       'pcm_s16le',
       audioPath,

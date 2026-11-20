@@ -635,12 +635,20 @@ export type TranscriptionCoverageCounts = {
     indexCurrent: number;
     indexFailed: number;
     indexPending: number;
+    isolated: {
+        effective: number;
+        stored: number;
+    };
     missing: number;
     noAudio: number;
     noSpeech: number;
     partial: number;
 };
 export type TranscriptionReconcileResponse = {
+    queued: boolean;
+};
+export type TranscriptionVoiceIsolationResponse = {
+    budget: number;
     queued: boolean;
 };
 export type UserLicense = {
@@ -4828,6 +4836,18 @@ export function queueReconciliation(opts?: Oazapfts.RequestOpts) {
         status: 200;
         data: TranscriptionReconcileResponse;
     }>("/admin/transcription/reconcile", {
+        ...opts,
+        method: "POST"
+    }));
+}
+/**
+ * Queue voice-isolation backfill
+ */
+export function queueVoiceIsolation(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: TranscriptionVoiceIsolationResponse;
+    }>("/admin/transcription/voice-isolation", {
         ...opts,
         method: "POST"
     }));
@@ -9623,6 +9643,7 @@ export enum JobName {
     AssetCaptionVideo = "AssetCaptionVideo",
     AssetTranscribeVideo = "AssetTranscribeVideo",
     TranscriptionReconcile = "TranscriptionReconcile",
+    VoiceIsolationBackfill = "VoiceIsolationBackfill",
     TranscriptIndexSync = "TranscriptIndexSync",
     TranscriptIndexReconcile = "TranscriptIndexReconcile",
     AuditTableCleanup = "AuditTableCleanup",

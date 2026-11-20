@@ -101,7 +101,9 @@ export class TranscriptIndexService {
     if (!document) {
       return false;
     }
-    const run = AiVideoTranscriptionRepository.prototype.findLatestCompletedRun.call(null, document);
+    const run = AiVideoTranscriptionRepository.prototype.findLatestCompletedRun.call(null, document, {
+      voiceIsolationEnabled: this.configRepository.getEnv().aiVideoTranscription.voiceIsolationEnabled,
+    });
     if (!run) {
       return false;
     }
@@ -163,7 +165,9 @@ export class TranscriptIndexService {
       // Unparseable source: leave an existing index as-is rather than drop it.
       return false;
     }
-    const run = AiVideoTranscriptionRepository.prototype.findLatestCompletedRun.call(null, document);
+    const run = AiVideoTranscriptionRepository.prototype.findLatestCompletedRun.call(null, document, {
+      voiceIsolationEnabled: this.configRepository.getEnv().aiVideoTranscription.voiceIsolationEnabled,
+    });
     if (!run) {
       return false;
     }
@@ -180,6 +184,7 @@ export class TranscriptIndexService {
           producerVersion: run.producer.producerVersion,
           language: run.producer.language,
           coveragePolicy: run.producer.coveragePolicy,
+          voiceIsolation: run.producer.voiceIsolation,
         })
       : createLegacyVideoTranscriptionRunKey(run.model, run.promptVersion);
   }

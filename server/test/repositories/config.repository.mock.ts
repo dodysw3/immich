@@ -177,6 +177,12 @@ export const envData: EnvData = {
     chunkDurationSec: 300,
     chunkOverlapSec: 2,
     concurrency: 1,
+    voiceIsolationMinSpeechScore: 0.8,
+    voiceIsolationEnabled: false,
+    voiceIsolationMinSpeechMs: 600,
+    voiceIsolationMusicDominanceRatio: 1,
+    voiceIsolationMusicExclusion: true,
+    voiceIsolationBackfillBudget: 200,
   },
 
   aiAudioEvents: {

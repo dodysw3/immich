@@ -198,7 +198,11 @@ export class AiAudioEventsService {
   /** True when the latest completed transcript run carries segments (words exist). */
   private async transcriptHasSegments(assetId: string): Promise<boolean> {
     const document = await this.transcriptionRepository.get(assetId);
-    const run = document ? this.transcriptionRepository.findLatestCompletedRun(document) : null;
+    const run = document
+      ? this.transcriptionRepository.findLatestCompletedRun(document, {
+          voiceIsolationEnabled: this.configRepository.getEnv().aiVideoTranscription.voiceIsolationEnabled,
+        })
+      : null;
     return (run?.segments.length ?? 0) > 0;
   }
 

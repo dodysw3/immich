@@ -67,7 +67,99 @@ const AUDIO_EVENTS_EXCLUDED_MIDS: ReadonlySet<string> = new Set([
   '/m/07hvw1', // Field recording
 ]);
 
+/**
+Music and singing evidence for the voice-isolation gate. A sung chorus fires
+the speech-family classes too ("Singing" sits next to "Speech" in AudioSet), so
+the gate compares the sustained duration of both families instead of trusting
+any speech label. Only the top-level Music class and the singing variants are
+counted — genre classes (Pop music, Rock music, …) mostly fire alongside
+Music and would double-count the same span.
+*/
+export const AUDIO_EVENTS_MUSIC_MIDS: ReadonlySet<string> = new Set([
+  '/m/04rlf', // Music
+  '/m/015lz1', // Singing
+  '/t/dd00005', // Child singing
+  '/t/dd00006', // Synthetic singing
+]);
+
+/** The generic Speech class, kept as the peak-score signal of the v1 gate. */
+const AUDIO_EVENTS_SPEECH_PEAK_MID = '/m/09x0r';
+
 export const isSpeechFamilyAudioEvent = (event: { mid: string }): boolean => AUDIO_EVENTS_SPEECH_MIDS.has(event.mid);
+
+export const isMusicFamilyAudioEvent = (event: { mid: string }): boolean => AUDIO_EVENTS_MUSIC_MIDS.has(event.mid);
+
+/** Sustained audio-event evidence the voice-isolation gate decides on (all ms). */
+export interface VoiceIsolationEvidence {
+  /** Unioned duration of speech-family spans. */
+  speechMs: number;
+  /** Max score of the generic Speech class (0 = never detected). */
+  speechPeak: number;
+  /** Unioned duration of music/singing spans. */
+  musicMs: number;
+}
+
+const unionDuration = (spans: Array<{ startMs: number; endMs: number }>, minSpanMs: number): number => {
+  const sorted = spans
+    .filter(({ startMs, endMs }) => endMs - startMs >= minSpanMs)
+    .toSorted((a, b) => a.startMs - b.startMs);
+  let durationMs = 0;
+  let currentStart = -1;
+  let currentEnd = -1;
+  for (const span of sorted) {
+    if (currentEnd < 0) {
+      currentStart = span.startMs;
+      currentEnd = span.endMs;
+    } else if (span.startMs > currentEnd) {
+      durationMs += currentEnd - currentStart;
+      currentStart = span.startMs;
+      currentEnd = span.endMs;
+    } else {
+      currentEnd = Math.max(currentEnd, span.endMs);
+    }
+  }
+  if (currentEnd >= 0) {
+    durationMs += currentEnd - currentStart;
+  }
+  return durationMs;
+};
+
+/**
+Turn stored audio-event spans into the gate's evidence summary: overlapping
+spans are merged (two Speech classes over one sentence count once) and spans
+shorter than the assembly minimum are ignored, mirroring how events were
+built. Pure and order-independent so the gate stays unit-testable.
+*/
+export const buildVoiceIsolationEvidence = (
+  events: ReadonlyArray<{ mid: string; score: number; startMs: number; endMs: number }>,
+  options: { minSpanMs?: number } = {},
+): VoiceIsolationEvidence => {
+  const minSpanMs = options.minSpanMs ?? AUDIO_EVENTS_MIN_SPAN_MS;
+  let speechPeak = 0;
+  const speechSpans: Array<{ startMs: number; endMs: number }> = [];
+  const musicSpans: Array<{ startMs: number; endMs: number }> = [];
+
+  for (const event of events) {
+    if (event.endMs - event.startMs < minSpanMs) {
+      continue;
+    }
+    if (AUDIO_EVENTS_SPEECH_MIDS.has(event.mid)) {
+      speechSpans.push({ startMs: event.startMs, endMs: event.endMs });
+      if (event.mid === AUDIO_EVENTS_SPEECH_PEAK_MID) {
+        speechPeak = Math.max(speechPeak, event.score);
+      }
+    }
+    if (AUDIO_EVENTS_MUSIC_MIDS.has(event.mid)) {
+      musicSpans.push({ startMs: event.startMs, endMs: event.endMs });
+    }
+  }
+
+  return {
+    speechMs: unionDuration(speechSpans, minSpanMs),
+    speechPeak,
+    musicMs: unionDuration(musicSpans, minSpanMs),
+  };
+};
 
 /** One sidecar frame: `t` is the frame center in ms, hits are the frame's top classes. */
 export type AudioTagFrame = { t: number; hits: Array<{ classIndex: number; score: number }> };

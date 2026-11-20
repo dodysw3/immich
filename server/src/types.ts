@@ -363,6 +363,11 @@ export type IVideoTranscriptionJob = IEntityJob & {
   trigger?: 'upload' | 'reconcile';
   /** Reconcile-delivered: stale queued rows are reclaimed instead of skipped. */
   force?: boolean;
+  /**
+  'isolation' runs only the gated second pass: the completed raw document is
+  read, never rewritten. Used by the bounded backlog sweep.
+  */
+  mode?: 'isolation';
 };
 
 export interface JobCounts {
@@ -397,6 +402,7 @@ export type JobItem =
   | { name: JobName.AssetCaptionVideo; data: IVideoCaptionJob }
   | { name: JobName.AssetTranscribeVideo; data: IVideoTranscriptionJob }
   | { name: JobName.TranscriptionReconcile; data?: IBaseJob }
+  | { name: JobName.VoiceIsolationBackfill; data?: IBaseJob }
   | { name: JobName.TranscriptIndexSync; data: IEntityJob }
   | { name: JobName.TranscriptIndexReconcile; data?: IBaseJob }
 

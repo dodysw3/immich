@@ -17,6 +17,8 @@ const AiVideoTranscriptionConfigSchema = z
   .object({
     /** ISO 639-1 hint for the transcriber; empty = auto-detect per file. */
     language: z.string(),
+    /** Voice-isolator producer id when the run used it; absent = raw audio. */
+    voiceIsolation: z.string().optional(),
   })
   .meta({ id: 'AiVideoTranscriptionConfig' });
 
@@ -56,6 +58,20 @@ Durable per-chunk progress for bounded audio extraction: a run resumes from
 completed chunks instead of re-transcribing the whole video after an
 interruption. Timestamps are absolute video offsets.
 */
+const AiVideoTranscriptionChunkEvidenceSchema = z.object({
+  // The initial canary could persist null language fields from a no-speech
+  // response. Treat those fields as absent without discarding the chunk.
+  language: z.preprocess((value) => value ?? undefined, z.string().min(1).optional()),
+  languageProbability: z.preprocess(
+    (value) => value ?? undefined,
+    z.number().min(0).max(1).meta({ format: 'double' }).optional(),
+  ),
+  meanAvgLogProb: z.number().meta({ format: 'double' }).optional(),
+  speechRatio: z.number().min(0).max(1).meta({ format: 'double' }).optional(),
+  segmentCount: z.int().nonnegative(),
+});
+export type AiVideoTranscriptionChunkEvidence = z.infer<typeof AiVideoTranscriptionChunkEvidenceSchema>;
+
 export const AiVideoTranscriptionChunkSchema = z
   .object({
     index: z.int().nonnegative(),
@@ -63,6 +79,7 @@ export const AiVideoTranscriptionChunkSchema = z
     endMs: z.int().positive(),
     status: z.enum(['pending', 'completed', 'failed']),
     completedAt: z.iso.datetime({ offset: true }).optional(),
+    evidence: AiVideoTranscriptionChunkEvidenceSchema.optional(),
     error: AiVideoTranscriptionErrorSchema.optional(),
   })
   .meta({ id: 'AiVideoTranscriptionChunk' });
@@ -82,6 +99,11 @@ export const AiVideoTranscriptionProducerSchema = z
     /** Language hint the run used; empty = auto-detect. */
     language: z.string(),
     coveragePolicy: z.string().min(1),
+    /**
+    Voice-isolator producer id when the run was produced from isolated speech
+    (the gated second pass); absent on the raw-audio run.
+    */
+    voiceIsolation: z.string().optional(),
   })
   .meta({ id: 'AiVideoTranscriptionProducer' });
 export type AiVideoTranscriptionProducer = z.infer<typeof AiVideoTranscriptionProducerSchema>;
@@ -116,6 +138,21 @@ const AiVideoTranscriptionRunSchema = z
     (model + promptVersion only) keep parsing without it.
     */
     producer: AiVideoTranscriptionProducerSchema.optional(),
+    /**
+    Quality evidence the gated voice-isolation pass used to decide whether its
+    transcript may replace the raw-audio one. Only present on isolated runs.
+    */
+    quality: z
+      .object({
+        meanAvgLogProb: z.number().optional(),
+        speechRatio: z.number().min(0).optional(),
+      })
+      .optional(),
+    /**
+    Voice-isolation verdict for this run. `accepted: false` keeps the segments
+    for audit but excludes the run from downstream selection.
+    */
+    voiceIsolation: z.object({ accepted: z.boolean() }).optional(),
     /** Full video duration (ms) this run aims to cover, as measured by the probe. */
     targetDurationMs: z.int().positive().optional(),
     /** Intervals of audio actually fed through the producer, for honest coverage. */
@@ -190,6 +227,11 @@ export const TranscriptionCoverageCountsSchema = z
     indexCurrent: z.int().nonnegative(),
     indexPending: z.int().nonnegative(),
     indexFailed: z.int().nonnegative(),
+    /** Assets holding a completed isolated run, and those whose run is served. */
+    isolated: z.object({
+      stored: z.int().nonnegative(),
+      effective: z.int().nonnegative(),
+    }),
   })
   .meta({ id: 'TranscriptionCoverageCounts' });
 export type TranscriptionCoverageCounts = z.infer<typeof TranscriptionCoverageCountsSchema>;
@@ -198,3 +240,13 @@ export const TranscriptionReconcileResponseSchema = z
   .object({ queued: z.boolean() })
   .meta({ id: 'TranscriptionReconcileResponse' });
 export type TranscriptionReconcileResponse = z.infer<typeof TranscriptionReconcileResponseSchema>;
+
+export const TranscriptionVoiceIsolationResponseSchema = z
+  .object({
+    /** False when transcription is off, the isolator is unconfigured, or the kill switch is off. */
+    queued: z.boolean(),
+    /** Per-sweep scheduling budget in effect for the queued job. */
+    budget: z.int().nonnegative(),
+  })
+  .meta({ id: 'TranscriptionVoiceIsolationResponse' });
+export type TranscriptionVoiceIsolationResponse = z.infer<typeof TranscriptionVoiceIsolationResponseSchema>;

@@ -9,6 +9,7 @@ import { AiVideoTranscriptionService } from 'src/services/ai-video-transcription
 import {
   AI_VIDEO_TRANSCRIPTION_COVERAGE_POLICY,
   AI_VIDEO_TRANSCRIPTION_PRODUCER_VERSION,
+  AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION,
   createLegacyVideoTranscriptionRunKey,
   createVideoTranscriptionRunKey,
 } from 'src/utils/ai-video-transcription.js';
@@ -24,6 +25,13 @@ const config = {
   maxDurationSec: 7200,
   chunkDurationSec: 300,
   chunkOverlapSec: 2,
+  voiceIsolationUrl: undefined as string | undefined,
+  voiceIsolationEnabled: true,
+  voiceIsolationMinSpeechScore: 0.8,
+  voiceIsolationMinSpeechMs: 600,
+  voiceIsolationMusicDominanceRatio: 1,
+  voiceIsolationMusicExclusion: true,
+  voiceIsolationBackfillBudget: 200,
 };
 
 const runKey = createVideoTranscriptionRunKey({
@@ -72,6 +80,10 @@ const makeService = (
         return Promise.resolve(path);
       }),
     },
+    eventsRepository: {
+      get: vi.fn().mockResolvedValue(null),
+      findLatestCompletedRun: vi.fn(() => null),
+    },
     transcriptionRepository: {
       get: vi.fn().mockResolvedValue(options.document ?? null),
       claim: vi.fn().mockResolvedValue({
@@ -86,13 +98,30 @@ const makeService = (
       completeChunk: vi.fn(() => Promise.resolve(true)),
       failChunk: vi.fn(() => Promise.resolve(true)),
       renewLease: vi.fn(() => Promise.resolve(true)),
+      releaseLease: vi.fn(() => Promise.resolve(true)),
       findLatestCompletedRun: vi.fn((doc: AiVideoTranscriptionDocument) =>
         AiVideoTranscriptionRepository.prototype.findLatestCompletedRun.call(null, doc),
       ),
+      streamVoiceIsolationCandidates: vi.fn(
+        (_options: {
+          rawRunKey: string;
+          isolatedRunKey: string;
+          limit: number;
+          afterId?: string;
+          retryableBefore: string;
+        }): Promise<Array<{ id: string; transcriptValue: unknown; audioEventsValue: unknown }>> => Promise.resolve([]),
+      ),
     },
-    jobRepository: { queue: vi.fn(() => Promise.resolve()) },
+    jobRepository: {
+      queue: vi.fn((_job: { name: JobName; data?: Record<string, unknown> }) => Promise.resolve()),
+      hasWaitingLiveTranscription: vi.fn().mockResolvedValue(false),
+      getVoiceIsolationBackfillCursor: vi.fn((): Promise<string | undefined> => Promise.resolve(undefined)),
+      setVoiceIsolationBackfillCursor: vi.fn((_cursor: string | null) => Promise.resolve()),
+    },
     assetJobRepository: { streamForTranscriptionReconcile: vi.fn() },
+    telemetryRepository: { jobs: { recordCounter: vi.fn(), recordHistogram: vi.fn() } },
     client: {
+      isolateVoice: vi.fn(() => Promise.resolve(Buffer.from('RIFF....WAVEfmt '))),
       transcribe: vi.fn(
         (_audio: Buffer) =>
           Promise.resolve(
@@ -103,6 +132,7 @@ const makeService = (
                   languageProbability: 0.9,
                   noSpeech: false,
                   segments: [{ startSec: 0.5, endSec: 2.5, text: 'hello world' }],
+                  diagnostics: { meanAvgLogProb: -0.2, speechRatio: 0.8, segmentCount: 1 },
                 },
           ) as Promise<SidecarResponse>,
       ),
@@ -114,9 +144,11 @@ const makeService = (
     dependencies.assetRepository as never,
     dependencies.mediaRepository as never,
     dependencies.transcriptionRepository as never,
+    dependencies.eventsRepository as never,
     dependencies.client as never,
     dependencies.jobRepository as never,
     dependencies.assetJobRepository as never,
+    dependencies.telemetryRepository as never,
   );
   return { service, dependencies };
 };
@@ -148,6 +180,14 @@ const doc = (runs: Record<string, AiVideoTranscriptionRun>): AiVideoTranscriptio
 
 const reconcileSweep = async (service: AiVideoTranscriptionService, budget?: number) =>
   (service as never as { reconcile: (budget?: number) => Promise<number> }).reconcile(budget);
+
+/** Stub the YAMNet events lane with one Speech event at `score`. */
+const stubSpeechEvents = (dependencies: ReturnType<typeof makeService>['dependencies'], score = 0.95) => {
+  dependencies.eventsRepository.get.mockResolvedValue({ schemaVersion: 1, runs: {} } as never);
+  dependencies.eventsRepository.findLatestCompletedRun.mockReturnValue({
+    events: [{ mid: '/m/09x0r', label: 'Speech', score, startMs: 0, endMs: 1000 }],
+  } as never);
+};
 
 describe(AiVideoTranscriptionService.name, () => {
   it('queue handler: skips without touching transcripts when disabled', async () => {
@@ -878,6 +918,504 @@ describe(AiVideoTranscriptionService.name, () => {
 
       expect(status).toBe(JobStatus.Success);
       expect(dependencies.transcriptionRepository.claim).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('gated voice-isolation second pass', () => {
+    const isolatedRunKey = createVideoTranscriptionRunKey({
+      model: config.model,
+      producerVersion: AI_VIDEO_TRANSCRIPTION_PRODUCER_VERSION,
+      language: config.language,
+      coveragePolicy: AI_VIDEO_TRANSCRIPTION_COVERAGE_POLICY,
+      voiceIsolation: AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION,
+    });
+
+    const completedBaseline = (overrides: Partial<AiVideoTranscriptionRun> = {}) =>
+      sweepRun({
+        status: 'completed',
+        noSpeech: true,
+        finishedAt: '2026-11-12T00:01:00.000Z',
+        producer: {
+          service: 'faster-whisper-sidecar',
+          model: config.model,
+          producerVersion: AI_VIDEO_TRANSCRIPTION_PRODUCER_VERSION,
+          language: '',
+          coveragePolicy: AI_VIDEO_TRANSCRIPTION_COVERAGE_POLICY,
+        },
+        ...overrides,
+      });
+
+    const withIsolation = (dependencies: ReturnType<typeof makeService>['dependencies']) =>
+      dependencies.configRepository.getEnv.mockReturnValue({
+        aiVideoTranscription: { ...config, voiceIsolationUrl: 'http://127.0.0.1:51909' },
+      });
+
+    const isolatedRun = (overrides: Partial<AiVideoTranscriptionRun> = {}): AiVideoTranscriptionRun => ({
+      ...completedBaseline(),
+      producer: {
+        service: 'faster-whisper-sidecar',
+        model: config.model,
+        producerVersion: AI_VIDEO_TRANSCRIPTION_PRODUCER_VERSION,
+        language: '',
+        coveragePolicy: AI_VIDEO_TRANSCRIPTION_COVERAGE_POLICY,
+        voiceIsolation: AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION,
+      },
+      requestedAt: '2026-11-12T00:02:00.000Z',
+      finishedAt: '2026-11-12T00:03:00.000Z',
+      voiceIsolation: { accepted: false },
+      ...overrides,
+    });
+
+    it('isolates and stores a separate run when the first pass is empty and YAMNet heard speech', async () => {
+      const { service, dependencies } = makeService({ document: doc({ [runKey]: completedBaseline() }) });
+      withIsolation(dependencies);
+      stubSpeechEvents(dependencies);
+
+      await service.handleTranscribeVideo({ id: assetId });
+
+      expect(dependencies.client.isolateVoice).toHaveBeenCalledTimes(1);
+      // 48 kHz extraction for the isolator, not the ASR lane's 16 kHz.
+      const window = dependencies.mediaRepository.extractVideoAudioChunk.mock.calls.find(
+        (call) => (call[2] as { sampleRate?: number }).sampleRate === 48_000,
+      );
+      expect(window).toBeDefined();
+      expect(dependencies.transcriptionRepository.claim.mock.calls.at(-1)?.[0]).toBe(assetId);
+      expect(dependencies.transcriptionRepository.claim.mock.calls.at(-1)?.[1]).toMatchObject({
+        runKey: isolatedRunKey,
+        producer: { voiceIsolation: AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION },
+      });
+      expect(dependencies.transcriptionRepository.complete.mock.calls.at(-1)?.[2]).toMatchObject({
+        voiceIsolation: { accepted: true },
+        quality: { meanAvgLogProb: -0.2 },
+      });
+      expect(dependencies.telemetryRepository.jobs.recordCounter).toHaveBeenCalledWith(
+        'immich.transcription.voice_isolation.gate',
+        1,
+        { reason: 'scheduled' },
+      );
+      expect(dependencies.telemetryRepository.jobs.recordCounter).toHaveBeenCalledWith(
+        'immich.transcription.voice_isolation.run',
+        1,
+        { outcome: 'accepted' },
+      );
+      expect(dependencies.telemetryRepository.jobs.recordHistogram).toHaveBeenCalledWith(
+        'immich.transcription.voice_isolation.duration',
+        expect.any(Number),
+        { outcome: 'accepted' },
+      );
+    });
+
+    it('uses the same raw and isolated keys with identical raw transcript outcomes in both modes', async () => {
+      const completions = [];
+      for (const dualGpu of [false, true]) {
+        const { service, dependencies } = makeService({ sidecar: () => ({ noSpeech: true, segments: [] }) });
+        dependencies.configRepository.getEnv.mockReturnValue({
+          aiVideoTranscription: { ...config, voiceIsolationUrl: 'http://127.0.0.1:51909', dualGpu },
+        });
+        stubSpeechEvents(dependencies);
+        dependencies.transcriptionRepository.get
+          .mockResolvedValueOnce(null)
+          .mockResolvedValue(doc({ [runKey]: completedBaseline() }));
+        await service.handleTranscribeVideo({ id: assetId, trigger: 'upload' });
+        expect(dependencies.transcriptionRepository.claim.mock.calls.map(([, identity]) => identity.runKey)).toEqual([
+          runKey,
+          isolatedRunKey,
+        ]);
+        const { metrics: _metrics, ...raw } = dependencies.transcriptionRepository.complete.mock.calls[0][2];
+        completions.push(raw);
+        expect(dependencies.client.isolateVoice).toHaveBeenCalledWith(expect.any(Buffer), {
+          outputSampleRate: 16_000,
+          ...(dualGpu && { requestClass: 'live' }),
+        });
+      }
+      expect(completions[0]).toEqual(completions[1]);
+    });
+
+    it('does not widen the isolation sweep above 200 in dual mode', async () => {
+      const { service, dependencies } = makeService();
+      dependencies.configRepository.getEnv.mockReturnValue({
+        aiVideoTranscription: {
+          ...config,
+          voiceIsolationUrl: 'http://127.0.0.1:51909',
+          dualGpu: true,
+          voiceIsolationBackfillBudget: 500,
+        },
+      });
+      expect(await service.queueVoiceIsolationBackfill()).toEqual({ queued: true, budget: 200 });
+      await service.handleVoiceIsolationBackfill();
+      expect(dependencies.transcriptionRepository.streamVoiceIsolationCandidates).toHaveBeenCalledWith(
+        expect.objectContaining({ limit: 200 }),
+      );
+    });
+
+    it('hands isolation back to the queue between stages when an upload waits', async () => {
+      const { service, dependencies } = makeService({ document: doc({ [runKey]: completedBaseline() }) });
+      dependencies.configRepository.getEnv.mockReturnValue({
+        aiVideoTranscription: { ...config, voiceIsolationUrl: 'http://127.0.0.1:51909', dualGpu: true },
+      });
+      stubSpeechEvents(dependencies);
+      dependencies.jobRepository.hasWaitingLiveTranscription
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(true);
+
+      await expect(service.handleTranscribeVideo({ id: assetId, mode: 'isolation' })).rejects.toMatchObject({
+        reason: 'live_waiting',
+      });
+      expect(dependencies.client.isolateVoice).toHaveBeenCalledWith(expect.any(Buffer), {
+        outputSampleRate: 16_000,
+        requestClass: 'backfill',
+      });
+      expect(dependencies.client.transcribe).not.toHaveBeenCalled();
+      expect(dependencies.transcriptionRepository.releaseLease).toHaveBeenCalledWith(
+        assetId,
+        isolatedRunKey,
+        expect.any(String),
+        true,
+      );
+      expect(dependencies.transcriptionRepository.fail).not.toHaveBeenCalled();
+      expect(dependencies.transcriptionRepository.failChunk).not.toHaveBeenCalled();
+    });
+
+    it.each(['isolation', 'whisper'])(
+      'resumes immediately after %s GPU pressure without a failure write',
+      async (stage) => {
+        const { service, dependencies } = makeService({ document: doc({ [runKey]: completedBaseline() }) });
+        dependencies.configRepository.getEnv.mockReturnValue({
+          aiVideoTranscription: { ...config, voiceIsolationUrl: 'http://127.0.0.1:51909', dualGpu: true },
+        });
+        stubSpeechEvents(dependencies);
+        const clientCall = stage === 'isolation' ? dependencies.client.isolateVoice : dependencies.client.transcribe;
+        clientCall.mockRejectedValueOnce(new AiVideoTranscriptionClientError('gpu_capacity', 'pressure'));
+        const job = { id: assetId, mode: 'isolation' as const };
+        await expect(service.handleTranscribeVideo(job)).rejects.toMatchObject({ reason: 'gpu_capacity' });
+        expect(dependencies.transcriptionRepository.completeChunk).not.toHaveBeenCalled();
+        expect(dependencies.transcriptionRepository.releaseLease).toHaveBeenCalledWith(
+          assetId,
+          isolatedRunKey,
+          expect.any(String),
+          true,
+        );
+        expect(dependencies.transcriptionRepository.failChunk).not.toHaveBeenCalled();
+        expect(dependencies.transcriptionRepository.fail).not.toHaveBeenCalled();
+
+        dependencies.transcriptionRepository.get.mockResolvedValue(
+          doc({
+            [runKey]: completedBaseline(),
+            [isolatedRunKey]: {
+              ...completedBaseline(),
+              status: 'queued',
+              finishedAt: undefined,
+              startedAt: new Date().toISOString(),
+            },
+          }),
+        );
+        await service.handleTranscribeVideo(job);
+        expect(dependencies.transcriptionRepository.complete).toHaveBeenCalledWith(
+          assetId,
+          isolatedRunKey,
+          expect.anything(),
+        );
+      },
+    );
+
+    it('classifies inline live isolation and Whisper without yielding to the upload queue', async () => {
+      const { service, dependencies } = makeService({ document: doc({ [runKey]: completedBaseline() }) });
+      dependencies.configRepository.getEnv.mockReturnValue({
+        aiVideoTranscription: { ...config, voiceIsolationUrl: 'http://127.0.0.1:51909', dualGpu: true },
+      });
+      stubSpeechEvents(dependencies);
+      await service.transcribeIfMissing(assetId, 'auto-interpret');
+      expect(dependencies.client.isolateVoice).toHaveBeenCalledWith(
+        expect.any(Buffer),
+        expect.objectContaining({ requestClass: 'live' }),
+      );
+      expect(dependencies.client.transcribe).toHaveBeenCalledWith(
+        expect.any(Buffer),
+        expect.objectContaining({ requestClass: 'live' }),
+      );
+      expect(dependencies.jobRepository.hasWaitingLiveTranscription).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [-0.2, true],
+      [-1.5, false],
+    ])('resumes the same acceptance verdict with retained confidence %d', async (meanAvgLogProb, accepted) => {
+      const evidence = { language: 'en', languageProbability: 0.9, meanAvgLogProb, speechRatio: 0.8, segmentCount: 1 };
+      for (const resumed of [false, true]) {
+        const { service, dependencies } = makeService({
+          document: doc({ [runKey]: completedBaseline() }),
+          probe: { format: { duration: 600 }, audioStreams: [{}] },
+          claimRun: {
+            segments: resumed ? [{ startMs: 1000, endMs: 2000, text: 'hello' }] : [],
+            chunks: [
+              {
+                index: 0,
+                startMs: 0,
+                endMs: 300_000,
+                status: resumed ? 'completed' : 'pending',
+                ...(resumed && { evidence }),
+              },
+              { index: 1, startMs: 300_000, endMs: 600_000, status: 'pending' },
+            ],
+          },
+          resumedChunks: resumed ? 1 : 0,
+          sidecar: (call) =>
+            resumed || call > 0
+              ? { noSpeech: true, segments: [] }
+              : {
+                  language: 'en',
+                  languageProbability: 0.9,
+                  segments: [{ startSec: 1, endSec: 2, text: 'hello' }],
+                  diagnostics: evidence,
+                },
+        });
+        withIsolation(dependencies);
+        stubSpeechEvents(dependencies);
+        await service.handleTranscribeVideo({ id: assetId, mode: 'isolation' });
+        expect(dependencies.client.transcribe).toHaveBeenCalledTimes(resumed ? 1 : 2);
+        expect(dependencies.transcriptionRepository.complete).toHaveBeenCalledWith(
+          assetId,
+          isolatedRunKey,
+          expect.objectContaining({
+            noSpeech: undefined,
+            language: 'en',
+            quality: { meanAvgLogProb, speechRatio: 0.8 },
+            voiceIsolation: { accepted },
+          }),
+        );
+      }
+    });
+
+    it('stays off when the first pass is confident', async () => {
+      const { service, dependencies } = makeService({
+        document: doc({
+          [runKey]: completedBaseline({
+            noSpeech: undefined,
+            segments: [{ startMs: 0, endMs: 2000, text: 'hello world' }],
+            language: 'en',
+            languageProbability: 0.95,
+            quality: { meanAvgLogProb: -0.2 },
+          }),
+        }),
+      });
+      withIsolation(dependencies);
+      stubSpeechEvents(dependencies);
+
+      await service.handleTranscribeVideo({ id: assetId });
+
+      expect(dependencies.client.isolateVoice).not.toHaveBeenCalled();
+    });
+
+    it('stays off for an empty first pass when YAMNet heard no speech', async () => {
+      const { service, dependencies } = makeService({ document: doc({ [runKey]: completedBaseline() }) });
+      withIsolation(dependencies);
+      stubSpeechEvents(dependencies, 0.2);
+
+      await service.handleTranscribeVideo({ id: assetId });
+
+      expect(dependencies.client.isolateVoice).not.toHaveBeenCalled();
+    });
+
+    it('stays off for a sung chorus where music and singing dominate incidental speech', async () => {
+      const { service, dependencies } = makeService({ document: doc({ [runKey]: completedBaseline() }) });
+      withIsolation(dependencies);
+      dependencies.eventsRepository.get.mockResolvedValue({ schemaVersion: 1, runs: {} } as never);
+      dependencies.eventsRepository.findLatestCompletedRun.mockReturnValue({
+        events: [
+          { mid: '/m/09x0r', label: 'Speech', score: 0.95, startMs: 0, endMs: 700 },
+          { mid: '/m/04rlf', label: 'Music', score: 0.9, startMs: 0, endMs: 6000 },
+          { mid: '/m/015lz1', label: 'Singing', score: 0.9, startMs: 0, endMs: 6000 },
+        ],
+      } as never);
+
+      await service.handleTranscribeVideo({ id: assetId });
+
+      expect(dependencies.client.isolateVoice).not.toHaveBeenCalled();
+      expect(dependencies.transcriptionRepository.claim).not.toHaveBeenCalled();
+      expect(dependencies.telemetryRepository.jobs.recordCounter).toHaveBeenCalledWith(
+        'immich.transcription.voice_isolation.gate',
+        1,
+        { reason: 'music-excluded' },
+      );
+      expect(dependencies.telemetryRepository.jobs.recordCounter).not.toHaveBeenCalledWith(
+        'immich.transcription.voice_isolation.run',
+        1,
+        expect.anything(),
+      );
+    });
+
+    it('kill switch off: stores nothing new even when the gate would fire', async () => {
+      const { service, dependencies } = makeService({ document: doc({ [runKey]: completedBaseline() }) });
+      dependencies.configRepository.getEnv.mockReturnValue({
+        aiVideoTranscription: {
+          ...config,
+          voiceIsolationUrl: 'http://127.0.0.1:51909',
+          voiceIsolationEnabled: false,
+        },
+      });
+      stubSpeechEvents(dependencies);
+
+      await service.handleTranscribeVideo({ id: assetId });
+
+      expect(dependencies.client.isolateVoice).not.toHaveBeenCalled();
+      expect(dependencies.transcriptionRepository.claim).not.toHaveBeenCalled();
+    });
+
+    it('does not re-run a completed rejected isolated run', async () => {
+      const { service, dependencies } = makeService({
+        document: doc({ [runKey]: completedBaseline(), [isolatedRunKey]: isolatedRun() }),
+      });
+      withIsolation(dependencies);
+      stubSpeechEvents(dependencies);
+
+      await service.handleTranscribeVideo({ id: assetId });
+
+      expect(dependencies.client.isolateVoice).not.toHaveBeenCalled();
+      expect(dependencies.transcriptionRepository.claim).not.toHaveBeenCalled();
+    });
+
+    it('re-attempts a failed isolated run after the failure cool-down', async () => {
+      const { service, dependencies } = makeService({
+        document: doc({
+          [runKey]: completedBaseline(),
+          [isolatedRunKey]: isolatedRun({
+            status: 'failed',
+            error: { code: 'endpoint_error', message: 'sidecar down' },
+            voiceIsolation: undefined,
+          }),
+        }),
+      });
+      withIsolation(dependencies);
+      stubSpeechEvents(dependencies);
+
+      await service.handleTranscribeVideo({ id: assetId });
+
+      expect(dependencies.transcriptionRepository.claim).toHaveBeenCalledTimes(1);
+      expect(dependencies.transcriptionRepository.claim.mock.calls[0][1]).toMatchObject({ runKey: isolatedRunKey });
+    });
+
+    it('does not re-attempt a recently failed isolated run', async () => {
+      const { service, dependencies } = makeService({
+        document: doc({
+          [runKey]: completedBaseline(),
+          [isolatedRunKey]: isolatedRun({
+            status: 'failed',
+            error: { code: 'endpoint_error', message: 'sidecar down' },
+            voiceIsolation: undefined,
+            finishedAt: new Date().toISOString(),
+          }),
+        }),
+      });
+      withIsolation(dependencies);
+      stubSpeechEvents(dependencies);
+
+      await service.handleTranscribeVideo({ id: assetId });
+
+      expect(dependencies.transcriptionRepository.claim).not.toHaveBeenCalled();
+    });
+
+    it('isolation-mode jobs write only the isolated run', async () => {
+      const { service, dependencies } = makeService({ document: doc({ [runKey]: completedBaseline() }) });
+      withIsolation(dependencies);
+      stubSpeechEvents(dependencies);
+
+      await service.handleTranscribeVideo({ id: assetId, trigger: 'reconcile', mode: 'isolation' });
+
+      const claimedRunKeys = dependencies.transcriptionRepository.claim.mock.calls.map(
+        (call) => (call[1] as { runKey: string }).runKey,
+      );
+      expect(claimedRunKeys).toEqual([isolatedRunKey]);
+      for (const call of dependencies.transcriptionRepository.complete.mock.calls) {
+        expect(call[1]).toBe(isolatedRunKey);
+      }
+    });
+
+    it('bounded backfill resumes its keyset and repeated runs schedule nothing new', async () => {
+      const { service, dependencies } = makeService();
+      dependencies.configRepository.getEnv.mockReturnValue({
+        aiVideoTranscription: {
+          ...config,
+          voiceIsolationUrl: 'http://127.0.0.1:51909',
+          voiceIsolationBackfillBudget: 2,
+        },
+      });
+      const baseline = completedBaseline({
+        noSpeech: undefined,
+        segments: [{ startMs: 0, endMs: 1000, text: 'unclear words' }],
+        language: 'en',
+        languageProbability: 0.3,
+      });
+      const candidates = ['a1', 'a2', 'a3'].map((id) => ({
+        id,
+        transcriptValue: doc({ [runKey]: baseline }),
+        audioEventsValue: null,
+      }));
+      let cursor: string | undefined;
+      const isolated = new Set<string>();
+      dependencies.jobRepository.getVoiceIsolationBackfillCursor.mockImplementation(() => Promise.resolve(cursor));
+      dependencies.jobRepository.setVoiceIsolationBackfillCursor.mockImplementation((next: string | null) => {
+        cursor = next ?? undefined;
+        return Promise.resolve();
+      });
+      dependencies.jobRepository.queue.mockImplementation((job: { data?: { id?: string } }) => {
+        if (job.data?.id) {
+          isolated.add(job.data.id);
+        }
+        return Promise.resolve();
+      });
+      dependencies.transcriptionRepository.streamVoiceIsolationCandidates.mockImplementation(
+        (options: { afterId?: string; limit: number }) =>
+          Promise.resolve(
+            candidates
+              .filter((c) => (!options.afterId || c.id > options.afterId) && !isolated.has(c.id))
+              .slice(0, options.limit),
+          ),
+      );
+
+      expect(await service.handleVoiceIsolationBackfill()).toBe(JobStatus.Success);
+      expect(dependencies.jobRepository.queue).toHaveBeenCalledTimes(2);
+      expect(dependencies.jobRepository.queue).toHaveBeenCalledWith({
+        name: JobName.AssetTranscribeVideo,
+        data: { id: 'a1', priority: 3, trigger: 'reconcile', mode: 'isolation' },
+      });
+
+      // Second run resumes after the persisted keyset cursor and drains a3.
+      await service.handleVoiceIsolationBackfill();
+      expect(dependencies.jobRepository.queue).toHaveBeenCalledTimes(3);
+      expect((dependencies.jobRepository.queue.mock.calls[2][0] as unknown as { data: { id: string } }).data.id).toBe(
+        'a3',
+      );
+
+      // Third run: every candidate now has an isolated run; nothing new.
+      await service.handleVoiceIsolationBackfill();
+      expect(dependencies.jobRepository.queue).toHaveBeenCalledTimes(3);
+    });
+
+    it('marks the isolated run rejected when its confidence is too low', async () => {
+      const { service, dependencies } = makeService({
+        document: doc({ [runKey]: completedBaseline() }),
+        sidecar: () => ({
+          language: 'en',
+          languageProbability: 0.9,
+          noSpeech: false,
+          segments: [{ startSec: 0.5, endSec: 2.5, text: 'maybe words' }],
+          diagnostics: { meanAvgLogProb: -1.4, speechRatio: 0.2, segmentCount: 1 },
+        }),
+      });
+      withIsolation(dependencies);
+      stubSpeechEvents(dependencies);
+
+      await service.handleTranscribeVideo({ id: assetId });
+
+      expect(dependencies.transcriptionRepository.complete.mock.calls.at(-1)?.[2]).toMatchObject({
+        voiceIsolation: { accepted: false },
+      });
+      expect(dependencies.telemetryRepository.jobs.recordCounter).toHaveBeenCalledWith(
+        'immich.transcription.voice_isolation.run',
+        1,
+        { outcome: 'rejected' },
+      );
     });
   });
 });

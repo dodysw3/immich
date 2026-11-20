@@ -1,7 +1,7 @@
 import { getQueueToken } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { ModuleRef, Reflector } from '@nestjs/core';
-import { JobsOptions, Queue, Worker } from 'bullmq';
+import { DelayedError, JobsOptions, Queue, Worker, type Job } from 'bullmq';
 import { Redis } from 'ioredis';
 import { setTimeout } from 'node:timers/promises';
 import { JobConfig } from 'src/decorators.js';
@@ -18,6 +18,11 @@ import {
   type AiInterpretationLane,
 } from 'src/utils/ai-image-interpretation.js';
 import { ImmichStartupError, getKeyByValue, getMethodNames } from 'src/utils/misc.js';
+import {
+  LIVE_VIDEO_TRANSCRIPTION_PRIORITY,
+  TranscriptionDeferred,
+  transcriptionDeferralDelay,
+} from 'src/utils/transcription-admission.js';
 
 type JobMapItem = {
   jobName: JobName;
@@ -36,6 +41,13 @@ const AI_INTERPRETATION_COMPLETIONS_KEYS: Record<AiInterpretationLane, string> =
   local: 'immich:ai-interpretation:completions:local',
   public: 'immich:ai-interpretation:completions:public',
 };
+
+/**
+Keyset cursor for the voice-isolation backlog sweep. Kept in Redis so an
+hourly run resumes after the last asset it examined instead of rescanning (and
+re-enqueuing) the head of the library; cleared when the sweep reaches the end.
+*/
+const VOICE_ISOLATION_BACKFILL_CURSOR_KEY = 'immich:voice-isolation:backfill:cursor';
 
 @Injectable()
 export class JobRepository {
@@ -107,11 +119,24 @@ export class JobRepository {
     const { bull } = this.configRepository.getEnv();
     for (const queueName of Object.values(QueueName)) {
       this.logger.debug(`Starting worker for queue: ${queueName}`);
-      this.workers[queueName] = new Worker(
-        queueName,
-        (job) => this.eventRepository.emit('JobRun', queueName, job as JobItem),
-        { ...bull.config, concurrency: 1, name: ImmichWorker.Microservices },
-      );
+      this.workers[queueName] = new Worker(queueName, (job, token) => this.processWorkerJob(queueName, job, token), {
+        ...bull.config,
+        concurrency: 1,
+        name: ImmichWorker.Microservices,
+      });
+    }
+  }
+
+  private async processWorkerJob(queueName: QueueName, job: Job, token?: string) {
+    try {
+      await this.eventRepository.emit('JobRun', queueName, job as JobItem);
+    } catch (error) {
+      if (job.name !== JobName.AssetTranscribeVideo || !(error instanceof TranscriptionDeferred) || !token) {
+        throw error;
+      }
+      const delay = transcriptionDeferralDelay(error.reason, job.attemptsStarted);
+      await job.moveToDelayed(Date.now() + delay, token);
+      throw new DelayedError();
     }
   }
 
@@ -180,6 +205,15 @@ export class JobRepository {
     return this.getQueue(name).isPaused();
   }
 
+  async hasWaitingLiveTranscription(): Promise<boolean> {
+    const queue = this.getQueue(QueueName.VideoTranscription);
+    if (await queue.isPaused()) {
+      return false;
+    }
+    const counts = await queue.getCountsPerPriority([LIVE_VIDEO_TRANSCRIPTION_PRIORITY]);
+    return (counts[LIVE_VIDEO_TRANSCRIPTION_PRIORITY] ?? 0) > 0;
+  }
+
   pause(name: QueueName) {
     return this.getQueue(name).pause();
   }
@@ -231,6 +265,21 @@ export class JobRepository {
     await client.zremrangebyscore(key, '-inf', `(${windowStart}`);
     const count = await client.zcount(key, windowStart, '+inf');
     return count / AI_INTERPRETATION_RATE_WINDOW_MINUTES;
+  }
+
+  async getVoiceIsolationBackfillCursor(): Promise<string | undefined> {
+    const client = await this.getRedisClient();
+    return (await client.get(VOICE_ISOLATION_BACKFILL_CURSOR_KEY)) ?? undefined;
+  }
+
+  /** Null clears the cursor, so the next sweep starts from the library head. */
+  async setVoiceIsolationBackfillCursor(cursor: string | null): Promise<void> {
+    const client = await this.getRedisClient();
+    if (cursor === null) {
+      await client.del(VOICE_ISOLATION_BACKFILL_CURSOR_KEY);
+      return;
+    }
+    await client.set(VOICE_ISOLATION_BACKFILL_CURSOR_KEY, cursor);
   }
 
   // BullMQ 6 exposes the shared Redis connection through its backend.
@@ -386,7 +435,13 @@ export class JobRepository {
         // removeOnFail default): a lingering failed job would permanently
         // swallow every future queue attempt for that assetId. Failures are
         // stateless here — nothing is persisted until inference succeeds.
-        return { jobId: item.data.id, priority: item.data.priority, attempts: 3, removeOnFail: true, backoff: { type: 'exponential', delay: 5000 } };
+        return {
+          jobId: item.data.id,
+          priority: item.data.priority,
+          attempts: 3,
+          removeOnFail: true,
+          backoff: { type: 'exponential', delay: 5000 },
+        };
       }
       case JobName.AssetOrientationSuggestionQueueAll: {
         return { jobId: JobName.AssetOrientationSuggestionQueueAll };
@@ -411,6 +466,10 @@ export class JobRepository {
       }
       case JobName.TranscriptionReconcile: {
         return { deduplication: { id: JobName.TranscriptionReconcile } };
+      }
+      case JobName.VoiceIsolationBackfill: {
+        // One sweep per hour/trigger; the admin endpoint nudges the same job.
+        return { deduplication: { id: JobName.VoiceIsolationBackfill } };
       }
       case JobName.TranscriptIndexSync: {
         // Pure DB work; retry transient lock conflicts.

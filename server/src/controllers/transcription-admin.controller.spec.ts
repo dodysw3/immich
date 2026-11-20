@@ -33,6 +33,7 @@ describe(TranscriptionAdminController.name, () => {
         indexCurrent: 8,
         indexPending: 9,
         indexFailed: 10,
+        isolated: { stored: 11, effective: 12 },
       });
 
       const { status, body } = await request(ctx.getHttpServer()).get('/admin/transcription/coverage');
@@ -49,6 +50,7 @@ describe(TranscriptionAdminController.name, () => {
         indexCurrent: 8,
         indexPending: 9,
         indexFailed: 10,
+        isolated: { stored: 11, effective: 12 },
       });
     });
 

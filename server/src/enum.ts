@@ -928,6 +928,7 @@ export enum JobName {
   AssetCaptionVideo = 'AssetCaptionVideo',
   AssetTranscribeVideo = 'AssetTranscribeVideo',
   TranscriptionReconcile = 'TranscriptionReconcile',
+  VoiceIsolationBackfill = 'VoiceIsolationBackfill',
   TranscriptIndexSync = 'TranscriptIndexSync',
   TranscriptIndexReconcile = 'TranscriptIndexReconcile',
 

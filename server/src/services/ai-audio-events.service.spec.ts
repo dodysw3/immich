@@ -150,7 +150,9 @@ const makeService = (
   const eventsRepository = makeEventsRepository(options.document ?? null);
   const dependencies = {
     logger: { setContext: vi.fn(), debug: vi.fn(), log: vi.fn(), warn: vi.fn() },
-    configRepository: { getEnv: vi.fn().mockReturnValue({ aiAudioEvents: config }) },
+    configRepository: {
+      getEnv: vi.fn().mockReturnValue({ aiAudioEvents: config, aiVideoTranscription: { voiceIsolationEnabled: true } }),
+    },
     assetRepository: {
       getByIds: vi.fn().mockResolvedValue([{ id: assetId, type: AssetType.Video, originalPath: '/media/car.mp4' }]),
     },

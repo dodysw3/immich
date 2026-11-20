@@ -5,6 +5,7 @@ import { TranscriptIndexService } from 'src/services/transcript-index.service.js
 import {
   AI_VIDEO_TRANSCRIPTION_COVERAGE_POLICY,
   AI_VIDEO_TRANSCRIPTION_PRODUCER_VERSION,
+  AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION,
   createTranscriptionRevision,
   createVideoTranscriptionRunKey,
 } from 'src/utils/ai-video-transcription.js';
@@ -121,6 +122,96 @@ describe(TranscriptIndexService.name, () => {
     // Windows: single segments plus the adjacent pair (gap 500ms ≤ 2s, span ≤ 30s).
     expect(replace.passages.map((passage) => passage.windowId)).toEqual(['0:0', '0:1', '1:1']);
     expect(replace.passages[0]!.tokens).toEqual(['satu', 'dua']);
+  });
+
+  it('serves raw-audio indexing when the voice-isolation kill switch is off', async () => {
+    const raw = completedRun();
+    const isolatedKey = createVideoTranscriptionRunKey({
+      model: 'faster-whisper-large-v3',
+      producerVersion: AI_VIDEO_TRANSCRIPTION_PRODUCER_VERSION,
+      language: '',
+      coveragePolicy: AI_VIDEO_TRANSCRIPTION_COVERAGE_POLICY,
+      voiceIsolation: AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION,
+    });
+    const isolated = completedRun({
+      requestedAt: '2026-11-19T00:00:00.000Z',
+      finishedAt: '2026-11-19T00:01:00.000Z',
+      producer: { ...raw.producer!, voiceIsolation: AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION },
+      voiceIsolation: { accepted: true },
+      segments: [{ startMs: 0, endMs: 2000, text: 'isolated words' }],
+      revision: createTranscriptionRevision({
+        segments: [{ startMs: 0, endMs: 2000, text: 'isolated words' }],
+        noAudio: false,
+        noSpeech: false,
+      }),
+    });
+    const both: AiVideoTranscriptionDocument = {
+      schemaVersion: 2,
+      runs: { [runKey]: raw, [isolatedKey]: isolated },
+    };
+    const { service, dependencies } = makeService({ document: both });
+    dependencies.configRepository.getEnv.mockReturnValue({
+      aiVideoTranscription: {
+        enabled: true,
+        voiceIsolationEnabled: false,
+        model: 'faster-whisper-large-v3',
+        language: '',
+      },
+    });
+
+    expect(await service.syncAsset('asset-1')).toBe(true);
+
+    const [, replace] = dependencies.indexRepository.replacePassages.mock.calls[0] as unknown as [
+      string,
+      { runKey: string; revision: string },
+    ];
+    expect(replace.runKey).toBe(runKey);
+    expect(replace.revision).toBe(raw.revision);
+  });
+
+  it('serves the accepted isolated run when the switch is on', async () => {
+    const raw = completedRun();
+    const isolatedKey = createVideoTranscriptionRunKey({
+      model: 'faster-whisper-large-v3',
+      producerVersion: AI_VIDEO_TRANSCRIPTION_PRODUCER_VERSION,
+      language: '',
+      coveragePolicy: AI_VIDEO_TRANSCRIPTION_COVERAGE_POLICY,
+      voiceIsolation: AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION,
+    });
+    const isolated = completedRun({
+      requestedAt: '2026-11-19T00:00:00.000Z',
+      finishedAt: '2026-11-19T00:01:00.000Z',
+      producer: { ...raw.producer!, voiceIsolation: AI_VIDEO_TRANSCRIPTION_VOICE_ISOLATION },
+      voiceIsolation: { accepted: true },
+      segments: [{ startMs: 0, endMs: 2000, text: 'isolated words' }],
+      revision: createTranscriptionRevision({
+        segments: [{ startMs: 0, endMs: 2000, text: 'isolated words' }],
+        noAudio: false,
+        noSpeech: false,
+      }),
+    });
+    const both: AiVideoTranscriptionDocument = {
+      schemaVersion: 2,
+      runs: { [runKey]: raw, [isolatedKey]: isolated },
+    };
+    const { service, dependencies } = makeService({ document: both });
+    dependencies.configRepository.getEnv.mockReturnValue({
+      aiVideoTranscription: {
+        enabled: true,
+        voiceIsolationEnabled: true,
+        model: 'faster-whisper-large-v3',
+        language: '',
+      },
+    });
+
+    expect(await service.syncAsset('asset-1')).toBe(true);
+
+    const [, replace] = dependencies.indexRepository.replacePassages.mock.calls[0] as unknown as [
+      string,
+      { runKey: string; revision: string },
+    ];
+    expect(replace.runKey).toBe(isolatedKey);
+    expect(replace.revision).toBe(isolated.revision);
   });
 
   it('indexes a legacy partial transcript with a computed revision and no Whisper', async () => {
