@@ -3,7 +3,7 @@ import { Route } from '#lib/route.ts';
 import { placeholderImage } from '#test/common/helpers.ts';
 import { factory } from '#test/unit/factories.ts';
 import { test } from '#test/unit/fixtures.ts';
-import { AssetTypeEnum, Tier, type TranscriptionMatchDto, type TranscriptionSearchItemDto } from '@immich/sdk';
+import { AssetTypeEnum, Tier2, type TranscriptionMatchDto, type TranscriptionSearchItemDto } from '@immich/sdk';
 import { tick } from 'svelte';
 import { expect, vi } from 'vitest';
 import Page from './+page.svelte';
@@ -59,7 +59,7 @@ const moment = (overrides: Partial<TranscriptionMatchDto> = {}): TranscriptionMa
   endMs: 34_000,
   snippet: 'selamat pagi semuanya',
   spans: [{ start: 8, end: 12 }],
-  tier: Tier.ExactAll,
+  tier: Tier2.ExactAll,
   score: 0.9,
   ...overrides,
 });

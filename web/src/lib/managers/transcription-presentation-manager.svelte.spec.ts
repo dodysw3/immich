@@ -1,6 +1,6 @@
 import { TranscriptionPresentationManager } from '#lib/managers/transcription-presentation-manager.svelte.ts';
 import { factory } from '#test/unit/factories.ts';
-import { AssetTypeEnum, Tier, type TranscriptionMatchDto, type TranscriptionSearchItemDto } from '@immich/sdk';
+import { AssetTypeEnum, Tier2, type TranscriptionMatchDto, type TranscriptionSearchItemDto } from '@immich/sdk';
 import { describe, expect, test } from 'vitest';
 
 const match = (overrides: Partial<TranscriptionMatchDto> = {}): TranscriptionMatchDto => ({
@@ -14,7 +14,7 @@ const match = (overrides: Partial<TranscriptionMatchDto> = {}): TranscriptionMat
   endMs: 16_000,
   snippet: 'selamat pagi semuanya',
   spans: [{ start: 8, end: 12 }],
-  tier: Tier.ExactAll,
+  tier: Tier2.ExactAll,
   score: 0.9,
   ...overrides,
 });
