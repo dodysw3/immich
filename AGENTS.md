@@ -141,6 +141,10 @@ When changing `server/src/schema/tables/`:
 - Preserve upstream naming, file layout, and conventions.
 - Backwards-compatible API/schema changes only.
 
+## Git Commits: No AI Attribution
+
+Do **not** add AI attribution to commit messages. No co-author trailers, no "generated with" / tool or vendor credit lines, no emoji footers. The commit message ends at its last content line.
+
 ## Local Runtime Context
 
 - Docker Compose instance at `~/app/dodysw3-immich`.
