@@ -358,7 +358,7 @@ export class JobRepository {
     }
     // BullMQ's declared JobState omits 'paused', but getState can return it.
     const state = (await job.getState()) as string;
-    if (state !== 'waiting' && state !== 'prioritized' && state !== 'paused') {
+    if (!['waiting', 'prioritized', 'paused'].includes(state)) {
       return false;
     }
     await job.changePriority({ priority: item.data.priority });

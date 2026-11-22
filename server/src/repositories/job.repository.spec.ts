@@ -1,6 +1,6 @@
 import { ModuleRef } from '@nestjs/core';
 import { Queue } from 'bullmq';
-import { QueueCleanType, QueueName } from 'src/enum.js';
+import { JobName, QueueCleanType, QueueName } from 'src/enum.js';
 import { ConfigRepository } from 'src/repositories/config.repository.js';
 import { EventRepository } from 'src/repositories/event.repository.js';
 import { JobRepository } from 'src/repositories/job.repository.js';

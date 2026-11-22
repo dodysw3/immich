@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { MetricOptions, ValueType } from '@opentelemetry/api';
+import { MetricAttributes, MetricOptions, ObservableResult, ValueType } from '@opentelemetry/api';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
@@ -42,6 +42,35 @@ export class MetricGroupRepository {
   addToHistogram(name: string, value: number, options?: MetricOptions): void {
     if (this.enabled) {
       this.metricService.getHistogram(name, options).record(value);
+    }
+  }
+
+  // unlike addToHistogram, the attributes are bound per observation, so a
+  // single instrument can carry a label dimension (e.g. job name)
+  recordHistogram(name: string, value: number, attributes?: MetricAttributes, options?: MetricOptions): void {
+    if (this.enabled) {
+      this.metricService.getHistogram(name, options).record(value, attributes);
+    }
+  }
+
+  // like recordHistogram, for counters that carry per-observation labels
+  // (e.g. serving backend + outcome) instead of process-wide totals
+  recordCounter(name: string, value: number, attributes?: MetricAttributes, options?: MetricOptions): void {
+    if (this.enabled) {
+      this.metricService.getCounter(name, options).add(value, attributes);
+    }
+  }
+
+  // absolute readings re-published on every scrape (not additive events); the
+  // callback runs at collection time and can observe per-label values; async
+  // callbacks are awaited by the SDK at collection
+  observeGauge(
+    name: string,
+    observer: (result: ObservableResult) => void | Promise<void>,
+    options?: MetricOptions,
+  ): void {
+    if (this.enabled) {
+      this.metricService.getObservableGauge(name, options).addCallback(observer);
     }
   }
 
@@ -120,6 +149,7 @@ export class TelemetryRepository {
   host: MetricGroupRepository;
   jobs: MetricGroupRepository;
   repo: MetricGroupRepository;
+  library: MetricGroupRepository;
 
   constructor(
     private metricService: MetricService,
@@ -134,6 +164,9 @@ export class TelemetryRepository {
     this.host = new MetricGroupRepository(metricService).configure({ enabled: metrics.has(ImmichTelemetry.Host) });
     this.jobs = new MetricGroupRepository(metricService).configure({ enabled: metrics.has(ImmichTelemetry.Job) });
     this.repo = new MetricGroupRepository(metricService).configure({ enabled: metrics.has(ImmichTelemetry.Repo) });
+    this.library = new MetricGroupRepository(metricService).configure({
+      enabled: metrics.has(ImmichTelemetry.Library),
+    });
   }
 
   setup({ repositories }: { repositories: (new (...args: any[]) => unknown)[] }) {

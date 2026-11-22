@@ -1,4 +1,4 @@
-import { createZodDto } from 'nestjs-zod';
+import { createZodDto } from '@immich/nestjs-standard-schema/zod';
 import z from 'zod';
 
 export const PDF_DOCUMENT_STATUSES = ['pending', 'processing', 'ready', 'failed'] as const;

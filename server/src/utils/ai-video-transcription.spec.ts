@@ -61,6 +61,8 @@ const legacyRun: AiVideoTranscriptionRun = {
   segments: [segment(0, 4000, 'hello world'), segment(4500, 9000, 'second line')],
 };
 
+const evidence = (speechMs = 0, speechPeak = 0) => ({ speechMs, speechPeak, musicMs: 0 });
+
 describe('ai-video-transcription utils', () => {
   describe('createVideoTranscriptionRunKey', () => {
     it('derives a stable 64-hex key from the full producer identity', () => {
@@ -93,8 +95,6 @@ describe('ai-video-transcription utils', () => {
   });
 
   describe('shouldIsolateVoice', () => {
-    const evidence = (speechMs = 0, speechPeak = 0, musicMs = 0) => ({ speechMs, speechPeak, musicMs });
-
     it('leaves a confident first pass alone', () => {
       expect(
         evaluateVoiceIsolationGate({

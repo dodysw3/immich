@@ -196,7 +196,7 @@ export class PdfRepository {
 
     const summary = { total: 0, pending: 0, processing: 0, ready: 0, failed: 0 };
     for (const row of rows) {
-      const count = Number(row.count) || 0;
+      const count = row.count || 0;
       summary.total += count;
       summary[row.status] += count;
     }

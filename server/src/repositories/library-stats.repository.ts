@@ -36,17 +36,17 @@ export class LibraryStatsRepository {
       `),
     ]);
 
-    const photo = Number(typeRows.find((row) => row.type === 'IMAGE')?.count ?? 0);
-    const video = Number(typeRows.find((row) => row.type === 'VIDEO')?.count ?? 0);
-    const pdf = Number(pdfRows[0]?.count ?? 0);
-    const total = typeRows.reduce((sum, row) => sum + Number(row.count), 0);
+    const photo = (typeRows.find((row) => row.type === 'IMAGE')?.count ?? 0);
+    const video = (typeRows.find((row) => row.type === 'VIDEO')?.count ?? 0);
+    const pdf = (pdfRows[0]?.count ?? 0);
+    const total = typeRows.reduce((sum, row) => sum + row.count, 0);
 
     return {
       photo,
       video,
       pdf,
       total,
-      unlocated: Number(unlocatedRows[0]?.count ?? 0),
+      unlocated: (unlocatedRows[0]?.count ?? 0),
     };
   }
 

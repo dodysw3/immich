@@ -152,7 +152,7 @@
     { shortcut: { key: 'c', ctrl: true }, onShortcut: onCopyShortcut, preventDefault: false },
     { shortcut: { key: 'c', meta: true }, onShortcut: onCopyShortcut, preventDefault: false },
     { shortcut: { key: 'f', shift: true }, onShortcut: onToggleFaceOverlay, preventDefault: true },
-  ]}
+  ])}
 />
 
 <div

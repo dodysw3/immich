@@ -31,7 +31,7 @@ const makeRepository = () => {
   let current: RotationSuggestionDocument | null = null;
   let lockTail = Promise.resolve();
   let activeRelease: (() => void) | undefined;
-  internals.get = vi.fn().mockImplementation(async (assetId: string) => (assetId === 'asset-1' ? current : null));
+  internals.get = vi.fn().mockImplementation((assetId: string) => Promise.resolve(assetId === 'asset-1' ? current : null));
   internals.getLocked = vi.fn().mockImplementation(() => current);
   internals.lockFirstInsert = vi.fn().mockImplementation(async () => {
     const previousLock = lockTail;
@@ -111,7 +111,8 @@ describe(RotationSuggestionRepository.name, () => {
     await repository.recordRun('asset-1', runKey, makeRun({ finishedAt: '2026-11-14T00:00:01.000Z' }));
     await repository.recordRun('asset-1', laterKey, makeRun({ finishedAt: '2026-11-14T00:00:02.000Z' }));
 
-    expect((await repository.getLatestRun('asset-1'))?.runKey).toBe(laterKey);
+    const latestRun = await repository.getLatestRun('asset-1');
+    expect(latestRun?.runKey).toBe(laterKey);
     expect(await repository.getLatestRun('asset-2')).toBeNull();
   });
 });

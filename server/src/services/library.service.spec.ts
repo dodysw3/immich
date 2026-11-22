@@ -2,8 +2,9 @@ import { BadRequestException } from '@nestjs/common';
 import { Stats } from 'node:fs';
 import { vitest } from 'vitest';
 import { SystemConfig, defaults } from 'src/dtos/config.dto.js';
+import { JOBS_LIBRARY_PAGINATION_SIZE } from 'src/constants.js';
 import { mapLibrary } from 'src/dtos/library.dto.js';
-import { CronJob, ImmichWorker, JobName, JobStatus } from 'src/enum.js';
+import { AssetType, CronJob, ImmichWorker, JobName, JobStatus } from 'src/enum.js';
 import { Resource } from 'src/resource-paths.js';
 import { LibraryService } from 'src/services/library.service.js';
 import type { ILibraryFileJob } from 'src/types.js';
@@ -14,6 +15,11 @@ import { makeMockWatcher } from 'test/repositories/storage.repository.mock.js';
 import { mockAdmins } from 'test/repositories/user.repository.mock.js';
 import { factory, newUuid } from 'test/small.factory.js';
 import { ServiceMocks, expectResourceEvents, makeStream, newTestService } from 'test/utils.js';
+
+async function* mockWalk() {
+  // eslint-disable-next-line unicorn/no-useless-promise-resolve-reject
+  yield await Promise.resolve(['/data/user1/photo.jpg']);
+}
 
 describe(LibraryService.name, () => {
   let sut: LibraryService;

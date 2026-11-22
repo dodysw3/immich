@@ -283,7 +283,7 @@ export class TranscriptSearchRepository {
         from transcript_passage_token
         where token % ${qtoken} and strict_word_similarity(token, ${qtoken}) >= ${threshold}`.execute(this.db);
       for (const row of result.rows as Array<{ token: string; sim: number }>) {
-        rows.push({ qtoken, token: row.token, sim: Number(row.sim) });
+        rows.push({ qtoken, token: row.token, sim: row.sim });
       }
     }
     return rows;

@@ -39,6 +39,14 @@ const assemble = (frames: AudioTagFrame[], overrides: Partial<Parameters<typeof 
     ...overrides,
   });
 
+const event = (mid: string, startMs: number, endMs: number, score = 0.9) => ({
+  mid,
+  label: mid,
+  score,
+  startMs,
+  endMs,
+});
+
 describe('ai-audio-events utils', () => {
   describe('createAudioEventsRunKey', () => {
     it('should derive a stable 64-hex key that forks per model, threshold, and policy version', () => {
@@ -60,14 +68,6 @@ describe('ai-audio-events utils', () => {
   });
 
   describe('buildVoiceIsolationEvidence', () => {
-    const event = (mid: string, startMs: number, endMs: number, score = 0.9) => ({
-      mid,
-      label: mid,
-      score,
-      startMs,
-      endMs,
-    });
-
     it('merges overlapping speech-family spans instead of double-counting them', () => {
       const evidence = buildVoiceIsolationEvidence([
         event('/m/09x0r', 0, 2000, 0.95),

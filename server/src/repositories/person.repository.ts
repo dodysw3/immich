@@ -1399,7 +1399,7 @@ export class PersonRepository {
         .execute(),
     ]);
 
-    return { items, total: Number(countResult?.count ?? 0) };
+    return { items, total: (countResult?.count ?? 0) };
   }
 
   @GenerateSql({ params: [[DummyValue.UUID]] })

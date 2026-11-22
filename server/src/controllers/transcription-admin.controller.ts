@@ -1,6 +1,6 @@
 import { Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { createZodDto } from 'nestjs-zod';
+import { createZodDto } from '@immich/nestjs-standard-schema/zod';
 import { Endpoint, HistoryBuilder } from 'src/decorators.js';
 import {
   TranscriptionCoverageCountsSchema,
