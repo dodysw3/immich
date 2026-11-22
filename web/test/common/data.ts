@@ -1,40 +1,87 @@
-import { adminUserId, factory, type TimelineConfig } from '#test/common/factories.ts';
+import { adminUserId, editedThumbhash, factory, type TimelineConfig } from '#test/common/factories.ts';
 import { SeededRandom } from '#test/common/helpers.ts';
 import { payload } from '#test/common/payloads.ts';
-import type { ResponseOf } from '#test/common/types.ts';
+import type { Call, ResponseOf } from '#test/common/types.ts';
 import {
   AssetOrder,
   AssetTypeEnum,
   AssetVisibility,
+  MaintenanceAction,
+  PartnerDirection,
+  PeopleUsersUpsertType,
+  PersonUserRole,
+  QueueCommand,
+  ReactionLevel,
   ReactionType,
+  SearchSuggestionType,
+  SharingDirection,
+  type ActivityCreateDto,
   type ActivityResponseDto,
   type AdminConfigDto,
   type AlbumResponseDto,
+  type ApiKeyResponseDto,
   type AssetBulkUpdateDto,
+  type AssetEditActionItemResponseDto,
+  type AssetEditsCreateDto,
+  type AssetFaceResponseDto,
   type AssetOcrResponseDto,
   type AssetResponseDto,
+  type AssetStatsResponseDto,
+  type AuthStatusResponseDto,
+  type ClusterGroupRequestResponseDto,
   type CreateAlbumDto,
   type DownloadInfoDto,
+  type DuplicateResolveDto,
   type DuplicateResponseDto,
+  type ExifResponseDto,
+  type IntegrityReport,
+  type IntegrityReportResponseDto,
+  type LibraryResponseDto,
+  type LicenseKeyDto,
+  type LicenseResponseDto,
+  type LoginResponseDto,
+  type MaintenanceStatusResponseDto,
   type MapMarkerResponseDto,
   type MemoryResponseDto,
   type MemoryUpdateDto,
   type MetadataSearchDto,
+  type PartnerResponseDto,
+  type PasskeyResponseDto,
+  type PeopleUsersUpsertDto,
+  type PersonCreateDto,
   type PersonResponseDto,
+  type PersonUpdateDto,
+  type PersonUsersDeleteDto,
+  type PlacesResponseDto,
   type PluginMethodResponseDto,
+  type QueueCommandDto,
+  type QueueDeleteDto,
+  type QueueName,
+  type QueueResponseDto,
+  type QueueUpdateDto,
+  type SearchExploreResponseDto,
   type SearchResponseDto,
+  type SessionResponseDto,
   type SharedLinkResponseDto,
+  type StackCreateDto,
   type StackResponseDto,
+  type StackUpdateDto,
   type TagResponseDto,
+  type TagUpdateDto,
   type TimeBucketAssetResponseDto,
   type TimeBucketsResponseDto,
   type UpdateAlbumDto,
   type UpdateAssetDto,
+  type UpdateLibraryDto,
   type UserAdminCreateDto,
   type UserAdminResponseDto,
   type UserAdminUpdateDto,
   type UserPreferencesResponseDto,
+  type UserPreferencesUpdateDto,
+  type UserResponseDto,
+  type UserUpdateMeDto,
   type WorkflowCreateDto,
+  type WorkflowLogEntryDto,
   type WorkflowResponseDto,
   type WorkflowStepDto,
   type WorkflowUpdateDto,
@@ -46,10 +93,37 @@ export type TimelineFilter = {
   isTrashed?: boolean;
   visibility?: AssetVisibility;
   order?: AssetOrder;
+  withStacked?: boolean;
+  personId?: string;
+};
+
+type PersonUser = { personId: string; sharedById: string; sharedWithId: string; role: PersonUserRole };
+
+const unaccent = (value: string) =>
+  value
+    .normalize('NFD')
+    .replaceAll(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+
+export type ActivityFilter = {
+  assetId?: string;
+  userId?: string;
+  $type?: ReactionType;
+  level?: ReactionLevel;
+};
+
+export type SuggestionFilter = {
+  $type: SearchSuggestionType;
+  country?: string;
+  state?: string;
+  make?: string;
+  model?: string;
+  includeNull?: boolean;
 };
 
 export type MemoryFilter = {
   id?: string;
+  isSaved?: boolean;
   page?: number;
   size?: number;
 };
@@ -67,6 +141,20 @@ const toWorkflowSteps = (steps: WorkflowStepDto[]) =>
 
 const hiddenVisibilities = new Set<AssetVisibility>([AssetVisibility.Hidden, AssetVisibility.Locked]);
 
+const suggestionFields: Record<SearchSuggestionType, keyof ExifResponseDto> = {
+  [SearchSuggestionType.Country]: 'country',
+  [SearchSuggestionType.State]: 'state',
+  [SearchSuggestionType.City]: 'city',
+  [SearchSuggestionType.CameraMake]: 'make',
+  [SearchSuggestionType.CameraModel]: 'model',
+  [SearchSuggestionType.CameraLensModel]: 'lensModel',
+};
+
+const exploreRecentsLimit = 12;
+const integrityReportPageSize = 50;
+
+type IntegrityReportItem = IntegrityReportResponseDto['items'][number];
+
 export class MockData {
   readonly user = factory.user({ id: adminUserId });
   readonly serverConfig = payload.serverConfig();
@@ -82,23 +170,49 @@ export class MockData {
   readonly queues = payload.queues();
   readonly notifications = payload.notifications();
   readonly backups = payload.backups();
+  readonly storageTemplateOptions = payload.storageTemplateOptions();
+  isOnboarded = true;
 
   private preferences = factory.preferences();
+  private serverLicense: LicenseResponseDto | null = null;
+  private readonly activationKeys = new Map<string, string>();
+  private authStatus = factory.authStatus();
   private integrityReport = payload.integrityReport();
+  private maintenanceStatus: MaintenanceStatusResponseDto = { action: MaintenanceAction.Start, active: true };
   private readonly users = new Map<string, UserAdminResponseDto>([[this.user.id, this.user]]);
   private readonly assets = new Map<string, AssetResponseDto>();
   private readonly albums = new Map<string, AlbumResponseDto>();
   private readonly albumAssets = new Map<string, Set<string>>();
   private readonly memories = new Map<string, MemoryResponseDto>();
   private readonly people = new Map<string, PersonResponseDto>();
+  private personUsers: PersonUser[] = [];
+  private readonly places: PlacesResponseDto[] = [];
   private readonly stacks = new Map<string, StackResponseDto>();
   private readonly ocr = new Map<string, AssetOcrResponseDto[]>();
+  private readonly assetEdits = new Map<string, AssetEditActionItemResponseDto[]>();
   private readonly brokenAssetIds = new Set<string>();
   private readonly sharedLinks = new Map<string, SharedLinkResponseDto>();
   private readonly tags = new Map<string, TagResponseDto>();
   private readonly activities = new Map<string, ActivityResponseDto>();
   private readonly workflows = new Map<string, WorkflowResponseDto>();
+  private readonly workflowLogs = new Map<string, WorkflowLogEntryDto[]>();
+  private readonly apiKeys = new Map<string, ApiKeyResponseDto>();
+  private readonly libraries = new Map<string, LibraryResponseDto>();
+  private readonly faces = new Map<string, AssetFaceResponseDto[]>();
+  private readonly sessions = new Map<string, SessionResponseDto>();
+  private readonly passkeys = new Map<string, PasskeyResponseDto>();
   private readonly pluginMethods = new Map<string, PluginMethodResponseDto>();
+  private readonly queueStates = new Map<QueueName, QueueResponseDto>();
+  private readonly clusterGroupRequests = new Map<string, ClusterGroupRequestResponseDto>();
+  private readonly integrityReportItems = new Map<string, IntegrityReportItem>();
+  private readonly partners: Record<PartnerDirection, Map<string, PartnerResponseDto>> = {
+    [PartnerDirection.SharedBy]: new Map(),
+    [PartnerDirection.SharedWith]: new Map(),
+  };
+
+  previewStorageTemplate(template: string) {
+    return this.storageTemplateOptions.presets.find((preset) => preset.template === template)?.preview ?? template;
+  }
 
   getPreferences() {
     return this.preferences;
@@ -112,9 +226,144 @@ export class MockData {
     this.integrityReport = { ...this.integrityReport, ...report };
   }
 
+  addIntegrityReportItems(items: MaybeArray<IntegrityReportItem>) {
+    for (const item of toList(items)) {
+      this.integrityReportItems.set(item.id, item);
+    }
+    return this;
+  }
+
+  integrityReportPage({ $type, cursor }: { $type: IntegrityReport; cursor?: string }): IntegrityReportResponseDto {
+    const items = [...this.integrityReportItems.values()].filter((item) => item.type === $type);
+    const start = cursor ? items.findIndex((item) => item.id === cursor) : 0;
+    const page = items.slice(start, start + integrityReportPageSize);
+    return { items: page, nextCursor: items[start + integrityReportPageSize]?.id };
+  }
+
+  getIntegrityReportItem(id: string) {
+    return this.integrityReportItems.get(id);
+  }
+
+  deleteIntegrityReportItem(id: string) {
+    return this.integrityReportItems.delete(id);
+  }
+
+  getMaintenanceStatus() {
+    return this.maintenanceStatus;
+  }
+
+  setMaintenanceStatus(status: MaintenanceStatusResponseDto) {
+    this.maintenanceStatus = status;
+    return this;
+  }
+
+  deleteBackups(filenames: string[]) {
+    this.backups.backups = this.backups.backups.filter(({ filename }) => !filenames.includes(filename));
+  }
+
   setPreferences(preferences: UserPreferencesResponseDto) {
     this.preferences = preferences;
     return this;
+  }
+
+  updatePreferences({ avatar: _, ...dto }: UserPreferencesUpdateDto) {
+    const sections: Record<string, object> = { ...this.preferences };
+    for (const [key, value] of Object.entries(dto)) {
+      sections[key] = { ...sections[key], ...value };
+    }
+    this.preferences = sections as UserPreferencesResponseDto;
+    return this.preferences;
+  }
+
+  getAuthStatus() {
+    return this.authStatus;
+  }
+
+  setAuthStatus(status: Partial<AuthStatusResponseDto>) {
+    this.authStatus = { ...this.authStatus, ...status };
+    return this;
+  }
+
+  loginResponse(): LoginResponseDto {
+    const { id: userId, email: userEmail, name, profileImagePath, isAdmin, shouldChangePassword } = this.user;
+    return {
+      accessToken: 'access-token',
+      userId,
+      userEmail,
+      name,
+      profileImagePath,
+      isAdmin,
+      shouldChangePassword,
+      isOnboarded: this.isOnboarded,
+    };
+  }
+
+  signUpAdmin(dto: { email: string; name: string }) {
+    Object.assign(this.user, { email: dto.email, name: dto.name, isAdmin: true });
+    this.serverConfig.isInitialized = true;
+    return this.user;
+  }
+
+  updateMyUser({ email, name, avatarColor }: UserUpdateMeDto) {
+    Object.assign(this.user, {
+      email: email ?? this.user.email,
+      name: name ?? this.user.name,
+      avatarColor: avatarColor ?? this.user.avatarColor,
+    });
+    return this.user;
+  }
+
+  addActivationKey(licenseKey: string, activationKey: string) {
+    this.activationKeys.set(licenseKey, activationKey);
+    return this;
+  }
+
+  getActivationKey(licenseKey: string) {
+    return this.activationKeys.get(licenseKey);
+  }
+
+  getServerLicense() {
+    return this.serverLicense;
+  }
+
+  setServerLicense(dto: LicenseKeyDto) {
+    this.serverLicense = { ...dto, activatedAt: new Date().toISOString() };
+    this.aboutInfo.licensed = true;
+    return this.serverLicense;
+  }
+
+  deleteServerLicense() {
+    this.serverLicense = null;
+    this.aboutInfo.licensed = false;
+  }
+
+  setUserLicense(dto: LicenseKeyDto) {
+    this.user.license = { ...dto, activatedAt: new Date().toISOString() };
+    return this.user.license;
+  }
+
+  deleteUserLicense() {
+    this.user.license = null;
+  }
+
+  albumStatistics() {
+    const albums = [...this.albums.values()];
+    const owned = albums.filter((album) => album.albumUsers[0]?.user.id === this.user.id);
+    return {
+      owned: owned.length,
+      shared: albums.filter((album) => album.shared).length,
+      notShared: owned.filter((album) => !album.shared).length,
+    };
+  }
+
+  changePassword() {
+    this.user.shouldChangePassword = false;
+    return this.user;
+  }
+
+  setOAuthId(oauthId: string) {
+    this.user.oauthId = oauthId;
+    return this.user;
   }
 
   getAsset(id: string) {
@@ -131,6 +380,119 @@ export class MockData {
 
   getPeople() {
     return [...this.people.values()];
+  }
+
+  getPerson(id: string) {
+    return this.people.get(id);
+  }
+
+  personStatistics(id: string) {
+    return { assets: this.timelineAssets().filter((asset) => asset.people?.some((person) => person.id === id)).length };
+  }
+
+  peoplePage({ withHidden, isHidden, name }: { withHidden?: boolean; isHidden?: boolean; name?: string }) {
+    const all = this.getPeople().filter(
+      (person) =>
+        (isHidden === undefined || person.isHidden === isHidden) &&
+        (name === undefined || unaccent(person.name).includes(unaccent(name))),
+    );
+    const people = withHidden || isHidden !== undefined ? all : all.filter((person) => !person.isHidden);
+    return {
+      people,
+      hasNextPage: false,
+      total: all.length,
+      hidden: all.filter((person) => person.isHidden).length,
+    };
+  }
+
+  searchPeople({ name, withHidden }: { name: string; withHidden?: boolean }) {
+    const query = unaccent(name);
+    return this.getPeople().filter(
+      (person) =>
+        (withHidden || !person.isHidden) &&
+        (unaccent(person.name).startsWith(query) || unaccent(person.name).includes(` ${query}`)),
+    );
+  }
+
+  mergePeople([id, ...mergeIds]: string[]) {
+    return mergeIds.map((mergeId) => ({ id: mergeId, success: this.people.has(id) && this.people.delete(mergeId) }));
+  }
+
+  reassignFaces(id: string) {
+    const person = this.people.get(id);
+    return person ? [person] : undefined;
+  }
+
+  sharePerson(personId: string, sharedById: string, sharedWithId: string) {
+    this.personUsers.push({ personId, sharedById, sharedWithId, role: PersonUserRole.Admin });
+    return this;
+  }
+
+  personUserList({ personId, direction }: { personId?: string; direction?: SharingDirection }) {
+    const users = new Map(this.searchUsers().map((user) => [user.id, user]));
+    const getUser = (id: string) => {
+      const user = users.get(id);
+      if (!user) {
+        throw new Error(`Unknown user ${id}`);
+      }
+      return user;
+    };
+    return this.personUsers
+      .filter(
+        (share) =>
+          (personId === undefined || share.personId === personId) &&
+          (direction !== SharingDirection.SharedBy || share.sharedById === this.user.id) &&
+          (direction !== SharingDirection.SharedWith || share.sharedWithId === this.user.id),
+      )
+      .map((share) => ({ ...share, sharedBy: getUser(share.sharedById), sharedWith: getUser(share.sharedWithId) }));
+  }
+
+  upsertPersonUsers({ personIds = [], sharedWithIds, role, type }: PeopleUsersUpsertDto) {
+    const ids = type === PeopleUsersUpsertType.Everyone ? this.getPeople().map(({ id }) => id) : personIds;
+    for (const personId of ids) {
+      for (const sharedWithId of sharedWithIds) {
+        this.removePersonUsers([{ personId, sharedWithId }]);
+        this.personUsers.push({ personId, sharedById: this.user.id, sharedWithId, role });
+      }
+    }
+  }
+
+  removePersonUsers(items: PersonUsersDeleteDto) {
+    this.personUsers = this.personUsers.filter((share) =>
+      items.every(
+        ({ personId, sharedWithId, sharedById = this.user.id }) =>
+          share.personId !== personId || share.sharedWithId !== sharedWithId || share.sharedById !== sharedById,
+      ),
+    );
+  }
+
+  createPerson(dto: PersonCreateDto) {
+    const person = factory.person({
+      name: dto.name ?? '',
+      birthDate: dto.birthDate ?? null,
+      color: dto.color ?? undefined,
+      isFavorite: dto.isFavorite ?? false,
+      isHidden: dto.isHidden ?? false,
+    });
+    this.addPeople(person);
+    return person;
+  }
+
+  updatePerson(id: string, dto: PersonUpdateDto) {
+    const person = this.people.get(id);
+    if (!person) {
+      return;
+    }
+    const updated: PersonResponseDto = {
+      ...person,
+      name: dto.name ?? person.name,
+      isHidden: dto.isHidden ?? person.isHidden,
+      isFavorite: dto.isFavorite ?? person.isFavorite,
+      birthDate: dto.birthDate === undefined ? person.birthDate : dto.birthDate,
+      updatedAt: new Date().toISOString(),
+    };
+    this.people.set(id, updated);
+    return updated;
   }
 
   updatePeople(people: { id: string; isHidden?: boolean }[]) {
@@ -182,7 +544,9 @@ export class MockData {
             ? !hiddenVisibilities.has(asset.visibility)
             : asset.visibility === filter.visibility) &&
           asset.isTrashed === isTrashed &&
-          (filter.isFavorite === undefined || asset.isFavorite === filter.isFavorite),
+          (filter.isFavorite === undefined || asset.isFavorite === filter.isFavorite) &&
+          (filter.personId === undefined || !!asset.people?.some((person) => person.id === filter.personId)) &&
+          (!filter.withStacked || !asset.stack || asset.stack.primaryAssetId === asset.id),
       )
       .sort((a, b) => direction * a.fileCreatedAt.localeCompare(b.fileCreatedAt));
   }
@@ -233,6 +597,10 @@ export class MockData {
     }
   }
 
+  removeSharedLink(id: string) {
+    return this.sharedLinks.delete(id);
+  }
+
   removeSharedLinkAssets(id: string, assetIds: string[]) {
     const link = this.sharedLinks.get(id);
     if (!link) {
@@ -261,8 +629,23 @@ export class MockData {
     return this.users.get(id);
   }
 
+  clusterGroupUsers(clusterGroupId: string) {
+    return this.userList().filter((user) => user.clusterGroupId === clusterGroupId);
+  }
+
   userList({ withDeleted = false }: { withDeleted?: boolean } = {}) {
     return [...this.users.values()].filter((user) => withDeleted || !user.deletedAt);
+  }
+
+  searchUsers(): UserResponseDto[] {
+    return this.userList().map(({ id, name, email, avatarColor, profileImagePath, profileChangedAt }) => ({
+      id,
+      name,
+      email,
+      avatarColor,
+      profileImagePath,
+      profileChangedAt,
+    }));
   }
 
   createUser(dto: UserAdminCreateDto) {
@@ -278,11 +661,92 @@ export class MockData {
     return user;
   }
 
-  addUsers(users: MaybeArray<UserAdminResponseDto>) {
-    for (const user of toList(users)) {
+  addUsers(users: MaybeArray<Partial<UserAdminResponseDto>>) {
+    for (const overrides of toList(users)) {
+      const user = factory.user({ isAdmin: false, storageLabel: null, ...overrides });
       this.users.set(user.id, user);
     }
     return this;
+  }
+
+  addPartners(direction: PartnerDirection, partners: MaybeArray<PartnerResponseDto>) {
+    for (const partner of toList(partners)) {
+      this.partners[direction].set(partner.id, partner);
+    }
+    return this;
+  }
+
+  partnerList(direction: PartnerDirection) {
+    return [...this.partners[direction].values()];
+  }
+
+  createPartner(sharedWithId: string) {
+    const user = this.users.get(sharedWithId);
+    if (!user) {
+      return;
+    }
+    const partner = factory.partner(user);
+    this.partners[PartnerDirection.SharedBy].set(partner.id, partner);
+    return partner;
+  }
+
+  removePartner(id: string) {
+    return this.partners[PartnerDirection.SharedBy].delete(id);
+  }
+
+  updatePartner(id: string, inTimeline: boolean) {
+    const partner = this.partners[PartnerDirection.SharedWith].get(id);
+    if (!partner) {
+      return;
+    }
+    const updated = { ...partner, inTimeline };
+    this.partners[PartnerDirection.SharedWith].set(id, updated);
+    return updated;
+  }
+
+  addClusterGroupRequests(requests: MaybeArray<ClusterGroupRequestResponseDto>) {
+    for (const request of toList(requests)) {
+      this.clusterGroupRequests.set(request.id, request);
+    }
+    return this;
+  }
+
+  clusterGroupRequestList(filter: { clusterGroupId?: string; userId?: string }) {
+    return [...this.clusterGroupRequests.values()].filter(
+      (request) =>
+        (filter.clusterGroupId === undefined || request.clusterGroupId === filter.clusterGroupId) &&
+        (filter.userId === undefined || request.userId === filter.userId),
+    );
+  }
+
+  createClusterGroupRequest(clusterGroupId: string, userId: string) {
+    const request = factory.clusterGroupRequest({ clusterGroupId, userId });
+    this.clusterGroupRequests.set(request.id, request);
+    return request;
+  }
+
+  acceptClusterGroupRequest(id: string) {
+    const request = this.clusterGroupRequests.get(id);
+    const user = request && this.users.get(request.userId);
+    if (!request || !user) {
+      return false;
+    }
+    user.clusterGroupId = request.clusterGroupId;
+    this.clusterGroupRequests.delete(id);
+    return true;
+  }
+
+  deleteClusterGroupRequest(id: string) {
+    return this.clusterGroupRequests.delete(id);
+  }
+
+  leaveClusterGroup(userId: string) {
+    const user = this.users.get(userId);
+    if (!user) {
+      return false;
+    }
+    user.clusterGroupId = crypto.randomUUID();
+    return true;
   }
 
   updateUser(id: string, dto: UserAdminUpdateDto) {
@@ -334,6 +798,17 @@ export class MockData {
     return this;
   }
 
+  removeUserFromAlbum(albumId: string, userId: string) {
+    const album = this.albums.get(albumId);
+    if (!album) {
+      return false;
+    }
+
+    const id = userId === 'me' ? this.user.id : userId;
+    this.albums.set(albumId, { ...album, albumUsers: album.albumUsers.filter(({ user }) => user.id !== id) });
+    return true;
+  }
+
   addDuplicates(assets: AssetResponseDto[]) {
     const duplicateId = crypto.randomUUID();
     for (const asset of assets) {
@@ -352,8 +827,29 @@ export class MockData {
     return [...groups].map(([duplicateId, assets]) => ({ duplicateId, assets, suggestedKeepAssetIds: [assets[0].id] }));
   }
 
+  resolveDuplicates({ groups }: DuplicateResolveDto) {
+    for (const { duplicateId, trashAssetIds } of groups) {
+      this.deleteDuplicates([duplicateId]);
+      this.deleteAssets(trashAssetIds);
+    }
+    return groups.map(({ duplicateId }) => ({ id: duplicateId, success: true }));
+  }
+
+  deleteDuplicates(duplicateIds: string[]) {
+    const ids = new Set(duplicateIds);
+    const duplicates = [...this.assets.values()].filter(({ duplicateId }) => duplicateId && ids.has(duplicateId));
+    for (const asset of duplicates) {
+      this.assets.set(asset.id, { ...asset, duplicateId: null });
+    }
+    return this;
+  }
+
   removeFromAlbum(albumId: string, assetIds: string[]) {
     const members = this.albumAssets.get(albumId);
+    const removed = [...this.activities.values()].filter(({ assetId }) => assetId && assetIds.includes(assetId));
+    for (const { id } of removed) {
+      this.activities.delete(id);
+    }
     return assetIds.map((id) => ({ id, success: members?.delete(id) ?? false }));
   }
 
@@ -390,11 +886,225 @@ export class MockData {
     return [...this.tags.values()];
   }
 
+  upsertTags(values: string[]) {
+    return values.map((value) => this.upsertTag(value));
+  }
+
+  updateTag(id: string, dto: TagUpdateDto) {
+    const tag = this.tags.get(id);
+    if (!tag) {
+      return;
+    }
+
+    const name = dto.name ?? tag.name;
+    const value = tag.value.slice(0, tag.value.length - tag.name.length) + name;
+    for (const descendant of this.tagList()) {
+      if (descendant.value.startsWith(`${tag.value}/`)) {
+        this.tags.set(descendant.id, { ...descendant, value: value + descendant.value.slice(tag.value.length) });
+      }
+    }
+
+    const updated = { ...tag, name, value, color: dto.color === undefined ? tag.color : (dto.color ?? undefined) };
+    this.tags.set(id, updated);
+    return updated;
+  }
+
+  deleteTag(id: string) {
+    const tag = this.tags.get(id);
+    if (!tag) {
+      return false;
+    }
+
+    for (const descendant of this.tagList()) {
+      if (descendant.id === id || descendant.value.startsWith(`${tag.value}/`)) {
+        this.tags.delete(descendant.id);
+      }
+    }
+    return true;
+  }
+
+  tagAssets(assetIds: string[], tagIds: string[]) {
+    const tags = tagIds.map((id) => this.tags.get(id)).filter((tag) => tag !== undefined);
+    let count = 0;
+    for (const assetId of assetIds) {
+      const asset = this.assets.get(assetId);
+      if (!asset) {
+        continue;
+      }
+
+      const existing = asset.tags ?? [];
+      const added = tags.filter((tag) => existing.every(({ id }) => id !== tag.id));
+      count += added.length;
+      this.assets.set(assetId, { ...asset, tags: [...existing, ...added] });
+    }
+    return count;
+  }
+
+  untagAssets(tagId: string, assetIds: string[]) {
+    return assetIds.map((id) => {
+      const asset = this.assets.get(id);
+      if (!asset?.tags?.some((tag) => tag.id === tagId)) {
+        return { id, success: false };
+      }
+
+      this.assets.set(id, { ...asset, tags: asset.tags.filter((tag) => tag.id !== tagId) });
+      return { id, success: true };
+    });
+  }
+
+  private upsertTag(value: string): TagResponseDto {
+    const existing = this.tagList().find((tag) => tag.value === value);
+    if (existing) {
+      return existing;
+    }
+
+    const separator = value.lastIndexOf('/');
+    const parent = separator === -1 ? undefined : this.upsertTag(value.slice(0, separator));
+    const tag = factory.tag({ name: value.slice(separator + 1), value, parentId: parent?.id });
+    this.tags.set(tag.id, tag);
+    return tag;
+  }
+
+  addFaces(assetId: string, faces: MaybeArray<AssetFaceResponseDto>) {
+    this.faces.set(assetId, [...(this.faces.get(assetId) ?? []), ...toList(faces)]);
+    return this;
+  }
+
+  getFaces(assetId: string) {
+    return (this.faces.get(assetId) ?? []).map((face) =>
+      face.person ? { ...face, person: this.people.get(face.person.id) ?? face.person } : face,
+    );
+  }
+
+  reassignFace(id: string, personId: string) {
+    const person = this.people.get(personId);
+    for (const faces of this.faces.values()) {
+      const index = faces.findIndex((face) => face.id === id);
+      if (person && index !== -1) {
+        faces[index] = { ...faces[index], person };
+        return person;
+      }
+    }
+  }
+
+  deleteFace(id: string) {
+    for (const [assetId, faces] of this.faces) {
+      if (faces.some((face) => face.id === id)) {
+        this.faces.set(
+          assetId,
+          faces.filter((face) => face.id !== id),
+        );
+        return true;
+      }
+    }
+    return false;
+  }
+
+  addLibraries(libraries: MaybeArray<LibraryResponseDto>) {
+    for (const library of toList(libraries)) {
+      this.libraries.set(library.id, library);
+    }
+    return this;
+  }
+
+  libraryList() {
+    return [...this.libraries.values()];
+  }
+
+  getLibrary(id: string) {
+    return this.libraries.get(id);
+  }
+
+  updateLibrary(id: string, dto: UpdateLibraryDto) {
+    const library = this.libraries.get(id);
+    if (!library) {
+      return;
+    }
+
+    const updated = { ...library, ...dto, updatedAt: new Date().toISOString() };
+    this.libraries.set(id, updated);
+    return updated;
+  }
+
+  deleteLibrary(id: string) {
+    return this.libraries.delete(id);
+  }
+
+  addApiKeys(apiKeys: MaybeArray<ApiKeyResponseDto>) {
+    for (const apiKey of toList(apiKeys)) {
+      this.apiKeys.set(apiKey.id, apiKey);
+    }
+    return this;
+  }
+
+  apiKeyList() {
+    return [...this.apiKeys.values()];
+  }
+
+  rotateApiKey(id: string) {
+    const apiKey = this.apiKeys.get(id);
+    if (!apiKey) {
+      return;
+    }
+
+    const rotated = { ...apiKey, updatedAt: new Date().toISOString() };
+    this.apiKeys.set(id, rotated);
+    return { ...rotated, apiKey: rotated, secret: 'rotated-secret' };
+  }
+
+  deleteApiKey(id: string) {
+    return this.apiKeys.delete(id);
+  }
+
+  addSessions(sessions: MaybeArray<SessionResponseDto>) {
+    for (const session of toList(sessions)) {
+      this.sessions.set(session.id, session);
+    }
+    return this;
+  }
+
+  sessionList() {
+    return [...this.sessions.values()];
+  }
+
+  deleteSession(id: string) {
+    return this.sessions.delete(id);
+  }
+
+  deleteOtherSessions() {
+    for (const session of this.sessionList()) {
+      if (!session.current) {
+        this.sessions.delete(session.id);
+      }
+    }
+  }
+
+  addPasskeys(passkeys: MaybeArray<PasskeyResponseDto>) {
+    for (const passkey of toList(passkeys)) {
+      this.passkeys.set(passkey.id, passkey);
+    }
+    return this;
+  }
+
+  passkeyList() {
+    return [...this.passkeys.values()];
+  }
+
+  deletePasskey(id: string) {
+    return this.passkeys.delete(id);
+  }
+
   addActivities(activities: MaybeArray<ActivityResponseDto>) {
     for (const activity of toList(activities)) {
       this.activities.set(activity.id, activity);
     }
     return this;
+  }
+
+  createActivity({ assetId, type, comment }: ActivityCreateDto) {
+    const activity = factory.activity({ user: this.user, assetId: assetId ?? null, type, comment: comment ?? null });
+    this.addActivities(activity);
+    return activity;
   }
 
   activityStatistics(filter: { assetId?: string } = {}) {
@@ -405,8 +1115,16 @@ export class MockData {
     };
   }
 
-  activityList({ assetId }: { assetId?: string } = {}) {
-    return [...this.activities.values()].filter((activity) => !assetId || activity.assetId === assetId);
+  activityList({ assetId, userId, $type, level }: ActivityFilter = {}) {
+    return [...this.activities.values()].filter(
+      (activity) =>
+        (!assetId || activity.assetId === assetId) &&
+        (!userId || activity.user.id === userId) &&
+        (!$type || activity.type === $type) &&
+        (level !== ReactionLevel.Album || activity.assetId === null) &&
+        (level !== ReactionLevel.Asset || activity.assetId !== null) &&
+        (activity.assetId === null || this.assets.get(activity.assetId)?.isTrashed === false),
+    );
   }
 
   deleteActivity(id: string) {
@@ -422,6 +1140,23 @@ export class MockData {
 
   workflowList() {
     return [...this.workflows.values()];
+  }
+
+  addWorkflowLogs(workflowId: string, entries: MaybeArray<WorkflowLogEntryDto>) {
+    this.workflowLogs.set(workflowId, [...(this.workflowLogs.get(workflowId) ?? []), ...toList(entries)]);
+    return this;
+  }
+
+  workflowLogPage({ id, result, before, limit = 50 }: Call<'getWorkflowLogs'>['params']) {
+    return (this.workflowLogs.get(id) ?? [])
+      .filter((entry) => !result || entry.result === result)
+      .filter((entry) => !before || entry.at < before)
+      .toSorted((a, b) => b.at.localeCompare(a.at))
+      .slice(0, limit);
+  }
+
+  deleteWorkflow(id: string) {
+    return this.workflows.delete(id);
   }
 
   createWorkflow(dto: WorkflowCreateDto) {
@@ -457,6 +1192,74 @@ export class MockData {
     return config;
   }
 
+  addQueues(queues: MaybeArray<QueueResponseDto>) {
+    for (const queue of toList(queues)) {
+      this.queueStates.set(queue.name, queue);
+    }
+    return this;
+  }
+
+  queueList() {
+    return [...this.queueStates.values()];
+  }
+
+  getQueue(name: QueueName) {
+    return this.queueStates.get(name);
+  }
+
+  updateQueue(name: QueueName, { isPaused }: QueueUpdateDto) {
+    const queue = this.queueStates.get(name);
+    if (queue && isPaused !== undefined) {
+      queue.isPaused = isPaused;
+    }
+    return queue;
+  }
+
+  emptyQueue(name: QueueName, { failed = false }: QueueDeleteDto) {
+    const queue = this.queueStates.get(name);
+    if (queue) {
+      queue.statistics.waiting = 0;
+      queue.statistics.delayed = 0;
+      queue.statistics.paused = 0;
+      if (failed) {
+        queue.statistics.failed = 0;
+      }
+    }
+    return queue;
+  }
+
+  runQueueCommand(name: QueueName, { command }: QueueCommandDto) {
+    switch (command) {
+      case QueueCommand.Pause:
+      case QueueCommand.Resume: {
+        return this.updateQueue(name, { isPaused: command === QueueCommand.Pause });
+      }
+      case QueueCommand.Empty: {
+        return this.emptyQueue(name, { failed: false });
+      }
+      case QueueCommand.ClearFailed: {
+        const queue = this.queueStates.get(name);
+        if (queue) {
+          queue.statistics.failed = 0;
+        }
+        return queue;
+      }
+      case QueueCommand.Start: {
+        return this.queueStates.get(name);
+      }
+    }
+  }
+
+  addPlaces(places: MaybeArray<PlacesResponseDto>) {
+    this.places.push(...toList(places));
+    return this;
+  }
+
+  searchPlaces(name: string) {
+    const query = name.toLowerCase();
+    return this.places.filter((place) => place.name.toLowerCase().startsWith(query));
+  }
+
   addPeople(people: MaybeArray<PersonResponseDto>) {
     for (const person of toList(people)) {
       this.people.set(person.id, person);
@@ -471,6 +1274,43 @@ export class MockData {
         asset.stack = { id: stack.id, assetCount: stack.assets.length, primaryAssetId: stack.primaryAssetId };
         this.assets.set(asset.id, asset);
       }
+    }
+    return this;
+  }
+
+  createStack({ assetIds }: StackCreateDto) {
+    const stack = factory.stack({ assets: assetIds.map((id) => this.assets.get(id)!) });
+    this.addStacks(stack);
+    return stack;
+  }
+
+  updateStack(id: string, { primaryAssetId }: StackUpdateDto) {
+    const stack = this.stacks.get(id);
+    if (!stack) {
+      return;
+    }
+    const updated = { ...stack, primaryAssetId: primaryAssetId ?? stack.primaryAssetId };
+    this.stacks.set(id, updated);
+    return updated;
+  }
+
+  removeFromStack(id: string, assetId: string) {
+    const stack = this.stacks.get(id);
+    const asset = this.assets.get(assetId);
+    if (!stack || !asset) {
+      return;
+    }
+    this.assets.set(assetId, { ...asset, stack: null });
+    this.addStacks({ ...stack, assets: stack.assets.filter((asset) => asset.id !== assetId) });
+    return this;
+  }
+
+  deleteStacks(ids: string[]) {
+    for (const id of ids) {
+      for (const asset of this.stacks.get(id)?.assets ?? []) {
+        this.assets.set(asset.id, { ...asset, stack: null });
+      }
+      this.stacks.delete(id);
     }
     return this;
   }
@@ -536,9 +1376,17 @@ export class MockData {
       livePhotoVideoId: bucket.map((asset) => asset.livePhotoVideoId ?? null),
       city: bucket.map((asset) => asset.exifInfo?.city ?? null),
       country: bucket.map((asset) => asset.exifInfo?.country ?? null),
+      latitude: bucket.map((asset) => asset.exifInfo?.latitude ?? null),
+      longitude: bucket.map((asset) => asset.exifInfo?.longitude ?? null),
       visibility: bucket.map((asset) => asset.visibility),
       stack: bucket.map((asset) => (asset.stack ? [asset.stack.id, String(asset.stack.assetCount)] : null)),
     };
+  }
+
+  assetStatistics(filter: Pick<TimelineFilter, 'isFavorite' | 'isTrashed' | 'visibility'> = {}): AssetStatsResponseDto {
+    const assets = this.timelineAssets(filter);
+    const count = (type: AssetTypeEnum) => assets.filter((asset) => asset.type === type).length;
+    return { images: count(AssetTypeEnum.Image), videos: count(AssetTypeEnum.Video), total: assets.length };
   }
 
   updateAssets({ ids, ...dto }: AssetBulkUpdateDto) {
@@ -552,6 +1400,11 @@ export class MockData {
     const asset = this.assets.get(id);
     if (!asset) {
       return;
+    }
+
+    if (dto.livePhotoVideoId !== undefined) {
+      this.setMotionVisibility(asset.livePhotoVideoId, AssetVisibility.Timeline);
+      this.setMotionVisibility(dto.livePhotoVideoId, AssetVisibility.Hidden);
     }
 
     const visibility = dto.visibility ?? asset.visibility;
@@ -576,6 +1429,33 @@ export class MockData {
     return updated;
   }
 
+  getAssetEdits(assetId: string) {
+    return { assetId, edits: this.assetEdits.get(assetId) ?? [] };
+  }
+
+  editAsset(assetId: string, { edits }: AssetEditsCreateDto) {
+    const asset = this.assets.get(assetId);
+    if (!asset) {
+      return;
+    }
+    this.assetEdits.set(
+      assetId,
+      edits.map((edit) => factory.assetEdit(edit)),
+    );
+    this.assets.set(assetId, { ...asset, isEdited: true, thumbhash: editedThumbhash });
+    return this.getAssetEdits(assetId);
+  }
+
+  removeAssetEdits(assetId: string) {
+    const asset = this.assets.get(assetId);
+    if (!asset) {
+      return false;
+    }
+    this.assetEdits.delete(assetId);
+    this.assets.set(assetId, { ...asset, isEdited: false });
+    return true;
+  }
+
   deleteAssets(ids: string[], force = false) {
     for (const id of ids) {
       const asset = this.assets.get(id);
@@ -591,6 +1471,20 @@ export class MockData {
     return this;
   }
 
+  emptyTrash() {
+    const ids = this.trashedAssetIds();
+    this.deleteAssets(ids, true);
+    return ids.length;
+  }
+
+  restoreTrash() {
+    return this.restoreAssets(this.trashedAssetIds());
+  }
+
+  private trashedAssetIds() {
+    return [...this.assets.values()].filter((asset) => asset.isTrashed).map(({ id }) => id);
+  }
+
   restoreAssets(ids: string[]) {
     let count = 0;
     for (const id of ids) {
@@ -604,11 +1498,29 @@ export class MockData {
     return count;
   }
 
-  memoryList({ id, page = 1, size = 250 }: MemoryFilter = {}) {
+  private setMotionVisibility(motionId: string | null | undefined, visibility: AssetVisibility) {
+    const motion = motionId ? this.assets.get(motionId) : undefined;
+    if (motion) {
+      this.assets.set(motion.id, { ...motion, visibility });
+    }
+  }
+
+  memoryList({ id, isSaved, page = 1, size = 250 }: MemoryFilter = {}) {
     const memories = [...this.memories.values()]
       .filter((memory) => id === undefined || memory.id === id)
+      .filter((memory) => isSaved === undefined || memory.isSaved === isSaved)
       .sort((a, b) => b.memoryAt.localeCompare(a.memoryAt));
     return memories.slice((page - 1) * size, page * size);
+  }
+
+  removeMemoryAssets(id: string, assetIds: string[]) {
+    const memory = this.memories.get(id);
+    if (!memory) {
+      return;
+    }
+    const ids = new Set(assetIds);
+    this.memories.set(id, { ...memory, assets: memory.assets.filter((asset) => !ids.has(asset.id)) });
+    return assetIds.map((assetId) => ({ id: assetId, success: true }));
   }
 
   deleteMemory(id: string) {
@@ -632,14 +1544,71 @@ export class MockData {
     return updated;
   }
 
-  searchAssets(dto: MetadataSearchDto): SearchResponseDto {
-    const items = this.timelineAssets({ visibility: dto.visibility, isFavorite: dto.isFavorite ?? undefined }).slice(
-      0,
-      dto.size ?? 250,
-    );
+  searchAssets(dto: Pick<MetadataSearchDto, 'visibility' | 'isFavorite' | 'page' | 'size'>): SearchResponseDto {
+    const { page = 1, size = 250 } = dto;
+    const matches = this.timelineAssets({ visibility: dto.visibility, isFavorite: dto.isFavorite ?? undefined });
+    const items = matches.slice((page - 1) * size, page * size);
+    const nextPage = matches.length > page * size ? String(page + 1) : null;
     return {
       albums: { total: 0, count: 0, items: [], facets: [] },
-      assets: { total: items.length, count: items.length, items, facets: [], nextPage: null, nextCursor: null },
+      assets: { total: items.length, count: items.length, items, facets: [], nextPage, nextCursor: null },
     };
+  }
+
+  searchLargeAssets() {
+    return this.timelineAssets().sort((a, b) => (b.exifInfo?.fileSizeInByte ?? 0) - (a.exifInfo?.fileSizeInByte ?? 0));
+  }
+
+  searchSuggestions({ $type, country, state, make, model, includeNull }: SuggestionFilter) {
+    const matches = (value: string | null | undefined, filter?: string) => filter === undefined || value === filter;
+    const values = this.timelineAssets()
+      .map((asset) => asset.exifInfo)
+      .filter(
+        (exif) =>
+          exif !== undefined &&
+          matches(exif.country, country) &&
+          matches(exif.state, state) &&
+          matches(exif.make, make) &&
+          matches(exif.model, model),
+      )
+      .map((exif) => exif![suggestionFields[$type]])
+      .filter((value): value is string => typeof value === 'string');
+    const suggestions: Array<string | null> = [...new Set(values)].sort();
+    return includeNull ? [...suggestions, null] : suggestions;
+  }
+
+  exploreData(): SearchExploreResponseDto[] {
+    const recents = this.timelineAssets()
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, exploreRecentsLimit);
+    return [
+      { fieldName: 'exifInfo.city', items: this.assetsByCity().map((data) => ({ value: data.exifInfo!.city!, data })) },
+      { fieldName: 'createdAt', items: recents.map((data) => ({ value: data.createdAt, data })) },
+    ];
+  }
+
+  assetsByCity() {
+    const byCity = new Map<string, AssetResponseDto>();
+    for (const asset of this.timelineAssets()) {
+      const city = asset.exifInfo?.city;
+      if (city && !byCity.has(city)) {
+        byCity.set(city, asset);
+      }
+    }
+    return [...byCity.values()];
+  }
+
+  uniqueOriginalPaths() {
+    const folders = this.timelineAssets({ visibility: AssetVisibility.Timeline }).map(({ originalPath }) =>
+      originalPath.slice(0, originalPath.lastIndexOf('/')),
+    );
+    return [...new Set(folders)].sort();
+  }
+
+  assetsByOriginalPath(path: string) {
+    const folder = `/${path.replaceAll(/^\/+|\/+$/g, '')}`;
+    return this.timelineAssets({ visibility: AssetVisibility.Timeline })
+      .filter(({ originalPath }) => originalPath.slice(0, originalPath.lastIndexOf('/')) === folder)
+      .sort((a, b) => a.originalFileName.localeCompare(b.originalFileName));
   }
 }

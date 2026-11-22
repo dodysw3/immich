@@ -1,23 +1,24 @@
 /* eslint-disable unicorn/no-this-outside-of-class */
+import { registerSchemas } from '@immich/nestjs-standard-schema';
 import { DatabaseConnectionParams, createPostgres } from '@immich/sql-tools';
 import { CallHandler, ExecutionContext, Provider } from '@nestjs/common';
-import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { transformException } from '@nestjs/platform-express/multer/multer/multer.utils';
 import { Test } from '@nestjs/testing';
 import { NextFunction } from 'express';
 import { Kysely } from 'kysely';
 import multer, { memoryStorage } from 'multer';
 import { ClsService } from 'nestjs-cls';
-import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
 import { ChildProcessWithoutNullStreams } from 'node:child_process';
 import { Duplex, Readable, Writable } from 'node:stream';
 import { PNG } from 'pngjs';
-import { Mock, Mocked, assert, vitest } from 'vitest';
+import { Mock, Mocked, assert, expect, vitest } from 'vitest';
 import { UploadFieldName } from 'src/dtos/asset-media.dto.js';
 import { AssetUploadInterceptor } from 'src/middleware/asset-upload.interceptor.js';
 import { AuthGuard } from 'src/middleware/auth.guard.js';
 import { FileUploadInterceptor } from 'src/middleware/file-upload.interceptor.js';
 import { GlobalExceptionFilter } from 'src/middleware/global-exception.filter.js';
+import { GlobalValidationPipe } from 'src/middleware/global-validation.pipe.js';
 import { AccessRepository } from 'src/repositories/access.repository.js';
 import { ActivityRepository } from 'src/repositories/activity.repository.js';
 import { AlbumUserRepository } from 'src/repositories/album-user.repository.js';
@@ -59,6 +60,7 @@ import { PersonUserRepository } from 'src/repositories/person-user.repository.js
 import { PersonRepository } from 'src/repositories/person.repository.js';
 import { PluginRepository } from 'src/repositories/plugin.repository.js';
 import { ProcessRepository } from 'src/repositories/process.repository.js';
+import { ResourceEvent, ResourceRepository } from 'src/repositories/resource.repository.js';
 import { SearchRepository } from 'src/repositories/search.repository.js';
 import { ServerInfoRepository } from 'src/repositories/server-info.repository.js';
 import { SessionRepository } from 'src/repositories/session.repository.js';
@@ -127,12 +129,13 @@ export const controllerSetup = async (controller: ControllerClass | ControllerCl
       return next.handle();
     },
   };
+  const controllers = Array.isArray(controller) ? controller : [controller];
+  registerSchemas({ controllers });
   const moduleRef = await Test.createTestingModule({
-    controllers: Array.isArray(controller) ? controller : [controller],
+    controllers,
     providers: [
       { provide: APP_FILTER, useClass: GlobalExceptionFilter },
-      { provide: APP_PIPE, useClass: ZodValidationPipe },
-      { provide: APP_INTERCEPTOR, useClass: ZodSerializerInterceptor },
+      { provide: APP_PIPE, useClass: GlobalValidationPipe },
       { provide: APP_GUARD, useClass: AuthGuard },
       { provide: LoggingRepository, useValue: LoggingRepository.create() },
       { provide: ClsService, useValue: { getId: vi.fn() } },
@@ -282,6 +285,7 @@ export type ServiceOverrides = {
   personUser: PersonUserRepository;
   plugin: PluginRepository;
   process: ProcessRepository;
+  resource: ResourceRepository;
   search: SearchRepository;
   serverInfo: ServerInfoRepository;
   session: SessionRepository;
@@ -374,6 +378,7 @@ export const getMocks = () => {
     personUser: automock(PersonUserRepository, { strict: false }),
     plugin: automock(PluginRepository, { strict: true, args: [databaseMock, loggerMock] }),
     process: automock(ProcessRepository),
+    resource: automock(ResourceRepository, { strict: false }),
     search: automock(SearchRepository, { strict: false }),
     // eslint-disable-next-line no-sparse-arrays
     serverInfo: automock(ServerInfoRepository, { args: [, loggerMock], strict: false }),
@@ -404,6 +409,17 @@ export const getMocks = () => {
   mocks.clusterGroup.create.mockResolvedValue(ClusterGroupFactory.create());
 
   return mocks;
+};
+
+export const expectResourceEvents = (mocks: Pick<ServiceMocks, 'resource'>, ...events: ResourceEvent[]) => {
+  const normalize = ({ userIds, changed = [], deleted = [] }: ResourceEvent) => ({
+    userIds: [...userIds].sort(),
+    changed: [...new Set(changed.filter(Boolean))],
+    deleted: [...new Set(deleted.filter(Boolean))],
+  });
+  const actual = mocks.resource.send.mock.calls.map(([event]) => normalize(event));
+  expect(actual).toHaveLength(events.length);
+  expect(actual).toEqual(expect.arrayContaining(events.map((event) => normalize(event))));
 };
 
 export const newTestService = <T extends BaseService>(
@@ -454,6 +470,7 @@ export const newTestService = <T extends BaseService>(
     overrides.personUser || (mocks.personUser as As<PersonUserRepository>),
     overrides.plugin || (mocks.plugin as As<PluginRepository>),
     overrides.process || (mocks.process as As<ProcessRepository>),
+    overrides.resource || (mocks.resource as As<ResourceRepository>),
     overrides.search || (mocks.search as As<SearchRepository>),
     overrides.serverInfo || (mocks.serverInfo as As<ServerInfoRepository>),
     overrides.session || (mocks.session as As<SessionRepository>),

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { shortcut } from '#lib/actions/shortcut.ts';
   import OnEvents from '#lib/components/OnEvents.svelte';
   import { timeBeforeShowLoadingSpinner } from '#lib/constants.ts';
   import { faceOverlayStore } from '#lib/features/face-overlay/face-overlay.store.svelte.ts';
@@ -8,12 +7,12 @@
   import { languageManager } from '#lib/managers/language-manager.svelte.ts';
   import { executeMutation } from '#lib/queries/client.ts';
   import { deleteFaceMutation, getFacesQuery, reassignFacesByIdMutation } from '#lib/queries/face.query.ts';
+  import { createPersonMutation } from '#lib/queries/person.query.ts';
   import { getPeopleThumbnailUrl } from '#lib/utils.ts';
-  import { handleError } from '#lib/utils/handle-error.ts';
   import { zoomImageToBase64 } from '#lib/utils/people-utils.ts';
   import { getPersonNameWithHiddenValue } from '#lib/utils/person.ts';
-  import { AssetTypeEnum, createPerson, type AssetFaceResponseDto, type PersonResponseDto } from '@immich/sdk';
-  import { Icon, IconButton, LoadingSpinner, modalManager, toastManager } from '@immich/ui';
+  import { AssetTypeEnum, type AssetFaceResponseDto, type PersonResponseDto } from '@immich/sdk';
+  import { Icon, IconButton, LoadingSpinner, shortcut, toastManager } from '@immich/ui';
   import { mdiAccountOff, mdiArrowLeftThin, mdiArrowRightThin, mdiPencil, mdiRestart, mdiTrashCan } from '@mdi/js';
   import { createQuery } from '@tanstack/svelte-query';
   import { t } from 'svelte-i18n';
@@ -90,31 +89,39 @@
 
     if (numberOfChanges > 0) {
       let failed = false;
-      try {
-        for (const personWithFace of peopleWithFaces) {
-          let personId = selectedPersonToReassign[personWithFace.id]?.id;
+      const onError = () => (failed = true);
+      for (const personWithFace of peopleWithFaces) {
+        let personId = selectedPersonToReassign[personWithFace.id]?.id;
 
-          if (!personId && Object.hasOwn(selectedPersonToCreate, personWithFace.id)) {
-            const data = await createPerson({ personCreateDto: {} });
-            peopleToCreate.push(data.id);
-            personId = data.id;
-          }
-
-          if (!personId) {
-            continue;
-          }
-
-          await executeMutation(reassignFacesByIdMutation, [{ id: personId, faceDto: { id: personWithFace.id } }], {
-            onError: () => (failed = true),
-          });
-
-          if (failed) {
-            break;
-          }
+        if (!personId && Object.hasOwn(selectedPersonToCreate, personWithFace.id)) {
+          await executeMutation(
+            () => createPersonMutation({ error: { toast: 'errors.cant_apply_changes' } }),
+            [{ personCreateDto: {} }],
+            {
+              onSuccess: ({ id }) => {
+                personId = id;
+                peopleToCreate.push(id);
+              },
+              onError,
+            },
+          );
         }
-      } catch (error) {
-        handleError(error, $t('errors.cant_apply_changes'));
-        failed = true;
+
+        if (failed) {
+          break;
+        }
+
+        if (!personId) {
+          continue;
+        }
+
+        await executeMutation(reassignFacesByIdMutation, [{ id: personId, faceDto: { id: personWithFace.id } }], {
+          onError,
+        });
+
+        if (failed) {
+          break;
+        }
       }
 
       if (!failed) {
@@ -156,14 +163,8 @@
       return;
     }
 
-    const isConfirmed = await modalManager.showDialog({
-      prompt: $t('confirm_delete_face', { values: { name: person.name } }),
-    });
-    if (!isConfirmed) {
-      return;
-    }
-
     await executeMutation(deleteFaceMutation, [{ id: face.id, assetFaceDeleteDto: { force: false } }], {
+      confirm: { prompt: $t('confirm_delete_face', { values: { name: person.name } }) },
       onSuccess: () => {
         eventManager.emit('PersonAssetDelete', { id: person.id, assetId });
         void assetViewerManager.setAssetId(assetId);
@@ -174,8 +175,8 @@
 
 <OnEvents {onPersonThumbnailReady} />
 
-<svelte:document
-  use:shortcut={{
+<svelte:window
+  {@attach shortcut({
     shortcut: { key: 'Escape' },
     onShortcut: () => {
       if (showSelectedFaces) {
@@ -184,7 +185,7 @@
         onClose();
       }
     },
-  }}
+  })}
 />
 
 <section
@@ -236,7 +237,7 @@
               onpointerleave={() => assetViewerManager.clearHighlightedFaces()}
             >
               <div class="relative">
-                {#if selectedPersonToCreate[face.id]}
+                {#if Object.hasOwn(selectedPersonToCreate, face.id)}
                   <ImageThumbnail
                     curve
                     shadow
@@ -247,7 +248,7 @@
                     widthStyle={thumbnailWidth}
                     heightStyle={thumbnailWidth}
                   />
-                {:else if selectedPersonToReassign[face.id]}
+                {:else if Object.hasOwn(selectedPersonToReassign, face.id)}
                   <ImageThumbnail
                     curve
                     shadow
@@ -312,7 +313,7 @@
               {/if}
 
               <div class="absolute -inset-e-2.25 -top-2.25 flex flex-col gap-1 rounded-full">
-                {#if selectedPersonToCreate[face.id] || selectedPersonToReassign[face.id]}
+                {#if Object.hasOwn(selectedPersonToCreate, face.id) || Object.hasOwn(selectedPersonToReassign, face.id)}
                   <IconButton
                     shape="round"
                     variant="ghost"

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { MetricAttributes, MetricOptions, ObservableResult, ValueType } from '@opentelemetry/api';
+import { MetricOptions, ValueType } from '@opentelemetry/api';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
@@ -14,6 +14,7 @@ import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic
 import { snakeCase, startCase } from 'lodash-es';
 import { MetricService } from 'nestjs-otel';
 import { copyMetadataFromFunctionToFunction } from 'nestjs-otel/lib/opentelemetry.utils.js';
+import { Server, createServer } from 'node:http';
 import { excludePaths, serverVersion } from 'src/constants.js';
 import { ImmichTelemetry, MetadataKey } from 'src/enum.js';
 import { ConfigRepository } from 'src/repositories/config.repository.js';
@@ -44,35 +45,6 @@ export class MetricGroupRepository {
     }
   }
 
-  // unlike addToHistogram, the attributes are bound per observation, so a
-  // single instrument can carry a label dimension (e.g. job name)
-  recordHistogram(name: string, value: number, attributes?: MetricAttributes, options?: MetricOptions): void {
-    if (this.enabled) {
-      this.metricService.getHistogram(name, options).record(value, attributes);
-    }
-  }
-
-  // like recordHistogram, for counters that carry per-observation labels
-  // (e.g. serving backend + outcome) instead of process-wide totals
-  recordCounter(name: string, value: number, attributes?: MetricAttributes, options?: MetricOptions): void {
-    if (this.enabled) {
-      this.metricService.getCounter(name, options).add(value, attributes);
-    }
-  }
-
-  // absolute readings re-published on every scrape (not additive events); the
-  // callback runs at collection time and can observe per-label values; async
-  // callbacks are awaited by the SDK at collection
-  observeGauge(
-    name: string,
-    observer: (result: ObservableResult) => void | Promise<void>,
-    options?: MetricOptions,
-  ): void {
-    if (this.enabled) {
-      this.metricService.getObservableGauge(name, options).addCallback(observer);
-    }
-  }
-
   configure(options: MetricGroupOptions): this {
     this.enabled = options.enabled;
     return this;
@@ -80,28 +52,32 @@ export class MetricGroupRepository {
 }
 
 const aggregationBoundaries = [
-  0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10_000, 25_000,
-  50_000, 75_000, 100_000, 250_000, 500_000, 1_200_000,
+  0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10_000,
 ];
 
 let instance: NodeSDK | undefined;
+let metricsServer: Server | undefined;
 
 export const bootstrapTelemetry = (port: number) => {
   if (instance) {
     throw new Error('OpenTelemetry SDK already started');
   }
 
-  const { telemetry } = new ConfigRepository().getEnv();
+  const { telemetry, host } = new ConfigRepository().getEnv();
+  const exporter = new PrometheusExporter({ preventServerStart: true });
+  const logger = LoggingRepository.create('Telemetry');
+
+  metricsServer = createServer((request, response) => exporter.getMetricsRequestHandler(request, response))
+    .on('error', (error) => logger.error(`Failed to start metrics server: ${error}`))
+    .listen(port, host)
+    .unref();
 
   instance = new NodeSDK({
     resource: resourceFromAttributes({
       [ATTR_SERVICE_NAME]: `immich`,
       [ATTR_SERVICE_VERSION]: serverVersion.toString(),
     }),
-    // exporter-prometheus 0.300.0 defaults host to 'localhost' (loopback-only bind;
-    // 0.223.0 defaulted to all interfaces); containerized scraping needs the pod IP,
-    // so bind all interfaces explicitly.
-    metricReaders: [new PrometheusExporter({ port, host: '0.0.0.0' })],
+    metricReaders: [exporter],
     contextManager: new AsyncLocalStorageContextManager(),
     instrumentations: [
       new HttpInstrumentation({
@@ -132,6 +108,8 @@ export const teardownTelemetry = async () => {
     return;
   }
 
+  metricsServer?.close();
+  metricsServer = undefined;
   await instance.shutdown();
   instance = undefined;
 };
@@ -142,7 +120,6 @@ export class TelemetryRepository {
   host: MetricGroupRepository;
   jobs: MetricGroupRepository;
   repo: MetricGroupRepository;
-  library: MetricGroupRepository;
 
   constructor(
     private metricService: MetricService,
@@ -157,9 +134,6 @@ export class TelemetryRepository {
     this.host = new MetricGroupRepository(metricService).configure({ enabled: metrics.has(ImmichTelemetry.Host) });
     this.jobs = new MetricGroupRepository(metricService).configure({ enabled: metrics.has(ImmichTelemetry.Job) });
     this.repo = new MetricGroupRepository(metricService).configure({ enabled: metrics.has(ImmichTelemetry.Repo) });
-    this.library = new MetricGroupRepository(metricService).configure({
-      enabled: metrics.has(ImmichTelemetry.Library),
-    });
   }
 
   setup({ repositories }: { repositories: (new (...args: any[]) => unknown)[] }) {

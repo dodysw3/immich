@@ -1,6 +1,6 @@
+import { createZodDto } from '@immich/nestjs-standard-schema/zod';
 import { FileValidator, Injectable } from '@nestjs/common';
 import { DateTime } from 'luxon';
-import { createZodDto } from 'nestjs-zod';
 import sanitize from 'sanitize-filename';
 import validator from 'validator';
 import z from 'zod';
@@ -9,11 +9,9 @@ export type IsIPRangeOptions = { requireCIDR?: boolean };
 
 function isIPOrRange(value: string, options?: IsIPRangeOptions): boolean {
   const { requireCIDR = true } = options ?? {};
-  // eslint-disable-next-line import-x/no-named-as-default-member
   if (validator.isIPRange(value)) {
     return true;
   }
-  // eslint-disable-next-line import-x/no-named-as-default-member
   return !requireCIDR && validator.isIP(value);
 }
 
@@ -94,17 +92,13 @@ export class FileNotEmptyValidator extends FileValidator {
   }
 }
 
-const UUIDParamSchema = z.object({
+export class UUIDParamDto extends createZodDto({
   id: z.uuidv4(),
-});
+}) {}
 
-export class UUIDParamDto extends createZodDto(UUIDParamSchema) {}
-
-const UUIDv7ParamSchema = z.object({
+export class UUIDv7ParamDto extends createZodDto({
   id: z.uuidv7(),
-});
-
-export class UUIDv7ParamDto extends createZodDto(UUIDv7ParamSchema) {}
+}) {}
 
 const TranscriptionFrameParamsSchema = z.object({
   assetId: z.uuid(),
@@ -112,20 +106,16 @@ const TranscriptionFrameParamsSchema = z.object({
 });
 export class TranscriptionFrameParamsDto extends createZodDto(TranscriptionFrameParamsSchema) {}
 
-const UUIDAssetIDParamSchema = z.object({
+export class UUIDAssetIDParamDto extends createZodDto({
   id: z.uuidv4(),
   assetId: z.uuidv4(),
-});
+}) {}
 
-export class UUIDAssetIDParamDto extends createZodDto(UUIDAssetIDParamSchema) {}
-
-const FilenameParamSchema = z.object({
+export class FilenameParamDto extends createZodDto({
   filename: z.string().regex(/^[a-zA-Z0-9_\-.]+$/, {
     error: 'Filename contains invalid characters',
   }),
-});
-
-export class FilenameParamDto extends createZodDto(FilenameParamSchema) {}
+}) {}
 
 /**
 The HTML5 email regex, but with unicode support, so that international email addresses
@@ -254,3 +244,6 @@ export const hexColor = z
 export const sanitizeFilename = z.string().transform((val) => sanitize(val));
 
 export const uniqueIds = z.array(z.uuid()).refine((ids) => ids.length === new Set(ids).size, 'Items must be unique');
+
+export const queryParamArray = <T extends z.ZodType>(schema: T) =>
+  z.preprocess((value) => (typeof value === 'string' ? value.split(',') : value), z.array(schema));

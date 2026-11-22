@@ -1,4 +1,5 @@
 import { OrchestrationApiModule, controllers as futoBackupsControllers } from '@futo-org/backups-orchestrator-api';
+import { registerSchemas } from '@immich/nestjs-standard-schema';
 import { BullModule } from '@nestjs/bullmq';
 import { Inject, Module, OnModuleDestroy, OnModuleInit, applyDecorators, forwardRef } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
@@ -7,7 +8,6 @@ import { ApiExcludeController } from '@nestjs/swagger';
 import { ClsModule } from 'nestjs-cls';
 import { KyselyModule } from 'nestjs-kysely';
 import { OpenTelemetryModule } from 'nestjs-otel';
-import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { commandsAndQuestions } from 'src/commands/index.js';
@@ -23,6 +23,7 @@ import { AuthGuard, Authenticated } from 'src/middleware/auth.guard.js';
 import { ErrorInterceptor } from 'src/middleware/error.interceptor.js';
 import { FileUploadInterceptor } from 'src/middleware/file-upload.interceptor.js';
 import { GlobalExceptionFilter } from 'src/middleware/global-exception.filter.js';
+import { GlobalValidationPipe } from 'src/middleware/global-validation.pipe.js';
 import { LoggingInterceptor } from 'src/middleware/logging.interceptor.js';
 import { AppRepository } from 'src/repositories/app.repository.js';
 import { ConfigRepository } from 'src/repositories/config.repository.js';
@@ -49,8 +50,7 @@ const common = [...repositories, ...services, GlobalExceptionFilter];
 
 const commonMiddleware = [
   { provide: APP_FILTER, useClass: GlobalExceptionFilter },
-  { provide: APP_PIPE, useClass: ZodValidationPipe },
-  { provide: APP_INTERCEPTOR, useClass: ZodSerializerInterceptor },
+  { provide: APP_PIPE, useClass: GlobalValidationPipe },
   { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
   { provide: APP_INTERCEPTOR, useClass: ErrorInterceptor },
 ];
@@ -76,7 +76,6 @@ const commonImports = [
 
 const bullImports = [BullModule.forRoot(bull.config), BullModule.registerQueue(...bull.queues)];
 
-// eslint-disable-next-line unicorn/no-top-level-side-effects
 configureUserAgent();
 
 export class BaseModule implements OnModuleInit, OnModuleDestroy {
@@ -124,6 +123,7 @@ export class BaseModule implements OnModuleInit, OnModuleDestroy {
       imports: [forwardRef(() => ApiModule)],
       inject: [AuthService],
       useFactory: (authService: AuthService) => ({
+        dialect: getKyselyConfig(database.config).dialect,
         statePath: futoBackupsStatePath,
         cachePath: futoBackupsCachePath,
         requireWsAuth: true,
@@ -142,7 +142,11 @@ export class BaseModule implements OnModuleInit, OnModuleDestroy {
   providers: [...common, ...apiMiddleware, { provide: IWorker, useValue: ImmichWorker.Api }],
   exports: [AuthService, WebsocketRepository],
 })
-export class ApiModule extends BaseModule {}
+export class ApiModule extends BaseModule {
+  static {
+    registerSchemas({ controllers });
+  }
+}
 
 @Module({
   imports: [
@@ -151,6 +155,7 @@ export class ApiModule extends BaseModule {}
       imports: [forwardRef(() => MaintenanceModule)],
       inject: [MaintenanceWorkerService],
       useFactory: (maintenanceWorkerService: MaintenanceWorkerService) => ({
+        dialect: getKyselyConfig(database.config).dialect,
         statePath: futoBackupsStatePath,
         cachePath: futoBackupsCachePath,
         externalBaseUrl: 'https://my.immich.app',
@@ -174,6 +179,7 @@ export class ApiModule extends BaseModule {}
     UserRepository,
     SystemMetadataRepository,
     AppRepository,
+    EventRepository,
     MaintenanceHealthRepository,
     MaintenanceWebsocketRepository,
     DatabaseBackupService,
@@ -185,15 +191,21 @@ export class ApiModule extends BaseModule {}
   exports: [MaintenanceWorkerService, MaintenanceWebsocketRepository],
 })
 export class MaintenanceModule {
+  static {
+    registerSchemas({ controllers: [MaintenanceWorkerController] });
+  }
+
   constructor(
     @Inject(IWorker) private worker: ImmichWorker,
     logger: LoggingRepository,
+    private eventRepository: EventRepository,
     private maintenanceWorkerService: MaintenanceWorkerService,
   ) {
     logger.setAppName(this.worker);
   }
 
   async onModuleInit() {
+    this.eventRepository.setup({ services: [MaintenanceWorkerService] });
     await this.maintenanceWorkerService.init();
   }
 }

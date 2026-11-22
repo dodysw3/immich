@@ -21,8 +21,7 @@
 
 <script lang="ts">
   import { focusOutside } from '#lib/actions/focus-outside.ts';
-  import { shortcuts } from '#lib/actions/shortcut.ts';
-  import { Icon, IconButton, Label } from '@immich/ui';
+  import { Icon, IconButton, Label, Text, shortcuts } from '@immich/ui';
   import { mdiChevronDown, mdiClose, mdiMagnify } from '@mdi/js';
   import { onMount, tick } from 'svelte';
   import { t } from 'svelte-i18n';
@@ -31,6 +30,7 @@
 
   interface Props {
     label: string;
+    description?: string;
     disabled?: boolean;
     hideLabel?: boolean;
     options?: ComboBoxOption[];
@@ -46,6 +46,7 @@
 
   let {
     label,
+    description,
     hideLabel = false,
     disabled = false,
     options = [],
@@ -254,11 +255,14 @@
 <svelte:window onresize={onPositionChange} />
 {#if !hideLabel}
   <Label class="mb-1 block text-xs font-light text-neutral-500" for={inputId}>{label}</Label>
+  {#if description}
+    <Text color="muted" size="small">{description}</Text>
+  {/if}
 {/if}
 <div
   class="relative w-full text-base text-gray-700 dark:text-gray-300"
   {@attach focusOutside({ onFocusOut: deactivate })}
-  use:shortcuts={[
+  {@attach shortcuts([
     {
       shortcut: { key: 'Escape' },
       onShortcut: (event) => {
@@ -266,7 +270,7 @@
         closeDropdown();
       },
     },
-  ]}
+  ])}
 >
   <div>
     {#if isActive}
@@ -298,7 +302,7 @@
       type="text"
       value={searchQuery}
       {@attach forceFocusInput}
-      use:shortcuts={[
+      {@attach shortcuts([
         {
           shortcut: { key: 'ArrowUp' },
           onShortcut: () => {
@@ -339,7 +343,7 @@
             closeDropdown();
           },
         },
-      ]}
+      ])}
     />
 
     <div
@@ -393,7 +397,7 @@
           {allowCreate ? searchQuery : $t('no_results')}
         </li>
       {/if}
-      {#each filteredOptions as option, index (option.id || option.label)}
+      {#each filteredOptions as option, index (option.id ?? `${option.value}:${option.label}`)}
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <li
           aria-selected={index === selectedIndex}

@@ -347,6 +347,7 @@ export class MetadataService extends BaseService {
             codecName: video.codecName,
             formatName: format.formatName,
             formatLongName: format.formatLongName,
+            isFragmented: format.isFragmented,
             pixelFormat: video.pixelFormat,
           }
         : undefined;

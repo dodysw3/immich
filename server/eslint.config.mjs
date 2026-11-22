@@ -53,6 +53,7 @@ export default defineConfig([
       'unicorn/prefer-uint8array-base64': 'off',
       'unicorn/max-nested-calls': 'off',
       'unicorn/no-declarations-before-early-exit': 'off',
+      'unicorn/prefer-smaller-scope': 'off',
       'unicorn/no-unreadable-object-destructuring': 'off',
       'unicorn/single-line-block-comment-style': ['error', 'single-line'],
       // maybe we do want to enable this later. TBD
@@ -99,6 +100,18 @@ export default defineConfig([
         {
           argsIgnorePattern: '^_',
           varsIgnorePattern: '^_',
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/services/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.property.name='unwrap']",
+          message: 'Pass the transaction handle to a repository instead of querying through it.',
         },
       ],
     },

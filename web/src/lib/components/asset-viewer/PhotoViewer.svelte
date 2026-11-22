@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { shortcuts } from '#lib/actions/shortcut.ts';
   import { zoomImageAction } from '#lib/actions/zoom-image.ts';
   import AdaptiveImage from '#lib/components/AdaptiveImage.svelte';
   import AssetViewerEvents from '#lib/components/AssetViewerEvents.svelte';
@@ -16,7 +15,7 @@
   import { getNaturalSize, scaleToFit, type Size } from '#lib/utils/container-utils.ts';
   import { handleError } from '#lib/utils/handle-error.ts';
   import { type SharedLinkResponseDto } from '@immich/sdk';
-  import { toastManager } from '@immich/ui';
+  import { shortcuts, toastManager } from '@immich/ui';
   import { onDestroy, untrack } from 'svelte';
   import { useSwipe, type SwipeCustomEvent } from 'svelte-gestures';
   import { t } from 'svelte-i18n';
@@ -146,8 +145,8 @@
 
 <AssetViewerEvents {onCopy} {onZoom} {onFaceEditModeChange} />
 
-<svelte:document
-  use:shortcuts={[
+<svelte:window
+  {@attach shortcuts([
     { shortcut: { key: 'z' }, onShortcut: onZoom, preventDefault: true },
     { shortcut: { key: 's' }, onShortcut: onPlaySlideshow, preventDefault: true },
     { shortcut: { key: 'c', ctrl: true }, onShortcut: onCopyShortcut, preventDefault: false },

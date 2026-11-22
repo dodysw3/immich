@@ -44,6 +44,7 @@ import { PersonUserRepository } from 'src/repositories/person-user.repository.js
 import { PersonRepository } from 'src/repositories/person.repository.js';
 import { PluginRepository } from 'src/repositories/plugin.repository.js';
 import { ProcessRepository } from 'src/repositories/process.repository.js';
+import { ResourceRepository } from 'src/repositories/resource.repository.js';
 import { RotationSuggestionRepository } from 'src/repositories/rotation-suggestion.repository.js';
 import { SearchRepository } from 'src/repositories/search.repository.js';
 import { ServerInfoRepository } from 'src/repositories/server-info.repository.js';
@@ -118,6 +119,7 @@ export const repositories = [
   PersonUserRepository,
   PluginRepository,
   ProcessRepository,
+  ResourceRepository,
   RotationSuggestionRepository,
   SearchRepository,
   SessionRepository,

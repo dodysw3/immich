@@ -12,6 +12,7 @@ import {
   AudioCodec,
   Colorspace,
   ExifOrientation,
+  ImageEffort,
   ImageFormat,
   JobName,
   JobStatus,
@@ -455,6 +456,7 @@ describe(MediaService.name, () => {
           size: 1440,
           quality: 80,
           progressive: false,
+          effort: ImageEffort.Medium,
           processInvalidImages: false,
           edits: [],
           decodingTier: 0,
@@ -466,9 +468,10 @@ describe(MediaService.name, () => {
         {
           colorspace: Colorspace.P3,
           format: ImageFormat.Webp,
-          size: 250,
+          size: 360,
           quality: 80,
           progressive: false,
+          effort: ImageEffort.Medium,
           processInvalidImages: false,
           edits: [],
           decodingTier: 4,
@@ -604,7 +607,7 @@ describe(MediaService.name, () => {
             '-v',
             'verbose',
             '-vf',
-            String.raw`fps=12:start_time=0:eof_action=pass:round=down,thumbnail=12,select=gt(scene\,0.1)-eq(prev_selected_n\,n)+isnan(prev_selected_n)+gt(n\,20),trim=end_frame=2,reverse,scale=-2:250:flags=lanczos+accurate_rnd+full_chroma_int:out_range=pc,tonemapx=tonemap=hable:desat=0:p=bt709:t=bt709:m=bt709:r=pc:peak=100:format=yuv420p`,
+            String.raw`fps=12:start_time=0:eof_action=pass:round=down,thumbnail=12,select=gt(scene\,0.1)-eq(prev_selected_n\,n)+isnan(prev_selected_n)+gt(n\,20),trim=end_frame=2,reverse,scale=-2:360:flags=lanczos+accurate_rnd+full_chroma_int:out_range=pc,tonemapx=tonemap=hable:desat=0:p=bt709:t=bt709:m=bt709:r=pc:peak=100:format=yuv420p`,
           ]),
           twoPass: false,
         }),
@@ -655,7 +658,7 @@ describe(MediaService.name, () => {
             '-v',
             'verbose',
             '-vf',
-            String.raw`fps=12:start_time=0:eof_action=pass:round=down,thumbnail=12,select=gt(scene\,0.1)-eq(prev_selected_n\,n)+isnan(prev_selected_n)+gt(n\,20),trim=end_frame=2,reverse,scale=-2:250:flags=lanczos+accurate_rnd+full_chroma_int:out_range=pc,tonemapx=tonemap=hable:desat=0:p=bt709:t=bt709:m=bt709:r=pc:peak=100:format=yuv420p`,
+            String.raw`fps=12:start_time=0:eof_action=pass:round=down,thumbnail=12,select=gt(scene\,0.1)-eq(prev_selected_n\,n)+isnan(prev_selected_n)+gt(n\,20),trim=end_frame=2,reverse,scale=-2:360:flags=lanczos+accurate_rnd+full_chroma_int:out_range=pc,tonemapx=tonemap=hable:desat=0:p=bt709:t=bt709:m=bt709:r=pc:peak=100:format=yuv420p`,
           ]),
           twoPass: false,
         }),
@@ -753,6 +756,7 @@ describe(MediaService.name, () => {
           size: 1440,
           quality: 80,
           progressive: false,
+          effort: ImageEffort.Medium,
           processInvalidImages: false,
           edits: [],
           decodingTier: 0,
@@ -764,9 +768,10 @@ describe(MediaService.name, () => {
         {
           colorspace: Colorspace.Srgb,
           format: ImageFormat.Webp,
-          size: 250,
+          size: 360,
           quality: 80,
           progressive: false,
+          effort: ImageEffort.Medium,
           processInvalidImages: false,
           edits: [],
           decodingTier: 4,
@@ -803,6 +808,7 @@ describe(MediaService.name, () => {
           size: 1440,
           quality: 80,
           progressive: false,
+          effort: ImageEffort.Medium,
           processInvalidImages: false,
           edits: [],
           decodingTier: 0,
@@ -814,9 +820,10 @@ describe(MediaService.name, () => {
         {
           colorspace: Colorspace.Srgb,
           format,
-          size: 250,
+          size: 360,
           quality: 80,
           progressive: false,
+          effort: ImageEffort.Medium,
           processInvalidImages: false,
           edits: [],
           decodingTier: 4,
@@ -839,6 +846,7 @@ describe(MediaService.name, () => {
         expect.objectContaining({
           format: ImageFormat.Jpeg,
           progressive: true,
+          effort: ImageEffort.Medium,
         }),
         expect.stringContaining('preview.jpeg'),
       );
@@ -847,6 +855,7 @@ describe(MediaService.name, () => {
         expect.objectContaining({
           format: ImageFormat.Webp,
           progressive: false,
+          effort: ImageEffort.Medium,
         }),
         expect.stringContaining('thumbnail.webp'),
       );
@@ -878,6 +887,7 @@ describe(MediaService.name, () => {
         expect.objectContaining({
           format: ImageFormat.Jpeg,
           progressive: false,
+          effort: ImageEffort.Medium,
         }),
         expect.stringContaining('preview.jpeg'),
       );
@@ -886,6 +896,7 @@ describe(MediaService.name, () => {
         expect.objectContaining({
           format: ImageFormat.Jpeg,
           progressive: true,
+          effort: ImageEffort.Medium,
         }),
         expect.stringContaining('thumbnail.jpeg'),
       );
@@ -1128,6 +1139,7 @@ describe(MediaService.name, () => {
           size: 1440,
           quality: 80,
           progressive: false,
+          effort: ImageEffort.Medium,
           processInvalidImages: false,
           edits: [],
           decodingTier: 0,
@@ -1164,6 +1176,7 @@ describe(MediaService.name, () => {
           format: ImageFormat.Webp,
           quality: 80,
           progressive: false,
+          effort: ImageEffort.Medium,
           processInvalidImages: false,
           edits: [],
           decodingTier: 0,
@@ -1178,6 +1191,7 @@ describe(MediaService.name, () => {
           size: 1440,
           quality: 80,
           progressive: false,
+          effort: ImageEffort.Medium,
           processInvalidImages: false,
           edits: [],
           decodingTier: 0,
@@ -1212,6 +1226,7 @@ describe(MediaService.name, () => {
           format: ImageFormat.Jpeg,
           quality: 80,
           progressive: false,
+          effort: ImageEffort.Medium,
           processInvalidImages: false,
           edits: [],
           decodingTier: 0,
@@ -1225,6 +1240,7 @@ describe(MediaService.name, () => {
           format: ImageFormat.Jpeg,
           quality: 80,
           progressive: false,
+          effort: ImageEffort.Medium,
           size: 1440,
           processInvalidImages: false,
           edits: [],
@@ -1264,6 +1280,7 @@ describe(MediaService.name, () => {
           format: ImageFormat.Jpeg,
           quality: 80,
           progressive: false,
+          effort: ImageEffort.Medium,
           processInvalidImages: false,
           edits: [],
           decodingTier: 0,
@@ -1329,6 +1346,7 @@ describe(MediaService.name, () => {
           format: ImageFormat.Jpeg,
           quality: 80,
           progressive: false,
+          effort: ImageEffort.Medium,
           processInvalidImages: false,
           edits: [],
           decodingTier: 0,
@@ -1372,6 +1390,7 @@ describe(MediaService.name, () => {
           format: ImageFormat.Webp,
           quality: 90,
           progressive: false,
+          effort: ImageEffort.Medium,
           processInvalidImages: false,
           edits: [],
           decodingTier: 0,
@@ -1403,6 +1422,7 @@ describe(MediaService.name, () => {
         expect.objectContaining({
           format: ImageFormat.Jpeg,
           progressive: true,
+          effort: ImageEffort.Medium,
         }),
         expect.stringContaining('fullsize.jpeg'),
       );
@@ -1663,9 +1683,10 @@ describe(MediaService.name, () => {
         { data, info },
         {
           colorspace: Colorspace.P3,
-          format: ImageFormat.Jpeg,
+          format: ImageFormat.Webp,
           quality: 80,
           progressive: false,
+          effort: ImageEffort.Medium,
           edits: [
             {
               action: 'crop',
@@ -1688,6 +1709,65 @@ describe(MediaService.name, () => {
         personGroupId: person.personGroupId,
         thumbnailPath: expect.any(String),
       });
+    });
+
+    it('should replace a thumbnail in a different format', async () => {
+      const person = PersonFactory.create();
+
+      mocks.person.getDataForThumbnailGenerationJob.mockResolvedValue({
+        ...personThumbnailStub.newThumbnailMiddle,
+        thumbnailPath: '/data/thumbs/person.jpeg',
+      });
+      mocks.media.generateThumbnail.mockResolvedValue();
+      mocks.media.decodeImage.mockResolvedValue({
+        data: Buffer.from(''),
+        info: { width: 1000, height: 1000 } as OutputInfo,
+      });
+
+      await expect(
+        sut.handleGeneratePersonThumbnail({ ownerId: person.ownerId, personGroupId: person.personGroupId }),
+      ).resolves.toBe(JobStatus.Success);
+
+      expect(mocks.person.update).toHaveBeenCalledWith({
+        ownerId: person.ownerId,
+        personGroupId: person.personGroupId,
+        thumbnailPath: expect.stringMatching(/\.webp$/),
+      });
+      expect(mocks.job.queue).toHaveBeenCalledWith({
+        name: JobName.FileDelete,
+        data: { files: ['/data/thumbs/person.jpeg'] },
+      });
+    });
+
+    it('should respect the thumbnail settings', async () => {
+      const person = PersonFactory.create();
+
+      mocks.systemMetadata.get.mockResolvedValue({
+        image: {
+          thumbnail: { format: ImageFormat.Jxl, quality: 90, progressive: true, effort: ImageEffort.High },
+        },
+      });
+      mocks.person.getDataForThumbnailGenerationJob.mockResolvedValue(personThumbnailStub.newThumbnailMiddle);
+      mocks.media.generateThumbnail.mockResolvedValue();
+      mocks.media.decodeImage.mockResolvedValue({
+        data: Buffer.from(''),
+        info: { width: 1000, height: 1000 } as OutputInfo,
+      });
+
+      await expect(
+        sut.handleGeneratePersonThumbnail({ ownerId: person.ownerId, personGroupId: person.personGroupId }),
+      ).resolves.toBe(JobStatus.Success);
+
+      expect(mocks.media.generateThumbnail).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          format: ImageFormat.Jxl,
+          quality: 90,
+          progressive: true,
+          effort: ImageEffort.High,
+        }),
+        expect.stringMatching(/\.jxl$/),
+      );
     });
 
     it('should use preview path if video', async () => {
@@ -1717,9 +1797,10 @@ describe(MediaService.name, () => {
         { data, info },
         {
           colorspace: Colorspace.P3,
-          format: ImageFormat.Jpeg,
+          format: ImageFormat.Webp,
           quality: 80,
           progressive: false,
+          effort: ImageEffort.Medium,
           edits: [
             {
               action: 'crop',
@@ -1766,9 +1847,10 @@ describe(MediaService.name, () => {
         { data, info },
         {
           colorspace: Colorspace.P3,
-          format: ImageFormat.Jpeg,
+          format: ImageFormat.Webp,
           quality: 80,
           progressive: false,
+          effort: ImageEffort.Medium,
           edits: [
             {
               action: 'crop',
@@ -1811,9 +1893,10 @@ describe(MediaService.name, () => {
         { data, info },
         {
           colorspace: Colorspace.P3,
-          format: ImageFormat.Jpeg,
+          format: ImageFormat.Webp,
           quality: 80,
           progressive: false,
+          effort: ImageEffort.Medium,
           edits: [
             {
               action: 'crop',
@@ -1856,9 +1939,10 @@ describe(MediaService.name, () => {
         { data, info },
         {
           colorspace: Colorspace.P3,
-          format: ImageFormat.Jpeg,
+          format: ImageFormat.Webp,
           quality: 80,
           progressive: false,
+          effort: ImageEffort.Medium,
           edits: [
             {
               action: 'crop',
@@ -1901,9 +1985,10 @@ describe(MediaService.name, () => {
         { data, info },
         {
           colorspace: Colorspace.P3,
-          format: ImageFormat.Jpeg,
+          format: ImageFormat.Webp,
           quality: 80,
           progressive: false,
+          effort: ImageEffort.Medium,
           edits: [
             {
               action: 'crop',
@@ -1951,9 +2036,10 @@ describe(MediaService.name, () => {
         { data, info },
         {
           colorspace: Colorspace.P3,
-          format: ImageFormat.Jpeg,
+          format: ImageFormat.Webp,
           quality: 80,
           progressive: false,
+          effort: ImageEffort.Medium,
           edits: [
             {
               action: 'crop',
@@ -2756,6 +2842,8 @@ describe(MediaService.name, () => {
             'faststart',
             '-fps_mode',
             'passthrough',
+            '-enc_time_base:v',
+            'filter',
             '-map',
             '0:0',
             '-map',
@@ -2937,6 +3025,8 @@ describe(MediaService.name, () => {
             'faststart',
             '-fps_mode',
             'passthrough',
+            '-enc_time_base:v',
+            'filter',
             '-map',
             '0:0',
             '-map',
@@ -3132,6 +3222,8 @@ describe(MediaService.name, () => {
             'faststart',
             '-fps_mode',
             'passthrough',
+            '-enc_time_base:v',
+            'filter',
             '-map',
             '0:0',
             '-map',
@@ -3402,6 +3494,8 @@ describe(MediaService.name, () => {
             'faststart',
             '-fps_mode',
             'passthrough',
+            '-enc_time_base:v',
+            'filter',
             '-map',
             '0:0',
             '-map',
@@ -3411,7 +3505,7 @@ describe(MediaService.name, () => {
             '-v',
             'verbose',
             '-vf',
-            'format=nv12,hwupload=extra_hw_frames=64,scale_vaapi=-2:720:mode=hq:out_range=pc:format=nv12',
+            'format=nv12,hwupload=extra_hw_frames=64,scale_vaapi=-2:720:mode=hq:format=nv12',
             '-compression_level',
             '7',
             '-rc_mode',
@@ -3583,7 +3677,7 @@ describe(MediaService.name, () => {
             '-hwaccel_device',
             '/dev/dri/renderD128',
           ]),
-          outputOptions: expect.arrayContaining([expect.stringContaining('scale_vaapi=-2:720:mode=hq:out_range=pc')]),
+          outputOptions: expect.arrayContaining([expect.stringContaining('scale_vaapi=-2:720:mode=hq')]),
           twoPass: false,
         }),
       );
@@ -3763,6 +3857,8 @@ describe(MediaService.name, () => {
             'faststart',
             '-fps_mode',
             'passthrough',
+            '-enc_time_base:v',
+            'filter',
             '-map',
             '0:0',
             '-map',

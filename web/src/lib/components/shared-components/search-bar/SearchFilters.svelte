@@ -1,7 +1,8 @@
 <script lang="ts">
   import { authManager } from '#lib/managers/auth-manager.svelte.ts';
   import { searchManager } from '#lib/managers/search-manager.svelte.ts';
-  import { getAllTags, type PersonResponseDto, type TagResponseDto } from '@immich/sdk';
+  import { getAllTagsQuery } from '#lib/queries/tag.query.ts';
+  import { type PersonResponseDto } from '@immich/sdk';
   import { Button, Text } from '@immich/ui';
   import {
     mdiAccount,
@@ -14,6 +15,7 @@
     mdiTagMultiple,
     mdiTune,
   } from '@mdi/js';
+  import { createQuery } from '@tanstack/svelte-query';
   import { onMount } from 'svelte';
   import { t } from 'svelte-i18n';
   import { fly } from 'svelte/transition';
@@ -65,8 +67,8 @@
   let showAdvanced = $state(false);
   let peoplePromise = $state<Promise<PersonResponseDto[]>>();
   let people = $state<PersonResponseDto[]>();
-  let tagsPromise = $state<Promise<TagResponseDto[]>>();
-  let tags = $state<TagResponseDto[]>();
+  const tagsQuery = createQuery(() => ({ ...getAllTagsQuery(), enabled: !!searchManager.filter.tagIds?.size }));
+  const tags = $derived(tagsQuery.data);
 
   let typeTitle = $derived(getSearchTypeTitle(searchManager.filter.queryType));
   let peopleTitle = $state<string>();
@@ -135,6 +137,9 @@
       searchManager.filter.display.isFavorite ||
       searchManager.filter.display.isNotInAlbum ||
       searchManager.filter.display.withoutAiInterpretation ||
+      searchManager.filter.camera.make !== undefined ||
+      searchManager.filter.camera.model !== undefined ||
+      searchManager.filter.camera.lensModel !== undefined ||
       searchManager.filter.rating,
   );
 
@@ -147,11 +152,6 @@
     if (searchManager.filter.personIds.size > 0 && !peoplePromise) {
       peoplePromise = getPeople(searchManager.filter.personIds);
       void peoplePromise.then((res) => (people = res));
-    }
-
-    if (searchManager.filter.tagIds?.size && !tagsPromise) {
-      tagsPromise = getAllTags();
-      void tagsPromise.then((res) => (tags = res));
     }
   });
 
@@ -227,7 +227,7 @@
           {:else if activeFilter === 'places'}
             <SearchLocationSection />
           {:else if activeFilter === 'tags'}
-            <SearchTagsSection bind:title={tagsTitle} parentPromise={tagsPromise} />
+            <SearchTagsSection bind:title={tagsTitle} />
           {:else if activeFilter === 'media'}
             <SearchMediaSection />
           {/if}

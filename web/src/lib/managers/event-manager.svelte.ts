@@ -1,21 +1,14 @@
 import type { TimelineAsset } from '#lib/managers/timeline-manager/types.ts';
 import { BaseEventManager } from '#lib/utils/base-event-manager.svelte.ts';
-import type { TreeNode } from '#lib/utils/tree-utils.ts';
 import type {
-  AdminConfigDto,
   AlbumResponseDto,
   AlbumUserRole,
   ApiKeyResponseDto,
   AssetResponseDto,
-  IntegrityReport,
-  JobCreateDto,
   LoginResponseDto,
   PasskeyResponseDto,
-  PersonResponseDto,
-  QueueResponseDto,
   ReleaseEventV1,
   StackResponseDto,
-  TagResponseDto,
   UserAdminResponseDto,
 } from '@immich/sdk';
 
@@ -54,17 +47,10 @@ export type Events = {
   AlbumUserUpdate: [{ albumId: string; userId: string; role: AlbumUserRole }];
   AlbumUserDelete: [{ albumId: string; userId: string }];
 
-  PersonUpdate: [PersonResponseDto];
-  PersonShare: [{ personId: string }];
-  PersonUserDelete: [{ personId: string; userId: string }];
   PersonThumbnailReady: [{ id: string }];
   PersonAssetDelete: [{ id: string; assetId: string }];
 
-  BackupDeleteStatus: [{ filename: string; isDeleting: boolean }];
-  BackupDeleted: [{ filename: string }];
   BackupUpload: [{ progress: number; isComplete: boolean }];
-
-  QueueUpdate: [QueueResponseDto];
 
   StackCreate: [StackResponseDto];
   /** Unstacked, with assets to handle */
@@ -72,23 +58,10 @@ export type Events = {
   /** Contains the new stack. If any assets are removed, AssetUpdate events are emitted for each. */
   StackUpdate: [StackResponseDto];
 
-  TagCreate: [TagResponseDto];
-  TagUpdate: [TagResponseDto];
-  TagDelete: [TreeNode];
-
-  UserPinCodeReset: [];
-
   UserAdminDeleted: [{ id: string }];
 
   SessionLocked: [];
   SessionDelete: [];
-
-  SystemConfigUpdate: [AdminConfigDto];
-
-  IntegrityReportDeleteStatus: [{ type?: IntegrityReport; id?: string; isDeleting: boolean }];
-  IntegrityReportDeleted: [{ type?: IntegrityReport; id?: string }];
-
-  JobCreate: [{ dto: JobCreateDto }];
 
   ReleaseEvent: [ReleaseEventV1];
 

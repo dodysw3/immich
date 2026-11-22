@@ -1,6 +1,6 @@
+import { createZodDto } from '@immich/nestjs-standard-schema/zod';
 import { CronExpression } from '@nestjs/schedule';
 import { validateCronExpression } from 'cron';
-import { createZodDto } from 'nestjs-zod';
 import z from 'zod';
 import {
   AudioCodec,
@@ -12,6 +12,8 @@ import {
   ConfigVisibility,
   HlsVideoResolution,
   HlsVideoResolutionSchema,
+  ImageEffort,
+  ImageEffortSchema,
   ImageFormat,
   ImageFormatSchema,
   LogLevel,
@@ -70,8 +72,7 @@ const httpsDomain = (label: string) =>
       }
     }, `${label} must not include a path, query, or fragment`);
 
-const emptyOrUrl = (error: string) =>
-  z.string().refine((url) => url.length === 0 || z.url().safeParse(url).success, { error });
+const emptyOrUrl = (error: string) => z.string().refine((url) => url.length === 0 || z.url().validate(url), { error });
 
 const AdminConfigIntegrityJobSchema = z
   .object({
@@ -123,6 +124,7 @@ const AdminConfigGeneratedImageSchema = z
     quality: z.int().min(1).max(100).describe('Quality'),
     size: z.int().min(1).describe('Size').meta({ visibility: User }),
     progressive: configBool.default(false).optional().describe('Progressive'),
+    effort: ImageEffortSchema,
   })
   .meta({ id: 'AdminConfigGeneratedImageDto' });
 
@@ -403,7 +405,7 @@ const AdminConfigSchemaWithVisibility = z
           return value;
         }
 
-        if (!z.url().safeParse(value.mobileRedirectUri).success) {
+        if (!z.url().validate(value.mobileRedirectUri)) {
           ctx.issues.push({
             code: 'custom',
             message: 'Mobile redirect URI must be an empty string or a valid URL',
@@ -458,6 +460,7 @@ const AdminConfigSchemaWithVisibility = z
             format: ImageFormatSchema,
             quality: z.int().min(1).max(100).describe('Quality'),
             progressive: configBool.default(false).optional().describe('Progressive'),
+            effort: ImageEffortSchema,
           })
           .meta({ id: 'AdminConfigGeneratedFullsizeImageDto' }),
         colorspace: ColorspaceSchema,
@@ -663,7 +666,6 @@ const UserConfigSchema = applyVisibility(User)! as z.ZodType<DeepPartial<SystemC
 const PublicConfigSchema = applyVisibility(Public)! as z.ZodType<DeepPartial<SystemConfig>>;
 
 // prevent visibility metadata from leaking to openapi spec
-// eslint-disable-next-line unicorn/no-top-level-side-effects
 stripVisibilityMetadata(AdminConfigSchemaWithVisibility);
 
 const ConfigTemplateStorageOptionSchema = z
@@ -679,12 +681,40 @@ const ConfigTemplateStorageOptionSchema = z
   })
   .meta({ id: 'SystemConfigTemplateStorageOptionDto' });
 
+const StorageTemplatePresetSchema = z
+  .object({
+    template: z.string().describe('Preset storage template'),
+    preview: z.string().describe('Example path rendered from the preset'),
+  })
+  .meta({ id: 'StorageTemplatePresetDto' });
+
+const StorageTemplateOptionsResponseSchema = ConfigTemplateStorageOptionSchema.omit({ presetOptions: true })
+  .extend({
+    presets: z.array(StorageTemplatePresetSchema).describe('Preset storage templates with an example path'),
+  })
+  .meta({ id: 'StorageTemplateOptionsResponseDto' });
+
 export class AdminConfigDto extends createZodDto(AdminConfigSchema) {}
+
 export class UserConfigDto extends createZodDto(UserConfigSchema) {}
+
 export class PublicConfigDto extends createZodDto(PublicConfigSchema) {}
+
 export class ConfigFFmpegDto extends createZodDto(AdminConfigFFmpegSchema) {}
+
 export class ConfigSmtpDto extends createZodDto(AdminConfigSmtpSchema) {}
+
 export class ConfigTemplateStorageOptionDto extends createZodDto(ConfigTemplateStorageOptionSchema) {}
+
+export class StorageTemplateOptionsResponseDto extends createZodDto(StorageTemplateOptionsResponseSchema) {}
+
+export class StorageTemplatePreviewDto extends createZodDto({
+  template: z.string().describe('Storage template'),
+}) {}
+
+export class StorageTemplatePreviewResponseDto extends createZodDto({
+  preview: z.string().describe('Example path rendered from the template'),
+}) {}
 
 /** @deprecated the `/system-config` endpoints these are named after are on their way out */
 export { AdminConfigDto as SystemConfigDto, ConfigSmtpDto as SystemConfigSmtpDto };
@@ -883,15 +913,17 @@ export const defaults = Object.freeze<SystemConfig>({
   image: {
     thumbnail: {
       format: ImageFormat.Webp,
-      size: 250,
+      size: 360,
       quality: 80,
       progressive: false,
+      effort: ImageEffort.Medium,
     },
     preview: {
       format: ImageFormat.Jpeg,
       size: 1440,
       quality: 80,
       progressive: false,
+      effort: ImageEffort.Medium,
     },
     colorspace: Colorspace.P3,
     extractEmbedded: false,
@@ -900,6 +932,7 @@ export const defaults = Object.freeze<SystemConfig>({
       format: ImageFormat.Jpeg,
       quality: 80,
       progressive: false,
+      effort: ImageEffort.Medium,
     },
   },
   newVersionCheck: {

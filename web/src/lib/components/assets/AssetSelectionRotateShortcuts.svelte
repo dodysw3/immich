@@ -1,12 +1,11 @@
 <script lang="ts">
-  import { shouldIgnoreEvent } from '#lib/actions/shortcut.ts';
   import { ProjectionType } from '#lib/constants.ts';
   import type { AssetMultiSelectManager } from '#lib/managers/asset-multi-select-manager.svelte.ts';
   import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
   import { editManager } from '#lib/managers/edit/edit-manager.svelte.ts';
   import { searchStore } from '#lib/stores/search.svelte.ts';
   import { handlePromiseError } from '#lib/utils.ts';
-  import { isModalOpen } from '@immich/ui';
+  import { isModalOpen, shouldIgnoreEvent } from '@immich/ui';
 
   type Props = {
     assetInteraction: AssetMultiSelectManager;

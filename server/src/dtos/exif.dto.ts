@@ -1,4 +1,4 @@
-import { createZodDto } from 'nestjs-zod';
+import { createZodDto } from '@immich/nestjs-standard-schema/zod';
 import z from 'zod';
 import { Exif } from 'src/database.js';
 import type { MaybeDehydrated } from 'src/types.js';

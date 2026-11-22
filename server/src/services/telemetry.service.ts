@@ -98,6 +98,7 @@ export class TelemetryService extends BaseService {
   onJobComplete(...[queueName]: ArgsOf<'JobComplete'>) {
     const queueMetric = `immich.queues.${snakeCase(queueName)}.active`;
     this.telemetryRepository.jobs.addToGauge(queueMetric, -1);
+    this.telemetryRepository.jobs.addToCounter(`immich.queues.${snakeCase(queueName)}.completed`, 1);
   }
 
   @OnEvent({ name: 'QueueStart' })

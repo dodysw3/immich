@@ -2,14 +2,17 @@
   import { initInput } from '#lib/actions/focus.ts';
   import { maximumLengthSearchPeople, timeBeforeShowLoadingSpinner } from '#lib/constants.ts';
   import SearchBar from '#lib/elements/SearchBar.svelte';
+  import { queryClient } from '#lib/queries/client.ts';
+  import { QueryKeys } from '#lib/queries/query-keys.ts';
+  import { searchPersonQuery } from '#lib/queries/search.query.ts';
   import { handleError } from '#lib/utils/handle-error.ts';
   import { searchNameLocal } from '#lib/utils/person.ts';
-  import { searchPerson, type PersonResponseDto } from '@immich/sdk';
+  import { type PersonResponseDto } from '@immich/sdk';
+  import { isCancelledError } from '@tanstack/svelte-query';
   import { t } from 'svelte-i18n';
 
   let searchedPeople: PersonResponseDto[] = [];
   let searchWord: string;
-  let abortController: AbortController | null = null;
   let timeout: NodeJS.Timeout | null = null;
 
   const search = () => {
@@ -23,10 +26,7 @@
   };
 
   const cancelPreviousRequest = () => {
-    if (abortController) {
-      abortController.abort();
-      abortController = null;
-    }
+    void queryClient.cancelQueries({ queryKey: QueryKeys.searchPerson() });
     if (timeout) {
       clearTimeout(timeout);
       timeout = null;
@@ -47,7 +47,7 @@
 
   let {
     searchName = $bindable(),
-    // eslint-disable-next-line no-useless-assignment
+
     searchedPeopleLocal = $bindable(),
     type,
     numberPeopleToSearch = maximumLengthSearchPeople,
@@ -63,22 +63,6 @@
     onReset();
   };
 
-  const API_PERSON_LIMIT = 100;
-  let lastApiResultWasComplete = false;
-
-  const canUseLocalSearch = (currentSearch: string, previousSearch: string): boolean => {
-    if (!currentSearch.startsWith(previousSearch)) {
-      return false;
-    }
-    if (searchedPeople.length === 0) {
-      return false;
-    }
-    if (!lastApiResultWasComplete) {
-      return true;
-    }
-    return !(previousSearch.length < 3);
-  };
-
   export async function searchPeople(force?: boolean, name?: string) {
     searchName = name ?? searchName;
     onSearch();
@@ -86,32 +70,29 @@
       reset();
       return;
     }
-    if (!force && canUseLocalSearch(searchName, searchWord)) {
+    if (
+      !force &&
+      searchedPeople.length > 0 &&
+      searchedPeople.length < maximumLengthSearchPeople &&
+      searchName.startsWith(searchWord)
+    ) {
       search();
       return;
     }
     cancelPreviousRequest();
-    abortController = new AbortController();
     timeout = setTimeout(() => (showLoadingSpinner = true), timeBeforeShowLoadingSpinner);
     try {
-      const data = await searchPerson({ name: searchName }, { signal: abortController?.signal });
-      if (abortController) {
-        searchedPeople = data;
-        searchWord = searchName;
-        lastApiResultWasComplete = data.length >= API_PERSON_LIMIT;
-      }
+      searchedPeople = await queryClient.query(searchPersonQuery({ name: searchName }));
+      searchWord = searchName;
     } catch (error) {
-      if (abortController) {
+      if (!isCancelledError(error)) {
         handleError(error, $t('errors.cant_search_people'));
       }
     } finally {
       clearTimeout(timeout);
       timeout = null;
-      if (abortController) {
-        search();
-      }
-      abortController = null;
       showLoadingSpinner = false;
+      search();
     }
   }
 </script>

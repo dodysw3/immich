@@ -1,4 +1,4 @@
-FROM ghcr.io/immich-app/base-server-dev:202610291416@sha256:5f4f9f77059e1cd0182994419a19f4ee045c3fd48e611f5e77623ed63f7aa1e4 AS builder
+FROM ghcr.io/immich-app/base-server-dev:202611101105@sha256:174b605f52a3430c58295db1737d46a602cc076103aba60f33bdb8bb545e0b41 AS builder
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
   CI=1 \
   COREPACK_HOME=/tmp \
@@ -68,7 +68,7 @@ FROM plugin-sdk AS plugins
 
 ARG TARGETPLATFORM
 
-COPY --from=ghcr.io/jdx/mise:2026.10.25@sha256:91417f41840316b7c5da6854bef393eccea4546ae70f8baf0803e0e94287b68d /usr/local/bin/mise /usr/local/bin/mise
+COPY --from=ghcr.io/jdx/mise:2026.11.9@sha256:9a182adba2584a6f5b29ddc1f2c7651c93694a5f829d74452b90214616baacf4 /usr/local/bin/mise /usr/local/bin/mise
 
 COPY ./mise.toml ./mise.toml
 COPY ./mise.lock ./mise.lock
@@ -92,7 +92,7 @@ RUN --mount=type=cache,id=pnpm-packages,target=/buildcache/pnpm-store \
   pnpm --filter @immich/sdk build && \
   mise x -- pnpm --filter @immich/plugin-sdk --filter @immich/plugin-core build
 
-FROM ghcr.io/immich-app/base-server-prod:202610291416@sha256:6211bec52cbccc19076889b0c39ef473a1a1d02ceb635ccd2e0ecb4683e5fd4d
+FROM ghcr.io/immich-app/base-server-prod:202611101105@sha256:282c05976d233c7a601199b9be79f6c8260352b37b1d808e96b16fb76cc63270
 
 RUN apt-get update && apt-get install -y --no-install-recommends poppler-utils && rm -rf /var/lib/apt/lists/*
 
@@ -128,8 +128,8 @@ ENV IMMICH_SOURCE_REF=${BUILD_SOURCE_REF}
 ENV IMMICH_SOURCE_COMMIT=${BUILD_SOURCE_COMMIT}
 ENV IMMICH_SOURCE_URL=https://github.com/immich-app/immich/commit/${BUILD_SOURCE_COMMIT}
 
-COPY --from=ghcr.io/futo-org/backups/restic-proxy:v1.11.2@sha256:a88252d884d22a55749f45dd39a2458c6391ca3e4d3b0d9e0c2246786cf923be /usr/local/bin/restic-proxy /usr/local/bin/restic-proxy
-COPY --from=ghcr.io/futo-org/restic:sha-1e904f0@sha256:501bb3e696bd78db0d89ae4e5c51b6993b9cb3f88e657020777dba49226169bc /usr/bin/restic /usr/local/bin/restic
+COPY --from=ghcr.io/futo-org/backups/restic-proxy:v1.18.1@sha256:8ce6e9ba833c16985d1353cdf06437161322fcd6825cd60f2bb19c4154bacd60 /usr/local/bin/restic-proxy /usr/local/bin/restic-proxy
+COPY --from=ghcr.io/futo-org/restic:0.19.1-futo.2@sha256:72a88670ee0bbb5485c74bd9a7fb3f36d46bf3f8e29c6d0886cd6039077a3184 /usr/bin/restic /usr/local/bin/restic
 
 VOLUME /data
 EXPOSE 2283

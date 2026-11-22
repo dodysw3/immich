@@ -1,5 +1,5 @@
+import { createZodDto } from '@immich/nestjs-standard-schema/zod';
 import { Selectable, ShallowDehydrateObject } from 'kysely';
-import { createZodDto } from 'nestjs-zod';
 import z from 'zod';
 import { AssetFace, AssetFile, Exif, Stack, Tag, User } from 'src/database.js';
 import { HistoryBuilder } from 'src/decorators.js';

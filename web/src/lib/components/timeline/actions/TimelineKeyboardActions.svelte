@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { shortcuts, type ShortcutOptions } from '#lib/actions/shortcut.ts';
   import AssetSelectionRotateShortcuts from '#lib/components/assets/AssetSelectionRotateShortcuts.svelte';
   import {
     setFocusToAsset as setFocusAssetInit,
@@ -22,7 +21,7 @@
   import { handlePromiseError } from '#lib/utils.ts';
   import { deleteAssets } from '#lib/utils/actions.ts';
   import { selectAllAssets } from '#lib/utils/asset-utils.ts';
-  import { isModalOpen, modalManager } from '@immich/ui';
+  import { isModalOpen, modalManager, shortcuts, type ShortcutOptions } from '@immich/ui';
   import { goto } from '$app/navigation';
 
   type Props = {
@@ -146,6 +145,6 @@
   });
 </script>
 
-<svelte:document onselectstart={onSelectStart} use:shortcuts={shortcutList} />
+<svelte:window onselectstart={onSelectStart} {@attach shortcuts(shortcutList)} />
 
 <AssetSelectionRotateShortcuts {assetInteraction} />

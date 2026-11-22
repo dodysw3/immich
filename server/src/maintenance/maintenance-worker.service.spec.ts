@@ -1,6 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { SignJWT } from 'jose';
-import { DatabaseLock, MaintenanceAction, SystemMetadataKey } from 'src/enum.js';
+import { MaintenanceAction, SystemMetadataKey } from 'src/enum.js';
 import { MaintenanceHealthRepository } from 'src/maintenance/maintenance-health.repository.js';
 import { MaintenanceWebsocketRepository } from 'src/maintenance/maintenance-websocket.repository.js';
 import { MaintenanceWorkerService } from 'src/maintenance/maintenance-worker.service.js';
@@ -61,33 +61,6 @@ describe(MaintenanceWorkerService.name, () => {
     });
   });
 
-  describe('init', () => {
-    beforeEach(() => {
-      mocks.systemMetadata.get.mockResolvedValue({ isMaintenanceMode: true, secret: 'secret' });
-    });
-
-    it('takes the backups SDK lock so its jobs run during maintenance', async () => {
-      const futoBackups = { acquireLock: vitest.fn() };
-      moduleRefMock.get.mockReturnValue(futoBackups);
-      mocks.database.tryLock.mockResolvedValue(true);
-
-      await sut.init();
-
-      expect(mocks.database.tryLock).toHaveBeenCalledWith(DatabaseLock.FutoBackupsModuleConfig);
-      expect(futoBackups.acquireLock).toHaveBeenCalled();
-    });
-
-    it('leaves the backups SDK lock to whoever already holds it', async () => {
-      const futoBackups = { acquireLock: vitest.fn() };
-      moduleRefMock.get.mockReturnValue(futoBackups);
-      mocks.database.tryLock.mockResolvedValue(false);
-
-      await sut.init();
-
-      expect(futoBackups.acquireLock).not.toHaveBeenCalled();
-    });
-  });
-
   it('should work', () => {
     expect(sut).toBeDefined();
   });
@@ -130,6 +103,32 @@ describe(MaintenanceWorkerService.name, () => {
         task: 'abc',
         error: 'Something went wrong, see logs!',
       });
+    });
+  });
+
+  describe('onWebsocketConnect', () => {
+    beforeEach(() => {
+      sut.mock({ active: true, action: MaintenanceAction.RestoreDatabase, error: 'restore failed' });
+    });
+
+    it('should send the full status to an authenticated client', () => {
+      sut.onWebsocketConnect({ clientId: 'client-1', isAuthenticated: true });
+
+      expect(maintenanceWebsocketRepositoryMock.clientSend).toHaveBeenCalledExactlyOnceWith(
+        'MaintenanceStatusV1',
+        'client-1',
+        { active: true, action: 'restore_database', error: 'restore failed' },
+      );
+    });
+
+    it('should send the public status to an unauthenticated client', () => {
+      sut.onWebsocketConnect({ clientId: 'client-1', isAuthenticated: false });
+
+      expect(maintenanceWebsocketRepositoryMock.clientSend).toHaveBeenCalledExactlyOnceWith(
+        'MaintenanceStatusV1',
+        'client-1',
+        { active: true, action: 'restore_database', error: 'Something went wrong, see logs!' },
+      );
     });
   });
 

@@ -115,6 +115,7 @@ export type AdminConfigFFmpegDto = {
     twoPass: boolean;
 };
 export type AdminConfigGeneratedFullsizeImageDto = {
+    effort: ImageEffort;
     /** Enabled */
     enabled: boolean;
     format: ImageFormat;
@@ -124,6 +125,7 @@ export type AdminConfigGeneratedFullsizeImageDto = {
     quality: number;
 };
 export type AdminConfigGeneratedImageDto = {
+    effort: ImageEffort;
     format: ImageFormat;
     /** Progressive */
     progressive?: boolean;
@@ -507,6 +509,38 @@ export type AdminConfigDto = {
     trash: AdminConfigTrashDto;
     user: AdminConfigUserDto;
 };
+export type StorageTemplatePresetDto = {
+    /** Example path rendered from the preset */
+    preview: string;
+    /** Preset storage template */
+    template: string;
+};
+export type StorageTemplateOptionsResponseDto = {
+    /** Available day format options for storage template */
+    dayOptions: string[];
+    /** Available hour format options for storage template */
+    hourOptions: string[];
+    /** Available minute format options for storage template */
+    minuteOptions: string[];
+    /** Available month format options for storage template */
+    monthOptions: string[];
+    /** Preset storage templates with an example path */
+    presets: StorageTemplatePresetDto[];
+    /** Available second format options for storage template */
+    secondOptions: string[];
+    /** Available week format options for storage template */
+    weekOptions: string[];
+    /** Available year format options for storage template */
+    yearOptions: string[];
+};
+export type StorageTemplatePreviewDto = {
+    /** Storage template */
+    template: string;
+};
+export type StorageTemplatePreviewResponseDto = {
+    /** Example path rendered from the template */
+    preview: string;
+};
 export type DatabaseBackupDeleteDto = {
     /** Backup filenames to delete */
     backups: string[];
@@ -673,7 +707,7 @@ export type UserAdminResponseDto = {
     id: string;
     /** Is admin user */
     isAdmin: boolean;
-    license: (UserLicense) | null;
+    license: UserLicense | null;
     /** User name */
     name: string;
     /** OAuth ID */
@@ -695,7 +729,7 @@ export type UserAdminResponseDto = {
     updatedAt: string;
 };
 export type UserAdminCreateDto = {
-    avatarColor?: (UserAvatarColor) | null;
+    avatarColor?: UserAvatarColor | null;
     /** User email */
     email: string;
     /** Grant admin privileges */
@@ -720,7 +754,7 @@ export type UserAdminDeleteDto = {
     force?: boolean;
 };
 export type UserAdminUpdateDto = {
-    avatarColor?: (UserAvatarColor) | null;
+    avatarColor?: UserAvatarColor | null;
     /** User email */
     email?: string;
     /** Grant admin privileges */
@@ -1464,7 +1498,7 @@ export type AssetResponseDto = {
     people?: PersonResponseDto[];
     /** Is resized */
     resized?: boolean;
-    stack?: (AssetStackResponseDto) | null;
+    stack?: AssetStackResponseDto | null;
     tags?: TagResponseDto[];
     /** Thumbhash for thumbnail generation (base64) also used as the c query param for thumbnail cache busting. */
     thumbhash: string | null;
@@ -1998,7 +2032,7 @@ export type AssetFaceResponseDto = {
     imageHeight: number;
     /** Image width in pixels */
     imageWidth: number;
-    person: (PersonResponseDto) | null;
+    person: PersonResponseDto | null;
     sourceType?: SourceType;
 };
 export type AssetFaceCreateDto = {
@@ -3810,7 +3844,7 @@ export type TrashResponseDto = {
     count: number;
 };
 export type UserUpdateMeDto = {
-    avatarColor?: (UserAvatarColor) | null;
+    avatarColor?: UserAvatarColor | null;
     /** User email */
     email?: string;
     /** User name */
@@ -3943,7 +3977,7 @@ export type ReleaseEventV1 = {
     releaseVersion: ServerVersionResponseDto;
     serverVersion: ServerVersionResponseDto;
     /** Release type */
-    "type": ReleaseType;
+    "type": ReleaseType | null;
 };
 export type RotationSuggestionApplyDto = RotationSuggestionDismissDto;
 export type SyncAckV1 = {};
@@ -4272,7 +4306,7 @@ export type SyncAssetV2 = {
     width: number | null;
 };
 export type SyncAuthUserV1 = {
-    avatarColor?: (UserAvatarColor) | null;
+    avatarColor?: UserAvatarColor | null;
     /** User deleted at */
     deletedAt: string | null;
     /** User email */
@@ -4299,7 +4333,7 @@ export type SyncAuthUserV1 = {
     storageLabel: string | null;
 };
 export type SyncAuthUserV2 = {
-    avatarColor?: (UserAvatarColor) | null;
+    avatarColor?: UserAvatarColor | null;
     /** User deleted at */
     deletedAt: string | null;
     /** User email */
@@ -4472,7 +4506,7 @@ export type SyncUserMetadataV1 = {
     };
 };
 export type SyncUserV1 = {
-    avatarColor?: (UserAvatarColor) | null;
+    avatarColor?: UserAvatarColor | null;
     /** User deleted at */
     deletedAt: string | null;
     /** User email */
@@ -4597,6 +4631,32 @@ export function getAdminConfigDefaults(opts?: Oazapfts.RequestOpts) {
     }>("/admin/config/defaults", {
         ...opts
     }));
+}
+/**
+ * Get storage template options
+ */
+export function getAdminStorageTemplateOptions(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: StorageTemplateOptionsResponseDto;
+    }>("/admin/config/storage-template", {
+        ...opts
+    }));
+}
+/**
+ * Preview a storage template
+ */
+export function previewStorageTemplate({ storageTemplatePreviewDto }: {
+    storageTemplatePreviewDto: StorageTemplatePreviewDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: StorageTemplatePreviewResponseDto;
+    }>("/admin/config/storage-template/preview", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: storageTemplatePreviewDto
+    })));
 }
 /**
  * Delete database backup
@@ -4797,6 +4857,19 @@ export function getNotificationTemplateAdmin({ name, templateDto }: {
         status: 200;
         data: TemplateResponseDto;
     }>(`/admin/notifications/templates/${encodeURIComponent(name)}`, oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: templateDto
+    })));
+}
+/**
+ * Preview email template
+ */
+export function previewNotificationTemplateAdmin({ name, templateDto }: {
+    name: EmailTemplate;
+    templateDto: TemplateDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/admin/notifications/templates/${encodeURIComponent(name)}/preview`, oazapfts.json({
         ...opts,
         method: "POST",
         body: templateDto
@@ -9179,6 +9252,12 @@ export enum Colorspace {
     Srgb = "srgb",
     P3 = "p3"
 }
+export enum ImageEffort {
+    Low = "low",
+    Medium = "medium",
+    High = "high",
+    Max = "max"
+}
 export enum ImageFormat {
     Jpeg = "jpeg",
     Jxl = "jxl",
@@ -9234,6 +9313,13 @@ export enum NotificationType {
     AlbumUpdate = "AlbumUpdate",
     ClusterGroupRequest = "ClusterGroupRequest",
     Custom = "Custom"
+}
+export enum EmailTemplate {
+    Test = "test",
+    Welcome = "welcome",
+    ResetPassword = "reset-password",
+    AlbumInvite = "album-invite",
+    AlbumUpdate = "album-update"
 }
 export enum UserStatus {
     Active = "active",

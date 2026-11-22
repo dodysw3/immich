@@ -1,6 +1,5 @@
 <script lang="ts">
   import { focusTrap } from '#lib/actions/focus-trap.ts';
-  import { shortcuts, shouldIgnoreEvent } from '#lib/actions/shortcut.ts';
   import OnEvents from '#lib/components/OnEvents.svelte';
   import AssetViewerNavBar from '#lib/components/asset-viewer/AssetViewerNavBar.svelte';
   import { preloadManager } from '#lib/components/asset-viewer/PreloadManager.svelte.ts';
@@ -10,12 +9,19 @@
   import { AssetAction, ProjectionType } from '#lib/constants.ts';
   import FaceOverlayButton from '#lib/features/face-overlay/face-overlay-button.svelte';
   import { faceOverlayStore } from '#lib/features/face-overlay/face-overlay.store.svelte.ts';
-  import { activityManager } from '#lib/managers/activity-manager.svelte.ts';
   import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
   import { authManager } from '#lib/managers/auth-manager.svelte.ts';
   import { EditToolType, editManager } from '#lib/managers/edit/edit-manager.svelte.ts';
   import { eventManager } from '#lib/managers/event-manager.svelte.ts';
   import type { TimelineAsset } from '#lib/managers/timeline-manager/types.ts';
+  import {
+    createActivityMutation,
+    deleteActivityMutation,
+    getActivityStatisticsQuery,
+    getMyLikeQuery,
+  } from '#lib/queries/activity.query.ts';
+  import { executeMutation, queryClient } from '#lib/queries/client.ts';
+  import { getStackQuery } from '#lib/queries/stack.query.ts';
   import { canOpenEditorForAsset, getAssetActions } from '#lib/services/asset.service.ts';
   import { faceManager } from '#lib/stores/face.svelte.ts';
   import { ocrManager } from '#lib/stores/ocr.svelte.ts';
@@ -35,14 +41,15 @@
   import { toTimelineAsset } from '#lib/utils/timeline-util.ts';
   import {
     AssetTypeEnum,
+    ReactionType,
     getAssetInfo,
-    getStack,
     type AlbumResponseDto,
     type AssetResponseDto,
     type PersonResponseDto,
     type StackResponseDto,
   } from '@immich/sdk';
-  import { CommandPaletteDefaultProvider } from '@immich/ui';
+  import { CommandPaletteDefaultProvider, shortcuts, shouldIgnoreEvent } from '@immich/ui';
+  import { createQuery, type MutationMeta } from '@tanstack/svelte-query';
   import { onDestroy, onMount, untrack } from 'svelte';
   import type { SwipeCustomEvent } from 'svelte-gestures';
   import { t } from 'svelte-i18n';
@@ -114,9 +121,28 @@
   const stackSelectedThumbnailSize = 65;
 
   let previewStackedAsset: AssetResponseDto | undefined = $state();
-  let stack: StackResponseDto | undefined = $state();
 
   const asset = $derived(previewStackedAsset ?? cursor.current);
+  const stackId = $derived(withStacked && !authManager.isSharedLink ? cursor.current.stack?.id : undefined);
+  const activityParams = $derived({ albumId: album?.id ?? '', assetId: asset.id });
+  const isActivityEnabled = $derived(!!album && isShared && authManager.authenticated);
+  const queries = {
+    stack: createQuery(
+      () => ({ ...getStackQuery(stackId ?? ''), enabled: !!stackId }),
+      () => queryClient,
+    ),
+    activityStatistics: createQuery(() => ({
+      ...getActivityStatisticsQuery(activityParams),
+      enabled: isActivityEnabled,
+    })),
+    myLike: createQuery(() => ({ ...getMyLikeQuery(activityParams), enabled: isActivityEnabled })),
+  };
+  const stack = $derived(
+    queries.stack.data?.assets.some(({ id }) => id === cursor.current.id) ? queries.stack.data : undefined,
+  );
+  const commentCount = $derived(queries.activityStatistics.data?.comments ?? 0);
+  const likeCount = $derived(queries.activityStatistics.data?.likes ?? 0);
+  const myLike = $derived(queries.myLike.data ?? null);
   const nextAsset = $derived(cursor.nextAsset);
   const previousAsset = $derived(cursor.previousAsset);
   const isOwner = $derived(authManager.user?.id === asset.ownerId);
@@ -130,30 +156,18 @@
     isPlayingOriginalVideo = value;
   };
 
-  const refreshStack = async () => {
-    if (authManager.isSharedLink || !withStacked) {
-      return;
-    }
-
-    if (asset.stack) {
-      stack = await getStack({ id: asset.stack.id });
-    }
-
-    if (!stack?.assets.some(({ id }) => id === asset.id)) {
-      stack = undefined;
-    }
-  };
-
   const handleFavorite = async () => {
     if (!album || !album.isActivityEnabled) {
       return;
     }
 
-    try {
-      await activityManager.toggleLike();
-    } catch (error) {
-      handleError(error, $t('errors.unable_to_change_favorite'));
-    }
+    const meta: MutationMeta = { error: { toast: 'errors.unable_to_change_favorite' } };
+    await (myLike
+      ? executeMutation(() => deleteActivityMutation(meta), [{ id: myLike.id }])
+      : executeMutation(
+          () => createActivityMutation(meta),
+          [{ activityCreateDto: { ...activityParams, type: ReactionType.Like } }],
+        ));
   };
 
   const onAssetUpdate = (updatedAsset: AssetResponseDto) => {
@@ -171,22 +185,14 @@
     await navigate({ targetRoute: 'current', assetId: restoredAsset.id });
   };
 
-  const onStackCreate = (createdStack: StackResponseDto) => {
-    if (createdStack.assets.map((a) => a.id).includes(asset.id)) {
-      stack = createdStack;
+  const onStackUpdate = ({ id, assets }: StackResponseDto) => {
+    if (stackId === id && assets.every((stackedAsset) => stackedAsset.id !== cursor.current.id)) {
+      showStackedAsset(assets[0]);
     }
   };
 
-  const onStackUpdate = (updatedStack: StackResponseDto) => {
-    if (stack?.id !== updatedStack.id) {
-      return;
-    }
-
-    stack = updatedStack;
-    if (!stack.assets.map((a) => a.id).includes(asset.id)) {
-      // current asset was removed from stack, go to primary
-      cursor.current = stack.assets[0];
-    }
+  const showStackedAsset = (stackedAsset: AssetResponseDto) => {
+    cursor = { ...cursor, current: { ...stackedAsset, stack: cursor.current.stack } };
   };
 
   const onPersonThumbnailReady = async ({ id: personId }: { id: string }) => {
@@ -225,7 +231,6 @@
   });
 
   onDestroy(() => {
-    activityManager.reset();
     assetViewerManager.resetPanelState();
     syncAssetViewerOpenClass(false);
     preloadManager.destroy();
@@ -311,7 +316,7 @@
     if (nextIndex < 0 || nextIndex >= stack.assets.length) {
       return;
     }
-    cursor.current = stack.assets[nextIndex];
+    showStackedAsset(stack.assets[nextIndex]);
   };
 
   /** Slide show mode */
@@ -388,13 +393,8 @@
   let isFullScreen = $derived(!!fullscreenElement);
 
   $effect(() => {
-    if (album && !album.isActivityEnabled && activityManager.commentCount === 0) {
+    if (album && !album.isActivityEnabled && commentCount === 0) {
       assetViewerManager.closeActivityPanel();
-    }
-  });
-  $effect(() => {
-    if (album && isShared && asset.id) {
-      handlePromiseError(activityManager.init(album.id, asset.id));
     }
   });
 
@@ -404,8 +404,7 @@
     }
   };
 
-  const refresh = async () => {
-    await refreshStack();
+  const refresh = async ({ id }: AssetResponseDto) => {
     ocrManager.clear();
     faceOverlayStore.clear();
     faceManager.clear();
@@ -415,12 +414,8 @@
     videoAudioEventsManager.clear();
     assetViewerManager.clearVideoCurrentTimeMs();
     if (!sharedLink) {
-      if (previewStackedAsset) {
-        await ocrManager.getAssetOcr(previewStackedAsset.id);
-        await faceManager.getAssetFaces(previewStackedAsset.id);
-      }
-      await ocrManager.getAssetOcr(asset.id);
-      await faceManager.getAssetFaces(asset.id);
+      await ocrManager.getAssetOcr(id);
+      await faceManager.getAssetFaces(id);
     }
     if (asset.type === AssetTypeEnum.Video && !sharedLink) {
       await videoCaptionManager.getAssetCaptions(asset.id);
@@ -431,9 +426,8 @@
   };
 
   $effect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    asset;
-    untrack(() => handlePromiseError(refresh()));
+    const current = asset;
+    untrack(() => handlePromiseError(refresh(current)));
   });
 
   let lastCursor = $state<AssetCursor>();
@@ -477,8 +471,8 @@
   const showActivityStatus = $derived(
     $slideshowState === SlideshowState.None &&
       isShared &&
-      ((album && album.isActivityEnabled) || activityManager.commentCount > 0) &&
-      !activityManager.isLoading,
+      ((album && album.isActivityEnabled) || commentCount > 0) &&
+      !queries.activityStatistics.isLoading,
   );
   const showFaceButton = $derived(
     $slideshowState === SlideshowState.None &&
@@ -594,7 +588,6 @@
 <OnEvents
   {onAssetUpdate}
   {onAssetsUndoArchive}
-  {onStackCreate}
   onStackDelete={() => closeViewer()}
   {onStackUpdate}
   {onPersonThumbnailReady}
@@ -603,10 +596,10 @@
 <svelte:document
   bind:fullscreenElement
   onkeydown={onInstantRotateShortcut}
-  use:shortcuts={[
+  {@attach shortcuts([
     { shortcut: { key: 'ArrowUp' }, onShortcut: () => navigateStack('previous') },
     { shortcut: { key: 'ArrowDown' }, onShortcut: () => navigateStack('next') },
-  ]}
+  ])}
 ></svelte:document>
 
 <section
@@ -705,9 +698,9 @@
       <div class="absolute inset-e-0 bottom-0 me-8 mb-20">
         <ActivityStatus
           disabled={!album?.isActivityEnabled}
-          isLiked={activityManager.isLiked}
-          numberOfComments={activityManager.commentCount}
-          numberOfLikes={activityManager.likeCount}
+          isLiked={myLike}
+          numberOfComments={commentCount}
+          numberOfLikes={likeCount}
           onFavorite={handleFavorite}
         />
       </div>
@@ -801,7 +794,7 @@
               brokenAssetClass="text-xs"
               asset={toTimelineAsset(stackedAsset)}
               onClick={() => {
-                cursor.current = stackedAsset;
+                showStackedAsset(stackedAsset);
                 previewStackedAsset = undefined;
               }}
               onMouseEvent={({ isMouseOver }) => handleStackedAssetMouseEvent(isMouseOver, stackedAsset)}

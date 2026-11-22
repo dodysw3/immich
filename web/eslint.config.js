@@ -139,6 +139,7 @@ export default defineConfig(
       'unicorn/prefer-uint8array-base64': 'off',
       'unicorn/max-nested-calls': 'off',
       'unicorn/no-declarations-before-early-exit': 'off',
+      'unicorn/prefer-smaller-scope': 'off',
       'unicorn/no-unreadable-object-destructuring': 'off',
       // not yet compatible with all our supported browsers
       'unicorn/prefer-promise-with-resolvers': 'off',
@@ -187,6 +188,7 @@ export default defineConfig(
     rules: {
       'better-tailwindcss/enforce-consistent-line-wrapping': 'off',
       'better-tailwindcss/no-unknown-classes': 'off',
+      'no-useless-assignment': 'off',
     },
 
     files: ['**/*.svelte'],

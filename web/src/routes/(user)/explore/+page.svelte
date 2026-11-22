@@ -9,11 +9,14 @@
   import Portal from '#lib/elements/Portal.svelte';
   import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
   import { authManager } from '#lib/managers/auth-manager.svelte.ts';
+  import { createPreloadedQuery } from '#lib/queries/client.ts';
+  import { getAllPeopleQuery, updateCachedPerson } from '#lib/queries/person.query.ts';
+  import { getExploreDataQuery } from '#lib/queries/search.query.ts';
   import { Route } from '#lib/route.ts';
   import { getAssetMediaUrl, getPeopleThumbnailUrl, memoryLaneTitle } from '#lib/utils.ts';
   import { getAltText } from '#lib/utils/thumbnail-util.ts';
   import { toTimelineAsset } from '#lib/utils/timeline-util.ts';
-  import { AssetMediaSize, getAssetInfo, type SearchExploreResponseDto } from '@immich/sdk';
+  import { AssetMediaSize, getAssetInfo } from '@immich/sdk';
   import { ImageCarousel } from '@immich/ui';
   import { t } from 'svelte-i18n';
   import type { PageData } from './$types';
@@ -24,17 +27,23 @@
 
   let { data }: Props = $props();
 
-  const getFieldItems = (items: SearchExploreResponseDto[], field: string) => {
-    const targetField = items.find((item) => item.fieldName === field);
+  const queries = {
+    explore: createPreloadedQuery(getExploreDataQuery),
+    people: createPreloadedQuery(() => getAllPeopleQuery({ withHidden: false })),
+  };
+  const explore = $derived(queries.explore.data);
+
+  const getFieldItems = (field: string) => {
+    const targetField = explore.find((item) => item.fieldName === field);
     return targetField?.items || [];
   };
 
-  let places = $derived(getFieldItems(data.explore, 'exifInfo.city'));
-  let cameras = $derived(getFieldItems(data.explore, 'exifInfo.make'));
+  let places = $derived(getFieldItems('exifInfo.city'));
+  let cameras = $derived(getFieldItems('exifInfo.make'));
   let recents = $derived(
-    getFieldItems(data.explore, 'createdAt').sort((a, b) => new Date(b.value).getTime() - new Date(a.value).getTime()),
+    getFieldItems('createdAt').sort((a, b) => new Date(b.value).getTime() - new Date(a.value).getTime()),
   );
-  let people = $state(data.people.people);
+  const people = $derived(queries.people.data.people);
   let memories = $derived(
     data.memories.map((memory) => ({
       id: memory.id,
@@ -46,15 +55,10 @@
     })),
   );
 
-  let hasPeople = $derived(data.people.total > 0);
+  const hasPeople = $derived(queries.people.data.total > 0);
 
-  const onPersonThumbnailReady = ({ id }: { id: string }) => {
-    for (const person of people) {
-      if (person.id === id) {
-        person.updatedAt = new Date().toISOString();
-      }
-    }
-  };
+  const onPersonThumbnailReady = ({ id }: { id: string }) =>
+    updateCachedPerson(id, (person) => ({ ...person, updatedAt: new Date().toISOString() }));
 
   const onViewAsset = async (id: string) => {
     const asset = await getAssetInfo({ ...authManager.params, id });

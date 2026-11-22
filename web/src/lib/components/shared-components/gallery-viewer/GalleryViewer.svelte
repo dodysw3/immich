@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { shortcuts, type ShortcutOptions } from '#lib/actions/shortcut.ts';
   import OnEvents from '#lib/components/OnEvents.svelte';
   import type { AssetCursor } from '#lib/components/asset-viewer/AssetViewer.svelte';
   import type { Action } from '#lib/components/asset-viewer/actions/action.ts';
@@ -33,7 +32,7 @@
   import { isTimelineAsset, toTimelineAsset } from '#lib/utils/timeline-util.ts';
   import { TUNABLES } from '#lib/utils/tunables.ts';
   import { AssetVisibility, type AssetResponseDto, type TranscriptionMatchDto } from '@immich/sdk';
-  import { modalManager } from '@immich/ui';
+  import { modalManager, shortcuts, type ShortcutOptions } from '@immich/ui';
   import { debounce, throttle } from 'lodash-es';
   import { t } from 'svelte-i18n';
   import { SvelteMap, SvelteSet } from 'svelte/reactivity';
@@ -50,6 +49,8 @@
     showArchiveIcon?: boolean;
     viewport: Viewport;
     onEndReached?: (() => void) | undefined;
+    onAssetChange?: (asset: AssetResponseDto) => void;
+    onAssetRemove?: (assetId: string) => void;
     showAssetName?: boolean;
     onReload?: (() => void) | undefined;
     pageHeaderOffset?: number;
@@ -74,6 +75,8 @@
     showArchiveIcon = false,
     viewport,
     onEndReached = undefined,
+    onAssetChange,
+    onAssetRemove,
     showAssetName = false,
     onReload = undefined,
     slidingWindowOffset = 0,
@@ -594,6 +597,7 @@
         if (nextAsset) {
           await navigateToAsset(nextAsset);
         }
+        onAssetRemove?.(action.asset.id);
         break;
       }
       // no default
@@ -634,7 +638,8 @@
 <OnEvents {onAssetUpdate} />
 <AssetSelectionRotateShortcuts {assetInteraction} />
 
-<svelte:document onselectstart={onSelectStart} use:shortcuts={shortcutList} onscroll={() => updateSlidingWindow()} />
+<svelte:window {@attach shortcuts(shortcutList)} />
+<svelte:document onselectstart={onSelectStart} onscroll={() => updateSlidingWindow()} />
 
 {#if resolvedAssets.length > 0}
   <div

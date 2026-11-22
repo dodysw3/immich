@@ -101,6 +101,7 @@ export class JobService extends BaseService {
         throw error;
       }
       await this.eventRepository.emit('JobError', { job, error });
+      throw error;
     } finally {
       await this.eventRepository.emit('JobComplete', queueName, job);
     }

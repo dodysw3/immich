@@ -4,8 +4,10 @@ import { downloadManager } from '#lib/managers/download-manager.svelte.ts';
 import { eventManager } from '#lib/managers/event-manager.svelte.ts';
 import { TimelineManager } from '#lib/managers/timeline-manager/timeline-manager.svelte.ts';
 import type { TimelineAsset } from '#lib/managers/timeline-manager/types.ts';
+import { executeMutation } from '#lib/queries/client.ts';
+import { getDownloadInfoMutation } from '#lib/queries/download.query.ts';
 import { locale } from '#lib/stores/preferences.store.ts';
-import { downloadUrlPost, withError } from '#lib/utils.ts';
+import { downloadUrlPost } from '#lib/utils.ts';
 import { getByteUnitString } from '#lib/utils/byte-units.ts';
 import { getFormatter } from '#lib/utils/i18n.ts';
 import { navigate } from '#lib/utils/navigation.ts';
@@ -14,12 +16,11 @@ import { toTimelineAsset } from '#lib/utils/timeline-util.ts';
 import {
   AssetVisibility,
   getBaseUrl,
-  getDownloadInfo,
-  untagAssets,
   updateAsset,
   updateAssets,
   type AssetResponseDto,
   type DownloadInfoDto,
+  type DownloadResponseDto,
   type ExifResponseDto,
   type UserResponseDto,
 } from '@immich/sdk';
@@ -29,41 +30,16 @@ import { t } from 'svelte-i18n';
 import { get } from 'svelte/store';
 import { handleError } from './handle-error';
 
-export const removeTag = async ({
-  assetIds,
-  tagIds,
-  showNotification = true,
-}: {
-  assetIds: string[];
-  tagIds: string[];
-  showNotification?: boolean;
-}) => {
-  for (const tagId of tagIds) {
-    await untagAssets({ id: tagId, bulkIdsDto: { ids: assetIds } });
-  }
-
-  if (showNotification) {
-    const $t = await getFormatter();
-    toastManager.primary($t('removed_tagged_assets', { values: { count: assetIds.length } }));
-  }
-
-  return assetIds;
-};
-
 export const downloadArchive = async (fileName: string, options: Omit<DownloadInfoDto, 'archiveSize'>) => {
   const archiveSize = authManager.authenticated ? authManager.preferences.download.archiveSize : undefined;
-  const dto = { ...options, archiveSize };
-  const [error, downloadInfo] = await withError(() => getDownloadInfo({ ...authManager.params, downloadInfoDto: dto }));
-  if (error) {
-    const $t = get(t);
-    handleError(error, $t('errors.unable_to_download_files'));
-    return;
-  }
+  await executeMutation(
+    getDownloadInfoMutation,
+    [{ ...authManager.params, downloadInfoDto: { ...options, archiveSize } }],
+    { onSuccess: (downloadInfo) => void startArchiveDownloads(fileName, downloadInfo) },
+  );
+};
 
-  if (!downloadInfo) {
-    return;
-  }
-
+const startArchiveDownloads = async (fileName: string, downloadInfo: DownloadResponseDto) => {
   for (let index = 0; index < downloadInfo.archives.length; index++) {
     const archive = downloadInfo.archives[index];
     const suffix = downloadInfo.archives.length > 1 ? `+${index + 1}` : '';
@@ -215,7 +191,6 @@ async function addSupportedMimeTypes(): Promise<void> {
   heicImg.src =
     'data:image/heic;base64,AAAAGGZ0eXBoZWljAAAAAG1pZjFoZWljAAABrW1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAHBpY3QAAAAAAAAAAAAAAAAAAAAADnBpdG0AAAAAAAIAAAAQaWRhdAAAAAAAAQABAAAAOGlsb2MBAAAAREAAAgABAAAAAAAAAc0AAQAAAAAAAAAsAAIAAQAAAAAAAAABAAAAAAAAAAgAAAA4aWluZgAAAAAAAgAAABVpbmZlAgAAAQABAABodmMxAAAAABVpbmZlAgAAAAACAABncmlkAAAAANhpcHJwAAAAtmlwY28AAAB2aHZjQwEDcAAAAAAAAAAAAB7wAPz9+PgAAA8DIAABABhAAQwB//8DcAAAAwCQAAADAAADAB66AkAhAAEAKkIBAQNwAAADAJAAAAMAAAMAHqAggQWW6q6a5uBAQMCAAAADAIAAAAMAhCIAAQAGRAHBc8GJAAAAFGlzcGUAAAAAAAAAAQAAAAEAAAAUaXNwZQAAAAAAAABAAAAAQAAAABBwaXhpAAAAAAMICAgAAAAaaXBtYQAAAAAAAAACAAECgQMAAgIChAAAABppcmVmAAAAAAAAAA5kaW1nAAIAAQABAAAANG1kYXQAAAAoKAGvCchMZYA50NoPIfzz81Qfsm577GJt3lf8kLAr+NbNIoeRR7JeYA=='; // Small valid HEIC/HEIF image
 }
-// eslint-disable-next-line unicorn/no-top-level-side-effects
 void addSupportedMimeTypes();
 
 /** Returns true if the asset is an image supported by web browsers, false otherwise */
