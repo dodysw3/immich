@@ -36,6 +36,8 @@ const document = (seed = 'run-a'): AiInterpretationDocument => ({
 
 const denseRow = (assetId: string, distance: number) => ({ assetId, distance });
 
+const exactRow = (assetId: string, matchTier: number) => ({ assetId, matchTier });
+
 const assetRow = (id: string) => ({
   id,
   originalPath: '/x/test.jpg',
@@ -87,6 +89,7 @@ describe(AiInterpretSearchService.name, () => {
       pageAssetsWithRuns: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
       searchDense: vi.fn().mockResolvedValue([]),
       searchLexical: vi.fn().mockResolvedValue([]),
+      searchExactToken: vi.fn().mockResolvedValue([]),
       getAssetsByIds: vi.fn().mockResolvedValue([]),
     };
     embeddingClient = { embed: vi.fn().mockResolvedValue([[0.1, 0.2]]) };
@@ -129,7 +132,7 @@ describe(AiInterpretSearchService.name, () => {
       ]);
       expect(repository.upsert).toHaveBeenCalledWith({
         assetId: 'asset-1',
-        text: 'Children playing family blocks Ria',
+        text: 'Children playing family blocks Ria Two children play on the floor Blocks Interrupted play',
         embedding: '[0.1,0.2]',
         runKey: runKeyOf('run-a'),
         model: 'bge-m3-Q8_0',
@@ -210,6 +213,91 @@ describe(AiInterpretSearchService.name, () => {
       expect(response.items[1]!.branch).toBe('dense');
       expect(response.items[2]!.branch).toBe('lexical');
       expect(response.nextPage).toBeNull();
+    });
+
+    it('ranks an exact person-name match above a partially matching asset with a better fused score', async () => {
+      enable();
+      // Regression for bare-name inversions: the poster matches "nidia saleh"
+      // only partially, yet ranks first in both dense and lexical; the exact
+      // tier-2 receipt must still outrank it via tier precedence.
+      repository.searchDense.mockResolvedValue([denseRow('poster', 0.05)]);
+      repository.searchLexical.mockResolvedValue([denseRow('poster', 0.1), denseRow('receipt', 0)]);
+      repository.searchExactToken.mockResolvedValue([exactRow('receipt', 2), exactRow('other', 1)]);
+      repository.getAssetsByIds.mockImplementation((ids: string[]) => ids.map((id) => assetRow(id)));
+
+      const response = await sut.searchAiInterpret(auth, { q: 'NIDIA SALEH', size: 10 });
+
+      expect(repository.searchExactToken).toHaveBeenCalledWith(
+        expect.objectContaining({ q: 'NIDIA SALEH', tokens: ['nidia', 'saleh'] }),
+      );
+      // tier 2 receipt first, then the tier-1 noncontiguous match, then the
+      // tier-0 partial match despite its leading RRF score
+      expect(response.items.map(({ asset }) => asset.id)).toEqual(['receipt', 'other', 'poster']);
+      expect(response.items[0]!.branch).toBe('exact');
+    });
+
+    it('keeps tier 1 above tier 0 but below tier 2 when fusing exact matches', async () => {
+      enable();
+      repository.searchExactToken.mockResolvedValue([exactRow('noncontiguous', 1), exactRow('contiguous', 2)]);
+      repository.searchDense.mockResolvedValue([denseRow('fuzzy', 0.2)]);
+      repository.searchLexical.mockResolvedValue([denseRow('fuzzy', 0.05)]);
+      repository.getAssetsByIds.mockImplementation((ids: string[]) => ids.map((id) => assetRow(id)));
+
+      const response = await sut.searchAiInterpret(auth, { q: 'Mawardi M Saleh', size: 10 });
+
+      expect(response.items.map(({ asset }) => asset.id)).toEqual(['contiguous', 'noncontiguous', 'fuzzy']);
+    });
+
+    it('runs the exact-token branch for any multi-token query without person-table gating', async () => {
+      enable();
+      repository.getAssetsByIds.mockResolvedValue([]);
+
+      await sut.searchAiInterpret(auth, { q: 'dental receipt', size: 10 });
+
+      expect(repository.searchExactToken).toHaveBeenCalledWith(
+        expect.objectContaining({ tokens: ['dental', 'receipt'] }),
+      );
+    });
+
+    it('does not run the exact-token branch for single-token queries', async () => {
+      enable();
+      repository.getAssetsByIds.mockResolvedValue([]);
+
+      await sut.searchAiInterpret(auth, { q: 'saleh', size: 10 });
+
+      expect(repository.searchExactToken).not.toHaveBeenCalled();
+    });
+
+    it('does not run the exact-token branch when no token is long enough to prefilter', async () => {
+      enable();
+      repository.getAssetsByIds.mockResolvedValue([]);
+
+      await sut.searchAiInterpret(auth, { q: 'ng bo', size: 10 });
+
+      expect(repository.searchExactToken).not.toHaveBeenCalled();
+    });
+
+    it('normalizes query tokens (lowercase, diacritics) for the exact-token branch', async () => {
+      enable();
+      repository.getAssetsByIds.mockResolvedValue([]);
+
+      await sut.searchAiInterpret(auth, { q: 'Nïdia Säleh', size: 10 });
+
+      expect(repository.searchExactToken).toHaveBeenCalledWith(expect.objectContaining({ tokens: ['nidia', 'saleh'] }));
+    });
+
+    it('counts a full exact-token page toward pagination depth', async () => {
+      enable();
+      const rows = Array.from({ length: 11 }, (_, i) => exactRow(`exact-${i}`, 1));
+      repository.searchDense.mockResolvedValue([]);
+      repository.searchLexical.mockResolvedValue([]);
+      repository.searchExactToken.mockResolvedValue(rows);
+      repository.getAssetsByIds.mockImplementation((ids: string[]) => ids.map((id) => assetRow(id)));
+
+      const page1 = await sut.searchAiInterpret(auth, { q: 'nidia saleh', size: 10 });
+
+      expect(page1.items).toHaveLength(10);
+      expect(page1.nextPage).toBe('2');
     });
 
     it('passes the configured minScore and scoped userIds to the branches', async () => {

@@ -1,11 +1,30 @@
 import type { AiInterpretationDocument, MuseInterpretationResult } from 'src/dtos/ai-image-interpretation.dto.js';
 
-// The lexical document is matched with pg_trgm word similarity, which rewards
-// exact tokens: names and keywords only. Prose fields stay out so a trigram
-// hit always lands on something the interpretation explicitly named.
+// pg_trgm treats every non-alphanumeric character as a word separator, so
+// tokenizing prose into a flat word stream is matching-neutral — it just
+// keeps the stored document compact and free of stray punctuation runs.
+const tokenizeForTrigram = (part: string): string =>
+  part
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((token) => token.length > 0)
+    .join(' ');
+
+// The lexical document is matched with pg_trgm strict word similarity, which
+// rewards exact tokens. Named entities (title, keywords, identifications)
+// come first, then tokenized prose from literal_description and
+// notable_details so a name the interpretation only mentions in prose
+// ("Doctor listed as drg NIDIA SALEH Sp KG") still produces an exact
+// word-boundary hit. The interpretation narrative stays out: it describes
+// what the scene means, not what it shows.
 export const buildAiInterpretLexicalDoc = (result: MuseInterpretationResult): string => {
-  return [result.title, ...result.search_keywords, ...result.identifications.map(({ name }) => name)]
-    .map((part) => part.trim())
+  return [
+    result.title,
+    ...result.search_keywords,
+    ...result.identifications.map(({ name }) => name),
+    result.literal_description,
+    ...result.notable_details.flatMap(({ detail, significance }) => [detail, significance]),
+  ]
+    .map((part) => tokenizeForTrigram(part))
     .filter((part) => part.length > 0)
     .join(' ');
 };
@@ -54,3 +73,17 @@ export const findLatestCompletedRun = (
 // pgvector parses a text literal like '[0.1,0.2,...]'; the JSON transport from
 // the embedding endpoint gives plain arrays, so they are serialized here.
 export const toPgvectorString = (vector: number[]): string => `[${vector.join(',')}]`;
+
+// Normalizes a raw query into its word tokens: lowercased, diacritic-stripped
+// (NFD decomposition removes combining marks; equivalent to Postgres
+// f_unaccent for decomposable Latin diacritics), split exactly like
+// tokenizeForTrigram tokenizes the stored document. These tokens drive the
+// exact-token branch's GIN prefilter patterns; the word-boundary verification
+// itself always runs in Postgres against f_unaccent'ed text.
+export const searchQueryTokens = (q: string): string[] =>
+  q
+    .toLowerCase()
+    .normalize('NFD')
+    .replaceAll(/\p{Diacritic}/gu, '')
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((token) => token.length > 0);

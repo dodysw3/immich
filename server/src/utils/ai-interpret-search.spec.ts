@@ -4,6 +4,7 @@ import {
   buildAiInterpretDenseDoc,
   buildAiInterpretLexicalDoc,
   findLatestCompletedRun,
+  searchQueryTokens,
 } from 'src/utils/ai-interpret-search.js';
 
 const interpretResult: MuseInterpretationResult = {
@@ -83,17 +84,42 @@ describe('buildAiInterpretDenseDoc', () => {
 });
 
 describe('buildAiInterpretLexicalDoc', () => {
-  it('joins title, keywords, and identification names with spaces', () => {
+  it('joins title, keywords, identification names, and tokenized prose', () => {
     expect(buildAiInterpretLexicalDoc(interpretResult)).toBe(
-      'Children playing on the floor family children playing living room blocks Sofa Ria',
+      'Children playing on the floor family children playing living room blocks Sofa Ria ' +
+        'Two children play with wooden blocks on a laminate floor ' +
+        'Wooden blocks scattered mid build Suggests play was interrupted recently ' +
+        'Sofa visible in the background Anchors the scene to a living room',
     );
   });
 
-  it('excludes prose fields so trigram hits stay on named entities', () => {
+  it('tokenizes prose so a name quoted with punctuation is an exact word hit', () => {
+    const doc = buildAiInterpretLexicalDoc({
+      ...interpretResult,
+      literal_description: '',
+      notable_details: [{ detail: 'Doctor listed as drg NIDIA SALEH Sp KG', significance: '', confidence: 'high' }],
+    });
+
+    expect(doc).toContain('drg NIDIA SALEH Sp KG');
+  });
+
+  it('excludes the interpretation narrative so trigram hits stay on observed text', () => {
     const doc = buildAiInterpretLexicalDoc(interpretResult);
 
-    expect(doc).not.toContain('laminate floor');
     expect(doc).not.toContain('family moment');
+  });
+
+  it('drops parts that tokenize to nothing', () => {
+    const doc = buildAiInterpretLexicalDoc({
+      ...interpretResult,
+      title: '!!!',
+      literal_description: '',
+      notable_details: [],
+      search_keywords: [],
+      identifications: [],
+    });
+
+    expect(doc).toBe('');
   });
 });
 
@@ -115,5 +141,23 @@ describe('findLatestCompletedRun', () => {
     expect(findLatestCompletedRun(null)).toBeNull();
     expect(findLatestCompletedRun({ schemaVersion: 1, runs: {} })).toBeNull();
     expect(findLatestCompletedRun({ schemaVersion: 1, runs: { aaa: run({ status: 'running' }) } })).toBeNull();
+  });
+});
+
+describe('searchQueryTokens', () => {
+  it('lowercases and splits on non-word characters', () => {
+    expect(searchQueryTokens('NIDIA SALEH')).toEqual(['nidia', 'saleh']);
+    expect(searchQueryTokens('drg. Nidia-Saleh, Sp.KG!')).toEqual(['drg', 'nidia', 'saleh', 'sp', 'kg']);
+    expect(searchQueryTokens('  nidia   saleh  ')).toEqual(['nidia', 'saleh']);
+  });
+
+  it('strips diacritics', () => {
+    expect(searchQueryTokens('Nïdia Säleh')).toEqual(['nidia', 'saleh']);
+    expect(searchQueryTokens('Nur Áisyah')).toEqual(['nur', 'aisyah']);
+  });
+
+  it('keeps letter-digit runs together and drops punctuation-only input', () => {
+    expect(searchQueryTokens('AV8 Dental Care')).toEqual(['av8', 'dental', 'care']);
+    expect(searchQueryTokens('!!! ...')).toEqual([]);
   });
 });

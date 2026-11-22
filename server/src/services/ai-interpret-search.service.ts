@@ -11,7 +11,9 @@ import { AiImageInterpretationRepository } from 'src/repositories/ai-image-inter
 import {
   AiInterpretAssetFilters,
   AiInterpretBranchRow,
+  AiInterpretExactTokenRow,
   AiInterpretSearchRepository,
+  TRIGRAM_MIN_TOKEN_LENGTH,
 } from 'src/repositories/ai-interpret-search.repository.js';
 import { ConfigRepository, type EnvData } from 'src/repositories/config.repository.js';
 import { JobRepository } from 'src/repositories/job.repository.js';
@@ -24,6 +26,7 @@ import {
   buildAiInterpretDenseDoc,
   buildAiInterpretLexicalDoc,
   findLatestCompletedRun,
+  searchQueryTokens,
   toPgvectorString,
 } from 'src/utils/ai-interpret-search.js';
 import { getMyPartnerIds } from 'src/utils/asset.util.js';
@@ -32,21 +35,37 @@ import { getMyPartnerIds } from 'src/utils/asset.util.js';
 // paper and dampens deep ranks so top hits from either branch dominate.
 const RRF_K = 60;
 
-type FusedEntry = { assetId: string; score: number; bestScore: number; branch: 'dense' | 'lexical' };
+type SearchBranch = 'dense' | 'lexical' | 'exact';
 
-const fuse = (dense: AiInterpretBranchRow[], lexical: AiInterpretBranchRow[]): FusedEntry[] => {
+type FusedEntry = { assetId: string; score: number; bestScore: number; branch: SearchBranch; matchTier: number };
+
+const fuse = (
+  dense: AiInterpretBranchRow[],
+  lexical: AiInterpretBranchRow[],
+  exact: AiInterpretExactTokenRow[],
+): FusedEntry[] => {
   const entries = new Map<string, FusedEntry>();
-  const contribute = (rows: AiInterpretBranchRow[], branch: 'dense' | 'lexical') => {
-    for (const [index, { assetId }] of rows.entries()) {
+  const contribute = (rows: Array<{ assetId: string; matchTier?: number }>, branch: SearchBranch) => {
+    for (const [index, row] of rows.entries()) {
       const contribution = 1 / (RRF_K + index + 1);
-      const entry = entries.get(assetId);
+      const matchTier = row.matchTier ?? 0;
+      const entry = entries.get(row.assetId);
       if (!entry) {
-        entries.set(assetId, { assetId, score: contribution, bestScore: contribution, branch });
+        entries.set(row.assetId, {
+          assetId: row.assetId,
+          score: contribution,
+          bestScore: contribution,
+          branch,
+          matchTier,
+        });
         continue;
       }
 
       entry.score += contribution;
-      // provenance reports the branch that ranked this asset best; ties stay with dense
+      if (matchTier > entry.matchTier) {
+        entry.matchTier = matchTier;
+      }
+      // provenance reports the branch that ranked this asset best; ties stay with the earlier branch
       if (!(contribution > entry.bestScore)) {
         continue;
       }
@@ -58,10 +77,16 @@ const fuse = (dense: AiInterpretBranchRow[], lexical: AiInterpretBranchRow[]): F
 
   contribute(dense, 'dense');
   contribute(lexical, 'lexical');
+  contribute(exact, 'exact');
+  // Exact-token matches (tier 2: contiguous, tier 1: all tokens word-bounded)
+  // outrank partial matches (tier 0) before RRF is consulted, so a name match
+  // cannot be pushed below a partially-matching asset by an unrelated branch.
+  // With no exact branch involved every tier is 0 and this degenerates to the
+  // original score-then-assetId ordering.
   return entries
     .values()
     .toArray()
-    .sort((a, b) => b.score - a.score || (a.assetId < b.assetId ? -1 : 1));
+    .sort((a, b) => b.matchTier - a.matchTier || b.score - a.score || (a.assetId < b.assetId ? -1 : 1));
 };
 
 @Injectable()
@@ -221,17 +246,30 @@ export class AiInterpretSearchService {
       hasAiInterpretation: dto.hasAiInterpretation,
       withStacked: dto.withStacked,
     };
-    const [dense, lexical] = await Promise.all([
+    // Multi-token queries get a third, exact-token candidate branch and
+    // relevance-tiered fusion; single-token queries keep the original
+    // two-branch behavior. Eligibility is purely syntactic (at least two
+    // tokens, one long enough for the GIN trigram prefilter): the branch's
+    // bounded selectivity makes it a strict no-op for broad queries, and the
+    // fused ordering degenerates to the original two-branch order whenever it
+    // contributes nothing.
+    const tokens = searchQueryTokens(dto.q);
+    const [dense, lexical, exact] = await Promise.all([
       this.repository.searchDense({ limit: window + 1 }, { ...assetFilters, embedding, minScore: config.minScore }),
       this.repository.searchLexical({ limit: window + 1 }, { ...assetFilters, q: dto.q }),
+      tokens.length >= 2 && tokens.some((token) => token.length >= TRIGRAM_MIN_TOKEN_LENGTH)
+        ? this.repository.searchExactToken({ ...assetFilters, q: dto.q, tokens })
+        : Promise.resolve([] as AiInterpretExactTokenRow[]),
     ]);
 
     const denseRows = dense.slice(0, window);
     const lexicalRows = lexical.slice(0, window);
-    const fused = fuse(denseRows, lexicalRows);
-    // Each branch is fetched with window+1 rows: a full page in either branch
+    const exactRows = exact.slice(0, window);
+    const fused = fuse(denseRows, lexicalRows, exactRows);
+    // Each branch is fetched with window+1 rows: a full page in any branch
     // (or a fused list spilling past the window) means more pages remain.
-    const hasNextPage = fused.length > window || dense.length > window || lexical.length > window;
+    const hasNextPage =
+      fused.length > window || dense.length > window || lexical.length > window || exact.length > window;
     const pageEntries = fused.slice((page - 1) * size, page * size);
 
     const assets = await this.repository.getAssetsByIds(pageEntries.map(({ assetId }) => assetId));
