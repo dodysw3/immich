@@ -58,80 +58,91 @@ limit
 -- AiInterpretSearchRepository.searchDense
 begin
 set
-  local vchordrq.probes = 1
+  local vchordrq.probes = 65536
 select
-  "ai_interpret_search"."assetId",
-  ai_interpret_search.embedding <=> $1 as "distance"
+  "knn"."assetId",
+  "knn"."distance"
 from
-  "asset"
-  inner join "ai_interpret_search" on "asset"."id" = "ai_interpret_search"."assetId"
-  inner join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
-  inner join (
+  (
     select
-      "assetId"
+      "ai_interpret_search"."assetId",
+      ai_interpret_search.embedding <=> $1 as "distance"
     from
-      "asset_face"
+      "asset"
+      inner join "ai_interpret_search" on "asset"."id" = "ai_interpret_search"."assetId"
+      inner join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
+      inner join (
+        select
+          "assetId"
+        from
+          "asset_face"
+        where
+          "personGroupId" = any ($2::uuid[])
+          and "deletedAt" is null
+          and "isVisible" is true
+        group by
+          "assetId"
+        having
+          count(distinct "personGroupId") = $3
+      ) as "has_people" on "has_people"."assetId" = "asset"."id"
+      inner join (
+        select
+          "assetId"
+        from
+          "tag_asset"
+          inner join "tag_closure" on "tag_asset"."tagId" = "tag_closure"."id_descendant"
+        where
+          "tag_closure"."id_ancestor" = any ($4::uuid[])
+        group by
+          "assetId"
+        having
+          count(distinct "tag_closure"."id_ancestor") >= $5
+      ) as "has_tags" on "has_tags"."assetId" = "asset"."id"
     where
-      "personGroupId" = any ($2::uuid[])
-      and "deletedAt" is null
-      and "isVisible" is true
-    group by
-      "assetId"
-    having
-      count(distinct "personGroupId") = $3
-  ) as "has_people" on "has_people"."assetId" = "asset"."id"
-  inner join (
-    select
-      "assetId"
-    from
-      "tag_asset"
-      inner join "tag_closure" on "tag_asset"."tagId" = "tag_closure"."id_descendant"
-    where
-      "tag_closure"."id_ancestor" = any ($4::uuid[])
-    group by
-      "assetId"
-    having
-      count(distinct "tag_closure"."id_ancestor") >= $5
-  ) as "has_tags" on "has_tags"."assetId" = "asset"."id"
+      "asset"."ownerId" in ($6)
+      and "asset"."deletedAt" is null
+      and "asset"."visibility" != $7
+      and "asset"."fileCreatedAt" >= $8
+      and "asset"."fileCreatedAt" <= $9
+      and "asset"."type" = $10
+      and "asset"."isFavorite" = $11
+      and "asset"."stackId" is null
+      and "asset_exif"."city" = $12
+      and "asset_exif"."state" is null
+      and "asset_exif"."country" = $13
+      and "asset_exif"."make" = $14
+      and "asset_exif"."model" = $15
+      and "asset_exif"."lensModel" is null
+      and "asset_exif"."rating" = $16
+      and not exists (
+        select
+        from
+          "album_asset"
+        where
+          "assetId" = "asset"."id"
+      )
+      and exists (
+        select
+        from
+          "asset_metadata"
+        where
+          "asset_metadata"."assetId" = "asset"."id"
+          and "asset_metadata"."key" = $17
+          and asset_metadata.value @? '$.runs.* ? (@.status == "completed" && @.result.type() == "object")'
+      )
+    order by
+      ai_interpret_search.embedding <=> $18 asc
+    limit
+      $19
+  ) as "knn"
 where
-  "asset"."ownerId" in ($6)
-  and "asset"."deletedAt" is null
-  and "asset"."visibility" != $7
-  and "asset"."fileCreatedAt" >= $8
-  and "asset"."fileCreatedAt" <= $9
-  and "asset"."type" = $10
-  and "asset"."isFavorite" = $11
-  and "asset"."stackId" is null
-  and "asset_exif"."city" = $12
-  and "asset_exif"."state" is null
-  and "asset_exif"."country" = $13
-  and "asset_exif"."make" = $14
-  and "asset_exif"."model" = $15
-  and "asset_exif"."lensModel" is null
-  and "asset_exif"."rating" = $16
-  and not exists (
-    select
-    from
-      "album_asset"
-    where
-      "assetId" = "asset"."id"
-  )
-  and exists (
-    select
-    from
-      "asset_metadata"
-    where
-      "asset_metadata"."assetId" = "asset"."id"
-      and "asset_metadata"."key" = $17
-      and asset_metadata.value @? '$.runs.* ? (@.status == "completed" && @.result.type() == "object")'
-  )
-  and 1 - (ai_interpret_search.embedding <=> $18) >= $19
+  1 - knn.distance >= $20
 order by
-  "distance" asc,
-  "ai_interpret_search"."assetId" asc
+  "knn"."distance" asc,
+  "knn"."assetId" asc
 limit
-  $20
-rollback
+  $21
+commit
 
 -- AiInterpretSearchRepository.searchLexical
 select
@@ -152,3 +163,47 @@ order by
   "ai_interpret_search"."assetId" asc
 limit
   $7
+
+-- AiInterpretSearchRepository.searchExactToken
+select
+  "ai_interpret_search"."assetId"
+from
+  "asset"
+  inner join "ai_interpret_search" on "asset"."id" = "ai_interpret_search"."assetId"
+where
+  "asset"."ownerId" in ($1)
+  and "asset"."deletedAt" is null
+  and "asset"."visibility" != $2
+  and "asset"."fileCreatedAt" <= $3
+  and "asset"."type" = $4
+  and f_unaccent (ai_interpret_search.text) ilike $5
+  and strpos(
+    ' ' || lower(f_unaccent (ai_interpret_search.text)) || ' ',
+    ' ' || lower(f_unaccent ($6)) || ' '
+  ) > 0
+limit
+  $7
+select
+  "ai_interpret_search"."assetId"
+from
+  "asset"
+  inner join "ai_interpret_search" on "asset"."id" = "ai_interpret_search"."assetId"
+where
+  "asset"."ownerId" in ($1)
+  and "asset"."deletedAt" is null
+  and "asset"."visibility" != $2
+  and "asset"."fileCreatedAt" <= $3
+  and "asset"."type" = $4
+  and f_unaccent (ai_interpret_search.text) ilike $5
+  and not (
+    strpos(
+      ' ' || lower(f_unaccent (ai_interpret_search.text)) || ' ',
+      ' ' || lower(f_unaccent ($6)) || ' '
+    ) > 0
+  )
+  and strpos(
+    ' ' || lower(f_unaccent (ai_interpret_search.text)) || ' ',
+    ' ' || lower(f_unaccent ($7)) || ' '
+  ) > 0
+limit
+  $8

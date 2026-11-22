@@ -298,3 +298,28 @@ from
   inner join "asset_keyframe" on "asset"."id" = "asset_keyframe"."assetId"
 where
   "asset"."id" = $1
+
+-- VideoStreamRepository.getAvMetadata
+select
+  "asset_audio"."codecName",
+  "asset_audio"."profile",
+  "asset_audio"."bitrate"
+from
+  "asset_audio"
+where
+  "asset_audio"."assetId" = $1
+select
+  "asset_video"."codecName",
+  "asset_video"."formatName",
+  "asset_video"."formatLongName",
+  "asset_video"."pixelFormat",
+  "asset_video"."profile",
+  "asset_video"."level",
+  "asset_video"."bitrate",
+  "asset_video"."frameCount",
+  "asset_video"."dvProfile",
+  "asset_video"."dvLevel"
+from
+  "asset_video"
+where
+  "asset_video"."assetId" = $1

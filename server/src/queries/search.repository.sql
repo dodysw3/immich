@@ -242,7 +242,7 @@ limit
   $6
 offset
   $7
-rollback
+commit
 
 -- SearchRepository.getEmbedding
 select
@@ -1911,7 +1911,7 @@ limit
   $5
 offset
   $6
-rollback
+commit
 
 -- SearchRepository.searchSmartV3 (with-filter)
 begin
@@ -1967,7 +1967,7 @@ limit
   $7
 offset
   $8
-rollback
+commit
 
 -- SearchRepository.searchSmartV3 (cursor-offset)
 begin
@@ -2020,7 +2020,7 @@ limit
   $5
 offset
   $6
-rollback
+commit
 
 -- SearchRepository.searchStatisticsV3 (baseline)
 select
